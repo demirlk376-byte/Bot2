@@ -110,6 +110,9 @@ def load_btcd_csv(pattern: str) -> pd.Series:
         frames.append(df[[close_col]].astype(float))
 
     btcd = pd.concat(frames).drop_duplicates().sort_index()[frames[0].columns[0]]
+    # Binance BTCDOMUSDT 100x ile saklar (5028 = %50.28), normalize et
+    if btcd.max() > 100:
+        btcd = btcd / 100.0
     btcd.name = "btcd"
     return btcd
 
