@@ -308,6 +308,47 @@ def scan_once(ex, coins: list[str], state: dict) -> None:
                 f"{'LONG' if pos['direction']==1 else 'SHORT'} @ {pos['entry']:.4f}")
 
     save_state(state)
+    write_summary_md(state, coins)
+
+
+def write_summary_md(state: dict, coins: list[str]) -> None:
+    """Telefondan GitHub'da açıp okunabilen özet tablo (paper_summary.md).
+    Telegram gerekmez — sadece bu dosyaya bakman yeterli."""
+    lines = [
+        "# 📊 Paper Demo Durumu",
+        "",
+        f"Son güncelleme: **{now_utc():%Y-%m-%d %H:%M} UTC**",
+        "",
+        "Gerçek para YOK — her coin $10,000 sanal bakiyeyle başlar. Amaç: hangi",
+        "coinde edge GERÇEKTEN var, körlemesine değil veriyle görmek.",
+        "",
+        "| Coin | Bakiye | Getiri | Trade | Kazanma % | Açık pozisyon | Aday? |",
+        "|------|--------|--------|-------|-----------|---------------|-------|",
+    ]
+    total_ret = 0.0
+    for coin in coins:
+        c = state["coins"][coin]
+        ret = (c["balance"] - INIT_BAL) / INIT_BAL * 100
+        total_ret += ret
+        wr = c["n_wins"] / c["n_trades"] * 100 if c["n_trades"] else 0
+        op = ("🟢 " + ("LONG" if c["position"]["direction"] == 1 else "SHORT")
+              if c["position"] else "—")
+        # Aday: pozitif getiri + WR>45 + en az birkaç trade
+        aday = "✅" if (ret > 0 and wr > 45 and c["n_trades"] >= 3) else \
+               ("⏳" if c["n_trades"] < 3 else "❌")
+        lines.append(
+            f"| {coin} | ${c['balance']:,.0f} | {ret:+.1f}% | "
+            f"{c['n_trades']} | {wr:.0f}% | {op} | {aday} |"
+        )
+    lines += [
+        "",
+        "**Aday sütunu:** ✅ canlıya aday (pozitif + kazanma>%45) · "
+        "⏳ yeterli veri yok · ❌ edge tutmadı",
+        "",
+        "> 4–8 hafta veri biriksin, sonra ✅ olan coinlerle $20 canlıya geçeriz.",
+        "> Bu dosya her saat otomatik güncellenir.",
+    ]
+    Path("paper_summary.md").write_text("\n".join(lines), encoding="utf-8")
 
 
 def print_summary(state: dict, coins: list[str]) -> None:

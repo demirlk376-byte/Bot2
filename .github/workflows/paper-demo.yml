@@ -55,7 +55,7 @@ jobs:
           git config user.name "paper-demo-bot"
           git config user.email "actions@github.com"
           # Sadece state/sonuç dosyaları değiştiyse commit et
-          git add paper_state.json paper_trades.csv paper_signals.csv 2>/dev/null || true
+          git add paper_state.json paper_trades.csv paper_signals.csv paper_summary.md 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "Değişiklik yok, commit atlanıyor"
           else
