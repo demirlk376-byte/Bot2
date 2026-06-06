@@ -69,7 +69,8 @@ class _PaperPosition:
 
 
 class PaperExchange:
-    FEE_RATE = 0.0001
+    FEE_RATE = 0.0001       # taker fee (market orders)
+    FEE_MAKER = 0.0         # maker fee (limit/post-only orders) — MEXC futures maker = 0%
     SLIPPAGE = 0.0005
 
     def __init__(self, initial_balance: float, leverage: int = 10):
@@ -143,6 +144,44 @@ class PaperExchange:
         self._order_history.append(result)
         logger.info(
             "PAPER %s %s qty=%.4f price=%.2f margin=%.2f",
+            side.upper(), symbol, amount, fill_price, margin,
+        )
+        return result
+
+    async def place_limit_order(
+        self, symbol: str, side: str, amount: float, limit_price: float, params: dict
+    ) -> OrderResult:
+        """Maker entry: fill at the limit price with no slippage and the maker
+        fee (0% on MEXC futures). In paper mode we assume the resting limit at
+        the just-closed price fills, which mirrors the backtest's maker model."""
+        fill_price = limit_price
+        fee = fill_price * amount * self.FEE_MAKER
+        margin = (fill_price * amount) / self._leverage
+        self._balance -= margin + fee
+
+        pos_id = str(uuid.uuid4())
+        pos = _PaperPosition(
+            id=pos_id,
+            symbol=symbol,
+            side="long" if side == "buy" else "short",
+            quantity=amount,
+            entry_price=fill_price,
+            sl_price=params.get("stopLossPrice", 0.0),
+            tp_price=params.get("takeProfitPrice", 0.0),
+            margin_used=margin,
+            leverage=self._leverage,
+            fee_rate=self.FEE_MAKER,
+        )
+        self._positions[pos_id] = pos
+
+        result = OrderResult(
+            order_id=pos_id, symbol=symbol, side=side,
+            filled_price=fill_price, quantity=amount,
+            timestamp=int(time.time() * 1000), is_paper=True,
+        )
+        self._order_history.append(result)
+        logger.info(
+            "PAPER LIMIT %s %s qty=%.4f price=%.2f margin=%.2f (maker)",
             side.upper(), symbol, amount, fill_price, margin,
         )
         return result
@@ -310,6 +349,74 @@ class LiveExchange:
             timestamp=int(time.time() * 1000),
             is_paper=False,
         )
+
+    async def place_limit_order(
+        self, symbol: str, side: str, amount: float, limit_price: float,
+        params: dict, timeout: float = 45.0, poll: float = 3.0,
+        fallback_market: bool = True,
+    ) -> Optional[OrderResult]:
+        """Post-only (maker) limit entry. Places a passive limit at limit_price,
+        polls for fill up to `timeout` seconds. If unfilled, cancels and either
+        falls back to a market order (taker) or returns None to skip the trade.
+
+        Maker entries pay 0% fee on MEXC futures vs 0.01% taker — over a year
+        this is worth several percent of return (see research_maximize.py)."""
+        order_params = dict(params)
+        order_params["postOnly"] = True
+        try:
+            order = await self._exchange.create_order(
+                symbol, "limit", side, amount, limit_price, order_params
+            )
+        except Exception as e:
+            logger.warning("Post-only limit rejected (%s); using market", e)
+            if fallback_market:
+                return await self.place_market_order(symbol, side, amount, params)
+            return None
+
+        order_id = str(order["id"])
+        waited = 0.0
+        while waited < timeout:
+            await asyncio.sleep(poll)
+            waited += poll
+            try:
+                fetched = await self._exchange.fetch_order(order_id, symbol)
+            except Exception as e:
+                logger.debug("fetch_order failed: %s", e)
+                continue
+            status = fetched.get("status")
+            if status == "closed":
+                filled_price = float(
+                    fetched.get("average") or fetched.get("price") or limit_price
+                )
+                logger.info("Maker limit filled: %s @ %.2f", symbol, filled_price)
+                return OrderResult(
+                    order_id=order_id, symbol=symbol, side=side,
+                    filled_price=filled_price, quantity=amount,
+                    timestamp=int(time.time() * 1000), is_paper=False,
+                )
+            if status == "canceled":
+                break
+
+        # Unfilled — cancel and decide fallback
+        try:
+            await self._exchange.cancel_order(order_id, symbol)
+        except Exception as e:
+            logger.debug("cancel_order failed (may be filled): %s", e)
+            # Re-check: it might have filled between poll and cancel
+            try:
+                fetched = await self._exchange.fetch_order(order_id, symbol)
+                if fetched.get("status") == "closed":
+                    fp = float(fetched.get("average") or limit_price)
+                    return OrderResult(order_id, symbol, side, fp, amount,
+                                       int(time.time() * 1000), False)
+            except Exception:
+                pass
+
+        if fallback_market:
+            logger.info("Limit unfilled after %.0fs; falling back to market", timeout)
+            return await self.place_market_order(symbol, side, amount, params)
+        logger.info("Limit unfilled after %.0fs; skipping trade", timeout)
+        return None
 
     async def close_position(
         self, symbol: str, side: str, amount: float, reason: str = "manual"

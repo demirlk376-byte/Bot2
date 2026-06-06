@@ -52,11 +52,11 @@ def resample(df, rule):
                                   "close": "last", "volume": "sum"}).dropna()
 
 
-def make_config(vol_filter=True):
+def make_config(vol_filter=True, risk=0.02):
     return AppConfig(
         exchange=ExchangeConfig(api_key="", api_secret="", paper_mode=True,
                                 leverage=30, margin_mode="isolated", symbol="BTC/USDT:USDT"),
-        risk=RiskConfig(max_risk_per_trade=0.02, atr_sl_multiplier=3.0,
+        risk=RiskConfig(max_risk_per_trade=risk, atr_sl_multiplier=3.0,
                         rr_ratio=1.667, max_positions=1, daily_max_loss=0.05,
                         max_hold_candles=48),
         strategy=StrategyConfig(primary_tf="1h", confirm_tf="4h",
@@ -66,12 +66,15 @@ def make_config(vol_filter=True):
     )
 
 
-# Cost model: applied per side as a fraction of notional traded at that price.
-# 0.04% per side → 0.08% round trip (limit/maker entry + market exit + slippage).
+# Cost model: per side as a fraction of notional traded at that price.
+#   Market entry + market exit : 0.0004/side (0.08% round trip)
+#   Maker entry + market exit  : 0.0002/side avg (0.04% round trip) — DEFAULT now,
+#                                since the live engine uses post-only limit entries.
 COST_PER_SIDE = 0.0004
+COST_PER_SIDE_MAKER = 0.0002
 
 
-def run(df_1h, cfg) -> list[Trade]:
+def run(df_1h, cfg, cost_per_side=COST_PER_SIDE) -> list[Trade]:
     strat = MeanReversionStrategy(cfg.strategy)
     risk = RiskManager(cfg.risk)
     max_hold = cfg.risk.max_hold_candles
@@ -117,7 +120,7 @@ def run(df_1h, cfg) -> list[Trade]:
             if exit_p is not None:
                 # apply round-trip cost on notional (entry + exit legs)
                 gross = d * (exit_p - entry) * qty
-                fees = (entry + exit_p) * qty * COST_PER_SIDE
+                fees = (entry + exit_p) * qty * cost_per_side
                 net = gross - fees
                 balance += net
                 trades.append(Trade(open_t["ts"], d, entry, exit_p, qty, net, reason, held))
@@ -167,46 +170,64 @@ def report(name, trades):
 def main():
     df_1m = load_all()
     df_1h = resample(df_1m, "1h")
+    split = pd.Timestamp("2026-01-01")
 
-    # Show before/after comparison for the volume filter improvement
-    cfg_base = make_config(vol_filter=False)
-    cfg_vf   = make_config(vol_filter=True)
-    split    = pd.Timestamp("2026-01-01")
+    # Stacked improvement progression — each row adds one validated lever.
+    stages = [
+        ("1) BASELINE (1h BB fade)",
+         make_config(vol_filter=False, risk=0.02), COST_PER_SIDE),
+        ("2) + HACİM FİLTRESİ",
+         make_config(vol_filter=True, risk=0.02), COST_PER_SIDE),
+        ("3) + MAKER GİRİŞ (limit, 0.04% RT)",
+         make_config(vol_filter=True, risk=0.02), COST_PER_SIDE_MAKER),
+        ("4) + RİSK %3 (önerilen final)",
+         make_config(vol_filter=True, risk=0.03), COST_PER_SIDE_MAKER),
+    ]
 
-    for label, cfg in [("BASELINE (hacim filtresi yok)", cfg_base),
-                       ("+ HACİM FİLTRESİ (vol > 20-dönemi ORT)", cfg_vf)]:
-        print()
-        print("=" * 68)
-        print(f"  {label}")
-        print("  SL=3xATR TP=5xATR maxHold=48h | $10k, %2 risk/işlem, x30 kaldıraç")
-        print("=" * 68)
-
-        trades = run(df_1h, cfg)
+    print("=" * 78)
+    print("  KADEMELİ İYİLEŞTİRME — her satır bir doğrulanmış kaldıraç ekler")
+    print("  SL=3xATR TP=5xATR maxHold=48h | $10k başlangıç, x30 kaldıraç")
+    print("=" * 78)
+    for label, cfg, cost in stages:
+        trades = run(df_1h, cfg, cost_per_side=cost)
         tr = [t for t in trades if t.ts < split]
         te = [t for t in trades if t.ts >= split]
+        print()
+        report(f"{label:<34s} TÜM", trades)
+        report("   TRAIN 25/05-12", tr)
+        report("   TEST  26/01-04", te)
 
-        report("TÜM 12 AY   ", trades)
-        report("TRAIN 25/05-12", tr)
-        report("TEST  26/01-04", te)
+    # Detailed breakdown of the FINAL config
+    print()
+    print("=" * 78)
+    print("  FİNAL KONFİG DETAYI (hacim filtresi + maker + risk %3)")
+    print("=" * 78)
+    cfg_final = make_config(vol_filter=True, risk=0.03)
+    trades = run(df_1h, cfg_final, cost_per_side=COST_PER_SIDE_MAKER)
+    tr = [t for t in trades if t.ts < split]
+    te = [t for t in trades if t.ts >= split]
+    report("TÜM 12 AY   ", trades)
+    report("TRAIN 25/05-12", tr)
+    report("TEST  26/01-04", te)
 
-        print("\nAylık:")
-        m: dict = {}
-        for t in trades:
-            m.setdefault(t.ts.strftime("%Y-%m"), []).append(t.pnl)
-        cum = 0
-        for k in sorted(m):
-            p = np.array(m[k]); cum += p.sum()
-            print(f"  {k}: {len(p):>3d}t WR{(p>0).mean():>4.0%} ${p.sum():>+8.2f} (kümül ${cum:>+9.2f})")
+    print("\nAylık:")
+    m: dict = {}
+    for t in trades:
+        m.setdefault(t.ts.strftime("%Y-%m"), []).append(t.pnl)
+    cum = 0
+    for k in sorted(m):
+        p = np.array(m[k]); cum += p.sum()
+        print(f"  {k}: {len(p):>3d}t WR{(p>0).mean():>4.0%} ${p.sum():>+8.2f} (kümül ${cum:>+9.2f})")
 
-        print("\nÇıkış nedenleri:")
-        ex: dict = {}
-        for t in trades:
-            ex.setdefault(t.reason, []).append(t.pnl)
-        for k, v in sorted(ex.items()):
-            print(f"  {k:10s}: {len(v):>3d} | ${sum(v):>+8.2f}")
-        holds = [t.hold for t in trades]
-        print(f"\nTutma süresi: medyan {np.median(holds):.0f}h, ort {np.mean(holds):.0f}h, "
-              f"<24h {(np.array(holds)<24).mean():.0%}")
+    print("\nÇıkış nedenleri:")
+    ex: dict = {}
+    for t in trades:
+        ex.setdefault(t.reason, []).append(t.pnl)
+    for k, v in sorted(ex.items()):
+        print(f"  {k:10s}: {len(v):>3d} | ${sum(v):>+8.2f}")
+    holds = [t.hold for t in trades]
+    print(f"\nTutma süresi: medyan {np.median(holds):.0f}h, ort {np.mean(holds):.0f}h, "
+          f"<24h {(np.array(holds)<24).mean():.0%}")
 
 
 if __name__ == "__main__":

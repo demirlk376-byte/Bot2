@@ -55,6 +55,7 @@ class ExchangeConfig:
     margin_mode: str
     symbol: str
     base_currency: str = "USDT"
+    maker_entry: bool = True   # use post-only limit entries (0% maker fee vs 0.01% taker)
 
 
 @dataclass
@@ -115,6 +116,7 @@ def load_config() -> AppConfig:
         leverage=_getint("LEVERAGE", 10),
         margin_mode=_get("MARGIN_MODE", "isolated"),
         symbol=_get("SYMBOL", "BTC/USDT:USDT"),
+        maker_entry=_getbool("MAKER_ENTRY", True),
     )
 
     risk = RiskConfig(
