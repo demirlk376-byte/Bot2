@@ -10,14 +10,12 @@ from database import Database, DailyStats
 from data import DataManager, Candle
 from exchange import PaperExchange, LiveExchange
 from execution import ExecutionEngine
-from indicators import atr, adx, find_sr_levels
+from indicators import atr
 from monitor import Dashboard
 from portfolio import Portfolio
 from risk import RiskManager
-from strategies.trend import TrendStrategy
 from strategies.mean_reversion import MeanReversionStrategy
-from strategies.breakout import BreakoutStrategy
-from strategies.signal_combiner import SignalCombiner
+from strategies.signal_combiner import SignalCombiner, CombinedSignal
 from telegram_bot import TelegramNotifier
 
 logging.basicConfig(
@@ -41,68 +39,91 @@ config = None
 
 
 async def on_candle_close(candle: Candle) -> None:
-    try:
-        df_5m = await data_mgr.get_candles(config.strategy.primary_tf, 120)
-        df_15m = await data_mgr.get_candles(config.strategy.confirm_tf, 80)
+    """Fired on every closed primary-timeframe (1h) candle.
 
-        if len(df_5m) < 50:
+    Implements the empirically validated edge: fade Bollinger-band extremes
+    on the 1h timeframe (see strategies/mean_reversion.py and the research
+    scripts research_*.py / production_backtest.py for validation).
+    """
+    try:
+        import pandas as pd
+
+        df = await data_mgr.get_candles(config.strategy.primary_tf, 120)
+        if len(df) < config.strategy.bb_period + 5:
             return
 
         current_price = await data_mgr.get_current_price()
         portfolio.update_unrealized_pnl(current_price)
         dashboard.update_price(current_price)
 
-        atr_val = atr(df_5m["high"], df_5m["low"], df_5m["close"],
-                      config.strategy.atr_period).iloc[-1]
-        adx_val = adx(df_5m["high"], df_5m["low"], df_5m["close"],
-                      config.strategy.adx_period).iloc[-1]
-        sr_levels = find_sr_levels(df_5m, config.strategy.sr_lookback,
-                                   config.strategy.sr_min_touches)
-
-        import pandas as pd
-        if pd.isna(atr_val) or pd.isna(adx_val) or atr_val <= 0:
-            return
-
-        trend_sig = strategies["trend"].analyze(df_5m, df_15m)
-        mr_sig = strategies["mean_rev"].analyze(df_5m, df_15m, sr_levels)
-        break_sig = strategies["breakout"].analyze(df_5m, df_15m, sr_levels)
-
-        combined = combiner.combine(trend_sig, mr_sig, break_sig, current_price, adx_val)
-        dashboard.update_signal(combined)
-
-        if dashboard:
-            dashboard.log_message(
-                f"Signal: dir={combined.direction} conf={combined.confidence:.2f} "
-                f"strategy={combined.dominant_strategy}"
-            )
-
-        if combined.direction == 0:
-            return
-
-        result = await executor.execute_signal(combined, atr_val)
-
-        if result.success and result.position:
-            logger.info(
-                "Trade opened: %s entry=%.2f sl=%.2f tp=%.2f",
-                result.position.side.upper(),
-                result.position.entry_price,
-                result.position.sl_price,
-                result.position.tp_price,
-            )
-            if telegram:
-                await telegram.send_trade_opened(result.trade_setup, combined)
-
-        elif result.error:
-            logger.debug("Signal skipped: %s", result.error)
-
-        # Check SL/TP for paper trading
+        # Paper SL/TP fills first (uses the just-closed candle's range)
         if config.exchange.paper_mode and isinstance(exchange, PaperExchange):
             await exchange.check_sl_tp(candle.high, candle.low)
-            balance = await exchange.get_balance()
-            dashboard.update_balance(balance)
+
+        # Force-close positions held beyond max_hold_candles
+        await _enforce_max_hold(current_price)
+
+        atr_val = atr(df["high"], df["low"], df["close"],
+                      config.strategy.atr_period).iloc[-1]
+        if pd.isna(atr_val) or atr_val <= 0:
+            return
+
+        # Primary (and only) signal: Bollinger mean reversion
+        mr_sig = strategies["mean_rev"].analyze(df)
+
+        combined = CombinedSignal(
+            direction=mr_sig.direction,
+            confidence=mr_sig.strength,
+            trend_score=0.0,
+            mean_rev_score=mr_sig.direction * mr_sig.strength,
+            breakout_score=0.0,
+            dominant_strategy="mean_rev",
+            reasons=[mr_sig.reason],
+            entry_price=current_price,
+        )
+        dashboard.update_signal(combined)
+        dashboard.log_message(
+            f"Signal: dir={combined.direction} conf={combined.confidence:.2f} "
+            f"({mr_sig.reason})"
+        )
+
+        if combined.direction != 0 and portfolio.get_open_position_count() == 0:
+            result = await executor.execute_signal(combined, atr_val)
+            if result.success and result.position:
+                logger.info(
+                    "Trade opened: %s entry=%.2f sl=%.2f tp=%.2f",
+                    result.position.side.upper(),
+                    result.position.entry_price,
+                    result.position.sl_price,
+                    result.position.tp_price,
+                )
+                if telegram:
+                    await telegram.send_trade_opened(result.trade_setup, combined)
+            elif result.error:
+                logger.debug("Signal skipped: %s", result.error)
+
+        balance = await exchange.get_balance()
+        dashboard.update_balance(balance)
 
     except Exception as e:
         logger.error("on_candle_close error: %s", e, exc_info=True)
+
+
+async def _enforce_max_hold(current_price: float) -> None:
+    """Close any position held longer than max_hold_candles primary candles."""
+    from data import TIMEFRAME_SECONDS
+    max_candles = config.risk.max_hold_candles
+    tf_seconds = TIMEFRAME_SECONDS.get(config.strategy.primary_tf, 3600)
+    max_age = max_candles * tf_seconds
+    now = datetime.utcnow()
+    for pos in list(portfolio.get_open_positions()):
+        age = (now - pos.entry_time).total_seconds()
+        if age >= max_age:
+            logger.info("Max-hold reached for %s, closing", pos.id)
+            if isinstance(exchange, PaperExchange):
+                await exchange.close_position(pos.symbol, pos.side, pos.quantity, "max_hold")
+            else:
+                await executor.close_position(pos, "max_hold", current_price)
 
 
 async def daily_reset_loop() -> None:
@@ -202,10 +223,9 @@ async def main() -> None:
     balance = await exchange.get_balance()
     executor.set_daily_starting_balance(balance)
 
+    # Mean reversion is the single validated edge (see research_*.py).
     strategies = {
-        "trend": TrendStrategy(config.strategy),
         "mean_rev": MeanReversionStrategy(config.strategy),
-        "breakout": BreakoutStrategy(config.strategy),
     }
     combiner = SignalCombiner(config.strategy)
 

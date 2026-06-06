@@ -155,6 +155,25 @@ class ExecutionEngine:
         setup_copy.entry_price = order.filled_price
         return ExecutionResult(success=True, position=position, trade_setup=setup_copy)
 
+    async def close_position(
+        self, pos: Position, reason: str, current_price: float
+    ) -> bool:
+        """Public close for live mode: places a reduce-only market order, then
+        records the fill. Paper mode is handled by PaperExchange.close_position."""
+        try:
+            if hasattr(self._exchange, "close_position"):
+                order = await self._exchange.close_position(
+                    pos.symbol, pos.side, pos.quantity, reason
+                )
+                exit_price = order.filled_price if order else current_price
+            else:
+                exit_price = current_price
+            await self._close_position_internal(pos, exit_price, reason)
+            return True
+        except Exception as e:
+            logger.error("close_position failed for %s: %s", pos.id, e)
+            return False
+
     async def emergency_close_all(self, reason: str) -> None:
         for pos in list(self._portfolio.get_open_positions()):
             try:

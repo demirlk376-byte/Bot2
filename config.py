@@ -64,6 +64,7 @@ class RiskConfig:
     rr_ratio: float
     max_positions: int
     daily_max_loss: float
+    max_hold_candles: int = 48  # force-close after N candles (48h on 1h timeframe)
 
 
 @dataclass
@@ -83,8 +84,8 @@ class StrategyConfig:
     sr_lookback: int = 50
     sr_min_touches: int = 2
     volume_spike_mult: float = 1.5
-    primary_tf: str = "5m"
-    confirm_tf: str = "15m"
+    primary_tf: str = "1h"     # validated edge is on the 1h timeframe
+    confirm_tf: str = "4h"
 
 
 @dataclass
@@ -117,10 +118,11 @@ def load_config() -> AppConfig:
 
     risk = RiskConfig(
         max_risk_per_trade=_getfloat("MAX_RISK_PCT", 0.02),
-        atr_sl_multiplier=_getfloat("ATR_SL_MULT", 1.5),
-        rr_ratio=_getfloat("RR_RATIO", 2.0),
+        atr_sl_multiplier=_getfloat("ATR_SL_MULT", 3.0),   # validated: 3x ATR stop
+        rr_ratio=_getfloat("RR_RATIO", 1.667),             # TP = 5x ATR (3.0 * 1.667)
         max_positions=_getint("MAX_POSITIONS", 1),
         daily_max_loss=_getfloat("DAILY_MAX_LOSS_PCT", 0.05),
+        max_hold_candles=_getint("MAX_HOLD_CANDLES", 48),
     )
 
     strategy = StrategyConfig(
