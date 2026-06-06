@@ -152,11 +152,15 @@ def find_sr_levels(
                 result.append(SRLevel(price=center, touches=len(cluster), level_type=level_type))
         return result
 
+    # Include all levels within ±8% of current price regardless of which side they're on.
+    # The current-price filter was a bug: resistance levels above current price were
+    # immediately excluded the moment price broke through them, making breakout detection impossible.
+    price_range = current_price * 0.08
     resistances = cluster_levels(
-        [h for h in swing_highs if h > current_price], "resistance"
+        [h for h in swing_highs if abs(h - current_price) <= price_range], "resistance"
     )
     supports = cluster_levels(
-        [lo for lo in swing_lows if lo < current_price], "support"
+        [lo for lo in swing_lows if abs(lo - current_price) <= price_range], "support"
     )
 
     return resistances + supports

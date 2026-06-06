@@ -9,7 +9,7 @@ from strategies.trend import TrendSignal
 from strategies.mean_reversion import MeanReversionSignal
 from strategies.breakout import BreakoutSignal
 
-ENTRY_THRESHOLD = 0.45
+ENTRY_THRESHOLD = 0.42   # trend alone fires in trending regime (0.50 weight) with strength ≥ 0.84
 CONFLICT_STRENGTH = 0.6
 
 
@@ -52,6 +52,7 @@ class SignalCombiner:
         break_sig: BreakoutSignal,
         current_price: float,
         adx_value: float,
+        htf_bias: int = 0,   # +1 = 1h trend bullish, -1 = bearish, 0 = unknown
     ) -> CombinedSignal:
         # Regime detection
         if adx_value > 25:
@@ -90,6 +91,12 @@ class SignalCombiner:
                 reasons=[f"Conflict: {[o[0] for o in opposing]} opposes signal strongly"],
                 entry_price=current_price,
             )
+
+        # 1h higher-timeframe bias: soft modifier (-0.08 penalty if going against 1h trend)
+        # Does not block trades — just raises the bar slightly for counter-trend entries.
+        if htf_bias != 0 and weighted != 0:
+            if (htf_bias > 0 and weighted < 0) or (htf_bias < 0 and weighted > 0):
+                weighted *= 0.85  # 15% reduction for counter-trend signals
 
         # Threshold gate
         if abs(weighted) < ENTRY_THRESHOLD:

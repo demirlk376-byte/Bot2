@@ -68,10 +68,19 @@ class Backtester:
         df.drop(columns=["timestamp"], inplace=True)
         return df
 
+    # Minimum ATR as % of price — don't trade in dead/choppy low-vol markets
+    MIN_ATR_PCT = 0.0012  # 0.12% of price
+
+    # Trailing stop: require substantial move before activating (5m BTC noise level ~0.5–1x ATR)
+    TRAIL_BREAKEVEN_ATR = 1.5  # move to breakeven only after 1.5x ATR profit
+    TRAIL_LOCK_ATR = 2.5       # lock in profit only after 2.5x ATR (past TP midpoint)
+    TRAIL_LOCK_BUFFER = 0.4    # lock SL at entry + 0.4 * ATR
+
     def run(
         self,
         df_5m: pd.DataFrame,
         df_15m: pd.DataFrame,
+        df_1h: Optional[pd.DataFrame] = None,
         initial_balance: float = 10000.0,
     ) -> BacktestResult:
         balance = initial_balance
@@ -86,32 +95,50 @@ class Backtester:
             sub_5m = df_5m.iloc[:i + 1]
             current = sub_5m.iloc[-1]
 
-            # Check open trade SL/TP first
+            # Check open trade SL/TP + update trailing stop
             if open_trade is not None:
                 direction = open_trade["direction"]
-                sl = open_trade["sl"]
-                tp = open_trade["tp"]
                 entry = open_trade["entry_price"]
                 qty = open_trade["quantity"]
                 entry_idx = open_trade["entry_idx"]
                 dominant = open_trade["dominant"]
+                atr_entry = open_trade["atr_at_entry"]
 
+                # Update trailing stop (breakeven and lock-in)
+                current_sl = open_trade["trailing_sl"]
+                current_tp = open_trade["tp"]
+                if direction == 1:
+                    favorable = current["high"] - entry
+                    if favorable >= atr_entry * self.TRAIL_LOCK_ATR:
+                        new_sl = entry + atr_entry * self.TRAIL_LOCK_BUFFER
+                        open_trade["trailing_sl"] = max(current_sl, new_sl)
+                    elif favorable >= atr_entry * self.TRAIL_BREAKEVEN_ATR:
+                        open_trade["trailing_sl"] = max(current_sl, entry)
+                else:
+                    favorable = entry - current["low"]
+                    if favorable >= atr_entry * self.TRAIL_LOCK_ATR:
+                        new_sl = entry - atr_entry * self.TRAIL_LOCK_BUFFER
+                        open_trade["trailing_sl"] = min(current_sl, new_sl)
+                    elif favorable >= atr_entry * self.TRAIL_BREAKEVEN_ATR:
+                        open_trade["trailing_sl"] = min(current_sl, entry)
+
+                sl = open_trade["trailing_sl"]
                 exit_price = None
                 exit_reason = None
 
                 if direction == 1:
                     if current["low"] <= sl:
                         exit_price = sl
-                        exit_reason = "sl_hit"
-                    elif current["high"] >= tp:
-                        exit_price = tp
+                        exit_reason = "sl_hit" if sl < entry else "breakeven_stop"
+                    elif current["high"] >= current_tp:
+                        exit_price = current_tp
                         exit_reason = "tp_hit"
                 else:
                     if current["high"] >= sl:
                         exit_price = sl
-                        exit_reason = "sl_hit"
-                    elif current["low"] <= tp:
-                        exit_price = tp
+                        exit_reason = "sl_hit" if sl > entry else "breakeven_stop"
+                    elif current["low"] <= current_tp:
+                        exit_price = current_tp
                         exit_reason = "tp_hit"
 
                 if exit_price is not None:
@@ -124,8 +151,8 @@ class Backtester:
                         direction=direction,
                         entry_price=entry,
                         exit_price=exit_price,
-                        sl_price=sl,
-                        tp_price=tp,
+                        sl_price=open_trade["sl"],
+                        tp_price=current_tp,
                         quantity=qty,
                         entry_idx=entry_idx,
                         exit_idx=i,
@@ -162,13 +189,40 @@ class Backtester:
             if pd.isna(atr_val) or pd.isna(adx_val) or atr_val <= 0:
                 continue
 
-            entry_price = current["close"] * (1 + self.SLIPPAGE * 1)
+            # ATR minimum filter: skip dead/choppy markets with negligible volatility
+            if atr_val / current["close"] < self.MIN_ATR_PCT:
+                continue
+
+            # 1h higher-timeframe bias: use EMA-20 vs EMA-50 cross.
+            # This reacts faster than price vs EMA-50, catching trend reversals earlier.
+            htf_bias = 0
+            if df_1h is not None:
+                k = min(i // 12, len(df_1h) - 1)  # 12 5m candles = 1h
+                sub_1h = df_1h.iloc[:k + 1]
+                if len(sub_1h) >= 50:
+                    from indicators import ema as _ema
+                    ema_1h_20 = _ema(sub_1h["close"], 20).iloc[-1]
+                    ema_1h_50 = _ema(sub_1h["close"], 50).iloc[-1]
+                    htf_bias = 1 if ema_1h_20 > ema_1h_50 else -1
+
+            entry_price = current["close"] * (1 + self.SLIPPAGE)
             combined = self._combiner.combine(
-                trend_sig, mr_sig, break_sig, entry_price, adx_val
+                trend_sig, mr_sig, break_sig, entry_price, adx_val, htf_bias=htf_bias
             )
 
             if combined.direction == 0:
                 continue
+
+            # Hard ADX gate: trend and breakout strategies require a trending market.
+            # ADX < 20 means the market is ranging — these strategies produce false signals.
+            if adx_val < 20 and combined.dominant_strategy in ("trend", "breakout"):
+                continue
+
+            # Hard 1h directional gate for trend/breakout: never fight the macro trend.
+            # Mean reversion is exempt because counter-trend bounces are its core logic.
+            if htf_bias != 0 and combined.dominant_strategy in ("trend", "breakout"):
+                if combined.direction != htf_bias:
+                    continue
 
             setup = self._risk.build_trade_setup(
                 direction=combined.direction,
@@ -188,10 +242,12 @@ class Backtester:
                 "direction": combined.direction,
                 "entry_price": entry_price,
                 "sl": setup.sl_price,
+                "trailing_sl": setup.sl_price,  # will move as trade becomes profitable
                 "tp": setup.tp_price,
                 "quantity": setup.quantity,
                 "entry_idx": i,
                 "dominant": combined.dominant_strategy,
+                "atr_at_entry": atr_val,
             }
 
         # Force close any remaining position at last price

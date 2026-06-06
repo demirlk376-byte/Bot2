@@ -93,8 +93,10 @@ def main():
 
     df_5m = resample(df_1m, "5m")
     df_15m = resample(df_1m, "15m")
+    df_1h = resample(df_1m, "1h")
     print(f"5m mum sayısı:  {len(df_5m):,}")
     print(f"15m mum sayısı: {len(df_15m):,}")
+    print(f"1h mum sayısı:  {len(df_1h):,}")
 
     price_min = df_1m["low"].min()
     price_max = df_1m["high"].max()
@@ -132,7 +134,7 @@ def main():
     print("\nBacktest çalışıyor...")
     import time
     t0 = time.time()
-    result = backtester.run(df_5m, df_15m, initial_balance=10000.0)
+    result = backtester.run(df_5m, df_15m, df_1h=df_1h, initial_balance=10000.0)
     elapsed = time.time() - t0
     print(f"Tamamlandı ({elapsed:.1f}s)\n")
 

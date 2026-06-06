@@ -55,22 +55,24 @@ class BreakoutStrategy:
         retest = False
 
         tolerance = current_close * 0.002
+        # Minimum break magnitude: close must be meaningfully past the level (not just a tick)
+        min_break = current_close * 0.002  # 0.2% — prevents micro/false breakouts
 
         for level in sr_levels:
             lp = level.price
 
-            # Bullish breakout: close above resistance
+            # Bullish breakout: close meaningfully above resistance
             if (level.level_type == "resistance"
-                    and current_close > lp
+                    and current_close > lp + min_break
                     and prev_close <= lp):
                 bull_score += 0.4
                 broken_level = lp
                 if body_ratio > 0.6:
                     bull_score += 0.1
 
-            # Bearish breakout: close below support
+            # Bearish breakout: close meaningfully below support
             elif (level.level_type == "support"
-                  and current_close < lp
+                  and current_close < lp - min_break
                   and prev_close >= lp):
                 bear_score += 0.4
                 broken_level = lp
