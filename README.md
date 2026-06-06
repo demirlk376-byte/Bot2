@@ -192,3 +192,54 @@ position-size compounding). `research_btcd_clean.py` supersedes it.
   holds out-of-sample, but with only 4 filtered events, the sample is thin.
   Monitor for a few months after going live to confirm it continues to help.
 - This is **not financial advice.** Trade at your own risk, start small.
+
+## Engine correctness (audited + tested)
+
+The validated edge is worthless if the live engine deviates from the backtest,
+so the engine is audited and covered by tests (`python run_tests.py`):
+
+- **Parity test** (`tests/test_parity.py`): drives the real production classes
+  (MeanReversionStrategy, RiskManager, PaperExchange) bar-by-bar over historical
+  data and matches an independent backtest to the cent (59 trades, $0.00 diff).
+- **Data-feed test** (`tests/test_data_feed.py`): verifies close detection fires
+  only on closed candles, never the forming one.
+
+Bugs found and fixed in the audit:
+1. **Live candle-close fired on the forming candle**, not the closed one — the
+   volume filter saw ~0 volume and rejected almost every signal, so the live bot
+   would barely trade. Now fires exactly once per close with full OHLCV.
+2. **Live SL/TP were never placed** — `set_sl_tp` existed but was never called;
+   a live position could open with no stop. Now placed as dedicated reduce-only
+   orders, and the position is closed immediately if placement fails.
+3. **Daily reset crashed at month boundaries** (`datetime(day=now.day+1)`). Now
+   uses `timedelta`.
+
+## Monitoring & control from your phone (Telegram)
+
+Set `TELEGRAM_ENABLED=true`, `TELEGRAM_TOKEN`, `TELEGRAM_CHAT_ID` in `.env`. The
+bot then accepts commands from the configured chat (only that chat is honored):
+`/status` `/positions` `/balance` `/stats` `/pause` `/resume` `/close` `/help`.
+
+## Multi-coin forward validation (paper_scanner.py)
+
+The validated edge is BTC-only; ETH did not transfer. Before risking money on
+other coins, collect forward paper data:
+
+```bash
+python paper_scanner.py --coins BTC ETH SOL BNB XRP --exchange mexc
+```
+
+It scans each coin on every 1h close, opens paper positions (no real orders),
+tracks per-coin balance/WR/PnL, and (with TELEGRAM_TOKEN/CHAT set) pushes each
+signal and close to your phone. A coin earns live capital only after weeks of
+positive paper results (return > 0, WR > 45%).
+
+## Go-live runbook
+
+1. `python run_tests.py` — confirm engine parity.
+2. Paper the validated BTC bot: `PAPER_MODE=true` then `python main.py`.
+   Optionally `FUNDING_ENABLED=true FUNDING_MODE=monitor` to collect funding data.
+3. In parallel, run `paper_scanner.py` to forward-test other coins.
+4. After ~4–8 weeks: review paper results; keep only coins that held the edge.
+5. Go live small (`PAPER_MODE=false`, $100–200) with API keys that have Futures
+   Trading enabled. Watch the first trades via Telegram.
