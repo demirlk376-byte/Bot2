@@ -79,23 +79,39 @@ def load_eth():
     return full.drop(columns=["ts"]).resample("1h").last()
 
 
-def load_btcd_csv(path: str) -> pd.Series:
+def load_btcd_csv(pattern: str) -> pd.Series:
     """
-    TradingView CSV: Date,Open,High,Low,Close,Volume
-    veya: time,open,high,low,close,Volume
+    BTC.D CSV dosyalarını yükle (single file veya pattern).
+    Binance format: open_time,open,high,low,close,volume,...
     BTC.D değeri 0-100 arasında yüzde (örn. 52.3 = %52.3)
+    Multiple files → birleştir ve sort.
     """
-    df = pd.read_csv(path)
-    # Kolon isimlerini normalize et
-    df.columns = [c.lower().strip() for c in df.columns]
-    date_col = next((c for c in df.columns if "date" in c or "time" in c), None)
-    if date_col is None:
-        raise ValueError(f"Tarih kolonu bulunamadı. Kolonlar: {list(df.columns)}")
-    df.index = pd.to_datetime(df[date_col])
-    close_col = next((c for c in df.columns if "close" in c), "close")
-    btcd = df[close_col].astype(float)
+    if "*" in pattern or "?" in pattern:
+        # Pattern: glob ile çok dosya
+        import glob
+        files = sorted(glob.glob(pattern))
+        if not files:
+            raise FileNotFoundError(f"Dosya bulunamadı: {pattern}")
+    else:
+        # Single file
+        files = [pattern]
+
+    frames = []
+    for f in files:
+        df = pd.read_csv(f)
+        df.columns = [c.lower().strip() for c in df.columns]
+        if "open_time" in df.columns:
+            df.rename(columns={"open_time": "time"}, inplace=True)
+        date_col = next((c for c in df.columns if "time" in c), None)
+        if date_col is None:
+            raise ValueError(f"{f}: tarih kolonu yok. Kolonlar: {list(df.columns)}")
+        df.index = pd.to_datetime(df[date_col], unit="ms", errors="coerce")
+        close_col = next((c for c in df.columns if "close" in c), "close")
+        frames.append(df[[close_col]].astype(float))
+
+    btcd = pd.concat(frames).drop_duplicates().sort_index()[frames[0].columns[0]]
     btcd.name = "btcd"
-    return btcd.sort_index()
+    return btcd
 
 
 def build_btcd_proxy(df_btc_1h: pd.DataFrame, df_eth_1h: pd.DataFrame) -> pd.Series:
@@ -287,7 +303,7 @@ def dom_bucket_analysis(trades: list[dict], dom_col: str = "dom",
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--btcd", type=str, default=None,
-                        help="TradingView BTC.D CSV dosyası")
+                        help="BTC.D CSV dosyası veya pattern (örn: BTCDOMUSDT-4h-*.csv)")
     parser.add_argument("--proxy", action="store_true",
                         help="BTC/ETH oranını BTC.D proxy olarak kullan")
     args = parser.parse_args()
@@ -297,12 +313,33 @@ def main():
 
     is_proxy = False
 
+    # Otomatik: BTC.D CSV'sini ara (hiçbir flag verilmemişse)
+    if not args.proxy and not args.btcd:
+        import glob
+        if glob.glob("BTCDOMUSDT-4h-*.csv"):
+            args.btcd = "BTCDOMUSDT-4h-*.csv"
+            print("✓ BTCDOMUSDT-4h-*.csv bulundu, otomatik kullanılıyor\n")
+        else:
+            print("\nKullanım:")
+            print("  python research_btcd.py                           # BTCDOMUSDT-4h-*.csv otomatik ara")
+            print("  python research_btcd.py --btcd pattern            # kendi CSV pattern'i")
+            print("  python research_btcd.py --proxy                   # ETH proxy (proxy mod)")
+            print()
+            print("Binance Data: BTCDOMUSDT-4h-YYYY-MM.csv dosyaları")
+            print("  (open_time, open, high, low, close, volume format)")
+            return
+
+    # Şimdi args.btcd veya args.proxy kesin set'tir
     if args.btcd:
         # Gerçek BTC.D verisi
         btcd = load_btcd_csv(args.btcd)
-        print(f"BTC.D: {len(btcd)} günlük veri  "
+        print(f"BTC.D: {len(btcd)} bar yüklendi  "
               f"({btcd.index[0]:%Y-%m-%d} → {btcd.index[-1]:%Y-%m-%d})  "
-              f"ortalama {btcd.mean():.1f}%")
+              f"ortalama {btcd.mean():.1f}%  min {btcd.min():.1f}% max {btcd.max():.1f}%")
+        # 4h veya başka zaman diliminden → 1h'e dönüştür (forward-fill)
+        # BTC.D her 4h değiştiği için, araya forward-fill yeterli
+        btcd_1h = btcd.reindex(df_btc.index, method="ffill")
+        btcd = btcd_1h
         dom_label = "BTC.D (%)"
     elif args.proxy:
         # ETH proxy modu
@@ -316,17 +353,6 @@ def main():
               f"({btcd.dropna().index[0]:%Y-%m-%d} → {btcd.dropna().index[-1]:%Y-%m-%d})")
         print("NOT: Proxy sadece 5 aylık ETH verisi kapsıyor — bulgular sınırlı")
         dom_label = "BTC/ETH z-score"
-    else:
-        print("\nKullanım:")
-        print("  python research_btcd.py --proxy        # ETH proxy, hemen çalışır")
-        print("  python research_btcd.py --btcd f.csv   # gerçek BTC.D CSV")
-        print()
-        print("TradingView'den BTC.D nasıl indirilir:")
-        print("  1. TradingView.com → arama: 'BTC.D'")
-        print("  2. Grafik → günlük zaman dilimi")
-        print("  3. Sağ tık → 'Verileri Dışa Aktar...' → CSV")
-        print("  4. python research_btcd.py --btcd btcd_data.csv")
-        return
 
     print("=" * 120)
 
