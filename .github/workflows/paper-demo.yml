@@ -1,0 +1,64 @@
+name: Paper Demo Scanner
+
+# Çok-coinli paper (kağıt) BB-fade tarayıcı — saatte bir çalışır.
+# Gerçek emir AÇMAZ; her coinin paper PnL'ini izler, sinyalleri Telegram'a yollar.
+# Bilgisayar/VPS gerekmez — tamamen GitHub'da çalışır, sonuçlar telefona düşer.
+#
+# Kurulum (telefondan, repo Settings → Secrets and variables → Actions):
+#   TELEGRAM_TOKEN  – bot token (BotFather'dan)
+#   TELEGRAM_CHAT_ID – senin chat id'in
+# (MEXC public veri için API key GEREKMEZ.)
+
+on:
+  schedule:
+    # Her saat başı (UTC). 1h strateji için saatlik kontrol yeterli.
+    # GitHub cron'u birkaç dk gecikebilir — 1h mumda sorun değil.
+    - cron: "5 * * * *"
+  workflow_dispatch:        # elle de tetiklenebilir (Actions sekmesinden)
+
+# State dosyalarını repo'ya geri yazmak için yazma izni
+permissions:
+  contents: write
+
+# Aynı anda iki çalışma state'i bozmasın
+concurrency:
+  group: paper-demo
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install --quiet ccxt pandas numpy requests
+
+      - name: Run one paper scan
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python paper_scanner.py \
+            --coins BTC ETH SOL BNB XRP \
+            --exchange mexc \
+            --once
+
+      - name: Persist paper state
+        run: |
+          git config user.name "paper-demo-bot"
+          git config user.email "actions@github.com"
+          # Sadece state/sonuç dosyaları değiştiyse commit et
+          git add paper_state.json paper_trades.csv paper_signals.csv 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "Değişiklik yok, commit atlanıyor"
+          else
+            git commit -m "paper demo: $(date -u +%Y-%m-%dT%H:%MZ) tarama [skip ci]"
+            git push
+          fi
