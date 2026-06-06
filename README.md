@@ -179,6 +179,29 @@ wrong — two bugs (directional filters comparing raw percentage `dom > 0` which
 always true; and per-filter re-runs whose PnL did not sum to baseline due to
 position-size compounding). `research_btcd_clean.py` supersedes it.
 
+### Anchored VWAP, order flow, liquidity sweeps?
+
+- **Liquidity sweep / SFP** (`research_intraday.py`): tested, fails — best 15m
+  sweep+reclaim +5.7%, far below baseline; combining with BB made it worse.
+- **Order flow** (`research_orderflow_vwap.py`): no live order book, but the
+  Binance CSVs carry `taker_buy_volume` (a crude aggressive-buy/sell delta).
+  Tested honestly — no usable signal; the capitulation theory is refuted (the
+  most sell-pressured bucket was the *worst*, not best).
+- **Anchored VWAP** (`research_orderflow_vwap.py`): deep-VWAP-discount trades do
+  win more per trade (robust in train+test), but filtering on it cuts return
+  from +28.2% to +13% or worse.
+
+### Meta-lesson: the edge is holistic, not filterable
+
+Across BTC.D, quality-based sizing, and anchored VWAP, the same trap recurs:
+partitioning the validated BB trade set always reveals "better" and "worse"
+subsets, but you cannot profit from it because (a) even the "worse" subsets are
+usually net positive — dropping them loses money, and (b) the 50%-balance
+position cap blocks up-sizing the "better" ones. The edge comes from taking
+**all** the BB signals, unfiltered. Additive bucket correlation ≠ a tradable
+filter; always verify with a real sequential backtest (train **and** test)
+before believing a filter helps.
+
 ## Honest caveats
 
 - **One year of data, one asset.** The edge is real in this sample but markets
