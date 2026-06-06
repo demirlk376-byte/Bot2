@@ -275,6 +275,16 @@ async def main() -> None:
     dashboard.start()
 
     telegram = TelegramNotifier(config.telegram)
+    # Give Telegram access to the engine so the user can query and control the
+    # bot from their phone (/status, /positions, /pause, /resume, /close).
+    telegram.attach_context(
+        exchange=exchange,
+        portfolio=portfolio,
+        executor=executor,
+        db=db,
+        app_config=config,
+        initial_balance=balance,
+    )
     await telegram.initialize()
 
     data_mgr.subscribe_candle_close(config.strategy.primary_tf, on_candle_close)
@@ -306,6 +316,8 @@ async def main() -> None:
 
     logger.info("Shutting down...")
     await data_mgr.stop()
+    if telegram:
+        await telegram.shutdown()
     await db.close()
     if dashboard:
         dashboard.stop()

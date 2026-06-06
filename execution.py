@@ -61,6 +61,11 @@ class ExecutionEngine:
     def reset_daily(self) -> None:
         self._trading_halted.clear()
 
+    def resume_trading(self) -> None:
+        """Manually clear a halt (e.g. via Telegram /resume)."""
+        self._trading_halted.clear()
+        logger.info("Trading RESUMED (manual)")
+
     async def execute_signal(
         self, signal: CombinedSignal, atr: float
     ) -> ExecutionResult:
