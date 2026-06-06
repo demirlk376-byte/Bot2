@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -69,6 +70,37 @@ def now_utc() -> datetime:
 
 def log(msg: str) -> None:
     print(f"[{now_utc():%Y-%m-%d %H:%M:%S}] {msg}", flush=True)
+
+
+# ── Telegram push (opsiyonel — telefona bildirim) ─────────────────────────────
+
+_TG_TOKEN = ""
+_TG_CHAT  = ""
+
+
+def init_telegram(token: str, chat: str) -> bool:
+    """Token+chat verilirse Telegram push'u etkinleştir. requests gerekir."""
+    global _TG_TOKEN, _TG_CHAT
+    if not token or not chat:
+        return False
+    _TG_TOKEN, _TG_CHAT = token, chat
+    notify("📡 Paper tarayıcı başladı — sinyaller telefonuna düşecek.")
+    return True
+
+
+def notify(text: str) -> None:
+    """Telegram'a mesaj gönder (sessizce başarısız olur — tarama durmasın)."""
+    if not _TG_TOKEN or not _TG_CHAT:
+        return
+    try:
+        import requests
+        requests.post(
+            f"https://api.telegram.org/bot{_TG_TOKEN}/sendMessage",
+            data={"chat_id": _TG_CHAT, "text": text, "parse_mode": "HTML"},
+            timeout=10,
+        )
+    except Exception as e:
+        log(f"  ! Telegram push hatası: {str(e)[:60]}")
 
 
 # ── State yönetimi ────────────────────────────────────────────────────────────
@@ -234,6 +266,11 @@ def scan_once(ex, coins: list[str], state: dict) -> None:
             log(f"  {coin}: KAPANDI {closed['reason']} "
                 f"PnL ${closed['pnl']:+.2f} | bakiye ${cdata['balance']:.0f} "
                 f"WR {wr:.0%} ({cdata['n_trades']}t)")
+            emoji = "🟢" if closed["pnl"] >= 0 else "🔴"
+            notify(f"{emoji} <b>{coin} KAPANDI</b> ({closed['reason']})\n"
+                   f"PnL: <code>${closed['pnl']:+.2f}</code>\n"
+                   f"Bakiye: <code>${cdata['balance']:.0f}</code> | "
+                   f"WR {wr:.0%} ({cdata['n_trades']}t)")
 
         # 2) Pozisyon yoksa yeni sinyal ara
         if cdata["position"] is None:
@@ -262,6 +299,9 @@ def scan_once(ex, coins: list[str], state: dict) -> None:
                     append_csv(SIGNALS_CSV, sig_row)
                     log(f"  {coin}: ⚡ SİNYAL {'LONG' if d==1 else 'SHORT'} "
                         f"@ {entry:.4f}  SL {sl:.4f}  TP {tp:.4f}")
+                    notify(f"⚡ <b>{coin} {'LONG' if d==1 else 'SHORT'}</b>\n"
+                           f"Entry: <code>{entry:.4f}</code>\n"
+                           f"SL: <code>{sl:.4f}</code>  TP: <code>{tp:.4f}</code>")
         else:
             pos = cdata["position"]
             log(f"  {coin}: pozisyon AÇIK "
@@ -294,9 +334,15 @@ def main() -> None:
     p.add_argument("--interval", type=int, default=900,
                    help="Tarama aralığı saniye (varsayılan 900=15dk)")
     p.add_argument("--once", action="store_true", help="Tek tarama yap ve çık")
+    p.add_argument("--tg-token", default=os.getenv("TELEGRAM_TOKEN", ""),
+                   help="Telegram bot token (veya TELEGRAM_TOKEN env)")
+    p.add_argument("--tg-chat", default=os.getenv("TELEGRAM_CHAT_ID", ""),
+                   help="Telegram chat id (veya TELEGRAM_CHAT_ID env)")
     args = p.parse_args()
 
     coins = [c.upper() for c in args.coins]
+    if init_telegram(args.tg_token, args.tg_chat):
+        log("Telegram push AKTİF — sinyaller telefonuna gelecek")
     log(f"Paper tarayıcı başlıyor — borsa: {args.exchange}, coinler: {coins}")
     log(f"Parametreler: BB({BB_PERIOD},{BB_STD}) SL={SL_MULT}×ATR TP={TP_MULT}×ATR "
         f"risk={RISK_PCT:.0%} hacim-filtresi=AÇIK")
