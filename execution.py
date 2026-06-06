@@ -99,10 +99,17 @@ class ExecutionEngine:
             return ExecutionResult(False, error=reason)
 
         side = "buy" if signal.direction == 1 else "sell"
-        params = {
-            "stopLossPrice": setup.sl_price,
-            "takeProfitPrice": setup.tp_price,
-        }
+        # PaperExchange reads SL/TP from the order params (check_sl_tp). For live,
+        # attaching SL/TP via create_order params is unreliable on MEXC, so we
+        # send a clean entry and place dedicated reduce-only SL/TP orders after
+        # the fill (see set_sl_tp call below).
+        if self._config.exchange.paper_mode:
+            params = {
+                "stopLossPrice": setup.sl_price,
+                "takeProfitPrice": setup.tp_price,
+            }
+        else:
+            params = {}
 
         # Maker entry: place a post-only limit at the signal price to pay 0% fee
         # instead of 0.01% taker. Over a year this is worth several % of return
@@ -125,6 +132,28 @@ class ExecutionEngine:
         except Exception as e:
             logger.error("Order placement failed: %s", e)
             return ExecutionResult(False, error=str(e))
+
+        # Live mode: place dedicated SL/TP orders. A live position must never sit
+        # without a stop — if placement fails, close immediately for safety.
+        if not self._config.exchange.paper_mode and hasattr(self._exchange, "set_sl_tp"):
+            pos_side = "long" if signal.direction == 1 else "short"
+            try:
+                await self._exchange.set_sl_tp(
+                    setup.symbol, pos_side,
+                    setup.sl_price, setup.tp_price, setup.quantity,
+                )
+                logger.info(
+                    "Live SL/TP placed: sl=%.2f tp=%.2f", setup.sl_price, setup.tp_price
+                )
+            except Exception as e:
+                logger.error("SL/TP placement failed — closing position for safety: %s", e)
+                try:
+                    await self._exchange.close_position(
+                        setup.symbol, pos_side, setup.quantity, "no_stop_safety"
+                    )
+                except Exception as ce:
+                    logger.critical("EMERGENCY: could not close unprotected position: %s", ce)
+                return ExecutionResult(False, error="SL/TP placement failed; position closed")
 
         scores = {
             "trend": signal.trend_score,

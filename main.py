@@ -151,11 +151,15 @@ async def _enforce_max_hold(current_price: float) -> None:
 
 
 async def daily_reset_loop() -> None:
+    from datetime import timedelta
     while True:
         now = datetime.utcnow()
-        # Wait until midnight UTC
-        tomorrow = datetime(now.year, now.month, now.day + 1 if now.day < 31 else 1,
-                            0, 0, 0)
+        # Wait until next midnight UTC. Using timedelta avoids the month-end
+        # crash of constructing datetime(day=now.day+1) (e.g. day 31 in a
+        # 30-day month raised ValueError and broke the daily reset).
+        tomorrow = (now + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
         seconds_until_midnight = (tomorrow - now).total_seconds()
         await asyncio.sleep(max(seconds_until_midnight, 60))
 
