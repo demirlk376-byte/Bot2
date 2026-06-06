@@ -163,6 +163,22 @@ in the same months. The edge is BTC-specific in this sample; tuning ETH
 separately on 5 months would be overfitting. Funding/OI is a more principled
 next step than diversifying into a pair where the edge doesn't hold.
 
+### Does BTC Dominance (BTC.D) help as a regime filter?
+
+Tested with 13 months of real BTC.D data (`research_btcd_clean.py`, honest
+additive methodology). Finding: BB-fade trades opened while BTC.D was crashing
+(>1pp drop over 72h) underperformed in **both** train and test (−$327 over 34
+trades) — a real correlation. **But filtering them out does not raise total
+return**: skipping dom-crash trades moves +28.2% → +26.7% (the no-overlap rule
+reshuffles freed slots into other, sometimes worse, trades). The only benefit is
+a marginally lower drawdown (10% → 8%). BTC.D is at best a minor risk tweak, not
+an alpha source — the OHLCV ceiling holds.
+
+Note: an earlier `research_btcd.py` claimed a "+9.2% alpha" from BTC.D. That was
+wrong — two bugs (directional filters comparing raw percentage `dom > 0` which is
+always true; and per-filter re-runs whose PnL did not sum to baseline due to
+position-size compounding). `research_btcd_clean.py` supersedes it.
+
 ## Honest caveats
 
 - **One year of data, one asset.** The edge is real in this sample but markets
