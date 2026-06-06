@@ -102,17 +102,26 @@ class DataManager:
         self._current_price: float = 0.0
         self._stop_event = asyncio.Event()
         self._tasks: list[asyncio.Task] = []
+        self._last_closed_ts: dict[str, int] = {}
 
     async def initialize(self) -> None:
+        # _last_closed_ts tracks the last CLOSED candle per timeframe so close
+        # callbacks fire exactly once per close (never on the forming candle).
         for tf, buf in self._buffers.items():
             try:
                 raw = await self._exchange.fetch_ohlcv(
                     self._symbol, tf, since=None, limit=200
                 )
-                for row in raw:
+                # ccxt returns the still-forming candle as the LAST element.
+                # Exclude it so the analysis buffer holds only CLOSED candles.
+                closed_rows = raw[:-1] if len(raw) > 1 else raw
+                for row in closed_rows:
                     candle = _parse_ohlcv(row)
                     await buf.update(candle)
-                logger.info("Loaded %d candles for %s %s", buf.size(), self._symbol, tf)
+                if closed_rows:
+                    self._last_closed_ts[tf] = int(closed_rows[-1][0])
+                logger.info("Loaded %d closed candles for %s %s",
+                            buf.size(), self._symbol, tf)
             except Exception as e:
                 logger.error("Failed to load initial candles %s %s: %s", self._symbol, tf, e)
 
@@ -150,22 +159,32 @@ class DataManager:
                 backoff = min(backoff * 2, 60)
 
     async def _rest_poll_loop(self, timeframe: str) -> None:
-        tf_seconds = TIMEFRAME_SECONDS.get(timeframe, 300)
-        buf = self._buffers[timeframe]
-
         while not self._stop_event.is_set():
             await asyncio.sleep(self.REST_POLL_INTERVAL)
             try:
-                raw = await self._exchange.fetch_ohlcv(
-                    self._symbol, timeframe, since=None, limit=3
-                )
-                for row in raw:
-                    candle = _parse_ohlcv(row)
-                    is_new = await buf.update(candle)
-                    if is_new and candle.is_closed:
-                        await self._fire_callbacks(timeframe, candle)
+                await self._poll_once(timeframe)
             except Exception as e:
                 logger.warning("REST poll error %s %s: %s", self._symbol, timeframe, e)
+
+    async def _poll_once(self, timeframe: str) -> None:
+        """Fetch latest candles and fire a close callback for each newly-closed
+        candle. The LAST row from fetch_ohlcv is the still-forming candle and is
+        never analyzed or fired on; everything before it is closed."""
+        buf = self._buffers[timeframe]
+        raw = await self._exchange.fetch_ohlcv(
+            self._symbol, timeframe, since=None, limit=3
+        )
+        if not raw:
+            return
+        closed_rows = raw[:-1] if len(raw) > 1 else []
+        last_ts = self._last_closed_ts.get(timeframe, 0)
+        for row in closed_rows:
+            candle = _parse_ohlcv(row)
+            if candle.timestamp > last_ts:
+                await buf.update(candle)
+                self._last_closed_ts[timeframe] = candle.timestamp
+                last_ts = candle.timestamp
+                await self._fire_callbacks(timeframe, candle)
 
     async def _fire_callbacks(self, timeframe: str, candle: Candle) -> None:
         for cb in self._callbacks.get(timeframe, []):
