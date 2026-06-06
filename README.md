@@ -111,12 +111,12 @@ data.py              REST + WebSocket candle feeds, 1h/4h buffers
 indicators.py        EMA, MACD, Bollinger, RSI, ATR, ADX, S/R (numpy/pandas)
 strategies/
   mean_reversion.py  THE validated edge: 1h Bollinger fade + volume filter
-execution.py         Pre-flight checks, maker/limit entry, max-hold close
   trend.py           Kept for reference (proven to lose on its own)
   breakout.py        Kept for reference
   signal_combiner.py Hybrid scoring (legacy — research showed it underperforms)
+funding.py           Funding rate + open interest monitor (live-only edge probe)
 risk.py              Position sizing, ATR SL/TP, daily loss limit
-execution.py         Pre-flight checks, order placement, max-hold close
+execution.py         Pre-flight checks, order placement, maker entry, max-hold close
 portfolio.py         Position + P&L tracking
 monitor.py           Rich terminal dashboard
 telegram_bot.py      Trade alerts
@@ -124,6 +124,44 @@ database.py          SQLite trade log
 production_backtest.py  Canonical backtest (uses production modules)
 research_*.py        Edge discovery / validation scripts
 ```
+
+## Funding rate / open interest (the next edge — live only)
+
+OHLCV backtesting has a hard ceiling: it knows price and volume, but nothing
+about *positioning*. On perpetual futures, two derivatives signals carry real
+predictive value for mean reversion that **cannot be backtested from the CSVs**:
+
+- **Funding rate** — when funding is extremely negative, shorts are crowded and
+  paying to stay short; that crowd is fuel for an upward squeeze. Pairing this
+  with a long fade (price below the lower band) is a documented confluence.
+  Symmetrically, extreme positive funding fuels a short fade.
+- **Open interest** — OI *falling* into a price extreme means positions are being
+  closed/liquidated (capitulation → reverts). OI *rising* means fresh money is
+  chasing (trend continuation risk).
+
+`funding.py` fetches both from MEXC live and ships **disabled by default** so it
+never touches the validated edge. Enable it in stages via `.env`:
+
+```bash
+FUNDING_ENABLED=true
+FUNDING_MODE=monitor   # log funding+OI on every signal — collect data first
+# FUNDING_MODE=filter  # then: skip contrarian+extreme setups
+# FUNDING_MODE=boost   # or: nudge confidence by funding alignment
+```
+
+Run `monitor` for a few weeks of paper trading to build a real dataset, then
+decide from your own logs whether `filter`/`boost` actually help before trusting
+them with size. This is the honest way to add an un-backtestable signal: prove
+it forward, don't assume it.
+
+### Why not just add more pairs (ETH/SOL)?
+
+Tested: the identical 1h BB-fade strategy on 5 months of ETH (Sep–Dec 2025 +
+Apr 2026) returned **+0.5% overall** — the train window lost −10% (WR 39%) because
+ETH trended hard in Sep–Oct and mean reversion got run over, while BTC was fine
+in the same months. The edge is BTC-specific in this sample; tuning ETH
+separately on 5 months would be overfitting. Funding/OI is a more principled
+next step than diversifying into a pair where the edge doesn't hold.
 
 ## Honest caveats
 

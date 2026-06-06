@@ -88,6 +88,12 @@ class StrategyConfig:
     vol_filter_enabled: bool = True   # require above-avg volume on BB extreme candle
     primary_tf: str = "1h"            # validated edge is on the 1h timeframe
     confirm_tf: str = "4h"
+    # Funding rate / open interest monitoring (live-only — not in historical CSVs,
+    # so it cannot be backtested). Ships disabled; "monitor" logs alongside every
+    # signal to build a real dataset before it is allowed to affect trades.
+    funding_enabled: bool = False
+    funding_mode: str = "monitor"     # "monitor" (log only) | "filter" (skip contrarian) | "boost"
+    funding_extreme: float = 0.0005   # |funding| above this per interval = crowded positioning
 
 
 @dataclass
@@ -132,6 +138,9 @@ def load_config() -> AppConfig:
         primary_tf=_get("PRIMARY_TF", "1h"),
         confirm_tf=_get("CONFIRM_TF", "4h"),
         vol_filter_enabled=_getbool("VOL_FILTER_ENABLED", True),
+        funding_enabled=_getbool("FUNDING_ENABLED", False),
+        funding_mode=_get("FUNDING_MODE", "monitor"),
+        funding_extreme=_getfloat("FUNDING_EXTREME", 0.0005),
     )
 
     telegram = TelegramConfig(

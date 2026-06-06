@@ -10,6 +10,7 @@ from database import Database, DailyStats
 from data import DataManager, Candle
 from exchange import PaperExchange, LiveExchange
 from execution import ExecutionEngine
+from funding import FundingMonitor
 from indicators import atr
 from monitor import Dashboard
 from portfolio import Portfolio
@@ -36,6 +37,7 @@ strategies = {}
 combiner: SignalCombiner = None
 db: Database = None
 config = None
+funding_monitor: FundingMonitor = None
 
 
 async def on_candle_close(candle: Candle) -> None:
@@ -86,6 +88,28 @@ async def on_candle_close(candle: Candle) -> None:
             f"Signal: dir={combined.direction} conf={combined.confidence:.2f} "
             f"({mr_sig.reason})"
         )
+
+        # Funding rate / open interest read on every signal. In "monitor" mode
+        # this only logs (building a dataset to validate the edge); in "filter"
+        # mode it can skip clearly contrarian-extreme setups; in "boost" mode it
+        # nudges confidence. Disabled by default — never changes validated behavior.
+        if (
+            combined.direction != 0
+            and funding_monitor is not None
+            and funding_monitor.enabled
+        ):
+            snap = await funding_monitor.fetch()
+            assess = funding_monitor.evaluate(combined.direction, snap)
+            logger.info("Funding read: %s -> bias=%.2f", assess.reason, assess.bias)
+            dashboard.log_message(f"Funding: {assess.reason}")
+            if funding_monitor.mode == "filter" and assess.should_skip:
+                dashboard.log_message(
+                    f"Signal SKIPPED by funding filter ({assess.reason})"
+                )
+                logger.info("Trade skipped: funding contrary+extreme (%s)", assess.reason)
+                combined.direction = 0
+            elif funding_monitor.mode == "boost":
+                combined.confidence = min(combined.confidence * assess.bias, 1.0)
 
         if combined.direction != 0 and portfolio.get_open_position_count() == 0:
             result = await executor.execute_signal(combined, atr_val)
@@ -170,7 +194,7 @@ async def on_position_closed(pos, exit_price: float, net_pnl: float, reason: str
 
 async def main() -> None:
     global data_mgr, exchange, executor, portfolio, dashboard
-    global telegram, strategies, combiner, db, config
+    global telegram, strategies, combiner, db, config, funding_monitor
 
     config = load_config()
     logging.getLogger().setLevel(config.log_level)
@@ -228,6 +252,19 @@ async def main() -> None:
         "mean_rev": MeanReversionStrategy(config.strategy),
     }
     combiner = SignalCombiner(config.strategy)
+
+    funding_monitor = FundingMonitor(
+        exchange,
+        config.exchange.symbol,
+        enabled=config.strategy.funding_enabled,
+        mode=config.strategy.funding_mode,
+        extreme_threshold=config.strategy.funding_extreme,
+    )
+    if funding_monitor.enabled:
+        logger.info(
+            "Funding monitor ON (mode=%s, extreme=%.4f%%)",
+            funding_monitor.mode, config.strategy.funding_extreme * 100,
+        )
 
     dashboard = Dashboard(portfolio)
     dashboard.update_balance(balance)
