@@ -84,7 +84,8 @@ class StrategyConfig:
     sr_lookback: int = 50
     sr_min_touches: int = 2
     volume_spike_mult: float = 1.5
-    primary_tf: str = "1h"     # validated edge is on the 1h timeframe
+    vol_filter_enabled: bool = True   # require above-avg volume on BB extreme candle
+    primary_tf: str = "1h"            # validated edge is on the 1h timeframe
     confirm_tf: str = "4h"
 
 
@@ -126,8 +127,9 @@ def load_config() -> AppConfig:
     )
 
     strategy = StrategyConfig(
-        primary_tf=_get("PRIMARY_TF", "5m"),
-        confirm_tf=_get("CONFIRM_TF", "15m"),
+        primary_tf=_get("PRIMARY_TF", "1h"),
+        confirm_tf=_get("CONFIRM_TF", "4h"),
+        vol_filter_enabled=_getbool("VOL_FILTER_ENABLED", True),
     )
 
     telegram = TelegramConfig(

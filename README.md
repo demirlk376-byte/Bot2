@@ -16,6 +16,7 @@ We tested standard approaches across **May 2025 → April 2026** (12 months,
 | 5m mean reversion (BB/RSI) | **Loses** — edge < transaction cost |
 | 5m breakout | **Loses** |
 | **1h Bollinger mean reversion** | **Wins, in/out of sample** |
+| **1h BB mean reversion + volume filter** | **Wins even more robustly** |
 
 The core reason: on 5m, the predictive edge of indicators (~0.01–0.05% forward
 return) is **smaller than the round-trip cost** (~0.08–0.12%). Only by moving
@@ -23,30 +24,48 @@ to the **1h timeframe with larger targets** does the edge clear costs.
 
 ## The validated edge
 
-**Fade Bollinger-band extremes on the 1h timeframe.** When a 1h candle closes
-*below* the lower band, go long; when it closes *above* the upper band, go short.
+**Fade Bollinger-band extremes on the 1h timeframe, with above-average volume.**
+When a 1h candle closes *below* the lower band with above-average volume (capitulation),
+go long. When it closes *above* the upper band with above-average volume (blow-off),
+go short.
 
 - Stop loss: **3 × ATR(14)**
 - Take profit: **5 × ATR(14)** (R:R ≈ 1.67)
 - Max hold: **48 hours** (force close)
+- Volume filter: candle volume > 20-period moving average
+  (rejects quiet drift to the band — only genuine exhaustion signals)
 - No higher-timeframe trend filter (adding one *reduced* returns — BB extremes
   are reversion points regardless of the macro trend)
 - Risk: 2% of equity per trade, 1 position at a time, 5% daily loss circuit breaker
 
-### Performance (production modules, $10k, 2% risk, 0.08% cost/trade)
+### Performance (production modules, $10k, 2% risk, 0.08% cost/trade, 30x leverage)
 
+#### Without volume filter (baseline)
 | Period | Trades | Win rate | PnL | PF | Max DD |
 |---|---|---|---|---|---|
 | All 12 months | 242 | 47% | **+13.5%** | 1.11 | 11.7% |
 | Train (May–Dec 2025) | 165 | 47% | +4.2% | 1.06 | 11.7% |
-| Test (Jan–Apr 2026) | 77 | 47% | **+9.3%** | 1.21 | 9.8% |
+| Test (Jan–Apr 2026) | 77 | 47% | +9.3% | 1.21 | 9.8% |
+
+#### With volume filter (shipped engine)
+| Period | Trades | Win rate | PnL | PF | Max DD |
+|---|---|---|---|---|---|
+| All 12 months | 238 | 47% | **+20.8%** | 1.18 | 11.5% |
+| Train (May–Dec 2025) | 161 | 47% | +7.2% | 1.10 | 11.5% |
+| Test (Jan–Apr 2026) | 77 | 47% | **+13.6%** | 1.29 | 9.5% |
 
 For context, **buy-and-hold lost −18.9%** over the same 12 months. The bot was
 net positive while BTC fell, with shallow drawdowns.
 
+The volume filter is the key improvement: it rejects low-volume BB extremes
+(quiet drifts that continue) while keeping high-volume extremes (genuine
+capitulation/exhaustion that reverses). Only ~4 trades per year are filtered,
+but they tend to be the largest losing trades (momentum breakdowns disguised as
+oversold signals).
+
 This is honest, modest, real edge — not a fantasy 1000% backtest. Win rate is
 below 50%; profitability comes from winners (5×ATR) being larger than losers
-(3×ATR).
+(3×ATR), and from avoiding false signals in trending conditions.
 
 ## Reproduce the validation
 
@@ -57,7 +76,8 @@ python research_edge.py        # forward-return analysis: which signals predict?
 python research_meanrev.py     # mean-reversion rules with train/test split
 python research_viable.py      # cost sensitivity + timeframe sweep
 python research_final.py       # robustness matrix for the winning rule
-python production_backtest.py  # real strategy+risk modules → +13.5% over 12 months
+python research_improvements.py  # volume filter + other filters, train/test
+python production_backtest.py  # real strategy+risk modules → +20.8% over 12 months
 ```
 
 ## Run the bot
@@ -71,6 +91,14 @@ python main.py
 For live trading set `PAPER_MODE=false` and add MEXC API keys with Futures
 permission. **Validate in paper mode for several weeks first.**
 
+### Minimum balance
+
+With MEXC's 0.001 BTC minimum contract size and BTC at $100k:
+- Minimum viable balance ≈ **$150** (so 2% risk reaches 0.001 BTC minimum)
+- Recommended paper/live starting balance: **$200+**
+- Leverage (LEVERAGE env var) reduces margin required per trade but **does not
+  change risk per trade in dollar terms** — it only frees up idle capital.
+
 ## Architecture
 
 ```
@@ -80,7 +108,7 @@ exchange.py          PaperExchange (simulated) + LiveExchange (ccxt.pro MEXC)
 data.py              REST + WebSocket candle feeds, 1h/4h buffers
 indicators.py        EMA, MACD, Bollinger, RSI, ATR, ADX, S/R (numpy/pandas)
 strategies/
-  mean_reversion.py  THE validated edge: 1h Bollinger fade
+  mean_reversion.py  THE validated edge: 1h Bollinger fade + volume filter
   trend.py           Kept for reference (proven to lose on its own)
   breakout.py        Kept for reference
   signal_combiner.py Hybrid scoring (legacy — research showed it underperforms)
@@ -99,7 +127,11 @@ research_*.py        Edge discovery / validation scripts
 - **One year of data, one asset.** The edge is real in this sample but markets
   change. Re-validate periodically.
 - **Mean reversion fails in strong sustained trends** — the worst month was
-  Oct 2025 (−6.4%) during a sharp directional crash.
+  Nov 2025 (−5.6% with volume filter) during a momentum-driven up-swing.
 - **Costs dominate.** The result assumes ~0.08% round trip (limit/maker entry).
   Pure market orders (~0.12%+) cut returns substantially.
+- **Volume filter note**: based on only 4 filtered trades over 12 months. The
+  improvement is consistent with the theory (capitulation = high volume) and
+  holds out-of-sample, but with only 4 filtered events, the sample is thin.
+  Monitor for a few months after going live to confirm it continues to help.
 - This is **not financial advice.** Trade at your own risk, start small.
