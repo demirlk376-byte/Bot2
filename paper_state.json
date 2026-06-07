@@ -2,35 +2,75 @@
   "coins": {
     "BTC": {
       "balance": 10000.0,
-      "position": null,
+      "position": {
+        "direction": -1,
+        "entry": 62824.8,
+        "sl": 64458.61378140996,
+        "tp": 60101.777030983416,
+        "qty": 0.07958640536858055,
+        "atr": 544.6045938033168,
+        "entry_ts": "2026-06-07T08:00:00+00:00"
+      },
       "n_trades": 0,
       "n_wins": 0,
       "total_pnl": 0.0
     },
     "ETH": {
       "balance": 10000.0,
-      "position": null,
+      "position": {
+        "direction": -1,
+        "entry": 1640.64,
+        "sl": 1700.2824481598932,
+        "tp": 1541.2359197335118,
+        "qty": 3.047591183928223,
+        "atr": 19.88081605329768,
+        "entry_ts": "2026-06-07T08:00:00+00:00"
+      },
       "n_trades": 0,
       "n_wins": 0,
       "total_pnl": 0.0
     },
     "SOL": {
       "balance": 10000.0,
-      "position": null,
+      "position": {
+        "direction": -1,
+        "entry": 65.91,
+        "sl": 68.86099634824704,
+        "tp": 60.99167275292158,
+        "qty": 75.86102260658474,
+        "atr": 0.9836654494156827,
+        "entry_ts": "2026-06-07T08:00:00+00:00"
+      },
       "n_trades": 0,
       "n_wins": 0,
       "total_pnl": 0.0
     },
     "BNB": {
       "balance": 10000.0,
-      "position": null,
+      "position": {
+        "direction": -1,
+        "entry": 599.2,
+        "sl": 615.9811526845319,
+        "tp": 571.2314121924469,
+        "qty": 8.344459279038718,
+        "atr": 5.593717561510625,
+        "entry_ts": "2026-06-07T08:00:00+00:00"
+      },
       "n_trades": 0,
       "n_wins": 0,
       "total_pnl": 0.0
     },
     "XRP": {
       "balance": 10000.0,
-      "position": null,
+      "position": {
+        "direction": -1,
+        "entry": 1.1548,
+        "sl": 1.2007495952986629,
+        "tp": 1.0782173411688951,
+        "qty": 4329.754069968825,
+        "atr": 0.015316531766220973,
+        "entry_ts": "2026-06-07T08:00:00+00:00"
+      },
       "n_trades": 0,
       "n_wins": 0,
       "total_pnl": 0.0
