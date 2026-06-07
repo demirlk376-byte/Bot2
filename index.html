@@ -94,7 +94,7 @@
 <header>
   <span style="font-size:1.4rem">📊</span>
   <h1>Paper Trading Dashboard</h1>
-  <span class="subtitle">Son güncelleme: 2026-06-07 09:52 UTC &nbsp;·&nbsp; 5 dk'da bir yenilenir</span>
+  <span class="subtitle">Son güncelleme: 2026-06-07 13:50 UTC &nbsp;·&nbsp; 5 dk'da bir yenilenir</span>
 </header>
 
 <div class="container">
@@ -302,7 +302,19 @@
   </div>
 
   <!-- Trade geçmişi -->
-  <h2>Son 30 Kapanan Trade</h2>
+  <!-- V1 vs V2 karşılaştırma -->
+  <h2 style="margin-bottom:12px">V1 (Saf Teknik) vs V2 (Teknik + Makro Filtre)</h2>
+  <p style="color:#8b949e;font-size:0.85rem;margin-bottom:12px">
+    V2'de makro filtre (Fear &amp; Greed + funding rate) sinyali onaylamak için gerekli.
+    Hangisi 4-8 haftada daha iyi sonuç verirse o stratejiyle devam.
+  </p>
+  
+    <table>
+        <thead><tr><th>Coin</th><th>V1 — Saf Teknik</th><th>V2 — Teknik + Makro</th></tr></thead>
+        <tbody><tr><td><b>BNB</b></td><td><span class="pos">+0.0%</span> (0t, 0% WR, 0 atl.)</td><td><span class="pos">+0.0%</span> (0t, 0% WR, 0 atl.)</td></tr><tr><td><b>BTC</b></td><td><span class="pos">+0.0%</span> (0t, 0% WR, 0 atl.)</td><td><span class="pos">+0.0%</span> (0t, 0% WR, 0 atl.)</td></tr><tr><td><b>ETH</b></td><td><span class="pos">+0.0%</span> (0t, 0% WR, 0 atl.)</td><td><span class="pos">+0.0%</span> (0t, 0% WR, 0 atl.)</td></tr><tr><td><b>SOL</b></td><td><span class="pos">+0.0%</span> (0t, 0% WR, 0 atl.)</td><td><span class="pos">+0.0%</span> (0t, 0% WR, 0 atl.)</td></tr><tr><td><b>XRP</b></td><td><span class="pos">+0.0%</span> (0t, 0% WR, 0 atl.)</td><td><span class="pos">+0.0%</span> (0t, 0% WR, 0 atl.)</td></tr></tbody>
+    </table>
+
+  <h2 style="margin-top:32px;margin-bottom:12px">Son 30 Kapanan Trade (V1)</h2>
   <p class="no-data">Henüz kapanan trade yok.</p>
 </div>
 

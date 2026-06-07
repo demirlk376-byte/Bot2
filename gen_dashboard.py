@@ -11,25 +11,27 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-STATE_FILE  = Path("paper_state.json")
-TRADES_CSV  = Path("paper_trades.csv")
-OUT_HTML    = Path("index.html")
+STATE_FILE    = Path("paper_state.json")
+TRADES_CSV    = Path("paper_trades.csv")
+STATE_FILE_V2 = Path("paper_state_v2.json")
+TRADES_CSV_V2 = Path("paper_trades_v2.csv")
+OUT_HTML      = Path("index.html")
 
 COIN_ICONS = {
     "BTC": "₿", "ETH": "Ξ", "SOL": "◎", "BNB": "B", "XRP": "✕",
 }
 
 
-def load_state() -> dict:
-    if STATE_FILE.exists():
-        return json.loads(STATE_FILE.read_text())
+def load_state(path=STATE_FILE) -> dict:
+    if path.exists():
+        return json.loads(path.read_text())
     return {"coins": {}}
 
 
-def load_trades() -> list[dict]:
-    if not TRADES_CSV.exists():
+def load_trades(path=TRADES_CSV) -> list[dict]:
+    if not path.exists():
         return []
-    with open(TRADES_CSV) as f:
+    with open(path) as f:
         return list(csv.DictReader(f))
 
 
@@ -148,11 +150,37 @@ def build_trades_table(trades: list[dict]) -> str:
     </table>"""
 
 
+def build_compare_table(coins_v1: dict, coins_v2: dict) -> str:
+    if not coins_v1 and not coins_v2:
+        return ""
+    rows = []
+    all_coins = sorted(set(list(coins_v1.keys()) + list(coins_v2.keys())))
+    for coin in all_coins:
+        d1 = coins_v1.get(coin, {})
+        d2 = coins_v2.get(coin, {})
+        def fmt(d):
+            bal = d.get("balance", 10_000)
+            n   = d.get("n_trades", 0)
+            wr  = d.get("n_wins", 0) / n * 100 if n else 0
+            ret = (bal - 10_000) / 10_000 * 100
+            cc  = "pos" if bal >= 10_000 else "neg"
+            skp = d.get("skipped", 0)
+            return f'<span class="{cc}">{ret:+.1f}%</span> ({n}t, {wr:.0f}% WR, {skp} atl.)'
+        rows.append(f"<tr><td><b>{coin}</b></td><td>{fmt(d1)}</td><td>{fmt(d2)}</td></tr>")
+    return f"""
+    <table>
+        <thead><tr><th>Coin</th><th>V1 — Saf Teknik</th><th>V2 — Teknik + Makro</th></tr></thead>
+        <tbody>{"".join(rows)}</tbody>
+    </table>"""
+
+
 def main() -> None:
-    state  = load_state()
-    trades = load_trades()
-    coins  = state.get("coins", {})
-    now    = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    state    = load_state()
+    state_v2 = load_state(STATE_FILE_V2)
+    trades   = load_trades()
+    coins    = state.get("coins", {})
+    coins_v2 = state_v2.get("coins", {})
+    now      = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     total_trades = sum(c.get("n_trades", 0) for c in coins.values())
     total_pnl    = sum(c.get("balance", 10_000) - 10_000 for c in coins.values())
@@ -161,6 +189,7 @@ def main() -> None:
 
     coin_cards    = build_coin_cards(coins)
     trades_table  = build_trades_table(trades)
+    compare_table = build_compare_table(coins, coins_v2)
 
     html = f"""<!DOCTYPE html>
 <html lang="tr">
@@ -292,7 +321,15 @@ def main() -> None:
   </div>
 
   <!-- Trade geçmişi -->
-  <h2>Son 30 Kapanan Trade</h2>
+  <!-- V1 vs V2 karşılaştırma -->
+  <h2 style="margin-bottom:12px">V1 (Saf Teknik) vs V2 (Teknik + Makro Filtre)</h2>
+  <p style="color:#8b949e;font-size:0.85rem;margin-bottom:12px">
+    V2'de makro filtre (Fear &amp; Greed + funding rate) sinyali onaylamak için gerekli.
+    Hangisi 4-8 haftada daha iyi sonuç verirse o stratejiyle devam.
+  </p>
+  {compare_table}
+
+  <h2 style="margin-top:32px;margin-bottom:12px">Son 30 Kapanan Trade (V1)</h2>
   {trades_table}
 </div>
 
