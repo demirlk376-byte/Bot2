@@ -1,0 +1,44 @@
+{
+  "coins": {
+    "BTC": {
+      "balance": 10000.0,
+      "position": null,
+      "n_trades": 0,
+      "n_wins": 0,
+      "total_pnl": 0.0,
+      "skipped": 0
+    },
+    "ETH": {
+      "balance": 10000.0,
+      "position": null,
+      "n_trades": 0,
+      "n_wins": 0,
+      "total_pnl": 0.0,
+      "skipped": 0
+    },
+    "SOL": {
+      "balance": 10000.0,
+      "position": null,
+      "n_trades": 0,
+      "n_wins": 0,
+      "total_pnl": 0.0,
+      "skipped": 0
+    },
+    "BNB": {
+      "balance": 10000.0,
+      "position": null,
+      "n_trades": 0,
+      "n_wins": 0,
+      "total_pnl": 0.0,
+      "skipped": 0
+    },
+    "XRP": {
+      "balance": 10000.0,
+      "position": null,
+      "n_trades": 0,
+      "n_wins": 0,
+      "total_pnl": 0.0,
+      "skipped": 0
+    }
+  }
+}
