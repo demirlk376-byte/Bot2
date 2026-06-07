@@ -14,6 +14,7 @@ from pathlib import Path
 TESTS = [
     "tests/test_parity.py",      # üretim motoru == backtest
     "tests/test_data_feed.py",   # mum-kapanış tespiti (forming mumda tetiklenmez)
+    "tests/test_multicoin.py",   # çoklu coin: coin başına fiyat + izole SL/TP
 ]
 
 

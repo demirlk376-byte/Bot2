@@ -151,7 +151,9 @@ class DataManager:
                 if price > 0:
                     self._current_price = price
                     if hasattr(self._exchange, "update_price"):
-                        await self._exchange.update_price(price)
+                        # Pass the symbol so a shared PaperExchange keeps a
+                        # separate price per coin (multi-coin correctness).
+                        await self._exchange.update_price(price, self._symbol)
                 backoff = 1
             except Exception as e:
                 logger.warning("Ticker feed error: %s (retry in %ds)", e, backoff)

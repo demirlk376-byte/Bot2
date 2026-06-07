@@ -55,6 +55,15 @@ class Portfolio:
         for pos in self._positions.values():
             pos.unrealized_pnl = pos.direction * (current_price - pos.entry_price) * pos.quantity
 
+    def update_unrealized_pnl_for(self, symbol: str, current_price: float) -> None:
+        """Update unrealized PnL for one symbol only (multi-coin: each coin has
+        its own price, so a single shared price would be wrong)."""
+        for pos in self._positions.values():
+            if pos.symbol == symbol:
+                pos.unrealized_pnl = (
+                    pos.direction * (current_price - pos.entry_price) * pos.quantity
+                )
+
     def get_total_unrealized_pnl(self) -> float:
         return sum(p.unrealized_pnl for p in self._positions.values())
 

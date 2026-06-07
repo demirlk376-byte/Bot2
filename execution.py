@@ -75,6 +75,14 @@ class ExecutionEngine:
         if signal.direction == 0:
             return ExecutionResult(False, error="No signal")
 
+        # Multi-coin: the signal carries its own symbol; fall back to the
+        # configured primary symbol for single-coin operation.
+        symbol = signal.symbol or self._config.exchange.symbol
+
+        # One position per symbol — never stack two trades on the same coin.
+        if self._portfolio.get_position_for_symbol(symbol) is not None:
+            return ExecutionResult(False, error=f"Position already open for {symbol}")
+
         balance = await self._exchange.get_balance()
 
         if not self._risk.check_daily_loss_limit(
@@ -92,7 +100,7 @@ class ExecutionEngine:
             atr=atr,
             balance=balance,
             leverage=self._config.exchange.leverage,
-            symbol=self._config.exchange.symbol,
+            symbol=symbol,
         )
         if setup is None:
             return ExecutionResult(False, error="Could not build trade setup")

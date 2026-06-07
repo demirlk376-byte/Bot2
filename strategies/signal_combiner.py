@@ -23,6 +23,7 @@ class CombinedSignal:
     dominant_strategy: str
     reasons: list[str] = field(default_factory=list)
     entry_price: float = 0.0
+    symbol: str = ""          # which market this signal is for (multi-coin)
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
 

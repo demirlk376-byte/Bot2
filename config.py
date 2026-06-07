@@ -46,6 +46,17 @@ def _getbool(key: str, default: bool = False) -> bool:
     return raw.strip().lower() in ("true", "1", "yes")
 
 
+def _normalize_symbol(sym: str) -> str:
+    """Normalise a coin/symbol into the MEXC linear-perp form BASE/USDT:USDT.
+    Accepts 'BTC', 'BTC/USDT', or already-correct 'BTC/USDT:USDT'."""
+    s = sym.strip().upper()
+    if ":" in s:
+        return s
+    if "/" in s:
+        return f"{s}:USDT"
+    return f"{s}/USDT:USDT"
+
+
 @dataclass
 class ExchangeConfig:
     api_key: str
@@ -53,7 +64,8 @@ class ExchangeConfig:
     paper_mode: bool
     leverage: int
     margin_mode: str
-    symbol: str
+    symbol: str                       # primary symbol (kept for backward compat)
+    symbols: list[str] | None = None  # full list when trading multiple coins
     base_currency: str = "USDT"
     maker_entry: bool = True   # use post-only limit entries (0% maker fee vs 0.01% taker)
 
@@ -115,13 +127,24 @@ class AppConfig:
 
 
 def load_config() -> AppConfig:
+    # SYMBOLS (comma-separated) enables multi-coin trading; falls back to the
+    # single SYMBOL. Each entry is normalised to the MEXC perp form BASE/USDT:USDT.
+    # Accepts "BTC", "BTC/USDT", or "BTC/USDT:USDT".
+    primary_symbol = _get("SYMBOL", "BTC/USDT:USDT")
+    raw_symbols = os.getenv("SYMBOLS", "").strip()
+    if raw_symbols:
+        symbols = [_normalize_symbol(s) for s in raw_symbols.split(",") if s.strip()]
+    else:
+        symbols = [_normalize_symbol(primary_symbol)]
+
     exchange = ExchangeConfig(
         api_key=_get("MEXC_API_KEY", ""),
         api_secret=_get("MEXC_API_SECRET", ""),
         paper_mode=_getbool("PAPER_MODE", True),
         leverage=_getint("LEVERAGE", 10),
         margin_mode=_get("MARGIN_MODE", "isolated"),
-        symbol=_get("SYMBOL", "BTC/USDT:USDT"),
+        symbol=symbols[0],
+        symbols=symbols,
         maker_entry=_getbool("MAKER_ENTRY", True),
     )
 

@@ -257,12 +257,42 @@ tracks per-coin balance/WR/PnL, and (with TELEGRAM_TOKEN/CHAT set) pushes each
 signal and close to your phone. A coin earns live capital only after weeks of
 positive paper results (return > 0, WR > 45%).
 
+## Multi-coin live engine (main.py)
+
+`paper_scanner.py` is the *validation* tool. The full engine (`main.py`) also
+trades multiple coins once you've decided which to promote — set `SYMBOLS`:
+
+```bash
+# .env
+SYMBOLS=BTC,ETH,SOL,BNB,XRP     # comma-separated; overrides SYMBOL
+MAX_POSITIONS=3                  # portfolio-wide cap on concurrent positions
+```
+
+How it works:
+
+- Each coin gets its **own data feed and strategy instance**, but they share one
+  exchange, one balance, and one risk manager.
+- **One position per coin** at most; `MAX_POSITIONS` caps how many coins can be
+  open at once (they share capital, so don't open all 5 unless you accept the
+  combined exposure).
+- The paper exchange keeps a **separate price per coin** — SL/TP for one coin is
+  checked only against that coin's candle (see `tests/test_multicoin.py`).
+- Symbols are auto-normalized: `BTC`, `BTC/USDT`, and `BTC/USDT:USDT` all work.
+
+Leave `SYMBOLS` unset to run the validated BTC-only bot unchanged.
+
+> Note: the 50%-of-balance position cap means risk scaling has little effect at
+> BTC's price. Lower-priced coins (SOL/XRP) bind the cap far less, so multi-coin
+> is where per-trade risk sizing actually starts to matter. The cap math is why
+> sniper/quality up-sizing didn't help on BTC alone (see research_sniper*.py).
+
 ## Go-live runbook
 
-1. `python run_tests.py` — confirm engine parity.
+1. `python run_tests.py` — confirm engine parity + multi-coin isolation.
 2. Paper the validated BTC bot: `PAPER_MODE=true` then `python main.py`.
    Optionally `FUNDING_ENABLED=true FUNDING_MODE=monitor` to collect funding data.
 3. In parallel, run `paper_scanner.py` to forward-test other coins.
-4. After ~4–8 weeks: review paper results; keep only coins that held the edge.
+4. After ~4–8 weeks: review paper results; keep only coins that held the edge,
+   then add them to `SYMBOLS` for the live engine.
 5. Go live small (`PAPER_MODE=false`, $100–200) with API keys that have Futures
    Trading enabled. Watch the first trades via Telegram.

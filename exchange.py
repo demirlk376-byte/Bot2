@@ -78,7 +78,8 @@ class PaperExchange:
         self._leverage = leverage
         self._positions: dict[str, _PaperPosition] = {}
         self._order_history: list[OrderResult] = []
-        self._current_price: float = 0.0
+        self._current_price: float = 0.0          # last single-symbol price (fallback)
+        self._prices: dict[str, float] = {}        # per-symbol prices (multi-coin)
         self._price_lock = asyncio.Lock()
         self._close_callbacks: list = []
         self._rest_exchange = None  # set by DataManager for OHLCV
@@ -86,9 +87,15 @@ class PaperExchange:
     def set_rest_exchange(self, exchange) -> None:
         self._rest_exchange = exchange
 
-    async def update_price(self, price: float) -> None:
+    async def update_price(self, price: float, symbol: str | None = None) -> None:
         async with self._price_lock:
             self._current_price = price
+            if symbol is not None:
+                self._prices[symbol] = price
+
+    def _price_for(self, symbol: str) -> float:
+        """Per-symbol price, falling back to the last single price (single-coin)."""
+        return self._prices.get(symbol, self._current_price)
 
     async def get_balance(self) -> float:
         return self._balance
@@ -113,7 +120,7 @@ class PaperExchange:
         self, symbol: str, side: str, amount: float, params: dict
     ) -> OrderResult:
         direction = 1 if side == "buy" else -1
-        fill_price = self._current_price * (1 + direction * self.SLIPPAGE)
+        fill_price = self._price_for(symbol) * (1 + direction * self.SLIPPAGE)
         fee = fill_price * amount * self.FEE_RATE
         margin = (fill_price * amount) / self._leverage
         self._balance -= margin + fee
@@ -191,11 +198,19 @@ class PaperExchange:
     ) -> Optional[OrderResult]:
         for pos in self.get_open_positions():
             if pos.symbol == symbol:
-                return await self._close_paper_position(pos, self._current_price, reason)
+                return await self._close_paper_position(
+                    pos, self._price_for(symbol), reason
+                )
         return None
 
-    async def check_sl_tp(self, candle_high: float, candle_low: float) -> None:
+    async def check_sl_tp(
+        self, candle_high: float, candle_low: float, symbol: str | None = None
+    ) -> None:
+        """Check SL/TP against a just-closed candle. If `symbol` is given, only
+        that symbol's positions are checked (multi-coin); otherwise all (single)."""
         for pos in list(self.get_open_positions()):
+            if symbol is not None and pos.symbol != symbol:
+                continue
             triggered = False
             exit_price = 0.0
             reason = ""
@@ -258,7 +273,7 @@ class PaperExchange:
 
     def _calc_unrealized(self, pos: _PaperPosition) -> float:
         direction = 1 if pos.side == "long" else -1
-        return direction * (self._current_price - pos.entry_price) * pos.quantity
+        return direction * (self._price_for(pos.symbol) - pos.entry_price) * pos.quantity
 
     def get_total_unrealized_pnl(self) -> float:
         return sum(self._calc_unrealized(p) for p in self.get_open_positions())
@@ -271,7 +286,7 @@ class PaperExchange:
         return await self._rest_exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=limit)
 
     async def get_current_price(self, symbol: str) -> float:
-        return self._current_price
+        return self._price_for(symbol)
 
     async def watch_ticker(self, symbol: str) -> dict:
         if self._rest_exchange is None:
