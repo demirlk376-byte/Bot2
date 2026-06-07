@@ -1,26 +1,13 @@
 name: Paper Demo Scanner
 
-# Çok-coinli paper (kağıt) BB-fade tarayıcı — saatte bir çalışır.
-# Gerçek emir AÇMAZ; her coinin paper PnL'ini izler, sinyalleri Telegram'a yollar.
-# Bilgisayar/VPS gerekmez — tamamen GitHub'da çalışır, sonuçlar telefona düşer.
-#
-# Kurulum (telefondan, repo Settings → Secrets and variables → Actions):
-#   TELEGRAM_TOKEN  – bot token (BotFather'dan)
-#   TELEGRAM_CHAT_ID – senin chat id'in
-# (MEXC public veri için API key GEREKMEZ.)
-
 on:
   schedule:
-    # Her saat başı (UTC). 1h strateji için saatlik kontrol yeterli.
-    # GitHub cron'u birkaç dk gecikebilir — 1h mumda sorun değil.
     - cron: "5 * * * *"
-  workflow_dispatch:        # elle de tetiklenebilir (Actions sekmesinden)
+  workflow_dispatch:
 
-# State dosyalarını repo'ya geri yazmak için yazma izni
 permissions:
   contents: write
 
-# Aynı anda iki çalışma state'i bozmasın
 concurrency:
   group: paper-demo
   cancel-in-progress: false
@@ -40,12 +27,19 @@ jobs:
       - name: Install deps
         run: pip install --quiet ccxt pandas numpy requests
 
-      - name: Run one paper scan
+      - name: Run V1 - saf teknik
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python paper_scanner.py \
+            --coins BTC ETH SOL BNB XRP \
+            --exchange mexc \
+            --once
+
+      - name: Run V2 - teknik + makro filtre
+        run: |
+          python paper_scanner_v2.py \
             --coins BTC ETH SOL BNB XRP \
             --exchange mexc \
             --once
@@ -57,12 +51,13 @@ jobs:
         run: |
           git config user.name "paper-demo-bot"
           git config user.email "actions@github.com"
-          # Her dosyayı ayrı ekle — birinin yokluğu diğerlerini bloke etmesin
-          for f in paper_state.json paper_trades.csv paper_signals.csv paper_summary.md index.html; do
+          for f in paper_state.json paper_trades.csv paper_signals.csv paper_summary.md \
+                   paper_state_v2.json paper_trades_v2.csv paper_signals_v2.csv paper_summary_v2.md \
+                   index.html; do
             [ -f "$f" ] && git add "$f" || true
           done
           if git diff --cached --quiet; then
-            echo "Değişiklik yok, commit atlanıyor"
+            echo "Degisiklik yok, commit atlaniyor"
           else
             git commit -m "paper demo: $(date -u +%Y-%m-%dT%H:%MZ) tarama [skip ci]"
             git push
