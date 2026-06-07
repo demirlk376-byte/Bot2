@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="refresh" content="300">
+<title>Paper Trading Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0d1117; color: #e6edf3; min-height: 100vh;
+  }
+  header {
+    background: #161b22; border-bottom: 1px solid #30363d;
+    padding: 16px 24px; display: flex; align-items: center; gap: 12px;
+  }
+  header h1 { font-size: 1.25rem; font-weight: 600; }
+  .subtitle { color: #8b949e; font-size: 0.85rem; margin-left: auto; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+  /* Summary bar */
+  .summary {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 16px 24px; margin-bottom: 24px;
+    display: flex; gap: 32px; flex-wrap: wrap; align-items: center;
+  }
+  .summary .s-item { display: flex; flex-direction: column; gap: 2px; }
+  .summary .s-label { color: #8b949e; font-size: 0.8rem; }
+  .summary .s-val   { font-size: 1.2rem; font-weight: 600; }
+
+  /* Cards grid */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px,1fr)); gap: 16px; margin-bottom: 32px; }
+  .card {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    overflow: hidden;
+  }
+  .card-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; border-bottom: 1px solid #21262d;
+    background: #1c2128;
+  }
+  .coin-icon { font-size: 1.3rem; }
+  .coin-name { font-weight: 700; font-size: 1.05rem; }
+  .card-body  { padding: 14px 16px; }
+  .stat-row   { display: flex; gap: 20px; flex-wrap: wrap; }
+  .stat       { display: flex; flex-direction: column; gap: 2px; }
+  .stat-label { color: #8b949e; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .5px; }
+  .stat-val   { font-size: 1.05rem; font-weight: 600; }
+
+  .open-pos {
+    margin-top: 10px; padding: 8px 10px;
+    background: #1c2128; border-radius: 6px;
+    display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.85rem;
+    border-left: 3px solid #388bfd;
+  }
+
+  /* Badges */
+  .badge { border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; font-weight: 600; margin-left: auto; }
+  .badge.ok   { background: #1a4731; color: #3fb950; }
+  .badge.bad  { background: #3d1c1c; color: #f85149; }
+  .badge.wait { background: #2d2a1f; color: #d29922; }
+
+  /* Colors */
+  .pos  { color: #3fb950; }
+  .neg  { color: #f85149; }
+  .long  { color: #3fb950; font-weight: 600; }
+  .short { color: #f85149; font-weight: 600; }
+
+  /* Trades table */
+  h2 { font-size: 1rem; font-weight: 600; margin-bottom: 12px; color: #c9d1d9; }
+  table {
+    width: 100%; border-collapse: collapse;
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    overflow: hidden; font-size: 0.88rem;
+  }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #21262d; }
+  th { background: #1c2128; color: #8b949e; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: .5px; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #1c2128; }
+  .no-data { color: #8b949e; padding: 24px; text-align: center; }
+
+  /* Footer */
+  footer { text-align: center; color: #8b949e; font-size: 0.8rem; padding: 24px; }
+  footer a { color: #58a6ff; text-decoration: none; }
+
+  @media (max-width: 600px) {
+    .summary { gap: 16px; }
+    .stat-row { gap: 14px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <span style="font-size:1.4rem">📊</span>
+  <h1>Paper Trading Dashboard</h1>
+  <span class="subtitle">Son güncelleme: 2026-06-07 07:45 UTC &nbsp;·&nbsp; 5 dk'da bir yenilenir</span>
+</header>
+
+<div class="container">
+  <!-- Özet bar -->
+  <div class="summary">
+    <div class="s-item">
+      <span class="s-label">Toplam Trade</span>
+      <span class="s-val">0</span>
+    </div>
+    <div class="s-item">
+      <span class="s-label">Toplam PnL</span>
+      <span class="s-val pos">+$0.00</span>
+    </div>
+    <div class="s-item">
+      <span class="s-label">İzlenen Coin</span>
+      <span class="s-val">5</span>
+    </div>
+    <div class="s-item">
+      <span class="s-label">Mod</span>
+      <span class="s-val" style="color:#d29922">Paper (Sanal)</span>
+    </div>
+    <div style="margin-left:auto; color:#8b949e; font-size:0.82rem; max-width:300px">
+      Gerçek para yok. Amaç: edge hangi coinde var?
+      ✅ = pozitif + kazanma&nbsp;>&nbsp;%45 → canlı aday.
+    </div>
+  </div>
+
+  <!-- Coin kartları -->
+  <div class="cards">
+    
+        <div class="card">
+            <div class="card-header">
+                <span class="coin-icon">₿</span>
+                <span class="coin-name">BTC</span>
+                <span class="badge wait">⏳ Veri bekleniyor</span>
+            </div>
+            <div class="card-body">
+                <div class="stat-row">
+                    <div class="stat">
+                        <div class="stat-label">Bakiye</div>
+                        <div class="stat-val pos">$10,000.00</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Getiri</div>
+                        <div class="stat-val pos">+0.00%</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Trade</div>
+                        <div class="stat-val">0</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Kazanma</div>
+                        <div class="stat-val">—</div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="coin-icon">Ξ</span>
+                <span class="coin-name">ETH</span>
+                <span class="badge wait">⏳ Veri bekleniyor</span>
+            </div>
+            <div class="card-body">
+                <div class="stat-row">
+                    <div class="stat">
+                        <div class="stat-label">Bakiye</div>
+                        <div class="stat-val pos">$10,000.00</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Getiri</div>
+                        <div class="stat-val pos">+0.00%</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Trade</div>
+                        <div class="stat-val">0</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Kazanma</div>
+                        <div class="stat-val">—</div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="coin-icon">◎</span>
+                <span class="coin-name">SOL</span>
+                <span class="badge wait">⏳ Veri bekleniyor</span>
+            </div>
+            <div class="card-body">
+                <div class="stat-row">
+                    <div class="stat">
+                        <div class="stat-label">Bakiye</div>
+                        <div class="stat-val pos">$10,000.00</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Getiri</div>
+                        <div class="stat-val pos">+0.00%</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Trade</div>
+                        <div class="stat-val">0</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Kazanma</div>
+                        <div class="stat-val">—</div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="coin-icon">B</span>
+                <span class="coin-name">BNB</span>
+                <span class="badge wait">⏳ Veri bekleniyor</span>
+            </div>
+            <div class="card-body">
+                <div class="stat-row">
+                    <div class="stat">
+                        <div class="stat-label">Bakiye</div>
+                        <div class="stat-val pos">$10,000.00</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Getiri</div>
+                        <div class="stat-val pos">+0.00%</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Trade</div>
+                        <div class="stat-val">0</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Kazanma</div>
+                        <div class="stat-val">—</div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="coin-icon">✕</span>
+                <span class="coin-name">XRP</span>
+                <span class="badge wait">⏳ Veri bekleniyor</span>
+            </div>
+            <div class="card-body">
+                <div class="stat-row">
+                    <div class="stat">
+                        <div class="stat-label">Bakiye</div>
+                        <div class="stat-val pos">$10,000.00</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Getiri</div>
+                        <div class="stat-val pos">+0.00%</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Trade</div>
+                        <div class="stat-val">0</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Kazanma</div>
+                        <div class="stat-val">—</div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+  </div>
+
+  <!-- Trade geçmişi -->
+  <h2>Son 30 Kapanan Trade</h2>
+  <p class="no-data">Henüz kapanan trade yok.</p>
+</div>
+
+<footer>
+  Strateji: 1H Bollinger Band Mean Reversion · SL=3×ATR · TP=5×ATR · Risk=%3 &nbsp;|&nbsp;
+  <a href="https://github.com/demirlk376-byte/Bot2" target="_blank">GitHub</a>
+</footer>
+</body>
+</html>
