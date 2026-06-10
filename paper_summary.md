@@ -1,6 +1,6 @@
 # 📊 Paper Demo Durumu
 
-Son güncelleme: **2026-06-10 12:42 UTC**
+Son güncelleme: **2026-06-10 21:29 UTC**
 
 Gerçek para YOK — her coin $10,000 sanal bakiyeyle başlar. Amaç: hangi
 coinde edge GERÇEKTEN var, körlemesine değil veriyle görmek.
