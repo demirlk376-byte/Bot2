@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import csv
 import json
+import os
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -16,6 +18,51 @@ TRADES_CSV    = Path("paper_trades.csv")
 STATE_FILE_V2 = Path("paper_state_v2.json")
 TRADES_CSV_V2 = Path("paper_trades_v2.csv")
 OUT_HTML      = Path("index.html")
+DB_PATH       = Path(os.getenv("DB_PATH", "./trades.db"))
+INIT_BALANCE  = float(os.getenv("PAPER_INITIAL_BALANCE", "10000"))
+
+
+def load_from_db(db_path: Path):
+    """Build (coins, trades) from the live bot's trades.db. The engine uses ONE
+    shared account balance, so per-coin 'balance' here is INIT + that coin's pnl
+    contribution (for comparison only); the real account balance is the sum."""
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    rows = [dict(r) for r in conn.execute("SELECT * FROM trades").fetchall()]
+    conn.close()
+
+    coins: dict[str, dict] = {}
+    trades: list[dict] = []
+    for r in rows:
+        coin = (r["symbol"] or "?").split("/")[0]
+        c = coins.setdefault(coin, {
+            "balance": INIT_BALANCE, "n_trades": 0, "n_wins": 0,
+            "total_pnl": 0.0, "position": None,
+        })
+        if r["exit_time"]:  # closed trade
+            pnl = float(r["pnl_usdt"] or 0)
+            c["n_trades"] += 1
+            c["total_pnl"] += pnl
+            c["balance"] += pnl
+            if pnl > 0:
+                c["n_wins"] += 1
+            trades.append({
+                "coin": coin,
+                "side": "BUY" if r["side"] == "long" else "SELL",
+                "entry_price": r["entry_price"],
+                "exit_price": r["exit_price"] or 0,
+                "pnl_usdt": pnl,
+                "exit_reason": r["exit_reason"] or "?",
+                "exit_time": r["exit_time"] or "",
+            })
+        else:  # open position
+            c["position"] = {
+                "side": "BUY" if r["side"] == "long" else "SELL",
+                "entry_price": r["entry_price"],
+                "sl_price": r["sl_price"], "tp_price": r["tp_price"],
+            }
+    trades.sort(key=lambda t: t["exit_time"])
+    return coins, trades
 
 COIN_ICONS = {
     "BTC": "₿", "ETH": "Ξ", "SOL": "◎", "BNB": "B", "XRP": "✕",
@@ -175,11 +222,17 @@ def build_compare_table(coins_v1: dict, coins_v2: dict) -> str:
 
 
 def main() -> None:
-    state    = load_state()
-    state_v2 = load_state(STATE_FILE_V2)
-    trades   = load_trades()
-    coins    = state.get("coins", {})
-    coins_v2 = state_v2.get("coins", {})
+    # Prefer the live bot's trades.db (real source of truth on the VPS). Fall
+    # back to the old GitHub paper_scanner JSON files if the DB isn't present.
+    if DB_PATH.exists():
+        coins, trades = load_from_db(DB_PATH)
+        coins_v2 = {}
+    else:
+        state    = load_state()
+        state_v2 = load_state(STATE_FILE_V2)
+        trades   = load_trades()
+        coins    = state.get("coins", {})
+        coins_v2 = state_v2.get("coins", {})
     now      = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     total_trades = sum(c.get("n_trades", 0) for c in coins.values())
@@ -189,7 +242,7 @@ def main() -> None:
 
     coin_cards    = build_coin_cards(coins)
     trades_table  = build_trades_table(trades)
-    compare_table = build_compare_table(coins, coins_v2)
+    compare_table = build_compare_table(coins, coins_v2) if coins_v2 else ""
 
     html = f"""<!DOCTYPE html>
 <html lang="tr">

@@ -154,6 +154,10 @@ class DataManager:
                         # Pass the symbol so a shared PaperExchange keeps a
                         # separate price per coin (multi-coin correctness).
                         await self._exchange.update_price(price, self._symbol)
+                    # Tick-level SL/TP: exit within seconds of price touching the
+                    # stop, not at the next candle close (paper mode).
+                    if hasattr(self._exchange, "check_sl_tp_tick"):
+                        await self._exchange.check_sl_tp_tick(self._symbol, price)
                 backoff = 1
             except Exception as e:
                 logger.warning("Ticker feed error: %s (retry in %ds)", e, backoff)

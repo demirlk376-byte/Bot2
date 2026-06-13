@@ -202,6 +202,80 @@ async def daily_reset_loop() -> None:
             )
 
 
+async def restore_state() -> int:
+    """Rebuild open positions after a restart so they are not orphaned.
+
+    Paper: restore the persisted balance, then recreate each open trade's paper
+    position + portfolio position (sharing the same id as the DB row).
+    Live: the positions still exist on the exchange; rebuild the portfolio from
+    the open DB trades so the bot tracks and manages them again.
+    """
+    restored = 0
+    if config.exchange.paper_mode and isinstance(exchange, PaperExchange):
+        saved = await db.get_meta("paper_balance")
+        if saved is not None:
+            try:
+                exchange.set_balance(float(saved))
+                logger.info("Restored paper balance: %.2f", float(saved))
+            except ValueError:
+                pass
+
+    open_trades = await db.get_open_trades()
+    for t in open_trades:
+        direction = 1 if t.side == "long" else -1
+        try:
+            entry_dt = datetime.fromisoformat(t.entry_time)
+        except (ValueError, TypeError):
+            entry_dt = datetime.now(timezone.utc)
+        if config.exchange.paper_mode and isinstance(exchange, PaperExchange):
+            exchange.restore_position(
+                t.id, t.symbol, t.side, t.quantity,
+                t.entry_price, t.sl_price, t.tp_price,
+            )
+        portfolio.create_position(
+            symbol=t.symbol, direction=direction, entry_price=t.entry_price,
+            sl_price=t.sl_price, tp_price=t.tp_price, quantity=t.quantity,
+            strategy_scores=t.strategy_scores, is_paper=t.is_paper,
+            position_id=t.id, entry_time=entry_dt,
+        )
+        restored += 1
+        logger.info("Restored open position: %s %s @ %.4f",
+                    t.side.upper(), t.symbol, t.entry_price)
+    if restored:
+        logger.info("Restored %d open position(s) after restart", restored)
+    return restored
+
+
+async def heartbeat_loop() -> None:
+    """Periodic liveness signal: writes a timestamp file (for an external
+    healthcheck) and, every few hours, a Telegram 'alive' message so a silent
+    death is noticeable."""
+    import time as _time
+    from pathlib import Path as _Path
+    interval = 300  # touch the liveness file every 5 min
+    tg_every = max(int(config.heartbeat_hours * 3600), interval)
+    since_tg = 0
+    while True:
+        try:
+            _Path("/tmp/bot_alive").write_text(str(int(_time.time())))
+        except Exception:
+            pass
+        since_tg += interval
+        if telegram and since_tg >= tg_every:
+            since_tg = 0
+            try:
+                bal = await exchange.get_balance()
+                n_open = portfolio.get_open_position_count()
+                upnl = portfolio.get_total_unrealized_pnl()
+                await telegram.send_alert(
+                    f"Bot çalışıyor · bakiye ${bal:,.2f} · açık {n_open} · "
+                    f"gerçekleşmemiş ${upnl:+.2f}", "INFO",
+                )
+            except Exception as e:
+                logger.debug("Heartbeat telegram failed: %s", e)
+        await asyncio.sleep(interval)
+
+
 async def on_position_closed(pos, exit_price: float, net_pnl: float, reason: str) -> None:
     dashboard.add_trade(pos.side, pos.entry_price, exit_price, net_pnl, reason)
     if telegram:
@@ -275,6 +349,14 @@ async def main() -> None:
     executor = ExecutionEngine(exchange, risk_mgr, portfolio, db, config)
     executor.register_close_callback(on_position_closed)
 
+    async def _send_alert(message: str, level: str) -> None:
+        if telegram:
+            await telegram.send_alert(message, level)
+    executor.register_alert_callback(_send_alert)
+
+    # Rebuild any open positions from before a restart (balance + positions).
+    await restore_state()
+
     balance = await exchange.get_balance()
     executor.set_daily_starting_balance(balance)
 
@@ -318,6 +400,7 @@ async def main() -> None:
         )
 
     asyncio.create_task(daily_reset_loop())
+    asyncio.create_task(heartbeat_loop())
 
     logger.info(
         "Bot running. Coins=%d TF=%s Balance=%.2f",

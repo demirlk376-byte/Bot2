@@ -85,6 +85,15 @@ CREATE TABLE IF NOT EXISTS daily_stats (
 )
 """
 
+# Small key/value store for state that must survive restarts (e.g. the paper
+# balance, which otherwise resets to the initial balance on every reboot).
+_CREATE_META = """
+CREATE TABLE IF NOT EXISTS meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT
+)
+"""
+
 
 class Database:
     def __init__(self, db_path: str):
@@ -96,7 +105,30 @@ class Database:
         self._db.row_factory = aiosqlite.Row
         await self._db.execute(_CREATE_TRADES)
         await self._db.execute(_CREATE_DAILY)
+        await self._db.execute(_CREATE_META)
         await self._db.commit()
+
+    async def set_meta(self, key: str, value: str) -> None:
+        await self._db.execute(
+            "INSERT OR REPLACE INTO meta (key, value) VALUES (?,?)", (key, value)
+        )
+        await self._db.commit()
+
+    async def get_meta(self, key: str) -> Optional[str]:
+        async with self._db.execute(
+            "SELECT value FROM meta WHERE key=?", (key,)
+        ) as cur:
+            row = await cur.fetchone()
+            return row[0] if row else None
+
+    async def get_open_trades(self) -> list[TradeRecord]:
+        """Trades with no exit yet — used to rebuild the in-memory portfolio
+        after a restart so open positions are not orphaned."""
+        async with self._db.execute(
+            "SELECT * FROM trades WHERE exit_time IS NULL"
+        ) as cur:
+            rows = await cur.fetchall()
+        return [_row_to_trade(r) for r in rows]
 
     async def close(self) -> None:
         if self._db:

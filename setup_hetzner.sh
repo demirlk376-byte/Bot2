@@ -62,10 +62,69 @@ EOF
 
 systemctl daemon-reload
 systemctl enable btc-bot
+
+echo "=== [7/8] Günlük DB yedeği (systemd timer) ==="
+apt-get install -y -qq sqlite3 || true
+chmod +x "$BOT_DIR/backup_db.sh"
+cat > /etc/systemd/system/btc-bot-backup.service << EOF
+[Unit]
+Description=BTC Bot DB backup
+[Service]
+Type=oneshot
+ExecStart=/bin/bash $BOT_DIR/backup_db.sh
+EOF
+cat > /etc/systemd/system/btc-bot-backup.timer << EOF
+[Unit]
+Description=Daily BTC Bot DB backup
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+[Install]
+WantedBy=timers.target
+EOF
+systemctl daemon-reload
+systemctl enable --now btc-bot-backup.timer
+
+echo "=== [8/8] Watchdog (donmuş bot'u yeniden başlat) ==="
+# Heartbeat /tmp/bot_alive'ı 5 dk'da bir günceller. 15 dk güncellenmezse
+# bot donmuş demektir → servisi yeniden başlat.
+cat > /usr/local/bin/btc-bot-watchdog.sh << 'EOF'
+#!/bin/bash
+F=/tmp/bot_alive
+if [ -f "$F" ]; then
+    AGE=$(( $(date +%s) - $(cat "$F" 2>/dev/null || echo 0) ))
+    if [ "$AGE" -gt 900 ]; then
+        echo "Heartbeat $AGE s eski — bot yeniden başlatılıyor"
+        systemctl restart btc-bot
+    fi
+fi
+EOF
+chmod +x /usr/local/bin/btc-bot-watchdog.sh
+cat > /etc/systemd/system/btc-bot-watchdog.service << EOF
+[Unit]
+Description=BTC Bot watchdog
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/btc-bot-watchdog.sh
+EOF
+cat > /etc/systemd/system/btc-bot-watchdog.timer << EOF
+[Unit]
+Description=BTC Bot watchdog every 5 min
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+[Install]
+WantedBy=timers.target
+EOF
+systemctl daemon-reload
+systemctl enable --now btc-bot-watchdog.timer
+
 echo ""
 echo "================================================================"
 echo "  Kurulum tamamlandi!"
 echo "  1. .env ayarla:  nano $BOT_DIR/.env"
 echo "  2. Botu baslat:  systemctl start btc-bot"
 echo "  3. Loglar:       journalctl -u btc-bot -f"
+echo "  Yedekler:        $BOT_DIR/backups/  (gunluk, 14 gun saklanir)"
+echo "  Watchdog:        donmus bot 15 dk'da otomatik yeniden baslar"
 echo "================================================================"

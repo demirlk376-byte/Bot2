@@ -67,9 +67,14 @@ class RiskManager:
         balance: float,
         leverage: int,
         symbol: str = "BTC/USDT:USDT",
+        size_mult: float = 1.0,
     ) -> Optional[TradeSetup]:
         sl, tp = self.calculate_sl_tp(direction, entry_price, atr)
         quantity = self.calculate_position_size(balance, entry_price, sl)
+        # Confidence sizing only ever scales DOWN (size_mult ≤ 1.0), so the
+        # validated max risk is never exceeded.
+        if size_mult < 1.0:
+            quantity = round(quantity * size_mult, 3)
 
         if quantity < MIN_BTC_ORDER:
             logger.debug("Position size %.4f below minimum %.4f", quantity, MIN_BTC_ORDER)

@@ -77,16 +77,22 @@ class Portfolio:
         quantity: float,
         strategy_scores: dict,
         is_paper: bool = True,
+        position_id: str | None = None,
+        entry_time: datetime | None = None,
     ) -> Position:
+        # position_id lets the portfolio, the paper-exchange position and the DB
+        # row all share ONE id. Without this, the paper close callback (keyed by
+        # the exchange's id) could never find the portfolio position, so closes
+        # were never recorded and the coin stayed "open" forever.
         pos = Position(
-            id=str(uuid.uuid4()),
+            id=position_id or str(uuid.uuid4()),
             symbol=symbol,
             direction=direction,
             entry_price=entry_price,
             sl_price=sl_price,
             tp_price=tp_price,
             quantity=quantity,
-            entry_time=datetime.now(timezone.utc),
+            entry_time=entry_time or datetime.now(timezone.utc),
             is_paper=is_paper,
             strategy_scores=strategy_scores,
         )

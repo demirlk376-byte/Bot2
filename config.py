@@ -78,6 +78,9 @@ class RiskConfig:
     max_positions: int
     daily_max_loss: float
     max_hold_candles: int = 48  # force-close after N candles (48h on 1h timeframe)
+    # Confidence sizing: scale position size DOWN on weaker signals (never above
+    # the validated full risk). Opt-in so it can't disturb the proven edge.
+    confidence_sizing: bool = False
 
 
 @dataclass
@@ -125,6 +128,7 @@ class AppConfig:
     db_path: str
     log_level: str
     paper_initial_balance: float
+    heartbeat_hours: float = 6.0
 
 
 def load_config() -> AppConfig:
@@ -156,6 +160,7 @@ def load_config() -> AppConfig:
         max_positions=_getint("MAX_POSITIONS", 1),
         daily_max_loss=_getfloat("DAILY_MAX_LOSS_PCT", 0.05),
         max_hold_candles=_getint("MAX_HOLD_CANDLES", 48),
+        confidence_sizing=_getbool("CONFIDENCE_SIZING", False),
     )
 
     strategy = StrategyConfig(
@@ -185,4 +190,5 @@ def load_config() -> AppConfig:
         db_path=_get("DB_PATH", "./trades.db"),
         log_level=_get("LOG_LEVEL", "INFO"),
         paper_initial_balance=_getfloat("PAPER_INITIAL_BALANCE", 10000.0),
+        heartbeat_hours=_getfloat("HEARTBEAT_HOURS", 6.0),
     )

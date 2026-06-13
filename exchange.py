@@ -87,6 +87,24 @@ class PaperExchange:
     def set_rest_exchange(self, exchange) -> None:
         self._rest_exchange = exchange
 
+    def set_balance(self, balance: float) -> None:
+        """Restore a persisted balance after a restart."""
+        self._balance = balance
+
+    def restore_position(
+        self, pos_id: str, symbol: str, side: str, quantity: float,
+        entry_price: float, sl_price: float, tp_price: float,
+    ) -> None:
+        """Rebuild an open paper position after a restart. The margin was already
+        deducted (and is reflected in the persisted balance), so we only recreate
+        the object — we do NOT touch the balance here."""
+        margin = (entry_price * quantity) / self._leverage
+        self._positions[pos_id] = _PaperPosition(
+            id=pos_id, symbol=symbol, side=side, quantity=quantity,
+            entry_price=entry_price, sl_price=sl_price, tp_price=tp_price,
+            margin_used=margin, leverage=self._leverage,
+        )
+
     async def update_price(self, price: float, symbol: str | None = None) -> None:
         async with self._price_lock:
             self._current_price = price
@@ -235,6 +253,30 @@ class PaperExchange:
                     triggered = True
 
             if triggered:
+                await self._close_paper_position(pos, exit_price, reason)
+
+    async def check_sl_tp_tick(self, symbol: str, price: float) -> None:
+        """Tick-level SL/TP check against the live price. Called on every ticker
+        update so an exit fires within seconds instead of waiting for the 1h
+        candle to close (which could be up to an hour late)."""
+        if price <= 0:
+            return
+        for pos in list(self.get_open_positions()):
+            if pos.symbol != symbol:
+                continue
+            exit_price = 0.0
+            reason = ""
+            if pos.side == "long":
+                if pos.sl_price > 0 and price <= pos.sl_price:
+                    exit_price, reason = pos.sl_price, "sl_hit"
+                elif pos.tp_price > 0 and price >= pos.tp_price:
+                    exit_price, reason = pos.tp_price, "tp_hit"
+            else:  # short
+                if pos.sl_price > 0 and price >= pos.sl_price:
+                    exit_price, reason = pos.sl_price, "sl_hit"
+                elif pos.tp_price > 0 and price <= pos.tp_price:
+                    exit_price, reason = pos.tp_price, "tp_hit"
+            if reason:
                 await self._close_paper_position(pos, exit_price, reason)
 
     async def _close_paper_position(

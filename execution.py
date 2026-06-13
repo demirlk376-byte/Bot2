@@ -41,12 +41,37 @@ class ExecutionEngine:
         self._trading_halted = asyncio.Event()
         self._daily_starting_balance: float = 0.0
         self._on_close_callbacks: list[Callable] = []
+        self._alert_cb: Optional[Callable] = None
 
         if isinstance(exchange, PaperExchange):
             exchange.register_close_callback(self._on_paper_position_closed)
 
     def register_close_callback(self, cb: Callable) -> None:
         self._on_close_callbacks.append(cb)
+
+    def register_alert_callback(self, cb: Callable) -> None:
+        """An async callback(message:str, level:str) for important events the
+        user should see immediately (e.g. daily loss halt)."""
+        self._alert_cb = cb
+
+    async def _alert(self, message: str, level: str = "WARNING") -> None:
+        if self._alert_cb is None:
+            return
+        try:
+            await self._alert_cb(message, level)
+        except Exception as e:
+            logger.debug("Alert callback failed: %s", e)
+
+    async def _persist_balance(self) -> None:
+        """Persist the paper balance so it survives a restart (live balance lives
+        on the exchange and needs no persistence)."""
+        if not self._config.exchange.paper_mode:
+            return
+        try:
+            bal = await self._exchange.get_balance()
+            await self._db.set_meta("paper_balance", str(bal))
+        except Exception as e:
+            logger.debug("Could not persist paper balance: %s", e)
 
     def halt_trading(self, reason: str) -> None:
         logger.warning("Trading HALTED: %s", reason)
@@ -92,7 +117,22 @@ class ExecutionEngine:
         ):
             self.halt_trading("Daily loss limit reached")
             await self.emergency_close_all("daily_loss_limit")
+            loss_pct = (
+                (self._daily_starting_balance - balance) / self._daily_starting_balance
+                if self._daily_starting_balance > 0 else 0.0
+            )
+            await self._alert(
+                f"GÜNLÜK ZARAR LİMİTİ (-{loss_pct*100:.1f}%). Bugünlük trade durduruldu.",
+                "ERROR",
+            )
             return ExecutionResult(False, error="Daily loss limit")
+
+        # Confidence sizing (opt-in): map confidence 0.6→1.0 to a 0.7→1.0 size
+        # multiplier so weak signals risk less; strong signals get full risk.
+        size_mult = 1.0
+        if getattr(self._config.risk, "confidence_sizing", False):
+            c = max(0.0, min(signal.confidence, 1.0))
+            size_mult = max(0.5, min(1.0, 0.4 + 0.6 * c))
 
         setup = self._risk.build_trade_setup(
             direction=signal.direction,
@@ -101,6 +141,7 @@ class ExecutionEngine:
             balance=balance,
             leverage=self._config.exchange.leverage,
             symbol=symbol,
+            size_mult=size_mult,
         )
         if setup is None:
             return ExecutionResult(False, error="Could not build trade setup")
@@ -184,6 +225,7 @@ class ExecutionEngine:
             quantity=setup.quantity,
             strategy_scores=scores,
             is_paper=self._config.exchange.paper_mode,
+            position_id=order.order_id,  # unify portfolio/paper/DB id
         )
 
         trade_rec = TradeRecord(
@@ -199,6 +241,7 @@ class ExecutionEngine:
             is_paper=self._config.exchange.paper_mode,
         )
         await self._db.log_trade_open(trade_rec)
+        await self._persist_balance()
 
         logger.info(
             "Trade opened: %s %s entry=%.2f sl=%.2f tp=%.2f qty=%.4f risk=%.2f%%",
@@ -245,7 +288,8 @@ class ExecutionEngine:
         raw_pnl = direction * (exit_price - pos.entry_price) * pos.quantity
         fees = (pos.entry_price + exit_price) * pos.quantity * 0.0001
         net_pnl = raw_pnl - fees
-        pnl_pct = net_pnl / (pos.entry_price * pos.quantity)
+        denom = pos.entry_price * pos.quantity
+        pnl_pct = net_pnl / denom if denom > 0 else 0.0
 
         self._portfolio.remove_position(pos.id)
         await self._db.log_trade_close(
@@ -275,6 +319,7 @@ class ExecutionEngine:
             exit_reason=reason,
             fees_usdt=fees,
         )
+        await self._persist_balance()
         logger.info(
             "Position closed: %s %s exit=%.2f pnl=%.2f reason=%s",
             pos.side.upper(), pos.symbol, exit_price, net_pnl, reason,
