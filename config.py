@@ -110,6 +110,13 @@ class StrategyConfig:
     funding_mode: str = "monitor"     # "monitor" (log only) | "filter" (skip contrarian) | "boost"
     funding_extreme: float = 0.0005   # |funding| above this per interval = crowded positioning
     sniper_min_grade: int = 0         # 0=off, 1/2/3 = min confluence score to trade
+    # Order-flow collector (live-only, monitor-first). Uses watchTrades +
+    # fetchOrderBook to log taker delta + depth imbalance alongside each signal.
+    # Cannot be backtested → ships OFF; never affects trades, only builds a
+    # forward dataset to validate before any future order-flow rule.
+    orderflow_enabled: bool = False
+    orderflow_mode: str = "monitor"
+    orderflow_window_min: float = 15.0
 
 
 @dataclass
@@ -171,6 +178,9 @@ def load_config() -> AppConfig:
         funding_mode=_get("FUNDING_MODE", "monitor"),
         funding_extreme=_getfloat("FUNDING_EXTREME", 0.0005),
         sniper_min_grade=_getint("SNIPER_MIN_GRADE", 0),
+        orderflow_enabled=_getbool("ORDERFLOW_ENABLED", False),
+        orderflow_mode=_get("ORDERFLOW_MODE", "monitor"),
+        orderflow_window_min=_getfloat("ORDERFLOW_WINDOW_MIN", 15.0),
     )
 
     telegram = TelegramConfig(

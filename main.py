@@ -12,6 +12,7 @@ from data import DataManager, Candle
 from exchange import PaperExchange, LiveExchange
 from execution import ExecutionEngine
 from funding import FundingMonitor
+from orderflow import OrderFlowMonitor
 from indicators import atr
 from monitor import Dashboard
 from portfolio import Portfolio
@@ -37,6 +38,7 @@ combiner: SignalCombiner = None
 db: Database = None
 config = None
 funding_monitor: FundingMonitor = None
+orderflow_monitor: OrderFlowMonitor = None
 symbol_ctxs: dict[str, "SymbolContext"] = {}
 
 
@@ -119,6 +121,24 @@ def make_on_candle_close(ctx: "SymbolContext"):
                 elif funding_monitor.mode == "boost":
                     combined.confidence = min(combined.confidence * assess.bias, 1.0)
 
+            # Order-flow collector (monitor-only, default OFF). Logs taker delta
+            # + depth imbalance for this signal so we build a forward dataset
+            # tied to our actual entries. Only the primary symbol is tracked.
+            if (
+                combined.direction != 0
+                and orderflow_monitor is not None
+                and orderflow_monitor.enabled
+                and ctx.symbol == config.exchange.symbol
+            ):
+                try:
+                    of_snap = await orderflow_monitor.snapshot()
+                    of_assess = orderflow_monitor.evaluate(combined.direction, of_snap)
+                    logger.info("OrderFlow: %s", of_assess.reason)
+                    dashboard.log_message(f"OrderFlow: {of_assess.reason}")
+                    _log_orderflow_csv(ctx.symbol, combined, mr_sig, of_snap, of_assess)
+                except Exception as e:
+                    logger.debug("OrderFlow snapshot failed: %s", e)
+
             # Per-symbol gate is inside execute_signal (one position per coin).
             # The portfolio-wide cap (max_positions) is also enforced there.
             if combined.direction != 0:
@@ -143,6 +163,38 @@ def make_on_candle_close(ctx: "SymbolContext"):
             logger.error("[%s] on_candle_close error: %s", ctx.symbol, e, exc_info=True)
 
     return on_candle_close
+
+
+_ORDERFLOW_CSV = "orderflow_log.csv"
+
+
+def _log_orderflow_csv(symbol, combined, mr_sig, snap, assess) -> None:
+    """Append one order-flow observation per signal to a CSV. Survives restarts
+    (unlike journald) so the forward dataset can be analysed later with pandas."""
+    import csv
+    import os
+    from pathlib import Path
+    header = [
+        "ts", "symbol", "direction", "bb_pos", "confidence",
+        "delta", "delta_pct", "buy_ratio", "depth_imbalance",
+        "trade_count", "flow_aligned", "flow_contrary",
+    ]
+    row = [
+        datetime.now(timezone.utc).isoformat(), symbol, combined.direction,
+        round(mr_sig.bb_pos, 4), round(combined.confidence, 4),
+        round(snap.delta, 4), round(snap.delta_pct, 4), round(snap.buy_ratio, 4),
+        round(snap.depth_imbalance, 4), snap.trade_count,
+        int(assess.aligned), int(assess.contrary),
+    ]
+    try:
+        exists = Path(_ORDERFLOW_CSV).exists()
+        with open(_ORDERFLOW_CSV, "a", newline="") as f:
+            w = csv.writer(f)
+            if not exists:
+                w.writerow(header)
+            w.writerow(row)
+    except Exception as e:
+        logger.debug("orderflow csv write failed: %s", e)
 
 
 async def _enforce_max_hold(symbol: str, current_price: float) -> None:
@@ -286,7 +338,7 @@ async def on_position_closed(pos, exit_price: float, net_pnl: float, reason: str
 
 async def main() -> None:
     global exchange, executor, portfolio, dashboard
-    global telegram, combiner, db, config, funding_monitor, symbol_ctxs
+    global telegram, combiner, db, config, funding_monitor, orderflow_monitor, symbol_ctxs
 
     config = load_config()
     logging.getLogger().setLevel(config.log_level)
@@ -376,6 +428,16 @@ async def main() -> None:
             funding_monitor.mode, config.strategy.funding_extreme * 100,
         )
 
+    # Order-flow collector also tracks only the primary symbol (one watchTrades
+    # feed). Default OFF; started below after the data feeds are up.
+    orderflow_monitor = OrderFlowMonitor(
+        exchange,
+        config.exchange.symbol,
+        enabled=config.strategy.orderflow_enabled,
+        mode=config.strategy.orderflow_mode,
+        window_minutes=config.strategy.orderflow_window_min,
+    )
+
     dashboard = Dashboard(portfolio)
     dashboard.update_balance(balance)
     dashboard.start()
@@ -410,6 +472,9 @@ async def main() -> None:
     for ctx in symbol_ctxs.values():
         await ctx.data_mgr.start_feeds()
 
+    # Start the order-flow feed (no-op if disabled).
+    await orderflow_monitor.start()
+
     # Run until interrupted
     stop_event = asyncio.Event()
 
@@ -427,6 +492,8 @@ async def main() -> None:
     await stop_event.wait()
 
     logger.info("Shutting down...")
+    if orderflow_monitor is not None:
+        await orderflow_monitor.stop()
     for ctx in symbol_ctxs.values():
         await ctx.data_mgr.stop()
     if telegram:
