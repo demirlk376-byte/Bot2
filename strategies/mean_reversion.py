@@ -58,7 +58,11 @@ class MeanReversionStrategy:
         3-point confluence score:
           +1  ATR percentile ≥ 50  (above-median volatility → clean exhaustion)
           +1  BB overshoot < 0.5   (small overshoot → entry before full extension)
-          +1  VWAP distance ≥ 0.5% (price stretched from VWAP → reversion fuel)
+          +1  VWAP distance ≥ 0.5% IN THE SIGNAL'S FAVOR (long → price below VWAP,
+              short → price above VWAP). research_orderflow_vwap.py showed the
+              reversion edge lives in the DIRECTIONAL VWAP discount, not absolute
+              distance — price stretched the WRONG way (e.g. long while already
+              above VWAP) is not reversion fuel and must not count as confluence.
         Returns (score 0-3, description string).
         """
         score = 0
@@ -79,10 +83,12 @@ class MeanReversionStrategy:
         if "volume" in df.columns and len(df) >= 24:
             vwap_val = vwap(df["high"], df["low"], df["close"], df["volume"], 24).iloc[-1]
             if not np.isnan(vwap_val) and vwap_val > 0:
-                dist_pct = abs(df["close"].iloc[-1] - vwap_val) / vwap_val * 100
-                if dist_pct >= 0.5:
+                # Signed: positive = stretched in the fade's favor.
+                dev = (df["close"].iloc[-1] - vwap_val) / vwap_val
+                edge_pct = (-dev if direction == 1 else dev) * 100
+                if edge_pct >= 0.5:
                     score += 1
-                    parts.append(f"VWAP_dist={dist_pct:.2f}%")
+                    parts.append(f"VWAP_edge={edge_pct:.2f}%")
 
         return score, f"sniper {score}/3: {', '.join(parts) if parts else 'none'}"
 
