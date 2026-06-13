@@ -148,15 +148,31 @@ class ExecutionEngine:
             c = max(0.0, min(signal.confidence, 1.0))
             size_mult = max(0.5, min(1.0, 0.4 + 0.6 * c))
 
-        setup = self._risk.build_trade_setup(
-            direction=signal.direction,
-            entry_price=signal.entry_price,
-            atr=atr,
-            balance=balance,
-            leverage=self._config.exchange.leverage,
-            symbol=symbol,
-            size_mult=size_mult,
-        )
+        # Day-trading strategies (ORB, Asia BO) pre-compute precise SL/TP levels
+        # from the range geometry and pass them in the signal. Use those directly;
+        # fall back to ATR-based calc for the 1h BB swing strategy.
+        if getattr(signal, "sl_price", 0.0) > 0 and getattr(signal, "tp_price", 0.0) > 0:
+            day_risk = getattr(self._config.risk, "day_risk_pct", 0.0)
+            setup = self._risk.build_trade_setup_from_levels(
+                direction=signal.direction,
+                entry_price=signal.entry_price,
+                sl_price=signal.sl_price,
+                tp_price=signal.tp_price,
+                balance=balance,
+                leverage=self._config.exchange.leverage,
+                symbol=symbol,
+                risk_pct_override=day_risk,
+            )
+        else:
+            setup = self._risk.build_trade_setup(
+                direction=signal.direction,
+                entry_price=signal.entry_price,
+                atr=atr,
+                balance=balance,
+                leverage=self._config.exchange.leverage,
+                symbol=symbol,
+                size_mult=size_mult,
+            )
         if setup is None:
             return ExecutionResult(False, error="Could not build trade setup")
 
@@ -229,6 +245,10 @@ class ExecutionEngine:
             "breakout": signal.breakout_score,
             "confidence": signal.confidence,
         }
+        # Day-trading strategies use a shorter max-hold window. Store it in the
+        # scores dict so _enforce_max_hold can read it per-position.
+        if signal.dominant_strategy in ("orb", "asia_bo"):
+            scores["max_hold"] = getattr(self._config.risk, "day_max_hold_candles", 6)
 
         position = self._portfolio.create_position(
             symbol=setup.symbol,

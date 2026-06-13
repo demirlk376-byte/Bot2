@@ -112,6 +112,60 @@ class RiskManager:
             rr_ratio=rr,
         )
 
+    def build_trade_setup_from_levels(
+        self,
+        direction: int,
+        entry_price: float,
+        sl_price: float,
+        tp_price: float,
+        balance: float,
+        leverage: int,
+        symbol: str = "BTC/USDT:USDT",
+        risk_pct_override: float = 0.0,
+    ) -> Optional[TradeSetup]:
+        """Build a TradeSetup from preset SL/TP levels (e.g. range-based day trades).
+        risk_pct_override > 0 uses that fraction instead of config max_risk_per_trade."""
+        sl_dist = abs(entry_price - sl_price)
+        tp_dist = abs(tp_price - entry_price)
+        if sl_dist <= 0:
+            return None
+        rr = tp_dist / sl_dist
+        if rr < 1.4:
+            logger.debug("RR ratio %.2f below minimum 1.4", rr)
+            return None
+
+        risk_pct = risk_pct_override if risk_pct_override > 0 else self._cfg.max_risk_per_trade
+        risk_amount = balance * risk_pct
+        sl_dist_pct = sl_dist / entry_price
+        quantity = risk_amount / (entry_price * sl_dist_pct)
+        max_qty = (balance * 0.5) / entry_price
+        quantity = min(quantity, max_qty)
+        quantity = max(quantity, 0.0)
+        quantity = round(quantity, 3)
+
+        if quantity < MIN_BTC_ORDER:
+            logger.debug("Position size %.4f below minimum %.4f", quantity, MIN_BTC_ORDER)
+            return None
+
+        risk_usdt = sl_dist * quantity
+        risk_pct_actual = risk_usdt / balance if balance > 0 else 0.0
+        pos_value = quantity * entry_price
+        margin = pos_value / leverage
+
+        return TradeSetup(
+            symbol=symbol,
+            direction=direction,
+            entry_price=entry_price,
+            sl_price=sl_price,
+            tp_price=tp_price,
+            quantity=quantity,
+            position_value=pos_value,
+            margin_required=margin,
+            risk_usdt=risk_usdt,
+            risk_pct=risk_pct_actual,
+            rr_ratio=rr,
+        )
+
     def check_daily_loss_limit(
         self,
         starting_balance: float,

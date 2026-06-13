@@ -17,7 +17,9 @@ from indicators import atr
 from monitor import Dashboard
 from portfolio import Portfolio
 from risk import RiskManager
+from strategies.asia_bo import AsiaBoStrategy, AsiaBoSignal
 from strategies.mean_reversion import MeanReversionStrategy
+from strategies.orb import OrbStrategy, OrbSignal
 from strategies.signal_combiner import SignalCombiner, CombinedSignal
 from telegram_bot import TelegramNotifier
 
@@ -49,6 +51,8 @@ class SymbolContext:
     symbol: str
     data_mgr: DataManager
     strategy: MeanReversionStrategy
+    orb_strategy: OrbStrategy = None
+    asia_bo_strategy: AsiaBoStrategy = None
 
 
 def make_on_candle_close(ctx: "SymbolContext"):
@@ -80,7 +84,13 @@ def make_on_candle_close(ctx: "SymbolContext"):
             if pd.isna(atr_val) or atr_val <= 0:
                 return
 
-            # Primary (and only) signal: Bollinger mean reversion
+            # ── Strategy cascade ──────────────────────────────────────────────
+            # 1. Bollinger mean reversion (1h swing, primary validated edge)
+            # 2. Opening Range Breakout (intraday NY session, PF 1.44)
+            # 3. Asia Range Breakout (intraday London/NY, PF 2.15)
+            # All three are independent: only the first one that fires per candle
+            # is executed (one open position per symbol prevents stacking).
+
             mr_sig = ctx.strategy.analyze(df)
 
             combined = CombinedSignal(
@@ -94,6 +104,43 @@ def make_on_candle_close(ctx: "SymbolContext"):
                 entry_price=current_price,
                 symbol=ctx.symbol,
             )
+
+            # ORB sleeve — fires at most once per day at NY open (14:00 UTC).
+            # Only active when the primary BB strategy didn't fire this candle.
+            if combined.direction == 0 and ctx.orb_strategy is not None:
+                orb_sig = ctx.orb_strategy.analyze(df)
+                if orb_sig.direction != 0:
+                    combined = CombinedSignal(
+                        direction=orb_sig.direction,
+                        confidence=orb_sig.strength,
+                        trend_score=0.0,
+                        mean_rev_score=0.0,
+                        breakout_score=orb_sig.direction * orb_sig.strength,
+                        dominant_strategy="orb",
+                        reasons=[orb_sig.reason],
+                        entry_price=current_price,
+                        sl_price=orb_sig.sl_price,
+                        tp_price=orb_sig.tp_price,
+                        symbol=ctx.symbol,
+                    )
+
+            # Asia BO sleeve — fires at most once per day at London open (08:00 UTC).
+            if combined.direction == 0 and ctx.asia_bo_strategy is not None:
+                asia_sig = ctx.asia_bo_strategy.analyze(df, atr_val)
+                if asia_sig.direction != 0:
+                    combined = CombinedSignal(
+                        direction=asia_sig.direction,
+                        confidence=asia_sig.strength,
+                        trend_score=0.0,
+                        mean_rev_score=0.0,
+                        breakout_score=asia_sig.direction * asia_sig.strength,
+                        dominant_strategy="asia_bo",
+                        reasons=[asia_sig.reason],
+                        entry_price=current_price,
+                        sl_price=asia_sig.sl_price,
+                        tp_price=asia_sig.tp_price,
+                        symbol=ctx.symbol,
+                    )
             dashboard.update_signal(combined)
             dashboard.log_message(
                 f"[{ctx.symbol}] Signal: dir={combined.direction} "
@@ -198,18 +245,23 @@ def _log_orderflow_csv(symbol, combined, mr_sig, snap, assess) -> None:
 
 
 async def _enforce_max_hold(symbol: str, current_price: float) -> None:
-    """Close this symbol's positions held longer than max_hold_candles candles."""
+    """Close this symbol's positions held longer than max_hold_candles candles.
+    Day-trading positions store their own limit in strategy_scores['max_hold']."""
     from data import TIMEFRAME_SECONDS
-    max_candles = config.risk.max_hold_candles
     tf_seconds = TIMEFRAME_SECONDS.get(config.strategy.primary_tf, 3600)
-    max_age = max_candles * tf_seconds
     now = datetime.now(timezone.utc)
     for pos in list(portfolio.get_open_positions()):
         if pos.symbol != symbol:
             continue
+        # Per-position override (set by day-trading strategies) takes priority.
+        max_candles = pos.strategy_scores.get("max_hold", config.risk.max_hold_candles)
+        max_age = max_candles * tf_seconds
         age = (now - pos.entry_time).total_seconds()
         if age >= max_age:
-            logger.info("Max-hold reached for %s (%s), closing", pos.id, symbol)
+            logger.info(
+                "Max-hold (%dh) reached for %s (%s), closing",
+                max_candles, pos.id, symbol,
+            )
             if isinstance(exchange, PaperExchange):
                 await exchange.close_position(pos.symbol, pos.side, pos.quantity, "max_hold")
             else:
@@ -395,6 +447,12 @@ async def main() -> None:
             symbol=sym,
             data_mgr=dm,
             strategy=MeanReversionStrategy(config.strategy),
+            orb_strategy=(
+                OrbStrategy() if config.strategy.orb_enabled else None
+            ),
+            asia_bo_strategy=(
+                AsiaBoStrategy() if config.strategy.asia_bo_enabled else None
+            ),
         )
 
     risk_mgr = RiskManager(config.risk)

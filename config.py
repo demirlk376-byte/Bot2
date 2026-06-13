@@ -81,6 +81,10 @@ class RiskConfig:
     # Confidence sizing: scale position size DOWN on weaker signals (never above
     # the validated full risk). Opt-in so it can't disturb the proven edge.
     confidence_sizing: bool = False
+    # Day trading sleeves (ORB, Asia BO): use a smaller per-trade risk and a
+    # shorter max-hold so they don't lock up capital overnight.
+    day_risk_pct: float = 0.01        # 1% risk per day-trade (vs 3% for BB swing)
+    day_max_hold_candles: int = 6     # force-close after 6h (intraday only)
 
 
 @dataclass
@@ -117,6 +121,9 @@ class StrategyConfig:
     orderflow_enabled: bool = False
     orderflow_mode: str = "monitor"
     orderflow_window_min: float = 15.0
+    # Intraday breakout strategies (validated edge: ORB PF 1.44, Asia BO PF 2.15)
+    orb_enabled: bool = True
+    asia_bo_enabled: bool = True
 
 
 @dataclass
@@ -168,6 +175,8 @@ def load_config() -> AppConfig:
         daily_max_loss=_getfloat("DAILY_MAX_LOSS_PCT", 0.05),
         max_hold_candles=_getint("MAX_HOLD_CANDLES", 48),
         confidence_sizing=_getbool("CONFIDENCE_SIZING", False),
+        day_risk_pct=_getfloat("DAY_RISK_PCT", 0.01),
+        day_max_hold_candles=_getint("DAY_MAX_HOLD_CANDLES", 6),
     )
 
     strategy = StrategyConfig(
@@ -181,6 +190,8 @@ def load_config() -> AppConfig:
         orderflow_enabled=_getbool("ORDERFLOW_ENABLED", False),
         orderflow_mode=_get("ORDERFLOW_MODE", "monitor"),
         orderflow_window_min=_getfloat("ORDERFLOW_WINDOW_MIN", 15.0),
+        orb_enabled=_getbool("ORB_ENABLED", True),
+        asia_bo_enabled=_getbool("ASIA_BO_ENABLED", True),
     )
 
     telegram = TelegramConfig(
