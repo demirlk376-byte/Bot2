@@ -42,6 +42,7 @@ class ExecutionEngine:
         self._daily_starting_balance: float = 0.0
         self._on_close_callbacks: list[Callable] = []
         self._alert_cb: Optional[Callable] = None
+        self._executing: set[str] = set()  # symbols with in-flight execute_signal
 
         if isinstance(exchange, PaperExchange):
             exchange.register_close_callback(self._on_paper_position_closed)
@@ -105,9 +106,22 @@ class ExecutionEngine:
         symbol = signal.symbol or self._config.exchange.symbol
 
         # One position per symbol — never stack two trades on the same coin.
+        # Check both the portfolio AND an in-flight guard: asyncio yields between
+        # the portfolio check and portfolio.create_position, so two concurrent
+        # signal handlers for the same symbol could both pass the first check.
         if self._portfolio.get_position_for_symbol(symbol) is not None:
             return ExecutionResult(False, error=f"Position already open for {symbol}")
+        if symbol in self._executing:
+            return ExecutionResult(False, error=f"Execution in progress for {symbol}")
+        self._executing.add(symbol)
+        try:
+            return await self._execute_signal_inner(signal, atr, symbol)
+        finally:
+            self._executing.discard(symbol)
 
+    async def _execute_signal_inner(
+        self, signal: CombinedSignal, atr: float, symbol: str
+    ) -> "ExecutionResult":
         balance = await self._exchange.get_balance()
 
         if not self._risk.check_daily_loss_limit(
