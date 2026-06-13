@@ -20,6 +20,7 @@ from risk import RiskManager
 from strategies.asia_bo import AsiaBoStrategy, AsiaBoSignal
 from strategies.mean_reversion import MeanReversionStrategy
 from strategies.orb import OrbStrategy, OrbSignal
+from strategies.sr_breakout import SrBreakoutStrategy, SrBreakoutSignal
 from strategies.signal_combiner import SignalCombiner, CombinedSignal
 from telegram_bot import TelegramNotifier
 
@@ -53,6 +54,7 @@ class SymbolContext:
     strategy: MeanReversionStrategy
     orb_strategy: OrbStrategy = None
     asia_bo_strategy: AsiaBoStrategy = None
+    sr_breakout_strategy: SrBreakoutStrategy = None
 
 
 def make_on_candle_close(ctx: "SymbolContext"):
@@ -139,6 +141,25 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         entry_price=current_price,
                         sl_price=asia_sig.sl_price,
                         tp_price=asia_sig.tp_price,
+                        symbol=ctx.symbol,
+                    )
+
+            # S/R breakout sleeve — swing momentum, can fire any hour when the
+            # mean-reversion core and the intraday sleeves all stayed neutral.
+            if combined.direction == 0 and ctx.sr_breakout_strategy is not None:
+                sr_sig = ctx.sr_breakout_strategy.analyze(df, atr_val)
+                if sr_sig.direction != 0:
+                    combined = CombinedSignal(
+                        direction=sr_sig.direction,
+                        confidence=sr_sig.strength,
+                        trend_score=0.0,
+                        mean_rev_score=0.0,
+                        breakout_score=sr_sig.direction * sr_sig.strength,
+                        dominant_strategy="sr_breakout",
+                        reasons=[sr_sig.reason],
+                        entry_price=current_price,
+                        sl_price=sr_sig.sl_price,
+                        tp_price=sr_sig.tp_price,
                         symbol=ctx.symbol,
                     )
             dashboard.update_signal(combined)
@@ -452,6 +473,9 @@ async def main() -> None:
             ),
             asia_bo_strategy=(
                 AsiaBoStrategy() if config.strategy.asia_bo_enabled else None
+            ),
+            sr_breakout_strategy=(
+                SrBreakoutStrategy() if config.strategy.sr_breakout_enabled else None
             ),
         )
 

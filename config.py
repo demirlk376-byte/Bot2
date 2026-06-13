@@ -124,6 +124,9 @@ class StrategyConfig:
     # Intraday breakout strategies (validated edge: ORB PF 1.44, Asia BO PF 2.15)
     orb_enabled: bool = True
     asia_bo_enabled: bool = True
+    # S/R breakout (swing momentum, validated: lb80 touch3 SL3ATR RR3.0 PF 1.72).
+    # Uses the normal 48h max-hold + full risk (it's a swing trade, not intraday).
+    sr_breakout_enabled: bool = True
 
 
 @dataclass
@@ -192,6 +195,7 @@ def load_config() -> AppConfig:
         orderflow_window_min=_getfloat("ORDERFLOW_WINDOW_MIN", 15.0),
         orb_enabled=_getbool("ORB_ENABLED", True),
         asia_bo_enabled=_getbool("ASIA_BO_ENABLED", True),
+        sr_breakout_enabled=_getbool("SR_BREAKOUT_ENABLED", True),
     )
 
     telegram = TelegramConfig(

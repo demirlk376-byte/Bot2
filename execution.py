@@ -148,11 +148,16 @@ class ExecutionEngine:
             c = max(0.0, min(signal.confidence, 1.0))
             size_mult = max(0.5, min(1.0, 0.4 + 0.6 * c))
 
-        # Day-trading strategies (ORB, Asia BO) pre-compute precise SL/TP levels
-        # from the range geometry and pass them in the signal. Use those directly;
-        # fall back to ATR-based calc for the 1h BB swing strategy.
+        # Strategies that pre-compute precise SL/TP levels (ORB, Asia BO, S/R
+        # breakout) pass them in the signal. Use those directly; fall back to the
+        # ATR-based calc for the 1h BB swing strategy. Intraday day-trades (ORB,
+        # Asia BO) use the smaller day_risk_pct; S/R breakout is a swing trade and
+        # uses full risk (override=0 → config max_risk_per_trade).
         if getattr(signal, "sl_price", 0.0) > 0 and getattr(signal, "tp_price", 0.0) > 0:
-            day_risk = getattr(self._config.risk, "day_risk_pct", 0.0)
+            if signal.dominant_strategy in ("orb", "asia_bo"):
+                risk_override = getattr(self._config.risk, "day_risk_pct", 0.0)
+            else:
+                risk_override = 0.0
             setup = self._risk.build_trade_setup_from_levels(
                 direction=signal.direction,
                 entry_price=signal.entry_price,
@@ -161,7 +166,7 @@ class ExecutionEngine:
                 balance=balance,
                 leverage=self._config.exchange.leverage,
                 symbol=symbol,
-                risk_pct_override=day_risk,
+                risk_pct_override=risk_override,
             )
         else:
             setup = self._risk.build_trade_setup(
