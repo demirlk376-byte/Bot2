@@ -37,7 +37,7 @@ import numpy as np
 import pandas as pd
 
 from config import StrategyConfig
-from indicators import bollinger_bands, rsi
+from indicators import bollinger_bands, rsi, atr, vwap, atr_percentile
 
 
 @dataclass
@@ -52,6 +52,39 @@ class MeanReversionSignal:
 class MeanReversionStrategy:
     def __init__(self, config: StrategyConfig):
         self._cfg = config
+
+    def _sniper_grade(self, df: pd.DataFrame, bb_pos: float, direction: int) -> tuple[int, str]:
+        """
+        3-point confluence score:
+          +1  ATR percentile ≥ 50  (above-median volatility → clean exhaustion)
+          +1  BB overshoot < 0.5   (small overshoot → entry before full extension)
+          +1  VWAP distance ≥ 0.5% (price stretched from VWAP → reversion fuel)
+        Returns (score 0-3, description string).
+        """
+        score = 0
+        parts = []
+
+        if len(df) >= 65 and "high" in df.columns:
+            atr_pct = atr_percentile(df["high"], df["low"], df["close"],
+                                     self._cfg.atr_period, lookback=50).iloc[-1]
+            if not np.isnan(atr_pct) and atr_pct >= 50:
+                score += 1
+                parts.append(f"ATR%={atr_pct:.0f}")
+
+        overshoot = abs(bb_pos) if direction == 1 else abs(bb_pos - 1.0)
+        if overshoot < 0.5:
+            score += 1
+            parts.append(f"overshoot={overshoot:.2f}")
+
+        if "volume" in df.columns and len(df) >= 24:
+            vwap_val = vwap(df["high"], df["low"], df["close"], df["volume"], 24).iloc[-1]
+            if not np.isnan(vwap_val) and vwap_val > 0:
+                dist_pct = abs(df["close"].iloc[-1] - vwap_val) / vwap_val * 100
+                if dist_pct >= 0.5:
+                    score += 1
+                    parts.append(f"VWAP_dist={dist_pct:.2f}%")
+
+        return score, f"sniper {score}/3: {', '.join(parts) if parts else 'none'}"
 
     def analyze(self, df: pd.DataFrame) -> MeanReversionSignal:
         if len(df) < self._cfg.bb_period + 2:
@@ -87,14 +120,18 @@ class MeanReversionStrategy:
 
         # Long: price closed below the lower band
         if bb_pos < 0.0:
-            # Strength grows with how far below the band, plus RSI confirmation
             depth = min(abs(bb_pos), 1.0)
             strength = 0.6 + 0.4 * depth
             if rsi_val < self._cfg.rsi_oversold:
                 strength = min(strength + 0.1, 1.0)
+            grade, grade_reason = self._sniper_grade(df, bb_pos, 1)
+            if self._cfg.sniper_min_grade > 0 and grade < self._cfg.sniper_min_grade:
+                return MeanReversionSignal(
+                    0, 0.0, f"sniper filtered ({grade_reason})", bb_pos, rsi_val,
+                )
             return MeanReversionSignal(
                 direction=1, strength=strength,
-                reason=f"close below lower band (bb_pos={bb_pos:.2f}, RSI={rsi_val:.0f})",
+                reason=f"close below lower band (bb_pos={bb_pos:.2f}, RSI={rsi_val:.0f}) [{grade_reason}]",
                 bb_pos=bb_pos, rsi_value=rsi_val,
             )
 
@@ -104,9 +141,14 @@ class MeanReversionStrategy:
             strength = 0.6 + 0.4 * depth
             if rsi_val > self._cfg.rsi_overbought:
                 strength = min(strength + 0.1, 1.0)
+            grade, grade_reason = self._sniper_grade(df, bb_pos, -1)
+            if self._cfg.sniper_min_grade > 0 and grade < self._cfg.sniper_min_grade:
+                return MeanReversionSignal(
+                    0, 0.0, f"sniper filtered ({grade_reason})", bb_pos, rsi_val,
+                )
             return MeanReversionSignal(
                 direction=-1, strength=strength,
-                reason=f"close above upper band (bb_pos={bb_pos:.2f}, RSI={rsi_val:.0f})",
+                reason=f"close above upper band (bb_pos={bb_pos:.2f}, RSI={rsi_val:.0f}) [{grade_reason}]",
                 bb_pos=bb_pos, rsi_value=rsi_val,
             )
 

@@ -106,6 +106,7 @@ class StrategyConfig:
     funding_enabled: bool = False
     funding_mode: str = "monitor"     # "monitor" (log only) | "filter" (skip contrarian) | "boost"
     funding_extreme: float = 0.0005   # |funding| above this per interval = crowded positioning
+    sniper_min_grade: int = 0         # 0=off, 1/2/3 = min confluence score to trade
 
 
 @dataclass
@@ -164,6 +165,7 @@ def load_config() -> AppConfig:
         funding_enabled=_getbool("FUNDING_ENABLED", False),
         funding_mode=_get("FUNDING_MODE", "monitor"),
         funding_extreme=_getfloat("FUNDING_EXTREME", 0.0005),
+        sniper_min_grade=_getint("SNIPER_MIN_GRADE", 0),
     )
 
     telegram = TelegramConfig(

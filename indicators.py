@@ -178,3 +178,26 @@ def is_bb_squeeze(close: pd.Series, period: int = 20, std_dev: float = 2.0) -> b
     current_width = width.iloc[-1]
     avg_width = width.tail(period).mean()
     return current_width < avg_width * 0.7
+
+
+def vwap(
+    high: pd.Series, low: pd.Series, close: pd.Series,
+    volume: pd.Series, period: int = 24,
+) -> pd.Series:
+    """Rolling VWAP over `period` candles (typical price weighted by volume)."""
+    typical = (high + low + close) / 3
+    tpv = typical * volume
+    return tpv.rolling(period).sum() / volume.rolling(period).sum()
+
+
+def atr_percentile(
+    high: pd.Series, low: pd.Series, close: pd.Series,
+    atr_period: int = 14, lookback: int = 50,
+) -> pd.Series:
+    """Percentile rank (0-100) of current ATR vs last `lookback` bars."""
+    atr_series = atr(high, low, close, atr_period)
+    def _rank(window):
+        if len(window) < 2:
+            return 50.0
+        return float((window[:-1] < window[-1]).sum() / (len(window) - 1) * 100)
+    return atr_series.rolling(lookback + 1).apply(_rank, raw=True)
