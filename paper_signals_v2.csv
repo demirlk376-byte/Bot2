@@ -1,0 +1,3 @@
+ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
+2026-06-13T15:00:00+00:00,BTC,SHORT,64265.0,248.6488,13,7e-06,False,çelişki: F&G=13 (korku ortamında short riskli)
+2026-06-13T15:00:00+00:00,SOL,SHORT,68.55,0.4993,13,-9e-06,False,çelişki: F&G=13 (korku ortamında short riskli)

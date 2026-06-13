@@ -6,7 +6,7 @@
       "n_trades": 0,
       "n_wins": 0,
       "total_pnl": 0.0,
-      "skipped": 0
+      "skipped": 1
     },
     "ETH": {
       "balance": 10000.0,
@@ -22,7 +22,7 @@
       "n_trades": 0,
       "n_wins": 0,
       "total_pnl": 0.0,
-      "skipped": 0
+      "skipped": 1
     },
     "BNB": {
       "balance": 10000.0,
