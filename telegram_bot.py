@@ -102,9 +102,18 @@ class TelegramNotifier:
         if self._app is not None:
             try:
                 if self._polling and self._app.updater:
-                    await self._app.updater.stop()
-                await self._app.stop()
-                await self._app.shutdown()
+                    try:
+                        await self._app.updater.stop()
+                    except Exception:
+                        pass
+                try:
+                    await self._app.stop()
+                except Exception:
+                    pass
+                try:
+                    await self._app.shutdown()
+                except Exception:
+                    pass
             except Exception as e:
                 logger.debug("Telegram shutdown error: %s", e)
 
