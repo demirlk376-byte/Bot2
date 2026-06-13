@@ -244,6 +244,11 @@ class ExecutionEngine:
             "mean_rev": signal.mean_rev_score,
             "breakout": signal.breakout_score,
             "confidence": signal.confidence,
+            # Tag every trade with its originating strategy so each sleeve's
+            # performance (BB vs ORB vs Asia BO) can be separated later. Without
+            # this, ORB and Asia BO are indistinguishable in the DB (both only
+            # set breakout_score).
+            "strategy": signal.dominant_strategy,
         }
         # Day-trading strategies use a shorter max-hold window. Store it in the
         # scores dict so _enforce_max_hold can read it per-position.
