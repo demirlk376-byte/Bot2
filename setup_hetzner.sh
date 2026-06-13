@@ -4,6 +4,7 @@
 set -e
 
 REPO_URL="https://github.com/demirlk376-byte/Bot2.git"
+REPO_BRANCH="claude/btc-intraday-trading-engine-U2C8A"
 BOT_DIR="/opt/bot2"
 BOT_USER="botuser"
 
@@ -15,9 +16,9 @@ id "$BOT_USER" &>/dev/null || useradd -m -s /bin/bash "$BOT_USER"
 
 echo "=== [3/6] Repo klonlanıyor ==="
 if [ -d "$BOT_DIR" ]; then
-    cd "$BOT_DIR" && git pull
+    cd "$BOT_DIR" && git fetch origin && git checkout "$REPO_BRANCH" && git pull origin "$REPO_BRANCH"
 else
-    git clone "$REPO_URL" "$BOT_DIR"
+    git clone --branch "$REPO_BRANCH" "$REPO_URL" "$BOT_DIR"
 fi
 chown -R "$BOT_USER:$BOT_USER" "$BOT_DIR"
 
