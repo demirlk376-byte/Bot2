@@ -3,7 +3,7 @@ from __future__ import annotations
 import threading
 import time
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from rich.console import Console
@@ -65,7 +65,7 @@ class Dashboard:
     def update_signal(self, signal: CombinedSignal) -> None:
         with self._lock:
             self._recent_signals.append({
-                "time": datetime.utcnow().strftime("%H:%M:%S"),
+                "time": datetime.now(timezone.utc).strftime("%H:%M:%S"),
                 "score": f"{signal.confidence:.2f}",
                 "dir": "LONG" if signal.direction == 1 else ("SHORT" if signal.direction == -1 else "NONE"),
                 "strategy": signal.dominant_strategy,
@@ -75,7 +75,7 @@ class Dashboard:
     def add_trade(self, side: str, entry: float, exit_p: float, pnl: float, reason: str) -> None:
         with self._lock:
             self._recent_trades.append({
-                "time": datetime.utcnow().strftime("%H:%M"),
+                "time": datetime.now(timezone.utc).strftime("%H:%M"),
                 "side": side.upper(),
                 "entry": f"{entry:.2f}",
                 "exit": f"{exit_p:.2f}",
@@ -85,7 +85,7 @@ class Dashboard:
 
     def log_message(self, message: str, level: str = "INFO") -> None:
         with self._lock:
-            ts = datetime.utcnow().strftime("%H:%M:%S")
+            ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
             self._log_messages.append(f"[{ts}] [{level}] {message}")
 
     def _run(self) -> None:

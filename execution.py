@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Callable, Awaitable
 
 from config import AppConfig
@@ -251,7 +251,7 @@ class ExecutionEngine:
         await self._db.log_trade_close(
             trade_id=pos.id,
             exit_price=exit_price,
-            exit_time=datetime.utcnow().isoformat(),
+            exit_time=datetime.now(timezone.utc).isoformat(),
             pnl_usdt=net_pnl,
             pnl_pct=pnl_pct,
             exit_reason=reason,
@@ -269,7 +269,7 @@ class ExecutionEngine:
         await self._db.log_trade_close(
             trade_id=pos.id,
             exit_price=exit_price,
-            exit_time=datetime.utcnow().isoformat(),
+            exit_time=datetime.now(timezone.utc).isoformat(),
             pnl_usdt=net_pnl,
             pnl_pct=pnl_pct,
             exit_reason=reason,

@@ -4,7 +4,7 @@ import asyncio
 import logging
 import sys
 from dataclasses import dataclass
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 
 from config import load_config
 from database import Database, DailyStats
@@ -151,7 +151,7 @@ async def _enforce_max_hold(symbol: str, current_price: float) -> None:
     max_candles = config.risk.max_hold_candles
     tf_seconds = TIMEFRAME_SECONDS.get(config.strategy.primary_tf, 3600)
     max_age = max_candles * tf_seconds
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for pos in list(portfolio.get_open_positions()):
         if pos.symbol != symbol:
             continue
@@ -167,7 +167,7 @@ async def _enforce_max_hold(symbol: str, current_price: float) -> None:
 async def daily_reset_loop() -> None:
     from datetime import timedelta
     while True:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         # Wait until next midnight UTC. Using timedelta avoids the month-end
         # crash of constructing datetime(day=now.day+1) (e.g. day 31 in a
         # 30-day month raised ValueError and broke the daily reset).

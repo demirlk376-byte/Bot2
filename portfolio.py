@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 
@@ -86,7 +86,7 @@ class Portfolio:
             sl_price=sl_price,
             tp_price=tp_price,
             quantity=quantity,
-            entry_time=datetime.utcnow(),
+            entry_time=datetime.now(timezone.utc),
             is_paper=is_paper,
             strategy_scores=strategy_scores,
         )
