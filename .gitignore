@@ -7,3 +7,4 @@ trades.db
 test.db
 smoke.db
 *.db
+BTCUSDT-1m-*.csv
