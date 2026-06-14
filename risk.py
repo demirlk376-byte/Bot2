@@ -150,7 +150,7 @@ class RiskManager:
         risk_amount = balance * risk_pct
         sl_dist_pct = sl_dist / entry_price
         quantity = risk_amount / (entry_price * sl_dist_pct)
-        max_qty = (balance * 0.5) / entry_price
+        max_qty = (balance * leverage) / entry_price
         quantity = min(quantity, max_qty)
         quantity = max(quantity, 0.0)
         quantity = round(quantity, 3)
