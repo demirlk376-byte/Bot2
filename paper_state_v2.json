@@ -2,7 +2,17 @@
   "coins": {
     "BTC": {
       "balance": 10000.0,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 63953.7,
+        "sl": 63240.45399936434,
+        "tp": 65142.44333439276,
+        "qty": 0.07818155947193048,
+        "atr": 237.7486668785531,
+        "entry_ts": "2026-06-14T14:00:00+00:00",
+        "fng_at_entry": 18,
+        "funding_at_entry": -4.4e-05
+      },
       "n_trades": 0,
       "n_wins": 0,
       "total_pnl": 0.0,
@@ -10,7 +20,17 @@
     },
     "ETH": {
       "balance": 10000.0,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 1658.74,
+        "sl": 1636.2012524578868,
+        "tp": 1696.3045792368553,
+        "qty": 3.014336182885805,
+        "atr": 7.5129158473710715,
+        "entry_ts": "2026-06-14T14:00:00+00:00",
+        "fng_at_entry": 18,
+        "funding_at_entry": -2.4e-05
+      },
       "n_trades": 0,
       "n_wins": 0,
       "total_pnl": 0.0,
@@ -18,7 +38,17 @@
     },
     "SOL": {
       "balance": 10000.0,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 67.23,
+        "sl": 65.77637441791072,
+        "tp": 69.65270930348214,
+        "qty": 74.37156031533542,
+        "atr": 0.48454186069642796,
+        "entry_ts": "2026-06-14T14:00:00+00:00",
+        "fng_at_entry": 18,
+        "funding_at_entry": -0.0001
+      },
       "n_trades": 0,
       "n_wins": 0,
       "total_pnl": 0.0,
@@ -26,7 +56,17 @@
     },
     "BNB": {
       "balance": 10000.0,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 606.0,
+        "sl": 598.3426983502735,
+        "tp": 618.7621694162109,
+        "qty": 8.250825082508252,
+        "atr": 2.552433883242171,
+        "entry_ts": "2026-06-14T14:00:00+00:00",
+        "fng_at_entry": 18,
+        "funding_at_entry": 0.0
+      },
       "n_trades": 0,
       "n_wins": 0,
       "total_pnl": 0.0,
@@ -34,7 +74,17 @@
     },
     "XRP": {
       "balance": 10000.0,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 1.1312,
+        "sl": 1.1117476967835616,
+        "tp": 1.163620505360731,
+        "qty": 4420.08486562942,
+        "atr": 0.006484101072146172,
+        "entry_ts": "2026-06-14T14:00:00+00:00",
+        "fng_at_entry": 18,
+        "funding_at_entry": -7.2e-05
+      },
       "n_trades": 0,
       "n_wins": 0,
       "total_pnl": 0.0,
