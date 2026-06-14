@@ -86,11 +86,13 @@ def size_qty(mode, risk_pct, fixed_margin, balance, free_margin, ep, sl_dist):
     return qty, margin
 
 
-def run(df_1h, sizing, deposits=True):
+def run(df_1h, sizing, deposits=True, compound=True):
     """
     sizing: dict — her strateji için ('mode', risk_pct, fixed_margin)
       örn {'bb':('risk',0.03,0), 'orb':('risk',0.015,0), 'asia':('risk',0.01,0)}
     Tek paylaşılan bakiye + margin kısıtı + aylık deposit.
+    compound=False → pozisyon boyutu hep START ($200) bazlı (bileşik yok); böylece
+      saf aylık edge ölçülür, bileşik patlaması rakamı bozmaz.
     Döner: trades listesi + equity zaman serisi + deposit toplamı.
     """
     close = df_1h["close"].values
@@ -147,6 +149,7 @@ def run(df_1h, sizing, deposits=True):
             cur_month=month_arr[i]
 
         cur_date=dates_arr[i]; cur_hour=hours_arr[i]
+        size_bal = balance if compound else START  # non-compound → hep $200 bazlı
         bb_closed=orb_closed=asia_closed=False
 
         # ── pozisyon yönetimi (kapanışlar) ──
@@ -179,7 +182,7 @@ def run(df_1h, sizing, deposits=True):
                 if np.isnan(vm) or vol[i]>=vm:
                     ep=close[i]; sl_d=BB_SL*a
                     mode,rp,fm=sizing["bb"]
-                    qty,margin=size_qty(mode,rp,fm,balance,free(),ep,sl_d)
+                    qty,margin=size_qty(mode,rp,fm,size_bal,free(),ep,sl_d)
                     if qty>0:
                         slp=ep-direction*sl_d; tpp=ep+direction*BB_TP*a
                         used_margin+=margin
@@ -199,7 +202,7 @@ def run(df_1h, sizing, deposits=True):
                         ep=oh if direction==1 else ol   # limit giriş
                         sl_d=rng
                         mode,rp,fm=sizing["orb"]
-                        qty,margin=size_qty(mode,rp,fm,balance,free(),ep,sl_d)
+                        qty,margin=size_qty(mode,rp,fm,size_bal,free(),ep,sl_d)
                         if qty>0:
                             slp=ep-direction*sl_d; tpp=ep+direction*ORB_RR*sl_d
                             used_margin+=margin; orb_traded.add(cur_date)
@@ -218,7 +221,7 @@ def run(df_1h, sizing, deposits=True):
                     sl_d=ASIA_SL_MULT*a
                     ep=ah if direction==1 else al   # limit giriş
                     mode,rp,fm=sizing["asia"]
-                    qty,margin=size_qty(mode,rp,fm,balance,free(),ep,sl_d)
+                    qty,margin=size_qty(mode,rp,fm,size_bal,free(),ep,sl_d)
                     if qty>0:
                         slp=ep-direction*sl_d; tpp=ep+direction*ASIA_RR*sl_d
                         used_margin+=margin; asia_traded.add(cur_date)
