@@ -93,8 +93,11 @@ class RiskConfig:
     # Set to 0 to use percentage-based sizing (position_cap_fraction).
     fixed_margin_usdt: float = 0.0
     # Day trading sleeves (ORB, Asia BO): use a smaller per-trade risk and a
-    # shorter max-hold so they don't lock up capital overnight.
-    day_risk_pct: float = 0.01        # 1% risk per day-trade (vs 3% for BB swing)
+    # shorter max-hold so they don't lock up capital overnight. Each sleeve has
+    # its own risk % (validated separately): ORB carries more weight than Asia BO.
+    day_risk_pct: float = 0.01        # fallback day-trade risk if per-sleeve unset
+    orb_risk_pct: float = 0.05        # ORB risk per trade (% of free balance)
+    asia_risk_pct: float = 0.03       # Asia BO risk per trade (% of free balance)
     day_max_hold_candles: int = 6     # force-close after 6h (intraday only)
     # Trailing stop: move SL to breakeven after breakeven_atr_mult×ATR profit,
     # then trail at trailing_atr_mult×ATR below peak price.
@@ -206,6 +209,8 @@ def load_config() -> AppConfig:
         position_cap_fraction=_getfloat("POSITION_CAP_FRACTION", 1.0),
         fixed_margin_usdt=_getfloat("FIXED_MARGIN_USDT", 0.0),
         day_risk_pct=_getfloat("DAY_RISK_PCT", 0.01),
+        orb_risk_pct=_getfloat("ORB_RISK_PCT", 0.05),
+        asia_risk_pct=_getfloat("ASIA_RISK_PCT", 0.03),
         day_max_hold_candles=_getint("DAY_MAX_HOLD_CANDLES", 6),
         trailing_stop_enabled=_getbool("TRAILING_STOP_ENABLED", True),
         breakeven_atr_mult=_getfloat("BREAKEVEN_ATR_MULT", 1.0),

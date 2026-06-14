@@ -187,8 +187,14 @@ class ExecutionEngine:
         # Asia BO) use the smaller day_risk_pct; S/R breakout is a swing trade and
         # uses full risk (override=0 → config max_risk_per_trade).
         if getattr(signal, "sl_price", 0.0) > 0 and getattr(signal, "tp_price", 0.0) > 0:
-            if signal.dominant_strategy in ("orb", "asia_bo"):
-                risk_override = getattr(self._config.risk, "day_risk_pct", 0.0)
+            # Each intraday sleeve has its own validated risk %. ORB carries more
+            # weight than Asia BO; S/R breakout (swing) uses full config risk.
+            if signal.dominant_strategy == "orb":
+                risk_override = getattr(self._config.risk, "orb_risk_pct",
+                                        getattr(self._config.risk, "day_risk_pct", 0.0))
+            elif signal.dominant_strategy == "asia_bo":
+                risk_override = getattr(self._config.risk, "asia_risk_pct",
+                                        getattr(self._config.risk, "day_risk_pct", 0.0))
             else:
                 risk_override = 0.0
             setup = self._risk.build_trade_setup_from_levels(
