@@ -32,6 +32,8 @@ class Dashboard:
         self._daily_pnl: float = 0.0
         self._total_trades: int = 0
         self._win_rate: float = 0.0
+        self._regime: str = "neutral"
+        self._adx_val: float = 0.0
         self._recent_signals: deque = deque(maxlen=5)
         self._recent_trades: deque = deque(maxlen=10)
         self._log_messages: deque = deque(maxlen=20)
@@ -61,6 +63,11 @@ class Dashboard:
         with self._lock:
             self._total_trades = total_trades
             self._win_rate = win_rate
+
+    def update_regime(self, regime: str, adx_val: float) -> None:
+        with self._lock:
+            self._regime = regime
+            self._adx_val = adx_val
 
     def update_signal(self, signal: CombinedSignal) -> None:
         with self._lock:
@@ -121,7 +128,12 @@ class Dashboard:
     def _header_panel(self) -> Panel:
         price_text = Text(f"BTC/USDT:USDT  ${self._current_price:,.2f}", style="bold cyan")
         mode = Text("  [PAPER]", style="bold yellow") if True else Text("  [LIVE]", style="bold red")
-        return Panel(price_text + mode, style="bold")
+        regime_colors = {"trending": "red", "ranging": "yellow", "neutral": "cyan"}
+        regime_style = f"bold {regime_colors.get(self._regime, 'white')}"
+        regime_text = Text(
+            f"  ▸ {self._regime.upper()} ADX={self._adx_val:.1f}", style=regime_style
+        )
+        return Panel(price_text + mode + regime_text, style="bold")
 
     def _account_panel(self) -> Panel:
         pnl_color = "green" if self._daily_pnl >= 0 else "red"
@@ -140,13 +152,19 @@ class Dashboard:
         pos = positions[0]
         pnl_color = "green" if pos.unrealized_pnl >= 0 else "red"
         dir_color = "green" if pos.direction == 1 else "red"
+        be_moved = getattr(pos, "breakeven_moved", False)
+        peak = getattr(pos, "peak_price", 0.0)
+        sl_label = "SL (BE):" if be_moved else ("SL (Trail):" if peak > 0 else "SL:")
+        strategy_tag = pos.strategy_scores.get("strategy", "")
         t = Table.grid(padding=1)
-        t.add_row("Direction:", Text(pos.side.upper(), style=dir_color))
+        t.add_row("Direction:", Text(f"{pos.side.upper()}  [{strategy_tag}]", style=dir_color))
         t.add_row("Entry:", f"${pos.entry_price:,.2f}")
         t.add_row("Unrealized PnL:", Text(f"${pos.unrealized_pnl:+,.2f}", style=pnl_color))
-        t.add_row("SL:", f"${pos.sl_price:,.2f}")
+        t.add_row(sl_label, Text(f"${pos.sl_price:,.2f}", style="yellow"))
         t.add_row("TP:", f"${pos.tp_price:,.2f}")
         t.add_row("Qty:", f"{pos.quantity:.4f} BTC")
+        if peak > 0:
+            t.add_row("Peak:", f"${peak:,.2f}")
         return Panel(t, title="Open Position")
 
     def _signals_table(self) -> Panel:

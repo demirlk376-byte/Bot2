@@ -87,6 +87,7 @@ class TelegramNotifier:
         app.add_handler(CommandHandler("pause", self._cmd_pause))
         app.add_handler(CommandHandler("resume", self._cmd_resume))
         app.add_handler(CommandHandler("close", self._cmd_close))
+        app.add_handler(CommandHandler("strategy", self._cmd_strategy))
 
         await app.initialize()
         await app.start()
@@ -143,6 +144,7 @@ class TelegramNotifier:
             "/positions – açık pozisyon detayı\n"
             "/balance – bakiye + getiri\n"
             "/stats – performans özeti\n"
+            "/strategy – strateji bazlı performans\n"
             "/pause – yeni trade'leri durdur\n"
             "/resume – trade'leri başlat\n"
             "/close – açık pozisyonu kapat")
@@ -215,6 +217,27 @@ class TelegramNotifier:
                 f"Max DD: <code>{perf.max_drawdown*100:.1f}%</code>")
         except Exception as e:
             await self._reply(update, f"stats hatası: {e}")
+
+    async def _cmd_strategy(self, update, context) -> None:
+        if not self._authorized(update):
+            return
+        try:
+            breakdown = await self._db.get_strategy_breakdown()
+            if not breakdown:
+                await self._reply(update, "Henüz kapanmış trade yok.")
+                return
+            lines = ["<b>Strateji Performansı</b>"]
+            for s in breakdown:
+                wr = s["win"] / s["total"] * 100 if s["total"] > 0 else 0.0
+                pnl_sign = "🟢" if s["pnl"] >= 0 else "🔴"
+                lines.append(
+                    f"{pnl_sign} <code>{(s['strategy'] or 'unknown'):12s}</code> "
+                    f"T:{s['total']} W:{s['win']} ({wr:.0f}%) "
+                    f"<code>${s['pnl']:+.2f}</code>"
+                )
+            await self._reply(update, "\n".join(lines))
+        except Exception as e:
+            await self._reply(update, f"strategy hatası: {e}")
 
     async def _cmd_pause(self, update, context) -> None:
         if not self._authorized(update):

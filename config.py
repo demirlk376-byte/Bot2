@@ -96,6 +96,20 @@ class RiskConfig:
     # shorter max-hold so they don't lock up capital overnight.
     day_risk_pct: float = 0.01        # 1% risk per day-trade (vs 3% for BB swing)
     day_max_hold_candles: int = 6     # force-close after 6h (intraday only)
+    # Trailing stop: move SL to breakeven after breakeven_atr_mult×ATR profit,
+    # then trail at trailing_atr_mult×ATR below peak price.
+    trailing_stop_enabled: bool = True
+    breakeven_atr_mult: float = 1.0   # after 1×ATR profit → SL to entry
+    trailing_atr_mult: float = 2.0    # trail SL at 2×ATR below peak
+    # Market regime filter: ADX-based strategy routing.
+    # Trending (ADX>28) → suppress BB mean-reversion (counter-trend trades fail).
+    # Ranging  (ADX<20) → suppress ORB/S/R breakouts (false-breakout rate spikes).
+    regime_filter_enabled: bool = True
+    adx_trending_threshold: float = 28.0
+    adx_ranging_threshold: float = 20.0
+    # Consecutive loss cooldown: after N back-to-back losses pause new entries.
+    consecutive_loss_limit: int = 2
+    cooldown_minutes: int = 240
 
 
 @dataclass
@@ -193,6 +207,14 @@ def load_config() -> AppConfig:
         fixed_margin_usdt=_getfloat("FIXED_MARGIN_USDT", 0.0),
         day_risk_pct=_getfloat("DAY_RISK_PCT", 0.01),
         day_max_hold_candles=_getint("DAY_MAX_HOLD_CANDLES", 6),
+        trailing_stop_enabled=_getbool("TRAILING_STOP_ENABLED", True),
+        breakeven_atr_mult=_getfloat("BREAKEVEN_ATR_MULT", 1.0),
+        trailing_atr_mult=_getfloat("TRAILING_ATR_MULT", 2.0),
+        regime_filter_enabled=_getbool("REGIME_FILTER_ENABLED", True),
+        adx_trending_threshold=_getfloat("ADX_TRENDING_THRESHOLD", 28.0),
+        adx_ranging_threshold=_getfloat("ADX_RANGING_THRESHOLD", 20.0),
+        consecutive_loss_limit=_getint("CONSECUTIVE_LOSS_LIMIT", 2),
+        cooldown_minutes=_getint("COOLDOWN_MINUTES", 240),
     )
 
     strategy = StrategyConfig(

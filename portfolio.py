@@ -19,6 +19,9 @@ class Position:
     unrealized_pnl: float = 0.0
     is_paper: bool = True
     strategy_scores: dict = field(default_factory=dict)
+    # Trailing stop state — updated each candle by _update_trailing_stops
+    peak_price: float = 0.0       # best price seen since entry (long=high, short=low)
+    breakeven_moved: bool = False  # True once SL has been moved to entry price
 
     @property
     def side(self) -> str:

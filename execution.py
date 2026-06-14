@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Callable, Awaitable
 
 from config import AppConfig
@@ -43,6 +43,8 @@ class ExecutionEngine:
         self._on_close_callbacks: list[Callable] = []
         self._alert_cb: Optional[Callable] = None
         self._executing: set[str] = set()  # symbols with in-flight execute_signal
+        self._consecutive_losses: int = 0
+        self._cooldown_until: Optional[datetime] = None
 
         if isinstance(exchange, PaperExchange):
             exchange.register_close_callback(self._on_paper_position_closed)
@@ -92,11 +94,38 @@ class ExecutionEngine:
         self._trading_halted.clear()
         logger.info("Trading RESUMED (manual)")
 
+    def _record_trade_outcome(self, net_pnl: float) -> None:
+        """Track consecutive losses; start a cooldown when the limit is hit."""
+        limit = getattr(self._config.risk, "consecutive_loss_limit", 2)
+        cooldown_min = getattr(self._config.risk, "cooldown_minutes", 240)
+        if net_pnl < 0:
+            self._consecutive_losses += 1
+            if self._consecutive_losses >= limit:
+                self._cooldown_until = datetime.now(timezone.utc) + timedelta(minutes=cooldown_min)
+                logger.warning(
+                    "Consecutive losses: %d — cooldown until %s",
+                    self._consecutive_losses, self._cooldown_until.strftime("%H:%M UTC"),
+                )
+                asyncio.create_task(self._alert(
+                    f"Üst üste {self._consecutive_losses} kayıp — "
+                    f"{cooldown_min} dk cooldown başladı",
+                    "WARNING",
+                ))
+        else:
+            self._consecutive_losses = 0
+
     async def execute_signal(
         self, signal: CombinedSignal, atr: float
     ) -> ExecutionResult:
         if self.is_halted():
             return ExecutionResult(False, error="Trading halted (daily loss limit)")
+
+        if self._cooldown_until is not None:
+            if datetime.now(timezone.utc) < self._cooldown_until:
+                remaining = (self._cooldown_until - datetime.now(timezone.utc)).total_seconds() / 60
+                return ExecutionResult(False, error=f"Cooldown active ({remaining:.0f}m remaining)")
+            else:
+                self._cooldown_until = None
 
         if signal.direction == 0:
             return ExecutionResult(False, error="No signal")
@@ -249,11 +278,10 @@ class ExecutionEngine:
             "mean_rev": signal.mean_rev_score,
             "breakout": signal.breakout_score,
             "confidence": signal.confidence,
-            # Tag every trade with its originating strategy so each sleeve's
-            # performance (BB vs ORB vs Asia BO) can be separated later. Without
-            # this, ORB and Asia BO are indistinguishable in the DB (both only
-            # set breakout_score).
             "strategy": signal.dominant_strategy,
+            # ATR at entry — used by trailing stop to keep distance consistent
+            # regardless of how ATR changes during the life of the trade.
+            "atr": atr,
         }
         # Day-trading strategies use a shorter max-hold window. Store it in the
         # scores dict so _enforce_max_hold can read it per-position.
@@ -335,6 +363,7 @@ class ExecutionEngine:
         denom = pos.entry_price * pos.quantity
         pnl_pct = net_pnl / denom if denom > 0 else 0.0
 
+        self._record_trade_outcome(net_pnl)
         self._portfolio.remove_position(pos.id)
         await self._db.log_trade_close(
             trade_id=pos.id,
@@ -353,6 +382,7 @@ class ExecutionEngine:
         if pos is None:
             return
         pnl_pct = net_pnl / (pos.entry_price * pos.quantity) if pos.quantity > 0 else 0.0
+        self._record_trade_outcome(net_pnl)
         self._portfolio.remove_position(pos.id)
         await self._db.log_trade_close(
             trade_id=pos.id,

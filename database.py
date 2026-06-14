@@ -204,6 +204,25 @@ class Database:
             row = await cur.fetchone()
             return float(row[0]) if row else None
 
+    async def get_strategy_breakdown(self) -> list[dict]:
+        """Per-strategy closed-trade stats for Telegram /strategy and dashboard."""
+        async with self._db.execute("""
+            SELECT
+                COALESCE(json_extract(strategy_scores, '$.strategy'), 'unknown') AS strategy,
+                COUNT(*) AS total,
+                SUM(CASE WHEN pnl_usdt > 0 THEN 1 ELSE 0 END) AS wins,
+                SUM(COALESCE(pnl_usdt, 0)) AS total_pnl
+            FROM trades
+            WHERE exit_time IS NOT NULL
+            GROUP BY strategy
+            ORDER BY total_pnl DESC
+        """) as cur:
+            rows = await cur.fetchall()
+        return [
+            {"strategy": r[0], "total": r[1], "win": r[2] or 0, "pnl": r[3] or 0.0}
+            for r in rows
+        ]
+
     async def get_performance_summary(self) -> PerformanceSummary:
         async with self._db.execute(
             "SELECT pnl_usdt FROM trades WHERE exit_time IS NOT NULL"

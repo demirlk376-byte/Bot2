@@ -13,7 +13,7 @@ from exchange import PaperExchange, LiveExchange
 from execution import ExecutionEngine
 from funding import FundingMonitor
 from orderflow import OrderFlowMonitor
-from indicators import atr
+from indicators import atr, adx as _adx_indicator
 from monitor import Dashboard
 from portfolio import Portfolio
 from risk import RiskManager
@@ -86,20 +86,36 @@ def make_on_candle_close(ctx: "SymbolContext"):
             if pd.isna(atr_val) or atr_val <= 0:
                 return
 
-            # ── Strategy cascade ──────────────────────────────────────────────
-            # 1. Bollinger mean reversion (1h swing, primary validated edge)
-            # 2. Opening Range Breakout (intraday NY session, PF 1.44)
-            # 3. Asia Range Breakout (intraday London/NY, PF 2.15)
-            # All three are independent: only the first one that fires per candle
-            # is executed (one open position per symbol prevents stacking).
+            # ADX for regime detection — determines which strategy sleeves are active.
+            adx_raw = _adx_indicator(df["high"], df["low"], df["close"],
+                                     config.strategy.adx_period).iloc[-1]
+            adx_val = float(adx_raw) if not pd.isna(adx_raw) else 20.0
+            regime = _get_regime(adx_val)
+            dashboard.update_regime(regime, adx_val)
+
+            # Trailing stop: update SL positions BEFORE the SL/TP check would fire
+            # on this candle's high/low, but AFTER PaperExchange.check_sl_tp already
+            # ran above — so the moved SL only affects the NEXT candle's SL check.
+            await _update_trailing_stops(ctx.symbol, current_price, atr_val)
+
+            # ── Strategy cascade with regime filter ───────────────────────────
+            # Trending (ADX>28): BB mean-reversion suppressed (counter-trend risk).
+            # Ranging  (ADX<20): ORB/S/R breakouts suppressed (false-breakout spike).
+            # Each sleeve only fires if the one before it produced direction=0.
+            regime_filter = config.risk.regime_filter_enabled
+            bb_allowed = not (regime_filter and regime == "trending")
+            bo_allowed = not (regime_filter and regime == "ranging")
 
             mr_sig = ctx.strategy.analyze(df)
+            mr_direction = mr_sig.direction if bb_allowed else 0
+            if not bb_allowed and mr_sig.direction != 0:
+                logger.debug("BB suppressed by regime filter (%s, ADX=%.1f)", regime, adx_val)
 
             combined = CombinedSignal(
-                direction=mr_sig.direction,
+                direction=mr_direction,
                 confidence=mr_sig.strength,
                 trend_score=0.0,
-                mean_rev_score=mr_sig.direction * mr_sig.strength,
+                mean_rev_score=mr_direction * mr_sig.strength,
                 breakout_score=0.0,
                 dominant_strategy="mean_rev",
                 reasons=[mr_sig.reason],
@@ -109,7 +125,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
 
             # ORB sleeve — fires at most once per day at NY open (14:00 UTC).
             # Only active when the primary BB strategy didn't fire this candle.
-            if combined.direction == 0 and ctx.orb_strategy is not None:
+            if combined.direction == 0 and ctx.orb_strategy is not None and bo_allowed:
                 orb_sig = ctx.orb_strategy.analyze(df)
                 if orb_sig.direction != 0:
                     combined = CombinedSignal(
@@ -127,7 +143,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
                     )
 
             # Asia BO sleeve — fires at most once per day at London open (08:00 UTC).
-            if combined.direction == 0 and ctx.asia_bo_strategy is not None:
+            if combined.direction == 0 and ctx.asia_bo_strategy is not None and bo_allowed:
                 asia_sig = ctx.asia_bo_strategy.analyze(df, atr_val)
                 if asia_sig.direction != 0:
                     combined = CombinedSignal(
@@ -146,7 +162,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
 
             # S/R breakout sleeve — swing momentum, can fire any hour when the
             # mean-reversion core and the intraday sleeves all stayed neutral.
-            if combined.direction == 0 and ctx.sr_breakout_strategy is not None:
+            if combined.direction == 0 and ctx.sr_breakout_strategy is not None and bo_allowed:
                 sr_sig = ctx.sr_breakout_strategy.analyze(df, atr_val)
                 if sr_sig.direction != 0:
                     combined = CombinedSignal(
@@ -263,6 +279,72 @@ def _log_orderflow_csv(symbol, combined, mr_sig, snap, assess) -> None:
             w.writerow(row)
     except Exception as e:
         logger.debug("orderflow csv write failed: %s", e)
+
+
+def _get_regime(adx_val: float) -> str:
+    """Classify market condition by ADX for strategy routing."""
+    trending = getattr(config.risk, "adx_trending_threshold", 28.0)
+    ranging = getattr(config.risk, "adx_ranging_threshold", 20.0)
+    if adx_val >= trending:
+        return "trending"
+    if adx_val <= ranging:
+        return "ranging"
+    return "neutral"
+
+
+async def _update_trailing_stops(symbol: str, current_price: float, atr_val: float) -> None:
+    """Each candle: move SL to breakeven after 1×ATR profit, then trail at 2×ATR
+    below/above peak price. Updates both the portfolio Position and the paper
+    exchange position so the next check_sl_tp fires at the correct price."""
+    if not getattr(config.risk, "trailing_stop_enabled", True):
+        return
+
+    be_mult = config.risk.breakeven_atr_mult
+    trail_mult = config.risk.trailing_atr_mult
+
+    for pos in portfolio.get_open_positions():
+        if pos.symbol != symbol:
+            continue
+
+        # Use ATR recorded at entry for consistent trailing distance throughout
+        # the life of the trade (avoids shrinking trail on low-vol consolidation).
+        entry_atr = pos.strategy_scores.get("atr", atr_val)
+        old_sl = pos.sl_price
+        new_sl = old_sl
+
+        if pos.direction == 1:  # long
+            if pos.peak_price == 0.0 or current_price > pos.peak_price:
+                pos.peak_price = current_price
+
+            if not pos.breakeven_moved and current_price >= pos.entry_price + be_mult * entry_atr:
+                new_sl = max(new_sl, pos.entry_price)
+                pos.breakeven_moved = True
+
+            trail_sl = pos.peak_price - trail_mult * entry_atr
+            new_sl = max(new_sl, trail_sl)
+
+        else:  # short
+            if pos.peak_price == 0.0 or current_price < pos.peak_price:
+                pos.peak_price = current_price
+
+            if not pos.breakeven_moved and current_price <= pos.entry_price - be_mult * entry_atr:
+                new_sl = min(new_sl, pos.entry_price)
+                pos.breakeven_moved = True
+
+            trail_sl = pos.peak_price + trail_mult * entry_atr
+            new_sl = min(new_sl, trail_sl)
+
+        if new_sl != old_sl:
+            pos.sl_price = new_sl
+            if isinstance(exchange, PaperExchange) and hasattr(exchange, "update_position_sl"):
+                exchange.update_position_sl(pos.id, new_sl)
+            action = "BE" if pos.breakeven_moved and new_sl == pos.entry_price else "Trail"
+            dashboard.log_message(
+                f"[{symbol}] SL {action}: {old_sl:,.2f} → {new_sl:,.2f}"
+            )
+            logger.info(
+                "Trailing SL [%s] %s %.2f → %.2f", pos.id[:8], action, old_sl, new_sl
+            )
 
 
 async def _enforce_max_hold(symbol: str, current_price: float) -> None:

@@ -310,6 +310,13 @@ class PaperExchange:
             is_paper=True,
         )
 
+    def update_position_sl(self, position_id: str, new_sl: float) -> None:
+        """Sync a trailing-stop SL update into the paper position so that the
+        next call to check_sl_tp / check_sl_tp_tick fires at the new price."""
+        pos = self._positions.get(position_id)
+        if pos is not None and not pos.closed:
+            pos.sl_price = new_sl
+
     def register_close_callback(self, cb) -> None:
         self._close_callbacks.append(cb)
 
