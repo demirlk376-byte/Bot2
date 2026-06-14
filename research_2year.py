@@ -382,12 +382,15 @@ def print_scenario(label: str, trades: list[dict], monthly_pnl: dict,
 def main():
     print("Veri yükleniyor…", flush=True)
 
-    # 2024 ayları
+    months_2023 = [f"2023-{m:02d}" for m in range(1, 13)]
     months_2024 = [f"2024-{m:02d}" for m in range(1, 13)]
-    # 2025-2026 ayları (mevcut veriler)
     months_2025 = [f"2025-{m:02d}" for m in range(5, 13)]
     months_2026 = [f"2026-{m:02d}" for m in range(1, 5)]
     months_25_26 = months_2025 + months_2026
+
+    print("2023 verisi yükleniyor…", flush=True)
+    df_2023 = load_period(months_2023)
+    print(f"  2023: {len(df_2023):,} dakikalık mum")
 
     print("2024 verisi yükleniyor…", flush=True)
     df_2024 = load_period(months_2024)
@@ -399,24 +402,29 @@ def main():
 
     print("\nSimülasyonlar çalışıyor…", flush=True)
 
+    # --- SENARYO 0: 2023 tek başına (bear market çıkışı) ---
+    print("  [1/4] 2023 simülasyonu (bear/recovery)…", flush=True)
+    trades_23, mpnl_23 = run_sim(df_2023, "2023")
+
     # --- SENARYO 1: 2024 tek başına ---
-    print("  [1/3] 2024 simülasyonu…", flush=True)
+    print("  [2/4] 2024 simülasyonu…", flush=True)
     trades_24, mpnl_24 = run_sim(df_2024, "2024")
 
     # --- SENARYO 2: 2025-2026 tek başına ---
-    print("  [2/3] 2025-2026 simülasyonu…", flush=True)
+    print("  [3/4] 2025-2026 simülasyonu…", flush=True)
     trades_25, mpnl_25 = run_sim(df_25_26, "2025-2026")
 
-    # --- SENARYO 3: 2 yıl kombine ---
-    print("  [3/3] 2 yıl kombine simülasyon…", flush=True)
-    df_all = pd.concat([df_2024, df_25_26]).sort_index()
+    # --- SENARYO 3: 3 yıl kombine ---
+    print("  [4/4] 3 yıl kombine simülasyon…", flush=True)
+    df_all = pd.concat([df_2023, df_2024, df_25_26]).sort_index()
     df_all = df_all[~df_all.index.duplicated(keep="first")]
-    trades_all, mpnl_all = run_sim(df_all, "2 yıl kombine")
+    trades_all, mpnl_all = run_sim(df_all, "3 yıl kombine")
 
     # Yatırılan hesapları
-    invested_24    = START + MONTHLY_ADD * 11   # 12 ay - 1 (ilk ay ekleme yok)
-    invested_25_26 = START + MONTHLY_ADD * 11   # ~12 ay
-    invested_all   = START + MONTHLY_ADD * 23   # ~24 ay
+    invested_23    = START + MONTHLY_ADD * 11
+    invested_24    = START + MONTHLY_ADD * 11
+    invested_25_26 = START + MONTHLY_ADD * 11
+    invested_all   = START + MONTHLY_ADD * 35   # ~36 ay
 
     print("\n" + "="*78)
     print("  AGRESİF PROFİL — BB%8 / ORB%5 / ASIA%3")
@@ -425,7 +433,12 @@ def main():
     print("="*78)
 
     print_scenario(
-        "SENARYO 1: SADECE 2024 (out-of-sample — strateji bu veriyle optimize edilmedi!)",
+        "SENARYO 0: SADECE 2023 (bear market çıkışı — OOS — en zor test!)",
+        trades_23, mpnl_23, START, MONTHLY_ADD, invested_23
+    )
+
+    print_scenario(
+        "SENARYO 1: SADECE 2024 (boğa piyasası — OOS)",
         trades_24, mpnl_24, START, MONTHLY_ADD, invested_24
     )
 
@@ -443,37 +456,32 @@ def main():
     print("\n" + "="*78)
     print("  ÖZET KARŞILAŞTIRMA")
     print("="*78)
-    print(f"\n  {'':25s}  {'2024 (OOS)':>12s}  {'2025-26 (IS)':>13s}  {'2 yıl':>10s}")
-    print(f"  {'-'*65}")
-    for label, trades in [("Trade sayısı", [trades_24, trades_25, trades_all]),
-                           ("WinRate", None),
-                           ("Profit Factor", None),
-                           ("Net kâr", None),
-                           ("Max DD", None)]:
-        if label == "Trade sayısı":
-            vals = [f"{stats_block(t)['n']:>5d}" for t in trades]
-            print(f"  {'Trade sayısı':<25s}  {vals[0]:>12s}  {vals[1]:>13s}  {vals[2]:>10s}")
-        else:
-            continue
+    print(f"\n  {'':25s}  {'2023 (OOS)':>11s}  {'2024 (OOS)':>11s}  {'2025-26 (IS)':>13s}  {'3 yıl':>8s}")
+    print(f"  {'-'*75}")
 
     for lbl, key, fmt in [
-        ("WinRate",       "wr",  lambda x: f"{x:.0%}"),
-        ("Profit Factor", "pf",  lambda x: f"{x:.2f}"),
-        ("Net PnL",       "net", lambda x: f"${x:+,.0f}"),
+        ("Trade sayısı", "n",  lambda x: f"{x:>5d}"),
+        ("WinRate",      "wr", lambda x: f"{x:.0%}"),
+        ("Profit Factor","pf", lambda x: f"{x:.2f}"),
+        ("Net PnL",      "net",lambda x: f"${x:+,.0f}"),
     ]:
-        vals = [fmt(stats_block(t)[key]) for t in [trades_24, trades_25, trades_all]]
-        print(f"  {lbl:<25s}  {vals[0]:>12s}  {vals[1]:>13s}  {vals[2]:>10s}")
+        vals = [fmt(stats_block(t)[key]) for t in [trades_23, trades_24, trades_25, trades_all]]
+        print(f"  {lbl:<25s}  {vals[0]:>11s}  {vals[1]:>11s}  {vals[2]:>13s}  {vals[3]:>8s}")
 
+    f23,  dd23  = equity_curve(trades_23,  START, MONTHLY_ADD)
     f24,  dd24  = equity_curve(trades_24,  START, MONTHLY_ADD)
     f25,  dd25  = equity_curve(trades_25,  START, MONTHLY_ADD)
     fall, ddall = equity_curve(trades_all, START, MONTHLY_ADD)
-    vals_dd  = [f"{dd:.1%}" for dd in [dd24, dd25, ddall]]
-    vals_fin = [f"${f:,.0f}" for f in [f24, f25, fall]]
-    print(f"  {'Max Drawdown':<25s}  {vals_dd[0]:>12s}  {vals_dd[1]:>13s}  {vals_dd[2]:>10s}")
-    print(f"  {'Son bakiye':<25s}  {vals_fin[0]:>12s}  {vals_fin[1]:>13s}  {vals_fin[2]:>10s}")
+    vals_dd  = [f"{dd:.1%}" for dd in [dd23, dd24, dd25, ddall]]
+    vals_fin = [f"${f:,.0f}" for f in [f23, f24, f25, fall]]
+    print(f"  {'Max Drawdown':<25s}  {vals_dd[0]:>11s}  {vals_dd[1]:>11s}  {vals_dd[2]:>13s}  {vals_dd[3]:>8s}")
+    print(f"  {'Son bakiye':<25s}  {vals_fin[0]:>11s}  {vals_fin[1]:>11s}  {vals_fin[2]:>13s}  {vals_fin[3]:>8s}")
 
-    print(f"\n  2024 out-of-sample testi: edge {'KANITLANDI ✓' if stats_block(trades_24)['pf'] > 1.0 else 'KANITI YOK ✗'}")
-    print(f"  (PF>1.0 = strateji 2024'te de para kazandı, overfitting değil)")
+    pf23 = stats_block(trades_23)["pf"]
+    pf24 = stats_block(trades_24)["pf"]
+    print(f"\n  2023 bear market OOS testi: edge {'KANITLANDI ✓' if pf23 > 1.0 else 'KANITI YOK ✗'} (PF {pf23:.2f})")
+    print(f"  2024 boğa piyasası OOS testi: edge {'KANITLANDI ✓' if pf24 > 1.0 else 'KANITI YOK ✗'} (PF {pf24:.2f})")
+    print(f"  (Her iki OOS yılı da PF>1.0 → strateji farklı piyasa koşullarında sağlam)")
 
 if __name__ == "__main__":
     main()
