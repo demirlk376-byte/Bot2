@@ -79,11 +79,9 @@ class AsiaBoStrategy:
         current_close = float(df["close"].iloc[-1])
 
         if current_close > asia_high:
-            # Limit entry fills at asia_high; anchor SL to the limit price.
-            # No fixed TP — trailing stop manages exit after breakeven at 1×sl_dist.
-            # Sentinel TP (20×sl_dist) ensures trailing fires before TP on any real move.
+            # Limit entry fills at asia_high; anchor SL/TP to the limit price.
             sl = asia_high - sl_dist
-            tp = asia_high + 20.0 * sl_dist
+            tp = asia_high + self._rr * sl_dist
             self._traded_dates.add(today_utc)
             return AsiaBoSignal(
                 direction=1, strength=0.80,
@@ -95,9 +93,9 @@ class AsiaBoStrategy:
             )
 
         if current_close < asia_low:
-            # Limit entry fills at asia_low; anchor SL to the limit price.
+            # Limit entry fills at asia_low; anchor SL/TP to the limit price.
             sl = asia_low + sl_dist
-            tp = asia_low - 20.0 * sl_dist
+            tp = asia_low - self._rr * sl_dist
             self._traded_dates.add(today_utc)
             return AsiaBoSignal(
                 direction=-1, strength=0.80,
