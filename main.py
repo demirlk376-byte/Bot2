@@ -99,23 +99,21 @@ def make_on_candle_close(ctx: "SymbolContext"):
             await _update_trailing_stops(ctx.symbol, current_price, atr_val)
 
             # ── Strategy cascade with regime filter ───────────────────────────
-            # Trending (ADX>28): BB mean-reversion suppressed (counter-trend risk).
-            # Ranging  (ADX<20): ORB/S/R breakouts suppressed (false-breakout spike).
-            # Each sleeve only fires if the one before it produced direction=0.
+            # BB mean-reversion is NOT filtered by ADX — backtest evidence shows
+            # ADX filters consistently hurt BB performance (vol filter is sufficient).
+            # ORB/S/R breakouts ARE suppressed in ranging (ADX<20): false-breakout
+            # rate spikes in choppy markets; these strategies need momentum.
             regime_filter = config.risk.regime_filter_enabled
-            bb_allowed = not (regime_filter and regime == "trending")
+            bb_allowed = True  # BB works in all regimes
             bo_allowed = not (regime_filter and regime == "ranging")
 
             mr_sig = ctx.strategy.analyze(df)
-            mr_direction = mr_sig.direction if bb_allowed else 0
-            if not bb_allowed and mr_sig.direction != 0:
-                logger.debug("BB suppressed by regime filter (%s, ADX=%.1f)", regime, adx_val)
 
             combined = CombinedSignal(
-                direction=mr_direction,
+                direction=mr_sig.direction,
                 confidence=mr_sig.strength,
                 trend_score=0.0,
-                mean_rev_score=mr_direction * mr_sig.strength,
+                mean_rev_score=mr_sig.direction * mr_sig.strength,
                 breakout_score=0.0,
                 dominant_strategy="mean_rev",
                 reasons=[mr_sig.reason],
@@ -293,9 +291,12 @@ def _get_regime(adx_val: float) -> str:
 
 
 async def _update_trailing_stops(symbol: str, current_price: float, atr_val: float) -> None:
-    """Each candle: move SL to breakeven after 1×ATR profit, then trail at 2×ATR
-    below/above peak price. Updates both the portfolio Position and the paper
-    exchange position so the next check_sl_tp fires at the correct price."""
+    """Each candle: update trailing SL for directional (breakout) positions.
+    Logic:
+      1. Breakeven: after be_mult×ATR profit → SL moves to entry (risk-free).
+      2. Trailing: ONLY after breakeven, trail at trail_mult×ATR below peak.
+    BB mean-reversion trades are excluded — trailing hurts mean-rev because the
+    retracement that moves SL to breakeven is part of the normal path to TP."""
     if not getattr(config.risk, "trailing_stop_enabled", True):
         return
 
@@ -306,8 +307,12 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
         if pos.symbol != symbol:
             continue
 
-        # Use ATR recorded at entry for consistent trailing distance throughout
-        # the life of the trade (avoids shrinking trail on low-vol consolidation).
+        # Trailing stop is for directional (breakout/trend) strategies only.
+        # BB mean-reversion has a natural retrace path to TP; trailing hurts it.
+        strategy_tag = pos.strategy_scores.get("strategy", "mean_rev")
+        if strategy_tag == "mean_rev":
+            continue
+
         entry_atr = pos.strategy_scores.get("atr", atr_val)
         old_sl = pos.sl_price
         new_sl = old_sl
@@ -320,8 +325,10 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
                 new_sl = max(new_sl, pos.entry_price)
                 pos.breakeven_moved = True
 
-            trail_sl = pos.peak_price - trail_mult * entry_atr
-            new_sl = max(new_sl, trail_sl)
+            # Trail ONLY after breakeven — prevents immediate SL tightening on new trades
+            if pos.breakeven_moved:
+                trail_sl = pos.peak_price - trail_mult * entry_atr
+                new_sl = max(new_sl, trail_sl)
 
         else:  # short
             if pos.peak_price == 0.0 or current_price < pos.peak_price:
@@ -331,8 +338,9 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
                 new_sl = min(new_sl, pos.entry_price)
                 pos.breakeven_moved = True
 
-            trail_sl = pos.peak_price + trail_mult * entry_atr
-            new_sl = min(new_sl, trail_sl)
+            if pos.breakeven_moved:
+                trail_sl = pos.peak_price + trail_mult * entry_atr
+                new_sl = min(new_sl, trail_sl)
 
         if new_sl != old_sl:
             pos.sl_price = new_sl
