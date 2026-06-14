@@ -81,6 +81,11 @@ class RiskConfig:
     # Confidence sizing: scale position size DOWN on weaker signals (never above
     # the validated full risk). Opt-in so it can't disturb the proven edge.
     confidence_sizing: bool = False
+    # position_cap_fraction: max notional as a fraction of balance (1.0 = full
+    # balance, 0.5 = old default). Raising this together with max_risk_per_trade
+    # unlocks higher position sizes; backtest shows 8% risk + 1.0 cap ≈ +3.2%/mo
+    # at DD 20.5% — the best risk-adjusted step up from the 3% default.
+    position_cap_fraction: float = 1.0
     # Day trading sleeves (ORB, Asia BO): use a smaller per-trade risk and a
     # shorter max-hold so they don't lock up capital overnight.
     day_risk_pct: float = 0.01        # 1% risk per day-trade (vs 3% for BB swing)
@@ -178,6 +183,7 @@ def load_config() -> AppConfig:
         daily_max_loss=_getfloat("DAILY_MAX_LOSS_PCT", 0.05),
         max_hold_candles=_getint("MAX_HOLD_CANDLES", 48),
         confidence_sizing=_getbool("CONFIDENCE_SIZING", False),
+        position_cap_fraction=_getfloat("POSITION_CAP_FRACTION", 1.0),
         day_risk_pct=_getfloat("DAY_RISK_PCT", 0.01),
         day_max_hold_candles=_getint("DAY_MAX_HOLD_CANDLES", 6),
     )

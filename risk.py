@@ -53,7 +53,7 @@ class RiskManager:
         if sl_dist_pct <= 0:
             return 0.0
         quantity = risk_amount / (entry_price * sl_dist_pct)
-        max_qty = (balance * 0.5) / entry_price
+        max_qty = (balance * self._cfg.position_cap_fraction) / entry_price
         quantity = min(quantity, max_qty)
         quantity = max(quantity, 0.0)
         quantity = round(quantity, 3)  # 3 decimal places (BTC precision)
