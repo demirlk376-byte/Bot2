@@ -356,10 +356,13 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
         if pos.symbol != symbol:
             continue
 
-        # Trailing stop is for directional (breakout/trend) strategies only.
-        # BB mean-reversion has a natural retrace path to TP; trailing hurts it.
+        # Trailing applies ONLY to the S/R breakout swing strategy. BB mean-rev
+        # has a natural retrace path to TP (trailing hurts it). ORB and Asia BO
+        # were VALIDATED with fixed SL/TP + 6h max-hold (no trailing) — applying
+        # trailing here would make live behaviour diverge from the backtest, so
+        # they keep their fixed exits for a faithful paper-trading test.
         strategy_tag = pos.strategy_scores.get("strategy", "mean_rev")
-        if strategy_tag == "mean_rev":
+        if strategy_tag in ("mean_rev", "orb", "asia_bo"):
             continue
 
         entry_atr = pos.strategy_scores.get("atr", atr_val)
@@ -442,11 +445,13 @@ async def daily_reset_loop() -> None:
         await asyncio.sleep(max(seconds_until_midnight, 60))
 
         today = date.today().isoformat()
-        balance = await exchange.get_balance()
-        executor.set_daily_starting_balance(balance)
+        # Snapshot starting EQUITY (free + locked margin + unrealized), not free
+        # balance — the daily-loss limit measures drawdown, not locked margin.
+        await executor.capture_daily_start()
         executor.reset_daily()
+        balance = await exchange.get_balance()
 
-        logger.info("Daily reset. New starting balance: %.2f", balance)
+        logger.info("Daily reset. New starting equity: %.2f", await executor.current_equity())
 
         perf = await db.get_performance_summary()
         await db.upsert_daily_stats(DailyStats(
@@ -631,7 +636,8 @@ async def main() -> None:
     await restore_state()
 
     balance = await exchange.get_balance()
-    executor.set_daily_starting_balance(balance)
+    # Starting equity includes any restored positions' margin + unrealized PnL.
+    await executor.capture_daily_start()
 
     combiner = SignalCombiner(config.strategy)
 

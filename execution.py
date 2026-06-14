@@ -86,6 +86,27 @@ class ExecutionEngine:
     def set_daily_starting_balance(self, balance: float) -> None:
         self._daily_starting_balance = balance
 
+    def _locked_margin(self) -> float:
+        """Sum of margin locked in open positions. get_balance() returns FREE
+        balance (margin already deducted), so the daily-loss check must add this
+        back to recover true account equity — otherwise locking margin across
+        several parallel positions looks like a loss and false-triggers the halt."""
+        lev = max(self._config.exchange.leverage, 1)
+        return sum(
+            p.quantity * p.entry_price / lev
+            for p in self._portfolio.get_open_positions()
+        )
+
+    async def current_equity(self) -> float:
+        """True account equity = free balance + locked margin + unrealized PnL."""
+        free = await self._exchange.get_balance()
+        return free + self._locked_margin() + self._portfolio.get_total_unrealized_pnl()
+
+    async def capture_daily_start(self) -> None:
+        """Snapshot today's starting EQUITY (not free balance) so the daily-loss
+        limit measures realized+unrealized drawdown, not locked margin."""
+        self._daily_starting_balance = await self.current_equity()
+
     def reset_daily(self) -> None:
         self._trading_halted.clear()
 
@@ -157,15 +178,20 @@ class ExecutionEngine:
     ) -> "ExecutionResult":
         balance = await self._exchange.get_balance()
 
+        # Daily-loss limit is measured on EQUITY (free + locked margin + unrealized),
+        # not free balance — otherwise locking margin for parallel positions reads
+        # as a loss. open_unrealized_pnl is passed 0 here because current_equity()
+        # already folds unrealized PnL into the equity figure.
+        equity = balance + self._locked_margin() + self._portfolio.get_total_unrealized_pnl()
         if not self._risk.check_daily_loss_limit(
             self._daily_starting_balance,
-            balance,
-            self._portfolio.get_total_unrealized_pnl(),
+            equity,
+            0.0,
         ):
             self.halt_trading("Daily loss limit reached")
             await self.emergency_close_all("daily_loss_limit")
             loss_pct = (
-                (self._daily_starting_balance - balance) / self._daily_starting_balance
+                (self._daily_starting_balance - equity) / self._daily_starting_balance
                 if self._daily_starting_balance > 0 else 0.0
             )
             await self._alert(
