@@ -110,9 +110,14 @@ class RiskConfig:
     regime_filter_enabled: bool = True
     adx_trending_threshold: float = 28.0
     adx_ranging_threshold: float = 20.0
-    # Consecutive loss cooldown: after N back-to-back losses pause new entries.
+    # Consecutive loss cooldown: after N back-to-back losses (per strategy sleeve)
+    # pause new entries for cooldown_minutes.
     consecutive_loss_limit: int = 2
     cooldown_minutes: int = 240
+    # Weekday/weekend routing: research shows BB weekday PF ~0.97 (losing) and
+    # ORB weekend PF 3.22 vs overall 1.44. Wire the edge directly into live sizing.
+    bb_weekday_enabled: bool = True    # set false to skip BB on Mon–Fri
+    orb_weekend_mult: float = 1.5      # scale ORB risk up on Sat/Sun (capped at 8%)
 
 
 @dataclass
@@ -203,7 +208,7 @@ def load_config() -> AppConfig:
         atr_sl_multiplier=_getfloat("ATR_SL_MULT", 3.0),   # validated: 3x ATR stop
         rr_ratio=_getfloat("RR_RATIO", 1.667),             # TP = 5x ATR (3.0 * 1.667)
         max_positions=_getint("MAX_POSITIONS", 1),
-        daily_max_loss=_getfloat("DAILY_MAX_LOSS_PCT", 0.05),
+        daily_max_loss=_getfloat("DAILY_MAX_LOSS_PCT", 0.35),
         max_hold_candles=_getint("MAX_HOLD_CANDLES", 48),
         confidence_sizing=_getbool("CONFIDENCE_SIZING", False),
         position_cap_fraction=_getfloat("POSITION_CAP_FRACTION", 1.0),
@@ -220,6 +225,8 @@ def load_config() -> AppConfig:
         adx_ranging_threshold=_getfloat("ADX_RANGING_THRESHOLD", 20.0),
         consecutive_loss_limit=_getint("CONSECUTIVE_LOSS_LIMIT", 2),
         cooldown_minutes=_getint("COOLDOWN_MINUTES", 240),
+        bb_weekday_enabled=_getbool("BB_WEEKDAY_ENABLED", True),
+        orb_weekend_mult=_getfloat("ORB_WEEKEND_MULT", 1.5),
     )
 
     strategy = StrategyConfig(

@@ -43,7 +43,7 @@ class ExecutionEngine:
         self._on_close_callbacks: list[Callable] = []
         self._alert_cb: Optional[Callable] = None
         self._executing: set[str] = set()  # symbols with in-flight execute_signal
-        self._consecutive_losses: int = 0
+        self._consecutive_losses: dict[str, int] = {}   # strategy → streak count
         self._cooldown_until: Optional[datetime] = None
 
         if isinstance(exchange, PaperExchange):
@@ -115,25 +115,28 @@ class ExecutionEngine:
         self._trading_halted.clear()
         logger.info("Trading RESUMED (manual)")
 
-    def _record_trade_outcome(self, net_pnl: float) -> None:
-        """Track consecutive losses; start a cooldown when the limit is hit."""
+    def _record_trade_outcome(self, net_pnl: float, strategy: str = "all") -> None:
+        """Track per-strategy consecutive losses; trigger a global cooldown when
+        any one sleeve hits the limit. Using per-strategy counters prevents a small
+        ORB win from masking a BB loss streak (which the old single counter allowed)."""
         limit = getattr(self._config.risk, "consecutive_loss_limit", 2)
         cooldown_min = getattr(self._config.risk, "cooldown_minutes", 240)
         if net_pnl < 0:
-            self._consecutive_losses += 1
-            if self._consecutive_losses >= limit:
+            self._consecutive_losses[strategy] = self._consecutive_losses.get(strategy, 0) + 1
+            streak = self._consecutive_losses[strategy]
+            if streak >= limit:
                 self._cooldown_until = datetime.now(timezone.utc) + timedelta(minutes=cooldown_min)
                 logger.warning(
-                    "Consecutive losses: %d — cooldown until %s",
-                    self._consecutive_losses, self._cooldown_until.strftime("%H:%M UTC"),
+                    "[%s] Consecutive losses: %d — cooldown until %s",
+                    strategy, streak, self._cooldown_until.strftime("%H:%M UTC"),
                 )
                 asyncio.create_task(self._alert(
-                    f"Üst üste {self._consecutive_losses} kayıp — "
+                    f"[{strategy.upper()}] Üst üste {streak} kayıp — "
                     f"{cooldown_min} dk cooldown başladı",
                     "WARNING",
                 ))
         else:
-            self._consecutive_losses = 0
+            self._consecutive_losses[strategy] = 0
 
     async def execute_signal(
         self, signal: CombinedSignal, atr: float
@@ -218,6 +221,10 @@ class ExecutionEngine:
             if signal.dominant_strategy == "orb":
                 risk_override = getattr(self._config.risk, "orb_risk_pct",
                                         getattr(self._config.risk, "day_risk_pct", 0.0))
+                # Weekend ORB has PF 3.22 vs weekday — scale up when research says to.
+                weekend_mult = getattr(self._config.risk, "orb_weekend_mult", 1.0)
+                if weekend_mult > 1.0 and datetime.now(timezone.utc).weekday() >= 5:
+                    risk_override = min(risk_override * weekend_mult, 0.08)
             elif signal.dominant_strategy == "asia_bo":
                 risk_override = getattr(self._config.risk, "asia_risk_pct",
                                         getattr(self._config.risk, "day_risk_pct", 0.0))
@@ -320,6 +327,9 @@ class ExecutionEngine:
             "atr": atr,
             # Slot key for position uniqueness in multi-strategy parallel mode.
             "slot": slot_key or symbol,
+            # Track actual entry fee rate so _close_position_internal can compute
+            # fees accurately (maker = 0%, taker = 0.01%).
+            "entry_fee_rate": 0.0 if use_maker else 0.0001,
         }
         # Day-trading strategies use a shorter max-hold window. Store it in the
         # scores dict so _enforce_max_hold can read it per-position.
@@ -386,6 +396,13 @@ class ExecutionEngine:
     async def emergency_close_all(self, reason: str) -> None:
         for pos in list(self._portfolio.get_open_positions()):
             try:
+                # For live mode: cancel any pending SL/TP orders first so they
+                # don't create ghost positions after the market close order fills.
+                if not self._config.exchange.paper_mode and hasattr(self._exchange, "_exchange"):
+                    try:
+                        await self._exchange._exchange.cancel_all_orders(pos.symbol)
+                    except Exception as ce:
+                        logger.error("Could not cancel orders for %s: %s", pos.symbol, ce)
                 current_price = await self._exchange.get_current_price(pos.symbol)
                 await self._close_position_internal(pos, current_price, reason)
             except Exception as e:
@@ -396,12 +413,17 @@ class ExecutionEngine:
     ) -> None:
         direction = pos.direction
         raw_pnl = direction * (exit_price - pos.entry_price) * pos.quantity
-        fees = (pos.entry_price + exit_price) * pos.quantity * 0.0001
+        entry_fee_rate = pos.strategy_scores.get("entry_fee_rate", 0.0001)
+        fees = (
+            pos.entry_price * pos.quantity * entry_fee_rate
+            + exit_price * pos.quantity * 0.0001
+        )
         net_pnl = raw_pnl - fees
         denom = pos.entry_price * pos.quantity
         pnl_pct = net_pnl / denom if denom > 0 else 0.0
 
-        self._record_trade_outcome(net_pnl)
+        strategy = pos.strategy_scores.get("strategy", "all")
+        self._record_trade_outcome(net_pnl, strategy)
         self._portfolio.remove_position(pos.id)
         await self._db.log_trade_close(
             trade_id=pos.id,
@@ -420,7 +442,8 @@ class ExecutionEngine:
         if pos is None:
             return
         pnl_pct = net_pnl / (pos.entry_price * pos.quantity) if pos.quantity > 0 else 0.0
-        self._record_trade_outcome(net_pnl)
+        strategy = pos.strategy_scores.get("strategy", "all")
+        self._record_trade_outcome(net_pnl, strategy)
         self._portfolio.remove_position(pos.id)
         await self._db.log_trade_close(
             trade_id=pos.id,

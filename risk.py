@@ -142,15 +142,16 @@ class RiskManager:
         if sl_dist <= 0:
             return None
         rr = tp_dist / sl_dist
-        if rr < 1.4:
-            logger.debug("RR ratio %.2f below minimum 1.4", rr)
+        if rr < 1.5:
+            logger.debug("RR ratio %.2f below minimum 1.5", rr)
             return None
 
         risk_pct = risk_pct_override if risk_pct_override > 0 else self._cfg.max_risk_per_trade
         risk_amount = balance * risk_pct
         sl_dist_pct = sl_dist / entry_price
         quantity = risk_amount / (entry_price * sl_dist_pct)
-        max_qty = (balance * leverage) / entry_price
+        cap_fraction = getattr(self._cfg, "position_cap_fraction", float(leverage))
+        max_qty = (balance * cap_fraction) / entry_price
         quantity = min(quantity, max_qty)
         quantity = max(quantity, 0.0)
         quantity = round(quantity, 3)

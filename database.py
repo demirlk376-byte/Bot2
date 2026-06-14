@@ -130,6 +130,19 @@ class Database:
             rows = await cur.fetchall()
         return [_row_to_trade(r) for r in rows]
 
+    async def get_today_traded_slots(self) -> set[str]:
+        """Strategy names that already entered a trade today (open or closed).
+        Used on restart to re-populate per-strategy _traded_dates so one-per-day
+        intraday strategies (ORB, Asia BO) don't re-fire after a bot restart."""
+        today = date.today().isoformat()
+        async with self._db.execute(
+            """SELECT DISTINCT json_extract(strategy_scores, '$.strategy')
+               FROM trades WHERE entry_time LIKE ?""",
+            (f"{today}%",),
+        ) as cur:
+            rows = await cur.fetchall()
+        return {r[0] for r in rows if r[0]}
+
     async def close(self) -> None:
         if self._db:
             await self._db.close()

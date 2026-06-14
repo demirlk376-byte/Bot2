@@ -99,10 +99,6 @@ def make_on_candle_close(ctx: "SymbolContext"):
             await _update_trailing_stops(ctx.symbol, current_price, atr_val)
 
             # ── Parallel strategy execution with regime filter ────────────────
-            # BB mean-reversion is NOT filtered by ADX (vol filter is sufficient).
-            # ORB / Asia BO / S/R ARE suppressed in ranging (ADX<20): false-breakout
-            # rate spikes in choppy markets.
-            #
             # Each strategy has its own position slot so they run independently:
             #   BB   → slot = symbol          (swing, 48h max-hold)
             #   ORB  → slot = symbol:orb      (intraday, 6h max-hold)
@@ -110,8 +106,19 @@ def make_on_candle_close(ctx: "SymbolContext"):
             #   S/R  → slot = symbol          (swing, shares BB slot — only one
             #                                  swing at a time; fires when BB empty)
             # max_positions=3 allows BB + ORB + Asia simultaneously.
+            #
+            # Regime routing:
+            #   Trending (ADX>28) → suppress BB (fading a strong trend loses).
+            #   Ranging  (ADX<20) → suppress ORB/S/R (false-breakout rate spikes).
+            # Weekday gate: if BB_WEEKDAY_ENABLED=false, skip BB Mon–Fri (research
+            # shows weekday BB PF ~0.97; the ADX gate covers the worst subset but an
+            # explicit weekday disable is available as a stronger filter).
             regime_filter = config.risk.regime_filter_enabled
             bo_allowed = not (regime_filter and regime == "ranging")
+            is_weekend = datetime.now(timezone.utc).weekday() >= 5
+            bb_allowed = not (regime_filter and regime == "trending")
+            if not getattr(config.risk, "bb_weekday_enabled", True) and not is_weekend:
+                bb_allowed = False
 
             # ── BB mean-reversion ─────────────────────────────────────────────
             mr_sig = ctx.strategy.analyze(df)
@@ -168,7 +175,11 @@ def make_on_candle_close(ctx: "SymbolContext"):
                 except Exception as e:
                     logger.debug("OrderFlow snapshot failed: %s", e)
 
-            if bb_combined.direction != 0:
+            if bb_combined.direction != 0 and not bb_allowed:
+                logger.debug(
+                    "[%s] BB skipped: regime=%s is_weekend=%s", ctx.symbol, regime, is_weekend
+                )
+            elif bb_combined.direction != 0:
                 result = await executor.execute_signal(bb_combined, atr_val)
                 if result.success and result.position:
                     logger.info(
@@ -512,6 +523,25 @@ async def restore_state() -> int:
                     t.side.upper(), t.symbol, t.entry_price)
     if restored:
         logger.info("Restored %d open position(s) after restart", restored)
+
+    # Repopulate per-strategy one-per-day guards from the DB so ORB and Asia BO
+    # don't re-fire on today's signal after a restart, even if their trade already
+    # closed before the restart (slot guard only covers still-open positions).
+    try:
+        today_slots = await db.get_today_traded_slots()
+        if today_slots:
+            from datetime import date as _date
+            today_utc = _date.today()
+            for ctx in symbol_ctxs.values():
+                if "orb" in today_slots and ctx.orb_strategy is not None:
+                    ctx.orb_strategy._traded_dates.add(today_utc)
+                    logger.info("Restored ORB traded-date for %s", ctx.symbol)
+                if "asia_bo" in today_slots and ctx.asia_bo_strategy is not None:
+                    ctx.asia_bo_strategy._traded_dates.add(today_utc)
+                    logger.info("Restored Asia BO traded-date for %s", ctx.symbol)
+    except Exception as e:
+        logger.warning("Could not restore traded dates from DB: %s", e)
+
     return restored
 
 

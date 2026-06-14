@@ -91,9 +91,10 @@ class OrbStrategy:
         current_close = float(df["close"].iloc[-1])
 
         if current_close > orb_high:
-            entry = current_close
-            sl    = orb_high - orb_range        # = orb_low (± slippage, but close)
-            tp    = entry + self._rr * orb_range
+            # Limit entry fills at orb_high (the breakout boundary), not current_close.
+            # SL/TP must be anchored to the limit price so the RR is accurate.
+            sl = orb_low
+            tp = orb_high + self._rr * orb_range
             self._traded_dates.add(today_utc)
             return OrbSignal(
                 direction=1, strength=0.80,
@@ -102,9 +103,9 @@ class OrbStrategy:
             )
 
         if current_close < orb_low:
-            entry = current_close
-            sl    = orb_low + orb_range         # = orb_high
-            tp    = entry - self._rr * orb_range
+            # Limit entry fills at orb_low; anchor SL/TP to the limit price.
+            sl = orb_high
+            tp = orb_low - self._rr * orb_range
             self._traded_dates.add(today_utc)
             return OrbSignal(
                 direction=-1, strength=0.80,

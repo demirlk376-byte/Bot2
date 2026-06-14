@@ -79,9 +79,9 @@ class AsiaBoStrategy:
         current_close = float(df["close"].iloc[-1])
 
         if current_close > asia_high:
-            entry = current_close
-            sl    = entry - sl_dist
-            tp    = entry + self._rr * sl_dist
+            # Limit entry fills at asia_high; anchor SL/TP to the limit price.
+            sl = asia_high - sl_dist
+            tp = asia_high + self._rr * sl_dist
             self._traded_dates.add(today_utc)
             return AsiaBoSignal(
                 direction=1, strength=0.80,
@@ -93,9 +93,9 @@ class AsiaBoStrategy:
             )
 
         if current_close < asia_low:
-            entry = current_close
-            sl    = entry + sl_dist
-            tp    = entry - self._rr * sl_dist
+            # Limit entry fills at asia_low; anchor SL/TP to the limit price.
+            sl = asia_low + sl_dist
+            tp = asia_low - self._rr * sl_dist
             self._traded_dates.add(today_utc)
             return AsiaBoSignal(
                 direction=-1, strength=0.80,
