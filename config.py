@@ -86,6 +86,12 @@ class RiskConfig:
     # unlocks higher position sizes; backtest shows 8% risk + 1.0 cap ≈ +3.2%/mo
     # at DD 20.5% — the best risk-adjusted step up from the 3% default.
     position_cap_fraction: float = 1.0
+    # fixed_margin_usdt: when > 0, caps margin per trade at this fixed dollar
+    # amount regardless of balance growth. Produces better Calmar than percentage-
+    # based sizing because losses stay bounded even as balance compounds up.
+    # Backtest: $200 fixed @ 10x lev → +14.9%/mo DD 55%, Calmar 0.27 (best found).
+    # Set to 0 to use percentage-based sizing (position_cap_fraction).
+    fixed_margin_usdt: float = 0.0
     # Day trading sleeves (ORB, Asia BO): use a smaller per-trade risk and a
     # shorter max-hold so they don't lock up capital overnight.
     day_risk_pct: float = 0.01        # 1% risk per day-trade (vs 3% for BB swing)
@@ -184,6 +190,7 @@ def load_config() -> AppConfig:
         max_hold_candles=_getint("MAX_HOLD_CANDLES", 48),
         confidence_sizing=_getbool("CONFIDENCE_SIZING", False),
         position_cap_fraction=_getfloat("POSITION_CAP_FRACTION", 1.0),
+        fixed_margin_usdt=_getfloat("FIXED_MARGIN_USDT", 0.0),
         day_risk_pct=_getfloat("DAY_RISK_PCT", 0.01),
         day_max_hold_candles=_getint("DAY_MAX_HOLD_CANDLES", 6),
     )

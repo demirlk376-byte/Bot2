@@ -46,17 +46,28 @@ class RiskManager:
         return sl, tp
 
     def calculate_position_size(
-        self, balance: float, entry_price: float, sl_price: float
+        self, balance: float, entry_price: float, sl_price: float,
+        leverage: int = 1,
     ) -> float:
-        risk_amount = balance * self._cfg.max_risk_per_trade
         sl_dist_pct = abs(entry_price - sl_price) / entry_price
         if sl_dist_pct <= 0:
             return 0.0
-        quantity = risk_amount / (entry_price * sl_dist_pct)
-        max_qty = (balance * self._cfg.position_cap_fraction) / entry_price
-        quantity = min(quantity, max_qty)
+
+        fixed = getattr(self._cfg, "fixed_margin_usdt", 0.0)
+        if fixed > 0:
+            # Fixed-margin mode: use min(balance, fixed) as margin regardless of
+            # balance growth. Better Calmar than percentage-based because losses
+            # stay bounded even as the account compounds up.
+            used_margin = min(balance, fixed)
+            quantity = used_margin * leverage / entry_price
+        else:
+            risk_amount = balance * self._cfg.max_risk_per_trade
+            quantity = risk_amount / (entry_price * sl_dist_pct)
+            max_qty = (balance * self._cfg.position_cap_fraction) / entry_price
+            quantity = min(quantity, max_qty)
+
         quantity = max(quantity, 0.0)
-        quantity = round(quantity, 3)  # 3 decimal places (BTC precision)
+        quantity = round(quantity, 3)
         return quantity
 
     def build_trade_setup(
@@ -70,7 +81,7 @@ class RiskManager:
         size_mult: float = 1.0,
     ) -> Optional[TradeSetup]:
         sl, tp = self.calculate_sl_tp(direction, entry_price, atr)
-        quantity = self.calculate_position_size(balance, entry_price, sl)
+        quantity = self.calculate_position_size(balance, entry_price, sl, leverage)
         # Confidence sizing only ever scales DOWN (size_mult ≤ 1.0), so the
         # validated max risk is never exceeded.
         if size_mult < 1.0:
@@ -91,7 +102,8 @@ class RiskManager:
         risk_usdt = sl_dist * quantity
         risk_pct = risk_usdt / balance if balance > 0 else 0.0
 
-        if risk_pct > self._cfg.max_risk_per_trade * 1.25:
+        fixed = getattr(self._cfg, "fixed_margin_usdt", 0.0)
+        if fixed <= 0 and risk_pct > self._cfg.max_risk_per_trade * 1.25:
             logger.warning("Risk %.2f%% exceeds limit", risk_pct * 100)
             return None
 
