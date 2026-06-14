@@ -335,6 +335,13 @@ class ExecutionEngine:
         # scores dict so _enforce_max_hold can read it per-position.
         if signal.dominant_strategy in ("orb", "asia_bo"):
             scores["max_hold"] = getattr(self._config.risk, "day_max_hold_candles", 6)
+            # R = SL distance in price terms — used by trailing stop as the breakeven
+            # trigger (1R profit → SL moves to entry) so the trade becomes risk-free.
+            # trail_atr_mult overrides the global config per-strategy:
+            #   ORB  → 2×ATR (backtest winner: be_trail2, PF 2.15→2.80)
+            #   Asia → 1×ATR (backtest winner: be_trail1, PF 1.19→1.53)
+            scores["risk_r"] = abs(order.filled_price - setup.sl_price)
+            scores["trail_atr_mult"] = 2.0 if signal.dominant_strategy == "orb" else 1.0
 
         position = self._portfolio.create_position(
             symbol=setup.symbol,

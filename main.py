@@ -367,42 +367,52 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
         if pos.symbol != symbol:
             continue
 
-        # Trailing applies ONLY to the S/R breakout swing strategy. BB mean-rev
-        # has a natural retrace path to TP (trailing hurts it). ORB and Asia BO
-        # were VALIDATED with fixed SL/TP + 6h max-hold (no trailing) — applying
-        # trailing here would make live behaviour diverge from the backtest, so
-        # they keep their fixed exits for a faithful paper-trading test.
+        # BB mean-rev: excluded from trailing (retracement to TP is part of its
+        # natural path; trailing would stop it out prematurely).
+        # ORB / Asia BO / S/R breakout: all get trailing.
+        #   ORB  → breakeven at 1×risk_r (=orb_range), then trail peak−2×ATR
+        #   Asia → breakeven at 1×risk_r (=1×ATR),    then trail peak−1×ATR
+        #   S/R  → breakeven at be_mult×ATR (global),  then trail peak−trail_mult×ATR
         strategy_tag = pos.strategy_scores.get("strategy", "mean_rev")
-        if strategy_tag in ("mean_rev", "orb", "asia_bo"):
+        if strategy_tag == "mean_rev":
             continue
 
         entry_atr = pos.strategy_scores.get("atr", atr_val)
         old_sl = pos.sl_price
         new_sl = old_sl
 
+        # ORB/Asia use R-based breakeven; S/R and sr_breakout use ATR-based.
+        risk_r = pos.strategy_scores.get("risk_r", None)
+        if risk_r is not None:
+            be_trigger = risk_r           # 1×R profit → breakeven
+        else:
+            be_trigger = be_mult * entry_atr
+
+        pos_trail_mult = pos.strategy_scores.get("trail_atr_mult", trail_mult)
+
         if pos.direction == 1:  # long
             if pos.peak_price == 0.0 or current_price > pos.peak_price:
                 pos.peak_price = current_price
 
-            if not pos.breakeven_moved and current_price >= pos.entry_price + be_mult * entry_atr:
+            if not pos.breakeven_moved and current_price >= pos.entry_price + be_trigger:
                 new_sl = max(new_sl, pos.entry_price)
                 pos.breakeven_moved = True
 
             # Trail ONLY after breakeven — prevents immediate SL tightening on new trades
             if pos.breakeven_moved:
-                trail_sl = pos.peak_price - trail_mult * entry_atr
+                trail_sl = pos.peak_price - pos_trail_mult * entry_atr
                 new_sl = max(new_sl, trail_sl)
 
         else:  # short
             if pos.peak_price == 0.0 or current_price < pos.peak_price:
                 pos.peak_price = current_price
 
-            if not pos.breakeven_moved and current_price <= pos.entry_price - be_mult * entry_atr:
+            if not pos.breakeven_moved and current_price <= pos.entry_price - be_trigger:
                 new_sl = min(new_sl, pos.entry_price)
                 pos.breakeven_moved = True
 
             if pos.breakeven_moved:
-                trail_sl = pos.peak_price + trail_mult * entry_atr
+                trail_sl = pos.peak_price + pos_trail_mult * entry_atr
                 new_sl = min(new_sl, trail_sl)
 
         if new_sl != old_sl:

@@ -92,9 +92,10 @@ class OrbStrategy:
 
         if current_close > orb_high:
             # Limit entry fills at orb_high (the breakout boundary), not current_close.
-            # SL/TP must be anchored to the limit price so the RR is accurate.
+            # No fixed TP — trailing stop manages the exit after breakeven at 1×range.
+            # Sentinel TP (20× range) ensures trailing fires before TP on any real move.
             sl = orb_low
-            tp = orb_high + self._rr * orb_range
+            tp = orb_high + 20.0 * orb_range
             self._traded_dates.add(today_utc)
             return OrbSignal(
                 direction=1, strength=0.80,
@@ -105,7 +106,7 @@ class OrbStrategy:
         if current_close < orb_low:
             # Limit entry fills at orb_low; anchor SL/TP to the limit price.
             sl = orb_high
-            tp = orb_low - self._rr * orb_range
+            tp = orb_low - 20.0 * orb_range
             self._traded_dates.add(today_utc)
             return OrbSignal(
                 direction=-1, strength=0.80,
