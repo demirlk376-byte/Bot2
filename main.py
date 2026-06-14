@@ -98,18 +98,24 @@ def make_on_candle_close(ctx: "SymbolContext"):
             # ran above — so the moved SL only affects the NEXT candle's SL check.
             await _update_trailing_stops(ctx.symbol, current_price, atr_val)
 
-            # ── Strategy cascade with regime filter ───────────────────────────
-            # BB mean-reversion is NOT filtered by ADX — backtest evidence shows
-            # ADX filters consistently hurt BB performance (vol filter is sufficient).
-            # ORB/S/R breakouts ARE suppressed in ranging (ADX<20): false-breakout
-            # rate spikes in choppy markets; these strategies need momentum.
+            # ── Parallel strategy execution with regime filter ────────────────
+            # BB mean-reversion is NOT filtered by ADX (vol filter is sufficient).
+            # ORB / Asia BO / S/R ARE suppressed in ranging (ADX<20): false-breakout
+            # rate spikes in choppy markets.
+            #
+            # Each strategy has its own position slot so they run independently:
+            #   BB   → slot = symbol          (swing, 48h max-hold)
+            #   ORB  → slot = symbol:orb      (intraday, 6h max-hold)
+            #   Asia → slot = symbol:asia_bo  (intraday, 6h max-hold)
+            #   S/R  → slot = symbol          (swing, shares BB slot — only one
+            #                                  swing at a time; fires when BB empty)
+            # max_positions=3 allows BB + ORB + Asia simultaneously.
             regime_filter = config.risk.regime_filter_enabled
-            bb_allowed = True  # BB works in all regimes
             bo_allowed = not (regime_filter and regime == "ranging")
 
+            # ── BB mean-reversion ─────────────────────────────────────────────
             mr_sig = ctx.strategy.analyze(df)
-
-            combined = CombinedSignal(
+            bb_combined = CombinedSignal(
                 direction=mr_sig.direction,
                 confidence=mr_sig.strength,
                 trend_score=0.0,
@@ -119,14 +125,73 @@ def make_on_candle_close(ctx: "SymbolContext"):
                 reasons=[mr_sig.reason],
                 entry_price=current_price,
                 symbol=ctx.symbol,
+                position_slot=ctx.symbol,
+            )
+            dashboard.update_signal(bb_combined)
+            dashboard.log_message(
+                f"[{ctx.symbol}] BB: dir={bb_combined.direction} "
+                f"conf={bb_combined.confidence:.2f} ({mr_sig.reason})"
             )
 
-            # ORB sleeve — fires at most once per day at NY open (14:00 UTC).
-            # Only active when the primary BB strategy didn't fire this candle.
-            if combined.direction == 0 and ctx.orb_strategy is not None and bo_allowed:
+            # Funding rate / order-flow checks apply to the BB signal only
+            # (they're not meaningful for intraday range-breakout strategies).
+            if (
+                bb_combined.direction != 0
+                and funding_monitor is not None
+                and funding_monitor.enabled
+            ):
+                snap = await funding_monitor.fetch()
+                assess = funding_monitor.evaluate(bb_combined.direction, snap)
+                logger.info("Funding read: %s -> bias=%.2f", assess.reason, assess.bias)
+                dashboard.log_message(f"Funding: {assess.reason}")
+                if funding_monitor.mode == "filter" and assess.should_skip:
+                    dashboard.log_message(
+                        f"BB signal SKIPPED by funding filter ({assess.reason})"
+                    )
+                    logger.info("BB skipped: funding contrary+extreme (%s)", assess.reason)
+                    bb_combined.direction = 0
+                elif funding_monitor.mode == "boost":
+                    bb_combined.confidence = min(bb_combined.confidence * assess.bias, 1.0)
+
+            if (
+                bb_combined.direction != 0
+                and orderflow_monitor is not None
+                and orderflow_monitor.enabled
+                and ctx.symbol == config.exchange.symbol
+            ):
+                try:
+                    of_snap = await orderflow_monitor.snapshot()
+                    of_assess = orderflow_monitor.evaluate(bb_combined.direction, of_snap)
+                    logger.info("OrderFlow: %s", of_assess.reason)
+                    dashboard.log_message(f"OrderFlow: {of_assess.reason}")
+                    _log_orderflow_csv(ctx.symbol, bb_combined, mr_sig, of_snap, of_assess)
+                except Exception as e:
+                    logger.debug("OrderFlow snapshot failed: %s", e)
+
+            if bb_combined.direction != 0:
+                result = await executor.execute_signal(bb_combined, atr_val)
+                if result.success and result.position:
+                    logger.info(
+                        "BB trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                        result.position.side.upper(), ctx.symbol,
+                        result.position.entry_price,
+                        result.position.sl_price,
+                        result.position.tp_price,
+                    )
+                    if telegram:
+                        await telegram.send_trade_opened(result.trade_setup, bb_combined)
+                elif result.error:
+                    logger.debug("[%s] BB skipped: %s", ctx.symbol, result.error)
+
+            # ── ORB — independent slot, limit entry at NY open range boundary ─
+            # Backtest validated: PF 2.53/2.83 with limit entry vs PF 0.74 with
+            # close entry. Fill assumption: when 15:00 UTC bar closes above
+            # orb_high, we fill at orb_high (price already touched it intrabar).
+            if ctx.orb_strategy is not None and bo_allowed:
                 orb_sig = ctx.orb_strategy.analyze(df)
                 if orb_sig.direction != 0:
-                    combined = CombinedSignal(
+                    trigger = orb_sig.orb_high if orb_sig.direction == 1 else orb_sig.orb_low
+                    orb_combined = CombinedSignal(
                         direction=orb_sig.direction,
                         confidence=orb_sig.strength,
                         trend_score=0.0,
@@ -134,17 +199,33 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         breakout_score=orb_sig.direction * orb_sig.strength,
                         dominant_strategy="orb",
                         reasons=[orb_sig.reason],
-                        entry_price=current_price,
+                        entry_price=trigger,
                         sl_price=orb_sig.sl_price,
                         tp_price=orb_sig.tp_price,
                         symbol=ctx.symbol,
+                        position_slot=f"{ctx.symbol}:orb",
                     )
+                    result = await executor.execute_signal(orb_combined, atr_val)
+                    if result.success and result.position:
+                        logger.info(
+                            "ORB trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                            result.position.side.upper(), ctx.symbol,
+                            result.position.entry_price,
+                            result.position.sl_price,
+                            result.position.tp_price,
+                        )
+                        if telegram:
+                            await telegram.send_trade_opened(result.trade_setup, orb_combined)
+                    elif result.error:
+                        logger.debug("[%s] ORB skipped: %s", ctx.symbol, result.error)
 
-            # Asia BO sleeve — fires at most once per day at London open (08:00 UTC).
-            if combined.direction == 0 and ctx.asia_bo_strategy is not None and bo_allowed:
+            # ── Asia BO — independent slot, limit entry at London open range ──
+            # Fill at asia_high/asia_low when 08:00 UTC bar first closes above/below.
+            if ctx.asia_bo_strategy is not None and bo_allowed:
                 asia_sig = ctx.asia_bo_strategy.analyze(df, atr_val)
                 if asia_sig.direction != 0:
-                    combined = CombinedSignal(
+                    trigger = asia_sig.asia_high if asia_sig.direction == 1 else asia_sig.asia_low
+                    asia_combined = CombinedSignal(
                         direction=asia_sig.direction,
                         confidence=asia_sig.strength,
                         trend_score=0.0,
@@ -152,18 +233,33 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         breakout_score=asia_sig.direction * asia_sig.strength,
                         dominant_strategy="asia_bo",
                         reasons=[asia_sig.reason],
-                        entry_price=current_price,
+                        entry_price=trigger,
                         sl_price=asia_sig.sl_price,
                         tp_price=asia_sig.tp_price,
                         symbol=ctx.symbol,
+                        position_slot=f"{ctx.symbol}:asia_bo",
                     )
+                    result = await executor.execute_signal(asia_combined, atr_val)
+                    if result.success and result.position:
+                        logger.info(
+                            "Asia BO trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                            result.position.side.upper(), ctx.symbol,
+                            result.position.entry_price,
+                            result.position.sl_price,
+                            result.position.tp_price,
+                        )
+                        if telegram:
+                            await telegram.send_trade_opened(result.trade_setup, asia_combined)
+                    elif result.error:
+                        logger.debug("[%s] Asia BO skipped: %s", ctx.symbol, result.error)
 
-            # S/R breakout sleeve — swing momentum, can fire any hour when the
-            # mean-reversion core and the intraday sleeves all stayed neutral.
-            if combined.direction == 0 and ctx.sr_breakout_strategy is not None and bo_allowed:
+            # ── S/R breakout — shares BB slot (swing, 48h hold) ──────────────
+            # Only fires when the BB slot is empty. Uses max_positions cap as the
+            # ultimate gate: when BB + ORB + Asia are all open, S/R is blocked.
+            if ctx.sr_breakout_strategy is not None and bo_allowed:
                 sr_sig = ctx.sr_breakout_strategy.analyze(df, atr_val)
                 if sr_sig.direction != 0:
-                    combined = CombinedSignal(
+                    sr_combined = CombinedSignal(
                         direction=sr_sig.direction,
                         confidence=sr_sig.strength,
                         trend_score=0.0,
@@ -175,68 +271,21 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         sl_price=sr_sig.sl_price,
                         tp_price=sr_sig.tp_price,
                         symbol=ctx.symbol,
+                        position_slot=ctx.symbol,
                     )
-            dashboard.update_signal(combined)
-            dashboard.log_message(
-                f"[{ctx.symbol}] Signal: dir={combined.direction} "
-                f"conf={combined.confidence:.2f} ({mr_sig.reason})"
-            )
-
-            # Funding rate / open interest read on every signal. In "monitor"
-            # mode this only logs; in "filter" mode it can skip contrarian-extreme
-            # setups; in "boost" mode it nudges confidence. Disabled by default.
-            if (
-                combined.direction != 0
-                and funding_monitor is not None
-                and funding_monitor.enabled
-            ):
-                snap = await funding_monitor.fetch()
-                assess = funding_monitor.evaluate(combined.direction, snap)
-                logger.info("Funding read: %s -> bias=%.2f", assess.reason, assess.bias)
-                dashboard.log_message(f"Funding: {assess.reason}")
-                if funding_monitor.mode == "filter" and assess.should_skip:
-                    dashboard.log_message(
-                        f"Signal SKIPPED by funding filter ({assess.reason})"
-                    )
-                    logger.info("Trade skipped: funding contrary+extreme (%s)", assess.reason)
-                    combined.direction = 0
-                elif funding_monitor.mode == "boost":
-                    combined.confidence = min(combined.confidence * assess.bias, 1.0)
-
-            # Order-flow collector (monitor-only, default OFF). Logs taker delta
-            # + depth imbalance for this signal so we build a forward dataset
-            # tied to our actual entries. Only the primary symbol is tracked.
-            if (
-                combined.direction != 0
-                and orderflow_monitor is not None
-                and orderflow_monitor.enabled
-                and ctx.symbol == config.exchange.symbol
-            ):
-                try:
-                    of_snap = await orderflow_monitor.snapshot()
-                    of_assess = orderflow_monitor.evaluate(combined.direction, of_snap)
-                    logger.info("OrderFlow: %s", of_assess.reason)
-                    dashboard.log_message(f"OrderFlow: {of_assess.reason}")
-                    _log_orderflow_csv(ctx.symbol, combined, mr_sig, of_snap, of_assess)
-                except Exception as e:
-                    logger.debug("OrderFlow snapshot failed: %s", e)
-
-            # Per-symbol gate is inside execute_signal (one position per coin).
-            # The portfolio-wide cap (max_positions) is also enforced there.
-            if combined.direction != 0:
-                result = await executor.execute_signal(combined, atr_val)
-                if result.success and result.position:
-                    logger.info(
-                        "Trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
-                        result.position.side.upper(), ctx.symbol,
-                        result.position.entry_price,
-                        result.position.sl_price,
-                        result.position.tp_price,
-                    )
-                    if telegram:
-                        await telegram.send_trade_opened(result.trade_setup, combined)
-                elif result.error:
-                    logger.debug("[%s] Signal skipped: %s", ctx.symbol, result.error)
+                    result = await executor.execute_signal(sr_combined, atr_val)
+                    if result.success and result.position:
+                        logger.info(
+                            "S/R trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                            result.position.side.upper(), ctx.symbol,
+                            result.position.entry_price,
+                            result.position.sl_price,
+                            result.position.tp_price,
+                        )
+                        if telegram:
+                            await telegram.send_trade_opened(result.trade_setup, sr_combined)
+                    elif result.error:
+                        logger.debug("[%s] S/R skipped: %s", ctx.symbol, result.error)
 
             balance = await exchange.get_balance()
             dashboard.update_balance(balance)

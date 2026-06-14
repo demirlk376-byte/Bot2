@@ -26,6 +26,7 @@ class CombinedSignal:
     sl_price: float = 0.0     # preset SL (day-trading strategies); 0 = use ATR-based calc
     tp_price: float = 0.0     # preset TP (day-trading strategies); 0 = use ATR-based calc
     symbol: str = ""          # which market this signal is for (multi-coin)
+    position_slot: str = ""   # uniqueness key for the position slot (empty → use symbol)
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
 

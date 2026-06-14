@@ -134,22 +134,26 @@ class ExecutionEngine:
         # configured primary symbol for single-coin operation.
         symbol = signal.symbol or self._config.exchange.symbol
 
-        # One position per symbol — never stack two trades on the same coin.
+        # Slot key: each strategy sleeve has its own slot so BB, ORB, and Asia BO
+        # can run in parallel without blocking one another. S/R breakout shares the
+        # BB slot (both are 48h swing trades — only one at a time makes sense).
+        slot_key = signal.position_slot or symbol
+
         # Check both the portfolio AND an in-flight guard: asyncio yields between
         # the portfolio check and portfolio.create_position, so two concurrent
-        # signal handlers for the same symbol could both pass the first check.
-        if self._portfolio.get_position_for_symbol(symbol) is not None:
-            return ExecutionResult(False, error=f"Position already open for {symbol}")
-        if symbol in self._executing:
-            return ExecutionResult(False, error=f"Execution in progress for {symbol}")
-        self._executing.add(symbol)
+        # signal handlers for the same slot could both pass the first check.
+        if self._portfolio.get_position_for_slot(slot_key) is not None:
+            return ExecutionResult(False, error=f"Slot '{slot_key}' already occupied")
+        if slot_key in self._executing:
+            return ExecutionResult(False, error=f"Execution in progress for slot '{slot_key}'")
+        self._executing.add(slot_key)
         try:
-            return await self._execute_signal_inner(signal, atr, symbol)
+            return await self._execute_signal_inner(signal, atr, symbol, slot_key)
         finally:
-            self._executing.discard(symbol)
+            self._executing.discard(slot_key)
 
     async def _execute_signal_inner(
-        self, signal: CombinedSignal, atr: float, symbol: str
+        self, signal: CombinedSignal, atr: float, symbol: str, slot_key: str = ""
     ) -> "ExecutionResult":
         balance = await self._exchange.get_balance()
 
@@ -282,6 +286,8 @@ class ExecutionEngine:
             # ATR at entry — used by trailing stop to keep distance consistent
             # regardless of how ATR changes during the life of the trade.
             "atr": atr,
+            # Slot key for position uniqueness in multi-strategy parallel mode.
+            "slot": slot_key or symbol,
         }
         # Day-trading strategies use a shorter max-hold window. Store it in the
         # scores dict so _enforce_max_hold can read it per-position.

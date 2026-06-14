@@ -54,6 +54,15 @@ class Portfolio:
                 return p
         return None
 
+    def get_position_for_slot(self, slot_key: str) -> Optional[Position]:
+        """Check if a position slot is occupied.
+        Slot key is stored in strategy_scores['slot']; falls back to symbol
+        for positions created before multi-strategy parallel mode."""
+        for p in self._positions.values():
+            if p.strategy_scores.get("slot", p.symbol) == slot_key:
+                return p
+        return None
+
     def update_unrealized_pnl(self, current_price: float) -> None:
         for pos in self._positions.values():
             pos.unrealized_pnl = pos.direction * (current_price - pos.entry_price) * pos.quantity
