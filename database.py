@@ -259,7 +259,9 @@ class Database:
             equity += p
             if equity > peak:
                 peak = equity
-            dd = (peak - equity) / peak if peak > 0 else 0.0
+            # Cap at 1.0: equity below zero means full loss of peak gain,
+            # not negative DD (which is mathematically valid but misleading).
+            dd = min((peak - equity) / peak, 1.0) if peak > 0 else 0.0
             if dd > max_dd:
                 max_dd = dd
 

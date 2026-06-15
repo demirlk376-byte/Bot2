@@ -693,6 +693,15 @@ async def main() -> None:
     # Starting equity includes any restored positions' margin + unrealized PnL.
     await executor.capture_daily_start()
 
+    # Persist the inception balance on first run; use it consistently across
+    # restarts so /status always shows return-since-day-one, not since-last-restart.
+    inception_raw = await db.get_meta("inception_balance")
+    if inception_raw is None:
+        await db.set_meta("inception_balance", str(balance))
+        inception_balance = balance
+    else:
+        inception_balance = float(inception_raw)
+
     combiner = SignalCombiner(config.strategy)
 
     # Funding monitor tracks the primary symbol (read-only dataset building).
@@ -732,7 +741,7 @@ async def main() -> None:
         executor=executor,
         db=db,
         app_config=config,
-        initial_balance=balance,
+        initial_balance=inception_balance,
     )
     await telegram.initialize()
 
@@ -745,7 +754,7 @@ async def main() -> None:
         exchange=exchange,
         portfolio=portfolio,
         db=db,
-        initial_balance=balance,
+        initial_balance=inception_balance,
     )
     await web_dashboard.start()
 
