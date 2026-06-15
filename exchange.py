@@ -505,20 +505,24 @@ class LiveExchange:
         amount: float
     ) -> None:
         close_side = "sell" if position_side == "long" else "buy"
+        sl_ok = False
         try:
             await self._exchange.create_order(
                 symbol, "stop_market", close_side, amount, None,
                 {"stopPrice": sl_price, "reduceOnly": True},
             )
+            sl_ok = True
         except Exception as e:
-            logger.warning("SL order failed: %s", e)
+            logger.error("SL order failed: %s", e)
         try:
             await self._exchange.create_order(
                 symbol, "take_profit_market", close_side, amount, None,
                 {"stopPrice": tp_price, "reduceOnly": True},
             )
         except Exception as e:
-            logger.warning("TP order failed: %s", e)
+            logger.error("TP order failed: %s", e)
+        if not sl_ok:
+            raise RuntimeError(f"SL placement failed for {symbol} — position will be closed")
 
     async def fetch_ohlcv(
         self, symbol: str, timeframe: str, since: Optional[int], limit: int
