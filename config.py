@@ -177,12 +177,21 @@ class NtfyConfig:
 
 
 @dataclass
+class WebDashboardConfig:
+    enabled: bool
+    host: str
+    port: int
+    token: str = ""
+
+
+@dataclass
 class AppConfig:
     exchange: ExchangeConfig
     risk: RiskConfig
     strategy: StrategyConfig
     telegram: TelegramConfig
     ntfy: NtfyConfig
+    web: WebDashboardConfig
     db_path: str
     log_level: str
     paper_initial_balance: float
@@ -265,6 +274,13 @@ def load_config() -> AppConfig:
         server=_get("NTFY_SERVER", "https://ntfy.sh"),
     )
 
+    web = WebDashboardConfig(
+        enabled=_getbool("WEB_DASHBOARD_ENABLED", False),
+        host=_get("WEB_DASHBOARD_HOST", "0.0.0.0"),
+        port=_getint("WEB_DASHBOARD_PORT", 8080),
+        token=_get("WEB_DASHBOARD_TOKEN", ""),
+    )
+
     if not exchange.paper_mode and (not exchange.api_key or not exchange.api_secret):
         raise ValueError("MEXC_API_KEY and MEXC_API_SECRET required for live trading")
 
@@ -274,6 +290,7 @@ def load_config() -> AppConfig:
         strategy=strategy,
         telegram=telegram,
         ntfy=ntfy,
+        web=web,
         db_path=_get("DB_PATH", "./trades.db"),
         log_level=_get("LOG_LEVEL", "INFO"),
         paper_initial_balance=_getfloat("PAPER_INITIAL_BALANCE", 10000.0),

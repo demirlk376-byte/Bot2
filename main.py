@@ -24,6 +24,7 @@ from strategies.sr_breakout import SrBreakoutStrategy, SrBreakoutSignal
 from strategies.signal_combiner import SignalCombiner, CombinedSignal
 from ntfy_notifier import NtfyNotifier
 from telegram_bot import TelegramNotifier
+from web_dashboard import WebDashboard
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,6 +40,7 @@ portfolio: Portfolio = None
 dashboard: Dashboard = None
 telegram: TelegramNotifier = None
 ntfy: NtfyNotifier = None
+web_dashboard: WebDashboard = None
 combiner: SignalCombiner = None
 db: Database = None
 config = None
@@ -604,7 +606,8 @@ async def on_position_closed(pos, exit_price: float, net_pnl: float, reason: str
 
 async def main() -> None:
     global exchange, executor, portfolio, dashboard
-    global telegram, ntfy, combiner, db, config, funding_monitor, orderflow_monitor, symbol_ctxs
+    global telegram, ntfy, web_dashboard, combiner, db, config
+    global funding_monitor, orderflow_monitor, symbol_ctxs
 
     config = load_config()
     logging.getLogger().setLevel(config.log_level)
@@ -736,6 +739,16 @@ async def main() -> None:
     ntfy = NtfyNotifier(config.ntfy)
     await ntfy.initialize()
 
+    # Bize-özel canlı web dashboard (botla aynı event loop, trading'e dokunmaz).
+    web_dashboard = WebDashboard(
+        config.web,
+        exchange=exchange,
+        portfolio=portfolio,
+        db=db,
+        initial_balance=balance,
+    )
+    await web_dashboard.start()
+
     # Wire each coin's candle-close handler and start its data feed.
     for sym, ctx in symbol_ctxs.items():
         ctx.data_mgr.subscribe_candle_close(
@@ -781,6 +794,8 @@ async def main() -> None:
         await telegram.shutdown()
     if ntfy:
         await ntfy.shutdown()
+    if web_dashboard:
+        await web_dashboard.stop()
     await db.close()
     if dashboard:
         dashboard.stop()
