@@ -127,7 +127,7 @@ class Dashboard:
 
     def _header_panel(self) -> Panel:
         price_text = Text(f"BTC/USDT:USDT  ${self._current_price:,.2f}", style="bold cyan")
-        mode = Text("  [PAPER]", style="bold yellow") if True else Text("  [LIVE]", style="bold red")
+        mode = Text("  [PAPER]", style="bold yellow") if self._portfolio._is_paper else Text("  [LIVE]", style="bold red")
         regime_colors = {"trending": "red", "ranging": "yellow", "neutral": "cyan"}
         regime_style = f"bold {regime_colors.get(self._regime, 'white')}"
         regime_text = Text(

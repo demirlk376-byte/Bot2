@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 from typing import Optional
 
@@ -67,7 +68,7 @@ class RiskManager:
             quantity = min(quantity, max_qty)
 
         quantity = max(quantity, 0.0)
-        quantity = round(quantity, 3)
+        quantity = math.floor(quantity * 1000) / 1000  # floor not round: avoid risk overrun
         return quantity
 
     def build_trade_setup(
@@ -154,7 +155,7 @@ class RiskManager:
         max_qty = (balance * cap_fraction) / entry_price
         quantity = min(quantity, max_qty)
         quantity = max(quantity, 0.0)
-        quantity = round(quantity, 3)
+        quantity = math.floor(quantity * 1000) / 1000  # floor: avoids risk overrun after rounding
 
         if quantity < MIN_BTC_ORDER:
             logger.debug("Position size %.4f below minimum %.4f", quantity, MIN_BTC_ORDER)

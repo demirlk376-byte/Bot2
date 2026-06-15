@@ -396,15 +396,21 @@ class ExecutionEngine:
     async def emergency_close_all(self, reason: str) -> None:
         for pos in list(self._portfolio.get_open_positions()):
             try:
-                # For live mode: cancel any pending SL/TP orders first so they
-                # don't create ghost positions after the market close order fills.
+                # For live mode: cancel SL/TP orders first, then send a market
+                # close — this is the only path that actually closes on the exchange.
                 if not self._config.exchange.paper_mode and hasattr(self._exchange, "_exchange"):
                     try:
                         await self._exchange._exchange.cancel_all_orders(pos.symbol)
                     except Exception as ce:
                         logger.error("Could not cancel orders for %s: %s", pos.symbol, ce)
+                # Use the public close_position which sends the exchange order.
                 current_price = await self._exchange.get_current_price(pos.symbol)
-                await self._close_position_internal(pos, current_price, reason)
+                closed = await self.close_position(pos, reason, current_price)
+                if not closed:
+                    logger.critical(
+                        "EMERGENCY CLOSE FAILED for %s %s — position may remain open on exchange!",
+                        pos.symbol, pos.id,
+                    )
             except Exception as e:
                 logger.error("Emergency close failed for %s: %s", pos.id, e)
 
