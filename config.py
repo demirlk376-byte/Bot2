@@ -170,11 +170,19 @@ class TelegramConfig:
 
 
 @dataclass
+class NtfyConfig:
+    enabled: bool
+    topic: str
+    server: str = "https://ntfy.sh"
+
+
+@dataclass
 class AppConfig:
     exchange: ExchangeConfig
     risk: RiskConfig
     strategy: StrategyConfig
     telegram: TelegramConfig
+    ntfy: NtfyConfig
     db_path: str
     log_level: str
     paper_initial_balance: float
@@ -251,6 +259,12 @@ def load_config() -> AppConfig:
         chat_id=_get("TELEGRAM_CHAT_ID", ""),
     )
 
+    ntfy = NtfyConfig(
+        enabled=_getbool("NTFY_ENABLED", False),
+        topic=_get("NTFY_TOPIC", ""),
+        server=_get("NTFY_SERVER", "https://ntfy.sh"),
+    )
+
     if not exchange.paper_mode and (not exchange.api_key or not exchange.api_secret):
         raise ValueError("MEXC_API_KEY and MEXC_API_SECRET required for live trading")
 
@@ -259,6 +273,7 @@ def load_config() -> AppConfig:
         risk=risk,
         strategy=strategy,
         telegram=telegram,
+        ntfy=ntfy,
         db_path=_get("DB_PATH", "./trades.db"),
         log_level=_get("LOG_LEVEL", "INFO"),
         paper_initial_balance=_getfloat("PAPER_INITIAL_BALANCE", 10000.0),

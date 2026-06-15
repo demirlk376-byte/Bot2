@@ -22,6 +22,7 @@ from strategies.mean_reversion import MeanReversionStrategy
 from strategies.orb import OrbStrategy, OrbSignal
 from strategies.sr_breakout import SrBreakoutStrategy, SrBreakoutSignal
 from strategies.signal_combiner import SignalCombiner, CombinedSignal
+from ntfy_notifier import NtfyNotifier
 from telegram_bot import TelegramNotifier
 
 logging.basicConfig(
@@ -37,6 +38,7 @@ executor: ExecutionEngine = None
 portfolio: Portfolio = None
 dashboard: Dashboard = None
 telegram: TelegramNotifier = None
+ntfy: NtfyNotifier = None
 combiner: SignalCombiner = None
 db: Database = None
 config = None
@@ -191,6 +193,8 @@ def make_on_candle_close(ctx: "SymbolContext"):
                     )
                     if telegram:
                         await telegram.send_trade_opened(result.trade_setup, bb_combined)
+                    if ntfy:
+                        await ntfy.send_trade_opened(result.trade_setup, bb_combined)
                 elif result.error:
                     logger.debug("[%s] BB skipped: %s", ctx.symbol, result.error)
 
@@ -227,6 +231,8 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         )
                         if telegram:
                             await telegram.send_trade_opened(result.trade_setup, orb_combined)
+                        if ntfy:
+                            await ntfy.send_trade_opened(result.trade_setup, orb_combined)
                     elif result.error:
                         logger.debug("[%s] ORB skipped: %s", ctx.symbol, result.error)
 
@@ -261,6 +267,8 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         )
                         if telegram:
                             await telegram.send_trade_opened(result.trade_setup, asia_combined)
+                        if ntfy:
+                            await ntfy.send_trade_opened(result.trade_setup, asia_combined)
                     elif result.error:
                         logger.debug("[%s] Asia BO skipped: %s", ctx.symbol, result.error)
 
@@ -295,6 +303,8 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         )
                         if telegram:
                             await telegram.send_trade_opened(result.trade_setup, sr_combined)
+                        if ntfy:
+                            await ntfy.send_trade_opened(result.trade_setup, sr_combined)
                     elif result.error:
                         logger.debug("[%s] S/R skipped: %s", ctx.symbol, result.error)
 
@@ -480,6 +490,10 @@ async def daily_reset_loop() -> None:
             await telegram.send_daily_summary(
                 perf.total_trades, perf.winning_trades, perf.total_pnl_usdt, balance
             )
+        if ntfy:
+            await ntfy.send_daily_summary(
+                perf.total_trades, perf.winning_trades, perf.total_pnl_usdt, balance
+            )
 
 
 async def restore_state() -> int:
@@ -560,32 +574,37 @@ async def heartbeat_loop() -> None:
         except Exception:
             pass
         since_tg += interval
-        if telegram and since_tg >= tg_every:
+        if (telegram or ntfy) and since_tg >= tg_every:
             since_tg = 0
             try:
                 bal = await exchange.get_balance()
                 n_open = portfolio.get_open_position_count()
                 upnl = portfolio.get_total_unrealized_pnl()
-                await telegram.send_alert(
+                msg = (
                     f"Bot çalışıyor · bakiye ${bal:,.2f} · açık {n_open} · "
-                    f"gerçekleşmemiş ${upnl:+.2f}", "INFO",
+                    f"gerçekleşmemiş ${upnl:+.2f}"
                 )
+                if telegram:
+                    await telegram.send_alert(msg, "INFO")
+                if ntfy:
+                    await ntfy.send_alert(msg, "INFO")
             except Exception as e:
-                logger.debug("Heartbeat telegram failed: %s", e)
+                logger.debug("Heartbeat notification failed: %s", e)
         await asyncio.sleep(interval)
 
 
 async def on_position_closed(pos, exit_price: float, net_pnl: float, reason: str) -> None:
     dashboard.add_trade(pos.side, pos.entry_price, exit_price, net_pnl, reason)
+    args = (pos.symbol, pos.side, pos.entry_price, exit_price, net_pnl, reason)
     if telegram:
-        await telegram.send_trade_closed(
-            pos.symbol, pos.side, pos.entry_price, exit_price, net_pnl, reason
-        )
+        await telegram.send_trade_closed(*args)
+    if ntfy:
+        await ntfy.send_trade_closed(*args)
 
 
 async def main() -> None:
     global exchange, executor, portfolio, dashboard
-    global telegram, combiner, db, config, funding_monitor, orderflow_monitor, symbol_ctxs
+    global telegram, ntfy, combiner, db, config, funding_monitor, orderflow_monitor, symbol_ctxs
 
     config = load_config()
     logging.getLogger().setLevel(config.log_level)
@@ -660,6 +679,8 @@ async def main() -> None:
     async def _send_alert(message: str, level: str) -> None:
         if telegram:
             await telegram.send_alert(message, level)
+        if ntfy:
+            await ntfy.send_alert(message, level)
     executor.register_alert_callback(_send_alert)
 
     # Rebuild any open positions from before a restart (balance + positions).
@@ -712,6 +733,9 @@ async def main() -> None:
     )
     await telegram.initialize()
 
+    ntfy = NtfyNotifier(config.ntfy)
+    await ntfy.initialize()
+
     # Wire each coin's candle-close handler and start its data feed.
     for sym, ctx in symbol_ctxs.items():
         ctx.data_mgr.subscribe_candle_close(
@@ -755,6 +779,8 @@ async def main() -> None:
         await ctx.data_mgr.stop()
     if telegram:
         await telegram.shutdown()
+    if ntfy:
+        await ntfy.shutdown()
     await db.close()
     if dashboard:
         dashboard.stop()
