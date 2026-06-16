@@ -98,6 +98,7 @@ class RiskConfig:
     day_risk_pct: float = 0.01        # fallback day-trade risk if per-sleeve unset
     orb_risk_pct: float = 0.05        # ORB risk per trade (% of free balance)
     asia_risk_pct: float = 0.03       # Asia BO risk per trade (% of free balance)
+    fvg_risk_pct: float = 0.02        # FVG risk per trade (% of free balance)
     day_max_hold_candles: int = 6     # force-close after 6h (intraday only)
     # Trailing stop: move SL to breakeven after breakeven_atr_mult×ATR profit,
     # then trail at trailing_atr_mult×ATR below peak price.
@@ -160,6 +161,11 @@ class StrategyConfig:
     # S/R breakout (swing momentum, validated: lb80 touch3 SL3ATR RR3.0 PF 1.72).
     # Uses the normal 48h max-hold + full risk (it's a swing trade, not intraday).
     sr_breakout_enabled: bool = True
+    # FVG (Fair Value Gap) — ICT price-action. Validated 1h 2023-2026: PF 1.37,
+    # positive every year, with EMA200 trend + gap>=0.5×ATR + RR 2.5.
+    fvg_enabled: bool = True
+    fvg_min_gap_atr: float = 0.5      # only trade gaps >= this × ATR (filter noise)
+    fvg_rr: float = 2.5              # TP = entry ± 2.5 × stop-distance
 
 
 @dataclass
@@ -233,6 +239,7 @@ def load_config() -> AppConfig:
         day_risk_pct=_getfloat("DAY_RISK_PCT", 0.01),
         orb_risk_pct=_getfloat("ORB_RISK_PCT", 0.05),
         asia_risk_pct=_getfloat("ASIA_RISK_PCT", 0.03),
+        fvg_risk_pct=_getfloat("FVG_RISK_PCT", 0.02),
         day_max_hold_candles=_getint("DAY_MAX_HOLD_CANDLES", 6),
         trailing_stop_enabled=_getbool("TRAILING_STOP_ENABLED", True),
         breakeven_atr_mult=_getfloat("BREAKEVEN_ATR_MULT", 1.0),
@@ -260,6 +267,9 @@ def load_config() -> AppConfig:
         orb_enabled=_getbool("ORB_ENABLED", True),
         asia_bo_enabled=_getbool("ASIA_BO_ENABLED", True),
         sr_breakout_enabled=_getbool("SR_BREAKOUT_ENABLED", True),
+        fvg_enabled=_getbool("FVG_ENABLED", True),
+        fvg_min_gap_atr=_getfloat("FVG_MIN_GAP_ATR", 0.5),
+        fvg_rr=_getfloat("FVG_RR", 2.5),
     )
 
     telegram = TelegramConfig(

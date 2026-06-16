@@ -18,6 +18,7 @@ from monitor import Dashboard
 from portfolio import Portfolio
 from risk import RiskManager
 from strategies.asia_bo import AsiaBoStrategy, AsiaBoSignal
+from strategies.fvg import FvgStrategy, FvgSignal
 from strategies.mean_reversion import MeanReversionStrategy
 from strategies.orb import OrbStrategy, OrbSignal
 from strategies.sr_breakout import SrBreakoutStrategy, SrBreakoutSignal
@@ -59,6 +60,7 @@ class SymbolContext:
     orb_strategy: OrbStrategy = None
     asia_bo_strategy: AsiaBoStrategy = None
     sr_breakout_strategy: SrBreakoutStrategy = None
+    fvg_strategy: FvgStrategy = None
 
 
 def make_on_candle_close(ctx: "SymbolContext"):
@@ -309,6 +311,44 @@ def make_on_candle_close(ctx: "SymbolContext"):
                             await ntfy.send_trade_opened(result.trade_setup, sr_combined)
                     elif result.error:
                         logger.debug("[%s] S/R skipped: %s", ctx.symbol, result.error)
+
+            # ── FVG (Fair Value Gap) — independent slot, limit retest entry ───
+            # Price-action sleeve (PF 1.37, positive every year). NOT gated by the
+            # breakout regime filter — it's a gap-fill retest, not a breakout. Needs
+            # a longer buffer (EMA200 trend filter) so it fetches 250 candles.
+            if ctx.fvg_strategy is not None:
+                df_fvg = await ctx.data_mgr.get_candles(config.strategy.primary_tf, 250)
+                fvg_sig = ctx.fvg_strategy.analyze(df_fvg, atr_val)
+                if fvg_sig.direction != 0:
+                    fvg_combined = CombinedSignal(
+                        direction=fvg_sig.direction,
+                        confidence=fvg_sig.strength,
+                        trend_score=0.0,
+                        mean_rev_score=0.0,
+                        breakout_score=fvg_sig.direction * fvg_sig.strength,
+                        dominant_strategy="fvg",
+                        reasons=[fvg_sig.reason],
+                        entry_price=fvg_sig.entry_price,
+                        sl_price=fvg_sig.sl_price,
+                        tp_price=fvg_sig.tp_price,
+                        symbol=ctx.symbol,
+                        position_slot=f"{ctx.symbol}:fvg",
+                    )
+                    result = await executor.execute_signal(fvg_combined, atr_val)
+                    if result.success and result.position:
+                        logger.info(
+                            "FVG trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                            result.position.side.upper(), ctx.symbol,
+                            result.position.entry_price,
+                            result.position.sl_price,
+                            result.position.tp_price,
+                        )
+                        if telegram:
+                            await telegram.send_trade_opened(result.trade_setup, fvg_combined)
+                        if ntfy:
+                            await ntfy.send_trade_opened(result.trade_setup, fvg_combined)
+                    elif result.error:
+                        logger.debug("[%s] FVG skipped: %s", ctx.symbol, result.error)
 
             balance = await exchange.get_balance()
             dashboard.update_balance(balance)
@@ -668,6 +708,12 @@ async def main() -> None:
             ),
             asia_bo_strategy=(
                 AsiaBoStrategy() if config.strategy.asia_bo_enabled else None
+            ),
+            fvg_strategy=(
+                FvgStrategy(
+                    min_gap_atr=config.strategy.fvg_min_gap_atr,
+                    rr=config.strategy.fvg_rr,
+                ) if config.strategy.fvg_enabled else None
             ),
             sr_breakout_strategy=(
                 SrBreakoutStrategy() if config.strategy.sr_breakout_enabled else None
