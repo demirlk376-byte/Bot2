@@ -467,7 +467,7 @@ async def daily_reset_loop() -> None:
         seconds_until_midnight = (tomorrow - now).total_seconds()
         await asyncio.sleep(max(seconds_until_midnight, 60))
 
-        today = date.today().isoformat()
+        today = datetime.now(timezone.utc).date().isoformat()
         # Snapshot starting EQUITY (free + locked margin + unrealized), not free
         # balance — the daily-loss limit measures drawdown, not locked margin.
         await executor.capture_daily_start()
@@ -546,8 +546,7 @@ async def restore_state() -> int:
     try:
         today_slots = await db.get_today_traded_slots()
         if today_slots:
-            from datetime import date as _date
-            today_utc = _date.today()
+            today_utc = datetime.now(timezone.utc).date()
             for ctx in symbol_ctxs.values():
                 if "orb" in today_slots and ctx.orb_strategy is not None:
                     ctx.orb_strategy._traded_dates.add(today_utc)

@@ -259,6 +259,18 @@ class ExecutionEngine:
         if not ok:
             return ExecutionResult(False, error=reason)
 
+        # Pre-flight margin check: get_balance() already returns FREE balance
+        # (locked margin deducted), so compare directly with a 5% buffer for
+        # fees/slippage. Without this, MEXC silently rejects oversized orders.
+        if setup.margin_required > balance * 0.95:
+            msg = (
+                f"Yetersiz bakiye: {setup.margin_required:.2f}$ gerekli, "
+                f"{balance:.2f}$ serbest — trade atlandı"
+            )
+            logger.warning(msg)
+            await self._alert(msg, "WARNING")
+            return ExecutionResult(False, error="Insufficient free margin")
+
         side = "buy" if signal.direction == 1 else "sell"
         # PaperExchange reads SL/TP from the order params (check_sl_tp). For live,
         # attaching SL/TP via create_order params is unreliable on MEXC, so we

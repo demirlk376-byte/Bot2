@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 
 import aiosqlite
@@ -134,7 +134,7 @@ class Database:
         """Strategy names that already entered a trade today (open or closed).
         Used on restart to re-populate per-strategy _traded_dates so one-per-day
         intraday strategies (ORB, Asia BO) don't re-fire after a bot restart."""
-        today = date.today().isoformat()
+        today = datetime.now(timezone.utc).date().isoformat()
         async with self._db.execute(
             """SELECT DISTINCT json_extract(strategy_scores, '$.strategy')
                FROM trades WHERE entry_time LIKE ?""",
