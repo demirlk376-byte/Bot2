@@ -19,6 +19,7 @@ from portfolio import Portfolio
 from risk import RiskManager
 from strategies.asia_bo import AsiaBoStrategy, AsiaBoSignal
 from strategies.fvg import FvgStrategy, FvgSignal
+from strategies.ifvg import IfvgStrategy, IfvgSignal
 from strategies.mean_reversion import MeanReversionStrategy
 from strategies.orb import OrbStrategy, OrbSignal
 from strategies.sr_breakout import SrBreakoutStrategy, SrBreakoutSignal
@@ -61,6 +62,7 @@ class SymbolContext:
     asia_bo_strategy: AsiaBoStrategy = None
     sr_breakout_strategy: SrBreakoutStrategy = None
     fvg_strategy: FvgStrategy = None
+    ifvg_strategy: IfvgStrategy = None
 
 
 def make_on_candle_close(ctx: "SymbolContext"):
@@ -316,8 +318,11 @@ def make_on_candle_close(ctx: "SymbolContext"):
             # Price-action sleeve (PF 1.37, positive every year). NOT gated by the
             # breakout regime filter — it's a gap-fill retest, not a breakout. Needs
             # a longer buffer (EMA200 trend filter) so it fetches 250 candles.
+            df_long = None
+            if ctx.fvg_strategy is not None or ctx.ifvg_strategy is not None:
+                df_long = await ctx.data_mgr.get_candles(config.strategy.primary_tf, 250)
             if ctx.fvg_strategy is not None:
-                df_fvg = await ctx.data_mgr.get_candles(config.strategy.primary_tf, 250)
+                df_fvg = df_long
                 fvg_sig = ctx.fvg_strategy.analyze(df_fvg, atr_val)
                 if fvg_sig.direction != 0:
                     fvg_combined = CombinedSignal(
@@ -349,6 +354,43 @@ def make_on_candle_close(ctx: "SymbolContext"):
                             await ntfy.send_trade_opened(result.trade_setup, fvg_combined)
                     elif result.error:
                         logger.debug("[%s] FVG skipped: %s", ctx.symbol, result.error)
+
+            # ── IFVG (Inverse FVG) — independent slot, broken-gap reversal retest ─
+            # Same 250-candle buffer (EMA200 trend). Not gated by breakout regime.
+            if ctx.ifvg_strategy is not None:
+                df_ifvg = df_long if df_long is not None else \
+                    await ctx.data_mgr.get_candles(config.strategy.primary_tf, 250)
+                ifvg_sig = ctx.ifvg_strategy.analyze(df_ifvg, atr_val)
+                if ifvg_sig.direction != 0:
+                    ifvg_combined = CombinedSignal(
+                        direction=ifvg_sig.direction,
+                        confidence=ifvg_sig.strength,
+                        trend_score=0.0,
+                        mean_rev_score=0.0,
+                        breakout_score=ifvg_sig.direction * ifvg_sig.strength,
+                        dominant_strategy="ifvg",
+                        reasons=[ifvg_sig.reason],
+                        entry_price=ifvg_sig.entry_price,
+                        sl_price=ifvg_sig.sl_price,
+                        tp_price=ifvg_sig.tp_price,
+                        symbol=ctx.symbol,
+                        position_slot=f"{ctx.symbol}:ifvg",
+                    )
+                    result = await executor.execute_signal(ifvg_combined, atr_val)
+                    if result.success and result.position:
+                        logger.info(
+                            "IFVG trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                            result.position.side.upper(), ctx.symbol,
+                            result.position.entry_price,
+                            result.position.sl_price,
+                            result.position.tp_price,
+                        )
+                        if telegram:
+                            await telegram.send_trade_opened(result.trade_setup, ifvg_combined)
+                        if ntfy:
+                            await ntfy.send_trade_opened(result.trade_setup, ifvg_combined)
+                    elif result.error:
+                        logger.debug("[%s] IFVG skipped: %s", ctx.symbol, result.error)
 
             balance = await exchange.get_balance()
             dashboard.update_balance(balance)
@@ -714,6 +756,12 @@ async def main() -> None:
                     min_gap_atr=config.strategy.fvg_min_gap_atr,
                     rr=config.strategy.fvg_rr,
                 ) if config.strategy.fvg_enabled else None
+            ),
+            ifvg_strategy=(
+                IfvgStrategy(
+                    min_gap_atr=config.strategy.ifvg_min_gap_atr,
+                    rr=config.strategy.ifvg_rr,
+                ) if config.strategy.ifvg_enabled else None
             ),
             sr_breakout_strategy=(
                 SrBreakoutStrategy() if config.strategy.sr_breakout_enabled else None

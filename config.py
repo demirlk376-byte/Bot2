@@ -99,6 +99,7 @@ class RiskConfig:
     orb_risk_pct: float = 0.05        # ORB risk per trade (% of free balance)
     asia_risk_pct: float = 0.03       # Asia BO risk per trade (% of free balance)
     fvg_risk_pct: float = 0.02        # FVG risk per trade (% of free balance)
+    ifvg_risk_pct: float = 0.02       # IFVG risk per trade (% of free balance)
     day_max_hold_candles: int = 6     # force-close after 6h (intraday only)
     # Trailing stop: move SL to breakeven after breakeven_atr_mult×ATR profit,
     # then trail at trailing_atr_mult×ATR below peak price.
@@ -166,6 +167,15 @@ class StrategyConfig:
     fvg_enabled: bool = True
     fvg_min_gap_atr: float = 0.5      # only trade gaps >= this × ATR (filter noise)
     fvg_rr: float = 2.5              # TP = entry ± 2.5 × stop-distance
+    # IFVG (Inverse FVG) — broken-gap reversal retest. EXPERIMENTAL / DISABLED:
+    # the salvage backtest showed PF 1.42 (positive every year), but the faithful
+    # live-strategy code gives 2025 PF 0.99 (slightly negative) on the continuous
+    # run — the edge is fragile in the hard trend year. Off by default; the code
+    # stays for future refinement but must not trade live money until 2025 is
+    # robustly positive. Overall PF 1.36 across 2023-2026.
+    ifvg_enabled: bool = False
+    ifvg_min_gap_atr: float = 0.5
+    ifvg_rr: float = 2.0
 
 
 @dataclass
@@ -240,6 +250,7 @@ def load_config() -> AppConfig:
         orb_risk_pct=_getfloat("ORB_RISK_PCT", 0.05),
         asia_risk_pct=_getfloat("ASIA_RISK_PCT", 0.03),
         fvg_risk_pct=_getfloat("FVG_RISK_PCT", 0.02),
+        ifvg_risk_pct=_getfloat("IFVG_RISK_PCT", 0.02),
         day_max_hold_candles=_getint("DAY_MAX_HOLD_CANDLES", 6),
         trailing_stop_enabled=_getbool("TRAILING_STOP_ENABLED", True),
         breakeven_atr_mult=_getfloat("BREAKEVEN_ATR_MULT", 1.0),
@@ -270,6 +281,9 @@ def load_config() -> AppConfig:
         fvg_enabled=_getbool("FVG_ENABLED", True),
         fvg_min_gap_atr=_getfloat("FVG_MIN_GAP_ATR", 0.5),
         fvg_rr=_getfloat("FVG_RR", 2.5),
+        ifvg_enabled=_getbool("IFVG_ENABLED", False),
+        ifvg_min_gap_atr=_getfloat("IFVG_MIN_GAP_ATR", 0.5),
+        ifvg_rr=_getfloat("IFVG_RR", 2.0),
     )
 
     telegram = TelegramConfig(

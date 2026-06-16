@@ -231,6 +231,9 @@ class ExecutionEngine:
             elif signal.dominant_strategy == "fvg":
                 risk_override = getattr(self._config.risk, "fvg_risk_pct",
                                         getattr(self._config.risk, "day_risk_pct", 0.0))
+            elif signal.dominant_strategy == "ifvg":
+                risk_override = getattr(self._config.risk, "ifvg_risk_pct",
+                                        getattr(self._config.risk, "day_risk_pct", 0.0))
             else:
                 risk_override = 0.0
             setup = self._risk.build_trade_setup_from_levels(
@@ -350,8 +353,8 @@ class ExecutionEngine:
         # scores dict so _enforce_max_hold can read it per-position.
         if signal.dominant_strategy in ("orb", "asia_bo"):
             scores["max_hold"] = getattr(self._config.risk, "day_max_hold_candles", 6)
-        # FVG was validated with a 24-candle max-hold (1-day on 1h).
-        elif signal.dominant_strategy == "fvg":
+        # FVG / IFVG were validated with a 24-candle max-hold (1-day on 1h).
+        elif signal.dominant_strategy in ("fvg", "ifvg"):
             scores["max_hold"] = 24
 
         position = self._portfolio.create_position(
