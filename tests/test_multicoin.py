@@ -6,6 +6,8 @@ Doğrular:
   • İki coin aynı anda açık pozisyon tutabilir.
   • Bir coinin mumuyla SL/TP kontrolü SADECE o coinin pozisyonunu etkiler.
   • Config SYMBOLS env'ini parse + normalize eder; yoksa tek SYMBOL'e döner.
+  • SR_BREAKOUT_SYMBOLS allowlist'i parse eder; S/R sadece izinli coin'lerde
+    instantiate edilir (research: SOL S/R edge'i transfer olmadı).
 
 Çalıştır:  python tests/test_multicoin.py
 """
@@ -77,9 +79,52 @@ def _config_parsing() -> None:
     print(f"✓ SYMBOLS yoksa tek coin: {c.exchange.symbols}")
 
 
+def _sr_allowlist_gate() -> None:
+    """SR_BREAKOUT_SYMBOLS verildiğinde S/R yalnız izinli coin'lerde kurulur;
+    boşken (None) tüm coin'lerde açık kalır (tek-coin geri uyumluluk)."""
+    from config import load_config
+    from strategies.sr_breakout import SrBreakoutStrategy
+
+    os.environ["MEXC_API_KEY"] = "x"
+    os.environ["MEXC_API_SECRET"] = "x"
+
+    def make_sr_for(sym: str, cfg) -> bool:
+        """main.py'deki kapı mantığını birebir yansıtır."""
+        allow = cfg.strategy.sr_breakout_symbols
+        return (
+            cfg.strategy.sr_breakout_enabled
+            and (allow is None or sym in allow)
+        )
+
+    # Allowlist BTC,ETH → SOL'da S/R kapalı
+    os.environ["SYMBOLS"] = "BTC,ETH,SOL"
+    os.environ["SR_BREAKOUT_SYMBOLS"] = "BTC,ETH"
+    c = load_config()
+    assert c.strategy.sr_breakout_symbols == ["BTC/USDT:USDT", "ETH/USDT:USDT"], \
+        c.strategy.sr_breakout_symbols
+    enabled = {s: make_sr_for(s, c) for s in c.exchange.symbols}
+    assert enabled["BTC/USDT:USDT"] is True
+    assert enabled["ETH/USDT:USDT"] is True
+    assert enabled["SOL/USDT:USDT"] is False, "SOL'da S/R kapalı olmalı (edge transfer olmadı)"
+    # sanity: instantiate edilebildiğini doğrula (izinli coin için)
+    assert SrBreakoutStrategy() is not None
+    print("✓ S/R allowlist: BTC+ETH açık, SOL kapalı")
+
+    # Allowlist boş → S/R tüm coin'lerde açık (geri uyumluluk)
+    del os.environ["SR_BREAKOUT_SYMBOLS"]
+    c = load_config()
+    assert c.strategy.sr_breakout_symbols is None
+    enabled = {s: make_sr_for(s, c) for s in c.exchange.symbols}
+    assert all(enabled.values()), "allowlist boşken S/R tüm coin'lerde açık olmalı"
+    print("✓ S/R allowlist boş → tüm coin'lerde açık (geri uyumlu)")
+
+    del os.environ["SYMBOLS"]
+
+
 def main() -> int:
     asyncio.run(_exchange_isolation())
     _config_parsing()
+    _sr_allowlist_gate()
     print("\n" + "=" * 60)
     print("✓ ÇOKLU COIN MOTORU DOĞRU — fiyatlar ve SL/TP coin bazında izole")
     print("=" * 60)

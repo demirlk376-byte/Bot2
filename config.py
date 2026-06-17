@@ -162,6 +162,12 @@ class StrategyConfig:
     # S/R breakout (swing momentum, validated: lb80 touch3 SL3ATR RR3.0 PF 1.72).
     # Uses the normal 48h max-hold + full risk (it's a swing trade, not intraday).
     sr_breakout_enabled: bool = True
+    # Per-coin allowlist for S/R. research_strategies_crosscoin.py showed the S/R
+    # edge transfers to ETH (PF 1.15/1.20) but FAILS on SOL (PF 1.09/1.03, below
+    # the ✅ bar). When None, S/R runs on every traded coin (single-coin compat);
+    # when set, S/R is only instantiated for symbols in this list. BB/ORB/Asia all
+    # transferred cleanly to ETH+SOL so they are NOT gated this way.
+    sr_breakout_symbols: list[str] | None = None
     # FVG (Fair Value Gap) — ICT price-action. Validated 1h 2023-2026: PF 1.37,
     # positive every year, with EMA200 trend + gap>=0.5×ATR + RR 2.5.
     fvg_enabled: bool = True
@@ -225,6 +231,14 @@ def load_config() -> AppConfig:
     else:
         symbols = [_normalize_symbol(primary_symbol)]
 
+    # Optional per-coin allowlist for the S/R sleeve (see StrategyConfig). Empty
+    # → None → S/R runs on all coins (single-coin backward compat).
+    raw_sr_symbols = os.getenv("SR_BREAKOUT_SYMBOLS", "").strip()
+    sr_breakout_symbols = (
+        [_normalize_symbol(s) for s in raw_sr_symbols.split(",") if s.strip()]
+        if raw_sr_symbols else None
+    )
+
     exchange = ExchangeConfig(
         api_key=_get("MEXC_API_KEY", ""),
         api_secret=_get("MEXC_API_SECRET", ""),
@@ -278,6 +292,7 @@ def load_config() -> AppConfig:
         orb_enabled=_getbool("ORB_ENABLED", True),
         asia_bo_enabled=_getbool("ASIA_BO_ENABLED", True),
         sr_breakout_enabled=_getbool("SR_BREAKOUT_ENABLED", True),
+        sr_breakout_symbols=sr_breakout_symbols,
         fvg_enabled=_getbool("FVG_ENABLED", True),
         fvg_min_gap_atr=_getfloat("FVG_MIN_GAP_ATR", 0.5),
         fvg_rr=_getfloat("FVG_RR", 2.5),

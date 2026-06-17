@@ -115,28 +115,35 @@ class ExecutionEngine:
         self._trading_halted.clear()
         logger.info("Trading RESUMED (manual)")
 
-    def _record_trade_outcome(self, net_pnl: float, strategy: str = "all") -> None:
-        """Track per-strategy consecutive losses; trigger a global cooldown when
-        any one sleeve hits the limit. Using per-strategy counters prevents a small
-        ORB win from masking a BB loss streak (which the old single counter allowed)."""
+    def _record_trade_outcome(
+        self, net_pnl: float, strategy: str = "all", symbol: str = ""
+    ) -> None:
+        """Track consecutive losses per (strategy, symbol); trigger a global
+        cooldown when any one sleeve hits the limit. Per-strategy counters prevent
+        a small ORB win from masking a BB loss streak; adding the symbol to the key
+        keeps each coin's streak independent (an ETH-BB loss must not be conflated
+        with BTC-BB, since the edges are validated per coin). The cooldown itself
+        stays global — a conservative account-wide risk-off after any sleeve fails."""
         limit = getattr(self._config.risk, "consecutive_loss_limit", 2)
         cooldown_min = getattr(self._config.risk, "cooldown_minutes", 240)
+        key = f"{strategy}:{symbol}" if symbol else strategy
+        label = f"{strategy} {symbol}".strip()
         if net_pnl < 0:
-            self._consecutive_losses[strategy] = self._consecutive_losses.get(strategy, 0) + 1
-            streak = self._consecutive_losses[strategy]
+            self._consecutive_losses[key] = self._consecutive_losses.get(key, 0) + 1
+            streak = self._consecutive_losses[key]
             if streak >= limit:
                 self._cooldown_until = datetime.now(timezone.utc) + timedelta(minutes=cooldown_min)
                 logger.warning(
                     "[%s] Consecutive losses: %d — cooldown until %s",
-                    strategy, streak, self._cooldown_until.strftime("%H:%M UTC"),
+                    label, streak, self._cooldown_until.strftime("%H:%M UTC"),
                 )
                 asyncio.create_task(self._alert(
-                    f"[{strategy.upper()}] Üst üste {streak} kayıp — "
+                    f"[{label.upper()}] Üst üste {streak} kayıp — "
                     f"{cooldown_min} dk cooldown başladı",
                     "WARNING",
                 ))
         else:
-            self._consecutive_losses[strategy] = 0
+            self._consecutive_losses[key] = 0
 
     async def execute_signal(
         self, signal: CombinedSignal, atr: float
@@ -450,7 +457,7 @@ class ExecutionEngine:
         pnl_pct = net_pnl / denom if denom > 0 else 0.0
 
         strategy = pos.strategy_scores.get("strategy", "all")
-        self._record_trade_outcome(net_pnl, strategy)
+        self._record_trade_outcome(net_pnl, strategy, pos.symbol)
         self._portfolio.remove_position(pos.id)
         await self._db.log_trade_close(
             trade_id=pos.id,
@@ -470,7 +477,7 @@ class ExecutionEngine:
             return
         pnl_pct = net_pnl / (pos.entry_price * pos.quantity) if pos.quantity > 0 else 0.0
         strategy = pos.strategy_scores.get("strategy", "all")
-        self._record_trade_outcome(net_pnl, strategy)
+        self._record_trade_outcome(net_pnl, strategy, pos.symbol)
         self._portfolio.remove_position(pos.id)
         await self._db.log_trade_close(
             trade_id=pos.id,

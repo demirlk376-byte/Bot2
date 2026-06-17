@@ -764,9 +764,25 @@ async def main() -> None:
                 ) if config.strategy.ifvg_enabled else None
             ),
             sr_breakout_strategy=(
-                SrBreakoutStrategy() if config.strategy.sr_breakout_enabled else None
+                SrBreakoutStrategy()
+                if config.strategy.sr_breakout_enabled
+                and (
+                    config.strategy.sr_breakout_symbols is None
+                    or sym in config.strategy.sr_breakout_symbols
+                )
+                else None
             ),
         )
+
+    # Log the per-coin sleeve layout so the gate is visible at boot.
+    for sym, ctx in symbol_ctxs.items():
+        sleeves = ["BB"]
+        if ctx.orb_strategy is not None: sleeves.append("ORB")
+        if ctx.asia_bo_strategy is not None: sleeves.append("Asia")
+        if ctx.sr_breakout_strategy is not None: sleeves.append("S/R")
+        if ctx.fvg_strategy is not None: sleeves.append("FVG")
+        if ctx.ifvg_strategy is not None: sleeves.append("IFVG")
+        logger.info("[%s] active sleeves: %s", sym, ", ".join(sleeves))
 
     risk_mgr = RiskManager(config.risk)
     executor = ExecutionEngine(exchange, risk_mgr, portfolio, db, config)
