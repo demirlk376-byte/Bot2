@@ -13,6 +13,8 @@ from exchange import PaperExchange, LiveExchange
 from execution import ExecutionEngine
 from funding import FundingMonitor
 from orderflow import OrderFlowMonitor
+from whale_flow import WhaleFlowMonitor
+from strategies.whale import WhaleStrategy
 from indicators import atr, adx as _adx_indicator
 from monitor import Dashboard
 from portfolio import Portfolio
@@ -48,6 +50,7 @@ db: Database = None
 config = None
 funding_monitor: FundingMonitor = None
 orderflow_monitor: OrderFlowMonitor = None
+whale_monitor: WhaleFlowMonitor = None
 symbol_ctxs: dict[str, "SymbolContext"] = {}
 
 
@@ -63,6 +66,7 @@ class SymbolContext:
     sr_breakout_strategy: SrBreakoutStrategy = None
     fvg_strategy: FvgStrategy = None
     ifvg_strategy: IfvgStrategy = None
+    whale_strategy: "WhaleStrategy" = None
 
 
 def active_sleeves_for(ctx: "SymbolContext", cfg) -> list[str]:
@@ -79,6 +83,9 @@ def active_sleeves_for(ctx: "SymbolContext", cfg) -> list[str]:
     if ctx.sr_breakout_strategy is not None: sleeves.append("S/R")
     if ctx.fvg_strategy is not None: sleeves.append("FVG")
     if ctx.ifvg_strategy is not None: sleeves.append("IFVG")
+    if ctx.whale_strategy is not None:
+        whale_mode = getattr(cfg.strategy, "whale_mode", "monitor")
+        sleeves.append("Whale" + ("" if whale_mode == "trade" else "(mon)"))
     return sleeves
 
 
@@ -414,6 +421,59 @@ def make_on_candle_close(ctx: "SymbolContext"):
                     elif result.error:
                         logger.debug("[%s] IFVG skipped: %s", ctx.symbol, result.error)
 
+            # ── Whale-flow sleeve — avg-trade-size z-spike, follow the candle ──
+            # Monitor-first: avg_size needs live trade count (not in MEXC klines),
+            # supplied by whale_monitor from watchTrades. Needs ~1 week warmup.
+            # In "monitor" mode we LOG would-be signals without trading; in
+            # "trade" mode it executes like the other sleeves. BTC-only.
+            if ctx.whale_strategy is not None and whale_monitor is not None \
+                    and whale_monitor.enabled:
+                z = whale_monitor.bar_zscore(candle.timestamp)
+                whale_sig = ctx.whale_strategy.analyze(
+                    candle.open, candle.close, z, atr_val
+                )
+                if whale_sig.direction != 0:
+                    whale_mode = getattr(config.strategy, "whale_mode", "monitor")
+                    if whale_mode != "trade":
+                        logger.info(
+                            "[%s] WHALE signal (MONITOR, no trade): %s z=%.2f "
+                            "entry=%.4f sl=%.4f tp=%.4f",
+                            ctx.symbol, "LONG" if whale_sig.direction == 1 else "SHORT",
+                            whale_sig.z, whale_sig.entry_price,
+                            whale_sig.sl_price, whale_sig.tp_price,
+                        )
+                        _log_whale_csv(ctx.symbol, whale_sig, current_price)
+                    else:
+                        whale_combined = CombinedSignal(
+                            direction=whale_sig.direction,
+                            confidence=whale_sig.strength,
+                            trend_score=0.0, mean_rev_score=0.0,
+                            breakout_score=whale_sig.direction * whale_sig.strength,
+                            dominant_strategy="whale",
+                            reasons=[whale_sig.reason],
+                            entry_price=whale_sig.entry_price,
+                            sl_price=whale_sig.sl_price,
+                            tp_price=whale_sig.tp_price,
+                            symbol=ctx.symbol,
+                            position_slot=f"{ctx.symbol}:whale",
+                        )
+                        result = await executor.execute_signal(whale_combined, atr_val)
+                        if result.success and result.position:
+                            logger.info(
+                                "WHALE trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                                result.position.side.upper(), ctx.symbol,
+                                result.position.entry_price,
+                                result.position.sl_price, result.position.tp_price,
+                            )
+                            if telegram:
+                                await telegram.send_trade_opened(result.trade_setup, whale_combined)
+                            if ntfy:
+                                await ntfy.send_trade_opened(result.trade_setup, whale_combined)
+                        elif result.error:
+                            logger.debug("[%s] WHALE skipped: %s", ctx.symbol, result.error)
+                elif z is not None:
+                    logger.debug("[%s] whale z=%.2f (no fire)", ctx.symbol, z)
+
             balance = await exchange.get_balance()
             dashboard.update_balance(balance)
 
@@ -453,6 +513,32 @@ def _log_orderflow_csv(symbol, combined, mr_sig, snap, assess) -> None:
             w.writerow(row)
     except Exception as e:
         logger.debug("orderflow csv write failed: %s", e)
+
+
+_WHALE_CSV = "whale_log.csv"
+
+
+def _log_whale_csv(symbol, sig, current_price) -> None:
+    """Append every would-be whale signal to a CSV so the monitor-mode forward
+    test survives restarts and can be analysed against realised outcomes."""
+    import csv
+    from pathlib import Path
+    header = ["ts", "symbol", "direction", "z", "entry", "sl", "tp",
+              "price_at_signal", "strength"]
+    row = [
+        datetime.now(timezone.utc).isoformat(), symbol, sig.direction,
+        round(sig.z, 4), round(sig.entry_price, 6), round(sig.sl_price, 6),
+        round(sig.tp_price, 6), round(current_price, 6), round(sig.strength, 4),
+    ]
+    try:
+        exists = Path(_WHALE_CSV).exists()
+        with open(_WHALE_CSV, "a", newline="") as f:
+            w = csv.writer(f)
+            if not exists:
+                w.writerow(header)
+            w.writerow(row)
+    except Exception as e:
+        logger.debug("whale csv write failed: %s", e)
 
 
 def _get_regime(adx_val: float) -> str:
@@ -710,7 +796,7 @@ async def on_position_closed(pos, exit_price: float, net_pnl: float, reason: str
 async def main() -> None:
     global exchange, executor, portfolio, dashboard
     global telegram, ntfy, web_dashboard, combiner, db, config
-    global funding_monitor, orderflow_monitor, symbol_ctxs
+    global funding_monitor, orderflow_monitor, whale_monitor, symbol_ctxs
 
     config = load_config()
     logging.getLogger().setLevel(config.log_level)
@@ -794,6 +880,19 @@ async def main() -> None:
                 )
                 else None
             ),
+            whale_strategy=(
+                WhaleStrategy(
+                    z_threshold=config.strategy.whale_z_threshold,
+                    sl_atr=config.strategy.whale_sl_atr,
+                    rr=config.strategy.whale_rr,
+                )
+                if config.strategy.whale_enabled
+                and (
+                    config.strategy.whale_symbols is None
+                    or sym in config.strategy.whale_symbols
+                )
+                else None
+            ),
         )
 
     # Log the per-coin sleeve layout so the gate is visible at boot.
@@ -854,6 +953,16 @@ async def main() -> None:
         window_minutes=config.strategy.orderflow_window_min,
     )
 
+    # Whale-flow aggregator: one watchTrades feed on the primary (BTC) symbol,
+    # buckets trades hourly to derive avg trade size live. Default OFF; monitor
+    # mode logs would-be signals only. ~1 week warmup before the first z-score.
+    whale_monitor = WhaleFlowMonitor(
+        exchange,
+        config.exchange.symbol,
+        enabled=config.strategy.whale_enabled,
+        zwin=config.strategy.whale_zwin,
+    )
+
     dashboard = Dashboard(portfolio)
     dashboard.update_balance(balance)
     dashboard.start()
@@ -910,6 +1019,8 @@ async def main() -> None:
 
     # Start the order-flow feed (no-op if disabled).
     await orderflow_monitor.start()
+    # Start the whale-flow aggregator (no-op if disabled).
+    await whale_monitor.start()
 
     # Run until interrupted
     stop_event = asyncio.Event()
@@ -930,6 +1041,8 @@ async def main() -> None:
     logger.info("Shutting down...")
     if orderflow_monitor is not None:
         await orderflow_monitor.stop()
+    if whale_monitor is not None:
+        await whale_monitor.stop()
     for ctx in symbol_ctxs.values():
         await ctx.data_mgr.stop()
     if telegram:

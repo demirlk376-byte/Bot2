@@ -156,6 +156,18 @@ class StrategyConfig:
     orderflow_enabled: bool = False
     orderflow_mode: str = "monitor"
     orderflow_window_min: float = 15.0
+    # Whale-flow sleeve (avg trade size z-spike → follow). Validated on Binance
+    # 1m klines: BTC z2.0 SL2.0 RR2.0 PF 1.17 positive EVERY year 2023-26. Needs
+    # trade COUNT, which MEXC klines don't provide → built from a live watch_trades
+    # aggregator with ~1 week warmup. Ships OFF in monitor mode (log-only, no
+    # trades) until forward-validated. BTC-only (ETH backtest too weak).
+    whale_enabled: bool = False
+    whale_mode: str = "monitor"          # "monitor" = log only; "trade" = execute
+    whale_z_threshold: float = 2.0       # avg_size z-score to fire
+    whale_zwin: int = 168                # rolling window (hours) for the z-score
+    whale_sl_atr: float = 2.0            # SL = entry ± 2.0 × ATR
+    whale_rr: float = 2.0                # TP = entry ± RR × stop-distance
+    whale_symbols: tuple = ("BTC/USDT:USDT",)  # BTC-only per backtest
     # Intraday breakout strategies (validated edge: ORB PF 1.44, Asia BO PF 2.15)
     orb_enabled: bool = True
     asia_bo_enabled: bool = True
@@ -299,6 +311,12 @@ def load_config() -> AppConfig:
         orderflow_enabled=_getbool("ORDERFLOW_ENABLED", False),
         orderflow_mode=_get("ORDERFLOW_MODE", "monitor"),
         orderflow_window_min=_getfloat("ORDERFLOW_WINDOW_MIN", 15.0),
+        whale_enabled=_getbool("WHALE_ENABLED", False),
+        whale_mode=_get("WHALE_MODE", "monitor"),
+        whale_z_threshold=_getfloat("WHALE_Z_THRESHOLD", 2.0),
+        whale_zwin=_getint("WHALE_ZWIN", 168),
+        whale_sl_atr=_getfloat("WHALE_SL_ATR", 2.0),
+        whale_rr=_getfloat("WHALE_RR", 2.0),
         orb_enabled=_getbool("ORB_ENABLED", True),
         asia_bo_enabled=_getbool("ASIA_BO_ENABLED", True),
         sr_breakout_enabled=_getbool("SR_BREAKOUT_ENABLED", True),
