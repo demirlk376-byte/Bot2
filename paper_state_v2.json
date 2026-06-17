@@ -2,7 +2,17 @@
   "coins": {
     "BTC": {
       "balance": 10090.91922013315,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 64274.2,
+        "sl": 62502.93990726137,
+        "tp": 67226.30015456438,
+        "qty": 0.07849898730854021,
+        "atr": 590.4200309128756,
+        "entry_ts": "2026-06-17T19:00:00+00:00",
+        "fng_at_entry": 22,
+        "funding_at_entry": -1.7e-05
+      },
       "n_trades": 1,
       "n_wins": 1,
       "total_pnl": 90.91922013314975,
@@ -36,7 +46,17 @@
     },
     "BNB": {
       "balance": 10103.277367840987,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 598.9,
+        "sl": 583.2047745627943,
+        "tp": 625.0587090620093,
+        "qty": 8.434861719686916,
+        "atr": 5.231741812401864,
+        "entry_ts": "2026-06-17T19:00:00+00:00",
+        "fng_at_entry": 22,
+        "funding_at_entry": 7.9e-05
+      },
       "n_trades": 1,
       "n_wins": 1,
       "total_pnl": 103.27736784098725,
@@ -44,7 +64,17 @@
     },
     "XRP": {
       "balance": 10141.272724804008,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 1.1806,
+        "sl": 1.1384743621863715,
+        "tp": 1.2508093963560476,
+        "qty": 4294.965578859905,
+        "atr": 0.014041879271209517,
+        "entry_ts": "2026-06-17T19:00:00+00:00",
+        "fng_at_entry": 22,
+        "funding_at_entry": -5.4e-05
+      },
       "n_trades": 1,
       "n_wins": 1,
       "total_pnl": 141.27272480400808,
