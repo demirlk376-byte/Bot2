@@ -127,6 +127,11 @@ def make_on_candle_close(ctx: "SymbolContext"):
             bb_allowed = not (regime_filter and regime == "trending")
             if not getattr(config.risk, "bb_weekday_enabled", True) and not is_weekend:
                 bb_allowed = False
+            # Per-coin BB allowlist: BNB (PF 0.89) and XRP (test 1.03, WR drop)
+            # failed cross-coin validation — gate them out.
+            bb_coin_allowed = config.strategy.bb_symbols
+            if bb_coin_allowed is not None and ctx.symbol not in bb_coin_allowed:
+                bb_allowed = False
 
             # ── BB mean-reversion ─────────────────────────────────────────────
             mr_sig = ctx.strategy.analyze(df)

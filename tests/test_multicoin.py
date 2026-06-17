@@ -79,44 +79,54 @@ def _config_parsing() -> None:
     print(f"✓ SYMBOLS yoksa tek coin: {c.exchange.symbols}")
 
 
-def _sr_allowlist_gate() -> None:
-    """SR_BREAKOUT_SYMBOLS verildiğinde S/R yalnız izinli coin'lerde kurulur;
-    boşken (None) tüm coin'lerde açık kalır (tek-coin geri uyumluluk)."""
+def _strategy_allowlist_gates() -> None:
+    """BB_SYMBOLS ve SR_BREAKOUT_SYMBOLS allowlist'leri doğru coin'leri kapatıyor mu?
+
+    Cross-coin sonuçları:
+      BB  : BNB ❌ XRP ⚠️ → BB_SYMBOLS=BTC,ETH,SOL
+      S/R : SOL/BNB/XRP zayıf → SR_BREAKOUT_SYMBOLS=BTC,ETH
+    """
     from config import load_config
-    from strategies.sr_breakout import SrBreakoutStrategy
 
     os.environ["MEXC_API_KEY"] = "x"
     os.environ["MEXC_API_SECRET"] = "x"
-
-    def make_sr_for(sym: str, cfg) -> bool:
-        """main.py'deki kapı mantığını birebir yansıtır."""
-        allow = cfg.strategy.sr_breakout_symbols
-        return (
-            cfg.strategy.sr_breakout_enabled
-            and (allow is None or sym in allow)
-        )
-
-    # Allowlist BTC,ETH → SOL'da S/R kapalı
-    os.environ["SYMBOLS"] = "BTC,ETH,SOL"
+    os.environ["SYMBOLS"] = "BTC,ETH,SOL,BNB,XRP"
+    os.environ["BB_SYMBOLS"] = "BTC,ETH,SOL"
     os.environ["SR_BREAKOUT_SYMBOLS"] = "BTC,ETH"
-    c = load_config()
-    assert c.strategy.sr_breakout_symbols == ["BTC/USDT:USDT", "ETH/USDT:USDT"], \
-        c.strategy.sr_breakout_symbols
-    enabled = {s: make_sr_for(s, c) for s in c.exchange.symbols}
-    assert enabled["BTC/USDT:USDT"] is True
-    assert enabled["ETH/USDT:USDT"] is True
-    assert enabled["SOL/USDT:USDT"] is False, "SOL'da S/R kapalı olmalı (edge transfer olmadı)"
-    # sanity: instantiate edilebildiğini doğrula (izinli coin için)
-    assert SrBreakoutStrategy() is not None
-    print("✓ S/R allowlist: BTC+ETH açık, SOL kapalı")
 
-    # Allowlist boş → S/R tüm coin'lerde açık (geri uyumluluk)
-    del os.environ["SR_BREAKOUT_SYMBOLS"]
     c = load_config()
-    assert c.strategy.sr_breakout_symbols is None
-    enabled = {s: make_sr_for(s, c) for s in c.exchange.symbols}
-    assert all(enabled.values()), "allowlist boşken S/R tüm coin'lerde açık olmalı"
-    print("✓ S/R allowlist boş → tüm coin'lerde açık (geri uyumlu)")
+
+    def bb_on(sym):
+        allow = c.strategy.bb_symbols
+        return allow is None or sym in allow
+
+    def sr_on(sym):
+        allow = c.strategy.sr_breakout_symbols
+        return c.strategy.sr_breakout_enabled and (allow is None or sym in allow)
+
+    syms = c.exchange.symbols
+    assert len(syms) == 5
+
+    # BB: BTC/ETH/SOL açık, BNB/XRP kapalı
+    for s in ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"]:
+        assert bb_on(s), f"BB {s} açık olmalı"
+    for s in ["BNB/USDT:USDT", "XRP/USDT:USDT"]:
+        assert not bb_on(s), f"BB {s} kapalı olmalı (edge transfer olmadı)"
+    print("✓ BB allowlist: BTC/ETH/SOL açık | BNB/XRP kapalı")
+
+    # S/R: sadece BTC/ETH açık
+    for s in ["BTC/USDT:USDT", "ETH/USDT:USDT"]:
+        assert sr_on(s), f"S/R {s} açık olmalı"
+    for s in ["SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT"]:
+        assert not sr_on(s), f"S/R {s} kapalı olmalı"
+    print("✓ S/R allowlist: BTC/ETH açık | SOL/BNB/XRP kapalı")
+
+    # Allowlist boşken geri uyumluluk (None → hepsi açık)
+    del os.environ["BB_SYMBOLS"], os.environ["SR_BREAKOUT_SYMBOLS"]
+    c2 = load_config()
+    assert c2.strategy.bb_symbols is None
+    assert c2.strategy.sr_breakout_symbols is None
+    print("✓ Allowlist boş → tüm coin'lerde açık (geri uyumlu)")
 
     del os.environ["SYMBOLS"]
 
@@ -124,7 +134,7 @@ def _sr_allowlist_gate() -> None:
 def main() -> int:
     asyncio.run(_exchange_isolation())
     _config_parsing()
-    _sr_allowlist_gate()
+    _strategy_allowlist_gates()
     print("\n" + "=" * 60)
     print("✓ ÇOKLU COIN MOTORU DOĞRU — fiyatlar ve SL/TP coin bazında izole")
     print("=" * 60)

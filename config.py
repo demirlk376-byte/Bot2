@@ -168,6 +168,10 @@ class StrategyConfig:
     # when set, S/R is only instantiated for symbols in this list. BB/ORB/Asia all
     # transferred cleanly to ETH+SOL so they are NOT gated this way.
     sr_breakout_symbols: list[str] | None = None
+    # Per-coin allowlist for BB mean-reversion. BNB (PF 0.89/0.89) and XRP (1.16
+    # train / 1.03 test, WR drop 44→35%) do NOT pass the cross-coin bar.
+    # BTC, ETH, SOL all clear. When None → BB runs on all coins (single-coin compat).
+    bb_symbols: list[str] | None = None
     # FVG (Fair Value Gap) — ICT price-action. Validated 1h 2023-2026: PF 1.37,
     # positive every year, with EMA200 trend + gap>=0.5×ATR + RR 2.5.
     fvg_enabled: bool = True
@@ -239,6 +243,12 @@ def load_config() -> AppConfig:
         if raw_sr_symbols else None
     )
 
+    raw_bb_symbols = os.getenv("BB_SYMBOLS", "").strip()
+    bb_symbols = (
+        [_normalize_symbol(s) for s in raw_bb_symbols.split(",") if s.strip()]
+        if raw_bb_symbols else None
+    )
+
     exchange = ExchangeConfig(
         api_key=_get("MEXC_API_KEY", ""),
         api_secret=_get("MEXC_API_SECRET", ""),
@@ -293,6 +303,7 @@ def load_config() -> AppConfig:
         asia_bo_enabled=_getbool("ASIA_BO_ENABLED", True),
         sr_breakout_enabled=_getbool("SR_BREAKOUT_ENABLED", True),
         sr_breakout_symbols=sr_breakout_symbols,
+        bb_symbols=bb_symbols,
         fvg_enabled=_getbool("FVG_ENABLED", True),
         fvg_min_gap_atr=_getfloat("FVG_MIN_GAP_ATR", 0.5),
         fvg_rr=_getfloat("FVG_RR", 2.5),
