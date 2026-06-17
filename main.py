@@ -14,6 +14,7 @@ from execution import ExecutionEngine
 from funding import FundingMonitor
 from orderflow import OrderFlowMonitor
 from whale_flow import WhaleFlowMonitor
+from strategies.squeeze import SqueezeStrategy, SqueezeSignal
 from strategies.whale import WhaleStrategy
 from indicators import atr, adx as _adx_indicator
 from monitor import Dashboard
@@ -66,6 +67,7 @@ class SymbolContext:
     sr_breakout_strategy: SrBreakoutStrategy = None
     fvg_strategy: FvgStrategy = None
     ifvg_strategy: IfvgStrategy = None
+    squeeze_strategy: "SqueezeStrategy" = None
     whale_strategy: "WhaleStrategy" = None
 
 
@@ -83,6 +85,7 @@ def active_sleeves_for(ctx: "SymbolContext", cfg) -> list[str]:
     if ctx.sr_breakout_strategy is not None: sleeves.append("S/R")
     if ctx.fvg_strategy is not None: sleeves.append("FVG")
     if ctx.ifvg_strategy is not None: sleeves.append("IFVG")
+    if ctx.squeeze_strategy is not None: sleeves.append("Squeeze")
     if ctx.whale_strategy is not None:
         whale_mode = getattr(cfg.strategy, "whale_mode", "monitor")
         sleeves.append("Whale" + ("" if whale_mode == "trade" else "(mon)"))
@@ -420,6 +423,46 @@ def make_on_candle_close(ctx: "SymbolContext"):
                             await ntfy.send_trade_opened(result.trade_setup, ifvg_combined)
                     elif result.error:
                         logger.debug("[%s] IFVG skipped: %s", ctx.symbol, result.error)
+
+            # ── Squeeze — BB+KC volatility coil → momentum breakout ─────────
+            # Independent slot (symbol:squeeze), uses bo_allowed gate (trending
+            # markets are fine for momentum — ranging markets suppress breakouts).
+            if ctx.squeeze_strategy is not None and bo_allowed:
+                sq_sig = ctx.squeeze_strategy.analyze(df, atr_val)
+                if sq_sig.direction != 0:
+                    sq_combined = CombinedSignal(
+                        direction=sq_sig.direction,
+                        confidence=sq_sig.strength,
+                        trend_score=0.0,
+                        mean_rev_score=0.0,
+                        breakout_score=sq_sig.direction * sq_sig.strength,
+                        dominant_strategy="squeeze",
+                        reasons=[sq_sig.reason],
+                        entry_price=sq_sig.entry_price,
+                        sl_price=sq_sig.sl_price,
+                        tp_price=sq_sig.tp_price,
+                        symbol=ctx.symbol,
+                        position_slot=f"{ctx.symbol}:squeeze",
+                    )
+                    result = await executor.execute_signal(sq_combined, atr_val)
+                    if result.success and result.position:
+                        logger.info(
+                            "SQUEEZE trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f"
+                            " (coil=%db)",
+                            result.position.side.upper(), ctx.symbol,
+                            result.position.entry_price,
+                            result.position.sl_price,
+                            result.position.tp_price,
+                            sq_sig.squeeze_bars,
+                        )
+                        if telegram:
+                            await telegram.send_trade_opened(result.trade_setup, sq_combined)
+                        if ntfy:
+                            await ntfy.send_trade_opened(result.trade_setup, sq_combined)
+                    elif result.error:
+                        logger.debug("[%s] Squeeze skipped: %s", ctx.symbol, result.error)
+                else:
+                    logger.debug("[%s] squeeze: %s", ctx.symbol, sq_sig.reason)
 
             # ── Whale-flow sleeve — avg-trade-size z-spike, follow the candle ──
             # Monitor-first: avg_size needs live trade count (not in MEXC klines),
@@ -879,6 +922,15 @@ async def main() -> None:
                     or sym in config.strategy.sr_breakout_symbols
                 )
                 else None
+            ),
+            squeeze_strategy=(
+                SqueezeStrategy(
+                    kc_mult=config.strategy.squeeze_kc_mult,
+                    min_squeeze_bars=config.strategy.squeeze_min_bars,
+                    sl_atr=config.strategy.squeeze_sl_atr,
+                    rr=config.strategy.squeeze_rr,
+                    mtf_filter=config.strategy.squeeze_mtf,
+                ) if config.strategy.squeeze_enabled else None
             ),
             whale_strategy=(
                 WhaleStrategy(
