@@ -54,7 +54,12 @@ def _download_month(symbol: str, year: int, month: int) -> pd.DataFrame | None:
                 df = pd.read_csv(f, header=None,
                     names=["ts","open","high","low","close","volume",
                            "close_ts","qv","trades","tbbv","tbqv","ignore"])
-        df["ts"] = pd.to_datetime(df["ts"], unit="ms", utc=True)
+        # Newer files ship with a header row — drop it if "ts" isn't numeric.
+        df = df[pd.to_numeric(df["ts"], errors="coerce").notna()].copy()
+        df["ts"] = pd.to_numeric(df["ts"])
+        # Binance switched some files from ms to µs timestamps — detect by magnitude.
+        unit = "us" if df["ts"].iloc[0] > 1e15 else "ms"
+        df["ts"] = pd.to_datetime(df["ts"], unit=unit, utc=True)
         df = df.set_index("ts")[["open","high","low","close","volume"]].astype(float)
         return df
     except Exception as e:
