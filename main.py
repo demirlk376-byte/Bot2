@@ -580,7 +580,7 @@ async def daily_reset_loop() -> None:
 
         logger.info("Daily reset. New starting equity: %.2f", await executor.current_equity())
 
-        perf = await db.get_performance_summary()
+        perf = await db.get_performance_summary(is_paper=config.exchange.paper_mode)
         await db.upsert_daily_stats(DailyStats(
             date=today,
             starting_balance=balance,

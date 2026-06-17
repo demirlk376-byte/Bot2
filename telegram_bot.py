@@ -129,6 +129,18 @@ class TelegramNotifier:
 
     # ── Komut işleyiciler ──────────────────────────────────────────────────────
 
+    async def _invested(self) -> float:
+        """Toplam yatırılan sermaye = ilk bakiye + sonradan eklenenler. Getiriyi
+        bunun üzerinden hesaplarız ki aylık para eklemeleri sahte 'kâr' gibi
+        görünmesin (dashboard ile aynı mantık). DB yoksa ilk bakiyeye düşer."""
+        if self._db is None:
+            return self._initial_balance
+        inception = await self._db.get_meta_float(
+            "inception_balance", self._initial_balance
+        )
+        deposits = await self._db.get_meta_float("total_deposits", 0.0)
+        return inception + deposits
+
     async def _reply(self, update, text: str) -> None:
         try:
             await update.message.reply_text(text, parse_mode="HTML")
@@ -154,15 +166,17 @@ class TelegramNotifier:
             return
         try:
             balance = await self._exchange.get_balance()
-            ret = ((balance - self._initial_balance) / self._initial_balance * 100
-                   if self._initial_balance > 0 else 0.0)
-            n_open = self._portfolio.get_open_position_count()
             upnl = self._portfolio.get_total_unrealized_pnl()
+            invested = await self._invested()
+            true_pnl = balance + upnl - invested
+            ret = (true_pnl / invested * 100) if invested > 0 else 0.0
+            n_open = self._portfolio.get_open_position_count()
             halted = self._executor.is_halted()
             paper = self._app_config.exchange.paper_mode
             text = (
                 f"<b>Durum</b> ({'PAPER' if paper else 'CANLI'})\n"
-                f"Bakiye: <code>${balance:,.2f}</code> ({ret:+.1f}%)\n"
+                f"Bakiye: <code>${balance:,.2f}</code>\n"
+                f"Gerçek kâr: <code>${true_pnl:+.2f}</code> ({ret:+.1f}%)\n"
                 f"Açık pozisyon: <code>{n_open}</code>\n"
                 f"Gerçekleşmemiş PnL: <code>${upnl:+.2f}</code>\n"
                 f"Trade durumu: <code>{'DURDURULDU' if halted else 'AKTİF'}</code>"
@@ -193,12 +207,14 @@ class TelegramNotifier:
             return
         try:
             balance = await self._exchange.get_balance()
-            ret = ((balance - self._initial_balance) / self._initial_balance * 100
-                   if self._initial_balance > 0 else 0.0)
+            upnl = self._portfolio.get_total_unrealized_pnl()
+            invested = await self._invested()
+            true_pnl = balance + upnl - invested
+            ret = (true_pnl / invested * 100) if invested > 0 else 0.0
             await self._reply(update,
                 f"Bakiye: <code>${balance:,.2f}</code>\n"
-                f"Başlangıç: <code>${self._initial_balance:,.2f}</code>\n"
-                f"Getiri: <code>{ret:+.2f}%</code>")
+                f"Yatırılan: <code>${invested:,.2f}</code>\n"
+                f"Gerçek kâr: <code>${true_pnl:+.2f}</code> ({ret:+.2f}%)")
         except Exception as e:
             await self._reply(update, f"balance hatası: {e}")
 
@@ -206,7 +222,8 @@ class TelegramNotifier:
         if not self._authorized(update):
             return
         try:
-            perf = await self._db.get_performance_summary()
+            ip = self._app_config.exchange.paper_mode
+            perf = await self._db.get_performance_summary(is_paper=ip)
             wr = (perf.winning_trades / perf.total_trades * 100
                   if perf.total_trades else 0.0)
             await self._reply(update,
@@ -222,7 +239,8 @@ class TelegramNotifier:
         if not self._authorized(update):
             return
         try:
-            breakdown = await self._db.get_strategy_breakdown()
+            ip = self._app_config.exchange.paper_mode
+            breakdown = await self._db.get_strategy_breakdown(is_paper=ip)
             if not breakdown:
                 await self._reply(update, "Henüz kapanmış trade yok.")
                 return
@@ -291,7 +309,7 @@ class TelegramNotifier:
             f"Entry: <code>${setup.entry_price:,.2f}</code>\n"
             f"SL: <code>${setup.sl_price:,.2f}</code> ({sl_pct:+.2f}%)\n"
             f"TP: <code>${setup.tp_price:,.2f}</code> ({tp_pct:+.2f}%)\n"
-            f"Qty: <code>{setup.quantity:.4f} BTC</code> | Risk: <code>${setup.risk_usdt:.2f} ({setup.risk_pct:.1%})</code>\n"
+            f"Qty: <code>{setup.quantity:.4f} {setup.symbol.split('/')[0]}</code> | Risk: <code>${setup.risk_usdt:.2f} ({setup.risk_pct:.1%})</code>\n"
             f"Confidence: <code>{signal.confidence:.0%}</code> | Strategy: <code>{signal.dominant_strategy}</code>"
         )
         await self._send(text)
