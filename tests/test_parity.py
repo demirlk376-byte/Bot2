@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import glob
+import math
 import sys
 from pathlib import Path
 
@@ -93,9 +94,9 @@ def reference(df):
         e=c[i]; sld=SL_M*a
         sl=e-dr*sld; tp=e+dr*RR*sld
         sl_pct=abs(e-sl)/e
-        # RiskManager.calculate_position_size ile birebir: min, sonra round(3)
-        qty=min((bal*RISK)/(e*sl_pct), bal*0.5/e)
-        qty=round(qty,3)
+        # RiskManager.calculate_position_size birebir: 1.0 cap + floor
+        qty=min((bal*RISK)/(e*sl_pct), bal*1.0/e)
+        qty=math.floor(qty*1000)/1000
         if qty<0.001: continue
         ot={"i":i,"dir":dr,"entry":e,"sl":sl,"tp":tp,"qty":qty}
     return bal, trades
@@ -206,12 +207,12 @@ def main():
     assert approx(sl,97000,0.01) and approx(tp,105000,0.5), f"SL/TP yanlış: {sl},{tp}"
     print(f"  ✓ SL/TP hesabı: SL={sl:.0f} TP={tp:.0f} (3×/5×ATR)")
 
-    # Pozisyon boyutu cap testi: yüksek ATR'de cap bağlamalı
-    # entry 100000, sl_pct=0.03 → risk-qty = bal*0.03/(100000*0.03)=bal/100000=0.1
-    # cap = bal*0.5/entry = 5000/100000=0.05 → cap bağlar
-    q=rm.calculate_position_size(10000.0, 100000.0, 97000.0)
-    assert approx(q,0.05,1e-6), f"Cap testi başarısız: {q}"
-    print(f"  ✓ Pozisyon boyutu cap: qty={q} (bakiye %50 cap bağladı)")
+    # Pozisyon boyutu cap testi: çok sıkı SL'de (0.5%) cap bağlamalı
+    # entry 100000, sl 99500 → sl_pct=0.005 → risk-qty = bal*0.03/(100k*0.005)=0.6
+    # cap = bal*1.0/entry = 10000/100000=0.1 → cap bağlar, q=0.1
+    q=rm.calculate_position_size(10000.0, 100000.0, 99500.0)
+    assert approx(q,0.1,1e-6), f"Cap testi başarısız: {q}"
+    print(f"  ✓ Pozisyon boyutu cap: qty={q} (0.5% SL → risk-qty 0.6 → %100 cap bağladı)")
 
     # SL-önce fill: aynı mumda hem SL hem TP değerse SL kazanır
     async def fill_test():
