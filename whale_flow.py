@@ -177,14 +177,16 @@ def _selftest() -> int:
     at = atr_fn(df["high"], df["low"], df["close"], 14).values
     o = df["open"].values; c = df["close"].values
 
-    strat = WhaleStrategy(z_threshold=2.0, sl_atr=2.0, rr=2.0)
-    # research signal: z>=thr → follow candle. Compare direction at each bar.
+    Z, BODY = 2.5, 0.5
+    strat = WhaleStrategy(z_threshold=Z, sl_atr=2.0, rr=1.5, min_body_atr=BODY)
+    # research signal: z>=thr AND body>=BODY×ATR → follow candle. Compare per bar.
     n = len(c); mism = 0; fires = 0
     for i in range(169, n):
         sig = strat.analyze(o[i], c[i], zser[i] if not np.isnan(zser[i]) else None, at[i])
-        # reference
+        # reference (same filters as research_microstructure big-candle variant)
         ref_dir = 0
-        if not np.isnan(zser[i]) and zser[i] >= 2.0 and at[i] > 0:
+        if not np.isnan(zser[i]) and zser[i] >= Z and at[i] > 0 \
+                and abs(c[i] - o[i]) >= BODY * at[i]:
             ref_dir = 1 if c[i] > o[i] else (-1 if c[i] < o[i] else 0)
         if sig.direction != ref_dir:
             mism += 1

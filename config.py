@@ -163,10 +163,11 @@ class StrategyConfig:
     # trades) until forward-validated. BTC-only (ETH backtest too weak).
     whale_enabled: bool = False
     whale_mode: str = "monitor"          # "monitor" = log only; "trade" = execute
-    whale_z_threshold: float = 2.0       # avg_size z-score to fire
+    whale_z_threshold: float = 2.5       # avg_size z-score to fire
     whale_zwin: int = 168                # rolling window (hours) for the z-score
     whale_sl_atr: float = 2.0            # SL = entry ± 2.0 × ATR
-    whale_rr: float = 2.0                # TP = entry ± RR × stop-distance
+    whale_rr: float = 1.5                # TP = entry ± RR × stop-distance
+    whale_min_body_atr: float = 0.5      # candle body must be ≥ this × ATR
     whale_symbols: tuple = ("BTC/USDT:USDT",)  # BTC-only per backtest
     # Intraday breakout strategies (validated edge: ORB PF 1.44, Asia BO PF 2.15)
     orb_enabled: bool = True
@@ -313,10 +314,11 @@ def load_config() -> AppConfig:
         orderflow_window_min=_getfloat("ORDERFLOW_WINDOW_MIN", 15.0),
         whale_enabled=_getbool("WHALE_ENABLED", False),
         whale_mode=_get("WHALE_MODE", "monitor"),
-        whale_z_threshold=_getfloat("WHALE_Z_THRESHOLD", 2.0),
+        whale_z_threshold=_getfloat("WHALE_Z_THRESHOLD", 2.5),
         whale_zwin=_getint("WHALE_ZWIN", 168),
         whale_sl_atr=_getfloat("WHALE_SL_ATR", 2.0),
-        whale_rr=_getfloat("WHALE_RR", 2.0),
+        whale_rr=_getfloat("WHALE_RR", 1.5),
+        whale_min_body_atr=_getfloat("WHALE_MIN_BODY_ATR", 0.5),
         orb_enabled=_getbool("ORB_ENABLED", True),
         asia_bo_enabled=_getbool("ASIA_BO_ENABLED", True),
         sr_breakout_enabled=_getbool("SR_BREAKOUT_ENABLED", True),

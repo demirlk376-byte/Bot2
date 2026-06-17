@@ -885,6 +885,7 @@ async def main() -> None:
                     z_threshold=config.strategy.whale_z_threshold,
                     sl_atr=config.strategy.whale_sl_atr,
                     rr=config.strategy.whale_rr,
+                    min_body_atr=config.strategy.whale_min_body_atr,
                 )
                 if config.strategy.whale_enabled
                 and (
