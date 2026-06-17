@@ -378,11 +378,18 @@ class LiveExchange:
                 "enableRateLimit": True,
             })
             await self._exchange.load_markets()
-        try:
-            await self._exchange.set_leverage(self._leverage, symbol)
-            await self._exchange.set_margin_mode(self._margin_mode, symbol)
-        except Exception as e:
-            logger.warning("Could not set leverage/margin_mode for %s: %s", symbol, e)
+        # MEXC requires openType (1=isolated, 2=cross) and positionType (1=long,
+        # 2=short) for set_leverage; margin mode is implicit in openType so we
+        # skip the separate set_margin_mode call which fails with the same error.
+        open_type = 1 if self._margin_mode == "isolated" else 2
+        for pos_type in (1, 2):  # 1=long, 2=short — must set for each direction
+            try:
+                await self._exchange.set_leverage(
+                    self._leverage, symbol,
+                    params={"openType": open_type, "positionType": pos_type},
+                )
+            except Exception as e:
+                logger.debug("set_leverage pos_type=%d %s: %s", pos_type, symbol, e)
 
     async def get_balance(self) -> float:
         bal = await self._exchange.fetch_balance({"type": "swap"})
@@ -510,20 +517,37 @@ class LiveExchange:
         self, symbol: str, position_side: str, sl_price: float, tp_price: float,
         amount: float
     ) -> None:
+        # MEXC plan orders (trigger/conditional) are placed by passing triggerPrice
+        # in params alongside type="market". ccxt routes this to MEXC's
+        # contractPrivatePostPlanorderPlace endpoint automatically.
+        # orderType=5 → market execution when triggered (not limit, which is default=1).
+        # triggerType: 1=price>=trigger (TP long / SL short), 2=price<=trigger (SL long / TP short).
         close_side = "sell" if position_side == "long" else "buy"
+        sl_trigger  = 2 if position_side == "long" else 1
+        tp_trigger  = 1 if position_side == "long" else 2
+        open_type   = 1 if self._margin_mode == "isolated" else 2
+        base: dict  = {
+            "orderType": 5,     # 5 = market when triggered
+            "executeCycle": 1,  # 24-hour validity
+            "openType": open_type,
+            "reduceOnly": True,
+        }
+        if open_type == 1:
+            base["leverage"] = self._leverage
+
         sl_ok = False
         try:
             await self._exchange.create_order(
-                symbol, "stop_market", close_side, amount, None,
-                {"stopPrice": sl_price, "reduceOnly": True},
+                symbol, "market", close_side, amount, None,
+                {**base, "triggerPrice": sl_price, "triggerType": sl_trigger},
             )
             sl_ok = True
         except Exception as e:
             logger.error("SL order failed: %s", e)
         try:
             await self._exchange.create_order(
-                symbol, "take_profit_market", close_side, amount, None,
-                {"stopPrice": tp_price, "reduceOnly": True},
+                symbol, "market", close_side, amount, None,
+                {**base, "triggerPrice": tp_price, "triggerType": tp_trigger},
             )
         except Exception as e:
             logger.error("TP order failed: %s", e)

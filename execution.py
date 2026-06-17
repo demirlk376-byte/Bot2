@@ -427,10 +427,20 @@ class ExecutionEngine:
                 # For live mode: cancel SL/TP orders first, then send a market
                 # close — this is the only path that actually closes on the exchange.
                 if not self._config.exchange.paper_mode and hasattr(self._exchange, "_exchange"):
+                    inner = self._exchange._exchange
                     try:
-                        await self._exchange._exchange.cancel_all_orders(pos.symbol)
+                        await inner.cancel_all_orders(pos.symbol)
                     except Exception as ce:
                         logger.error("Could not cancel orders for %s: %s", pos.symbol, ce)
+                    # Also cancel MEXC plan orders (SL/TP are placed as plan orders).
+                    if hasattr(inner, "contractPrivatePostPlanorderCancelAll"):
+                        try:
+                            mexc_sym = pos.symbol.split(":")[0].replace("/", "_")
+                            await inner.contractPrivatePostPlanorderCancelAll(
+                                {"symbol": mexc_sym}
+                            )
+                        except Exception as ce:
+                            logger.debug("Could not cancel plan orders for %s: %s", pos.symbol, ce)
                 # Use the public close_position which sends the exchange order.
                 current_price = await self._exchange.get_current_price(pos.symbol)
                 closed = await self.close_position(pos, reason, current_price)
