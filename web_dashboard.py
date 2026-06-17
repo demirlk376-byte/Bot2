@@ -26,6 +26,7 @@ class WebDashboard:
     def __init__(
         self, config, *, exchange, portfolio, db, initial_balance: float,
         sleeve_layout: dict | None = None, paper_mode: bool = True,
+        leverage: int = 1,
     ):
         self._cfg = config            # WebDashboardConfig
         self._exchange = exchange
@@ -34,6 +35,7 @@ class WebDashboard:
         self._initial_balance = initial_balance
         self._sleeve_layout = sleeve_layout or {}
         self._paper_mode = paper_mode
+        self._leverage = max(1, int(leverage))
         self._runner = None
         self._site = None
 
@@ -97,14 +99,11 @@ class WebDashboard:
 
     async def _build_state(self) -> dict:
         balance = await self._exchange.get_balance()
-        ret_pct = (
-            (balance - self._initial_balance) / self._initial_balance * 100
-            if self._initial_balance > 0 else 0.0
-        )
 
         # Açık pozisyonlar — her birinin güncel fiyatıyla canlı PnL
         positions = []
         total_upnl = 0.0
+        locked_margin = 0.0
         for p in self._portfolio.get_open_positions():
             try:
                 price = await self._exchange.get_current_price(p.symbol)
@@ -112,6 +111,10 @@ class WebDashboard:
                 price = p.entry_price
             upnl = p.direction * (price - p.entry_price) * p.quantity
             total_upnl += upnl
+            # Live get_balance() returns FREE balance (margin locked out). Add the
+            # initial margin back so equity reflects the whole account, otherwise
+            # opening a position would read as an instant loss on the dashboard.
+            locked_margin += (p.entry_price * p.quantity) / self._leverage
             pnl_pct = (
                 (price - p.entry_price) / p.entry_price * 100 * p.direction
                 if p.entry_price else 0.0
@@ -132,6 +135,22 @@ class WebDashboard:
                 "pnl_pct": pnl_pct,
                 "age_h": age_h,
             })
+
+        # Total account value (equity), not just free balance, so an open
+        # position's locked margin isn't mistaken for a loss.
+        equity = balance + locked_margin + total_upnl
+
+        # Invested capital = first balance + every deposit the user added later.
+        # True profit is equity − invested, so monthly top-ups never look like
+        # trading gains. Read from the DB each tick so a new deposit shows up
+        # immediately (no restart needed).
+        inception = await self._db.get_meta_float(
+            "inception_balance", self._initial_balance
+        )
+        deposits = await self._db.get_meta_float("total_deposits", 0.0)
+        invested = inception + deposits
+        true_pnl = equity - invested
+        ret_pct = (true_pnl / invested * 100) if invested > 0 else 0.0
 
         # Only show trades from the CURRENT mode. The same trades.db can hold
         # earlier paper-test rows; without this filter a live $48 account would
@@ -190,17 +209,21 @@ class WebDashboard:
                 coins.append({"symbol": sym, "total": 0, "win": 0,
                               "wr": 0.0, "pnl": 0.0, "sleeves": sleeves})
 
-        equity = await self._db.get_equity_curve(self._initial_balance, is_paper=ip)
+        # Equity curve anchored at invested capital so it starts where the money
+        # came in and grows with realised trades; the final live point folds in
+        # open unrealized PnL so the line tip matches current equity.
+        eq_curve = await self._db.get_equity_curve(invested, is_paper=ip)
         monthly = await self._db.get_monthly_pnl(limit=12, is_paper=ip)
-        # Equity curve already realises closed trades; fold in the open unrealized
-        # PnL as a final "live" point so the line reflects the current equity.
-        if equity:
-            equity = equity + [{"t": None, "eq": equity[-1]["eq"] + total_upnl}]
+        if eq_curve:
+            eq_curve = eq_curve + [{"t": None, "eq": eq_curve[-1]["eq"] + total_upnl}]
 
         return {
             "ts": datetime.now(timezone.utc).isoformat(),
             "paper_mode": self._paper_mode,
             "balance": balance,
+            "equity": equity,
+            "invested": invested,
+            "true_pnl": true_pnl,
             "initial_balance": self._initial_balance,
             "return_pct": ret_pct,
             "daily_pnl": daily_pnl,
@@ -217,7 +240,7 @@ class WebDashboard:
             },
             "coins": coins,
             "strategies": strat,
-            "equity": [e["eq"] for e in equity],
+            "equity_curve": [e["eq"] for e in eq_curve],
             "monthly": monthly,
             "trades": trades,
         }
@@ -348,9 +371,12 @@ _INDEX_HTML = """<!DOCTYPE html>
       <div class="pill g" id="ret">—</div>
     </div>
     <div class="row">
+      <div class="box"><div class="k">Gerçek Kâr</div><div class="v" id="truepnl">—</div></div>
+      <div class="box"><div class="k">Yatırılan</div><div class="v" id="invested">—</div></div>
+    </div>
+    <div class="row">
       <div class="box"><div class="k">Bugün</div><div class="v" id="daily">—</div></div>
       <div class="box"><div class="k">Açık PnL</div><div class="v" id="upnl">—</div></div>
-      <div class="box"><div class="k">Başlangıç</div><div class="v" id="init">—</div></div>
     </div>
   </div>
 
@@ -447,8 +473,10 @@ function render(d){
   const mode=document.getElementById("mode");
   mode.textContent = d.paper_mode?"PAPER":"LIVE";
   mode.className = "badge "+(d.paper_mode?"paper":"live");
-  document.getElementById("bal").textContent = "$"+fmt(d.balance);
-  document.getElementById("init").textContent = "$"+compact(d.initial_balance);
+  document.getElementById("bal").textContent = "$"+fmt(d.equity);
+  document.getElementById("invested").textContent = "$"+compact(d.invested);
+  const tp=document.getElementById("truepnl");
+  tp.textContent=signed(d.true_pnl); tp.className="v "+cls(d.true_pnl);
   const ret=document.getElementById("ret");
   ret.textContent=(d.return_pct>=0?"▲ ":"▼ ")+fmt(Math.abs(d.return_pct),1)+"%";
   ret.className="pill "+cls(d.return_pct);
@@ -458,7 +486,7 @@ function render(d){
   up.textContent=signed(d.unrealized_pnl); up.className="v "+cls(d.unrealized_pnl);
   document.getElementById("oc").textContent=d.open_count;
 
-  drawChart(d.equity);
+  drawChart(d.equity_curve);
 
   // coins + sleeve map
   const cc=document.getElementById("coins");

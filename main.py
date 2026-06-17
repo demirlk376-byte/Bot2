@@ -887,6 +887,7 @@ async def main() -> None:
         initial_balance=inception_balance,
         sleeve_layout=sleeve_layout,
         paper_mode=config.exchange.paper_mode,
+        leverage=config.exchange.leverage,
     )
     await web_dashboard.start()
 

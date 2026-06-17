@@ -121,6 +121,21 @@ class Database:
             row = await cur.fetchone()
             return row[0] if row else None
 
+    async def get_meta_float(self, key: str, default: float = 0.0) -> float:
+        v = await self.get_meta(key)
+        try:
+            return float(v) if v is not None else default
+        except (TypeError, ValueError):
+            return default
+
+    async def add_deposit(self, amount: float) -> float:
+        """Record a capital deposit/withdrawal (negative = withdrawal) so the
+        dashboard can separate added money from real trading profit. Returns the
+        new cumulative deposit total. Survives restarts via the meta table."""
+        new_total = await self.get_meta_float("total_deposits", 0.0) + amount
+        await self.set_meta("total_deposits", str(new_total))
+        return new_total
+
     async def get_open_trades(self) -> list[TradeRecord]:
         """Trades with no exit yet — used to rebuild the in-memory portfolio
         after a restart so open positions are not orphaned."""
