@@ -357,26 +357,32 @@ class LiveExchange:
         self._exchange = None
 
     async def initialize(self, symbol: str) -> None:
-        try:
-            import ccxt.pro as ccxtpro
-        except ImportError:
-            raise RuntimeError("ccxt[pro] not installed. Run: pip install 'ccxt[pro]'")
+        # Create the ccxt.pro client ONCE. This is called per-symbol in multi-coin
+        # mode to set leverage/margin for each coin; a single client handles all
+        # symbols (symbol is passed per call). Re-creating it each time would
+        # orphan the previous client → "Unclosed connector" leaks (one per extra
+        # coin) on every startup. Guard so only the first call builds the client.
+        if self._exchange is None:
+            try:
+                import ccxt.pro as ccxtpro
+            except ImportError:
+                raise RuntimeError("ccxt[pro] not installed. Run: pip install 'ccxt[pro]'")
 
-        self._exchange = ccxtpro.mexc({
-            "apiKey": self._api_key,
-            "secret": self._api_secret,
-            "options": {
-                "defaultType": "swap",
-                "defaultSubType": "linear",
-            },
-            "enableRateLimit": True,
-        })
-        await self._exchange.load_markets()
+            self._exchange = ccxtpro.mexc({
+                "apiKey": self._api_key,
+                "secret": self._api_secret,
+                "options": {
+                    "defaultType": "swap",
+                    "defaultSubType": "linear",
+                },
+                "enableRateLimit": True,
+            })
+            await self._exchange.load_markets()
         try:
             await self._exchange.set_leverage(self._leverage, symbol)
             await self._exchange.set_margin_mode(self._margin_mode, symbol)
         except Exception as e:
-            logger.warning("Could not set leverage/margin_mode: %s", e)
+            logger.warning("Could not set leverage/margin_mode for %s: %s", symbol, e)
 
     async def get_balance(self) -> float:
         bal = await self._exchange.fetch_balance({"type": "swap"})
