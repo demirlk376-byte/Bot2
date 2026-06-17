@@ -24,7 +24,7 @@ import pandas as pd
 import requests
 
 # ── Common params ────────────────────────────────────────────────────────
-COINS   = ["ETHUSDT", "SOLUSDT"]
+COINS   = ["BNBUSDT", "XRPUSDT"]
 YEARS   = [2023, 2024, 2025]
 TRAIN   = {2023, 2024}
 TEST    = {2025}
