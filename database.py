@@ -181,17 +181,23 @@ class Database:
         )
         await self._db.commit()
 
-    async def get_daily_pnl(self, day: str) -> float:
+    async def get_daily_pnl(self, day: str, is_paper: bool | None = None) -> float:
+        clause, params = _paper_clause(is_paper)
         async with self._db.execute(
-            "SELECT COALESCE(SUM(pnl_usdt),0) FROM trades WHERE exit_time LIKE ? AND exit_time IS NOT NULL",
-            (f"{day}%",),
+            "SELECT COALESCE(SUM(pnl_usdt),0) FROM trades "
+            "WHERE exit_time LIKE ? AND exit_time IS NOT NULL" + clause,
+            (f"{day}%", *params),
         ) as cur:
             row = await cur.fetchone()
             return float(row[0]) if row else 0.0
 
-    async def get_all_trades(self, limit: int = 100) -> list[TradeRecord]:
+    async def get_all_trades(
+        self, limit: int = 100, is_paper: bool | None = None
+    ) -> list[TradeRecord]:
+        clause, params = _paper_clause(is_paper, leading_where=True)
         async with self._db.execute(
-            "SELECT * FROM trades ORDER BY entry_time DESC LIMIT ?", (limit,)
+            "SELECT * FROM trades" + clause + " ORDER BY entry_time DESC LIMIT ?",
+            (*params, limit),
         ) as cur:
             rows = await cur.fetchall()
         return [_row_to_trade(r) for r in rows]
@@ -217,8 +223,11 @@ class Database:
             row = await cur.fetchone()
             return float(row[0]) if row else None
 
-    async def get_strategy_breakdown(self) -> list[dict]:
+    async def get_strategy_breakdown(
+        self, is_paper: bool | None = None
+    ) -> list[dict]:
         """Per-strategy closed-trade stats for Telegram /strategy and dashboard."""
+        clause, params = _paper_clause(is_paper)
         async with self._db.execute("""
             SELECT
                 COALESCE(json_extract(strategy_scores, '$.strategy'), 'unknown') AS strategy,
@@ -226,18 +235,19 @@ class Database:
                 SUM(CASE WHEN pnl_usdt > 0 THEN 1 ELSE 0 END) AS wins,
                 SUM(COALESCE(pnl_usdt, 0)) AS total_pnl
             FROM trades
-            WHERE exit_time IS NOT NULL
+            WHERE exit_time IS NOT NULL""" + clause + """
             GROUP BY strategy
             ORDER BY total_pnl DESC
-        """) as cur:
+        """, params) as cur:
             rows = await cur.fetchall()
         return [
             {"strategy": r[0], "total": r[1], "win": r[2] or 0, "pnl": r[3] or 0.0}
             for r in rows
         ]
 
-    async def get_coin_breakdown(self) -> list[dict]:
+    async def get_coin_breakdown(self, is_paper: bool | None = None) -> list[dict]:
         """Per-coin closed-trade stats for the dashboard's coin panel."""
+        clause, params = _paper_clause(is_paper)
         async with self._db.execute("""
             SELECT
                 symbol,
@@ -245,43 +255,49 @@ class Database:
                 SUM(CASE WHEN pnl_usdt > 0 THEN 1 ELSE 0 END) AS wins,
                 SUM(COALESCE(pnl_usdt, 0)) AS total_pnl
             FROM trades
-            WHERE exit_time IS NOT NULL
+            WHERE exit_time IS NOT NULL""" + clause + """
             GROUP BY symbol
             ORDER BY total_pnl DESC
-        """) as cur:
+        """, params) as cur:
             rows = await cur.fetchall()
         return [
             {"symbol": r[0], "total": r[1], "win": r[2] or 0, "pnl": r[3] or 0.0}
             for r in rows
         ]
 
-    async def get_monthly_pnl(self, limit: int = 12) -> list[dict]:
+    async def get_monthly_pnl(
+        self, limit: int = 12, is_paper: bool | None = None
+    ) -> list[dict]:
         """Realised PnL grouped by calendar month (newest last) for the bar chart."""
+        clause, params = _paper_clause(is_paper)
         async with self._db.execute("""
             SELECT substr(exit_time, 1, 7) AS month,
                    SUM(COALESCE(pnl_usdt, 0)) AS pnl,
                    COUNT(*) AS n
             FROM trades
-            WHERE exit_time IS NOT NULL
+            WHERE exit_time IS NOT NULL""" + clause + """
             GROUP BY month
             ORDER BY month DESC
             LIMIT ?
-        """, (limit,)) as cur:
+        """, (*params, limit)) as cur:
             rows = await cur.fetchall()
         out = [{"month": r[0], "pnl": r[1] or 0.0, "n": r[2]} for r in rows]
         out.reverse()  # chronological for the chart
         return out
 
-    async def get_equity_curve(self, initial_balance: float) -> list[dict]:
+    async def get_equity_curve(
+        self, initial_balance: float, is_paper: bool | None = None
+    ) -> list[dict]:
         """Realised equity curve: initial balance + running sum of closed-trade
         PnL ordered by exit time. The first point anchors the starting balance so
         the chart always has a baseline even before any trade closes."""
+        clause, params = _paper_clause(is_paper)
         async with self._db.execute("""
             SELECT exit_time, COALESCE(pnl_usdt, 0) AS pnl
             FROM trades
-            WHERE exit_time IS NOT NULL
+            WHERE exit_time IS NOT NULL""" + clause + """
             ORDER BY exit_time ASC
-        """) as cur:
+        """, params) as cur:
             rows = await cur.fetchall()
         eq = float(initial_balance)
         curve = [{"t": None, "eq": eq}]
@@ -290,9 +306,13 @@ class Database:
             curve.append({"t": r[0], "eq": eq})
         return curve
 
-    async def get_performance_summary(self) -> PerformanceSummary:
+    async def get_performance_summary(
+        self, is_paper: bool | None = None
+    ) -> PerformanceSummary:
+        clause, params = _paper_clause(is_paper)
         async with self._db.execute(
-            "SELECT pnl_usdt FROM trades WHERE exit_time IS NOT NULL"
+            "SELECT pnl_usdt FROM trades WHERE exit_time IS NOT NULL" + clause,
+            params,
         ) as cur:
             rows = await cur.fetchall()
 
@@ -327,6 +347,18 @@ class Database:
             profit_factor=profit_factor,
             max_drawdown=max_dd,
         )
+
+
+def _paper_clause(
+    is_paper: bool | None, *, leading_where: bool = False
+) -> tuple[str, tuple]:
+    """Build an is_paper filter so the dashboard never mixes paper-test trades
+    with live trades in the same DB. None → no filter (kept for Telegram and any
+    caller that wants the full history). Returns (sql_fragment, params)."""
+    if is_paper is None:
+        return "", ()
+    kw = " WHERE" if leading_where else " AND"
+    return f"{kw} is_paper = ?", (1 if is_paper else 0,)
 
 
 def _row_to_trade(row: aiosqlite.Row) -> TradeRecord:

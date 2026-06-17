@@ -133,14 +133,19 @@ class WebDashboard:
                 "age_h": age_h,
             })
 
-        today = datetime.now(timezone.utc).date().isoformat()
-        daily_pnl = await self._db.get_daily_pnl(today)
+        # Only show trades from the CURRENT mode. The same trades.db can hold
+        # earlier paper-test rows; without this filter a live $48 account would
+        # show the old paper PnL (e.g. -$91), which is meaningless and alarming.
+        ip = self._paper_mode
 
-        perf = await self._db.get_performance_summary()
+        today = datetime.now(timezone.utc).date().isoformat()
+        daily_pnl = await self._db.get_daily_pnl(today, is_paper=ip)
+
+        perf = await self._db.get_performance_summary(is_paper=ip)
         pf = perf.profit_factor
         pf_out = None if pf == float("inf") else round(pf, 2)
 
-        breakdown = await self._db.get_strategy_breakdown()
+        breakdown = await self._db.get_strategy_breakdown(is_paper=ip)
         strat = []
         for s in breakdown:
             wr = s["win"] / s["total"] * 100 if s["total"] else 0.0
@@ -150,7 +155,7 @@ class WebDashboard:
                 "wr": wr, "pnl": s["pnl"],
             })
 
-        recent = await self._db.get_all_trades(limit=15)
+        recent = await self._db.get_all_trades(limit=15, is_paper=ip)
         trades = []
         for t in recent:
             if t.exit_time is None:
@@ -167,7 +172,7 @@ class WebDashboard:
             })
 
         # Per-coin breakdown (now that 5 coins trade with different sleeve sets).
-        coin_rows = await self._db.get_coin_breakdown()
+        coin_rows = await self._db.get_coin_breakdown(is_paper=ip)
         coins = []
         for c in coin_rows:
             wr = c["win"] / c["total"] * 100 if c["total"] else 0.0
@@ -185,8 +190,8 @@ class WebDashboard:
                 coins.append({"symbol": sym, "total": 0, "win": 0,
                               "wr": 0.0, "pnl": 0.0, "sleeves": sleeves})
 
-        equity = await self._db.get_equity_curve(self._initial_balance)
-        monthly = await self._db.get_monthly_pnl(limit=12)
+        equity = await self._db.get_equity_curve(self._initial_balance, is_paper=ip)
+        monthly = await self._db.get_monthly_pnl(limit=12, is_paper=ip)
         # Equity curve already realises closed trades; fold in the open unrealized
         # PnL as a final "live" point so the line reflects the current equity.
         if equity:
