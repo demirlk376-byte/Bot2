@@ -236,6 +236,60 @@ class Database:
             for r in rows
         ]
 
+    async def get_coin_breakdown(self) -> list[dict]:
+        """Per-coin closed-trade stats for the dashboard's coin panel."""
+        async with self._db.execute("""
+            SELECT
+                symbol,
+                COUNT(*) AS total,
+                SUM(CASE WHEN pnl_usdt > 0 THEN 1 ELSE 0 END) AS wins,
+                SUM(COALESCE(pnl_usdt, 0)) AS total_pnl
+            FROM trades
+            WHERE exit_time IS NOT NULL
+            GROUP BY symbol
+            ORDER BY total_pnl DESC
+        """) as cur:
+            rows = await cur.fetchall()
+        return [
+            {"symbol": r[0], "total": r[1], "win": r[2] or 0, "pnl": r[3] or 0.0}
+            for r in rows
+        ]
+
+    async def get_monthly_pnl(self, limit: int = 12) -> list[dict]:
+        """Realised PnL grouped by calendar month (newest last) for the bar chart."""
+        async with self._db.execute("""
+            SELECT substr(exit_time, 1, 7) AS month,
+                   SUM(COALESCE(pnl_usdt, 0)) AS pnl,
+                   COUNT(*) AS n
+            FROM trades
+            WHERE exit_time IS NOT NULL
+            GROUP BY month
+            ORDER BY month DESC
+            LIMIT ?
+        """, (limit,)) as cur:
+            rows = await cur.fetchall()
+        out = [{"month": r[0], "pnl": r[1] or 0.0, "n": r[2]} for r in rows]
+        out.reverse()  # chronological for the chart
+        return out
+
+    async def get_equity_curve(self, initial_balance: float) -> list[dict]:
+        """Realised equity curve: initial balance + running sum of closed-trade
+        PnL ordered by exit time. The first point anchors the starting balance so
+        the chart always has a baseline even before any trade closes."""
+        async with self._db.execute("""
+            SELECT exit_time, COALESCE(pnl_usdt, 0) AS pnl
+            FROM trades
+            WHERE exit_time IS NOT NULL
+            ORDER BY exit_time ASC
+        """) as cur:
+            rows = await cur.fetchall()
+        eq = float(initial_balance)
+        curve = [{"t": None, "eq": eq}]
+        for r in rows:
+            eq += float(r[1])
+            curve.append({"t": r[0], "eq": eq})
+        return curve
+
     async def get_performance_summary(self) -> PerformanceSummary:
         async with self._db.execute(
             "SELECT pnl_usdt FROM trades WHERE exit_time IS NOT NULL"

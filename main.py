@@ -65,6 +65,23 @@ class SymbolContext:
     ifvg_strategy: IfvgStrategy = None
 
 
+def active_sleeves_for(ctx: "SymbolContext", cfg) -> list[str]:
+    """The strategy sleeves that will actually trade this coin. ORB/Asia/S/R/FVG/
+    IFVG are gated by whether their instance was created (None = off); BB is gated
+    at runtime by the bb_symbols allowlist, so reflect that here too — otherwise
+    the layout would falsely show BB on BNB/XRP where the edge did not transfer."""
+    sleeves: list[str] = []
+    bb_allow = getattr(cfg.strategy, "bb_symbols", None)
+    if bb_allow is None or ctx.symbol in bb_allow:
+        sleeves.append("BB")
+    if ctx.orb_strategy is not None: sleeves.append("ORB")
+    if ctx.asia_bo_strategy is not None: sleeves.append("Asia")
+    if ctx.sr_breakout_strategy is not None: sleeves.append("S/R")
+    if ctx.fvg_strategy is not None: sleeves.append("FVG")
+    if ctx.ifvg_strategy is not None: sleeves.append("IFVG")
+    return sleeves
+
+
 def make_on_candle_close(ctx: "SymbolContext"):
     """Build a candle-close handler bound to one coin's context."""
 
@@ -781,13 +798,8 @@ async def main() -> None:
 
     # Log the per-coin sleeve layout so the gate is visible at boot.
     for sym, ctx in symbol_ctxs.items():
-        sleeves = ["BB"]
-        if ctx.orb_strategy is not None: sleeves.append("ORB")
-        if ctx.asia_bo_strategy is not None: sleeves.append("Asia")
-        if ctx.sr_breakout_strategy is not None: sleeves.append("S/R")
-        if ctx.fvg_strategy is not None: sleeves.append("FVG")
-        if ctx.ifvg_strategy is not None: sleeves.append("IFVG")
-        logger.info("[%s] active sleeves: %s", sym, ", ".join(sleeves))
+        logger.info("[%s] active sleeves: %s", sym,
+                    ", ".join(active_sleeves_for(ctx, config)))
 
     risk_mgr = RiskManager(config.risk)
     executor = ExecutionEngine(exchange, risk_mgr, portfolio, db, config)
@@ -863,12 +875,18 @@ async def main() -> None:
     await ntfy.initialize()
 
     # Bize-özel canlı web dashboard (botla aynı event loop, trading'e dokunmaz).
+    sleeve_layout = {
+        sym.split("/")[0]: active_sleeves_for(ctx, config)
+        for sym, ctx in symbol_ctxs.items()
+    }
     web_dashboard = WebDashboard(
         config.web,
         exchange=exchange,
         portfolio=portfolio,
         db=db,
         initial_balance=inception_balance,
+        sleeve_layout=sleeve_layout,
+        paper_mode=config.exchange.paper_mode,
     )
     await web_dashboard.start()
 
