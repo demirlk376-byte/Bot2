@@ -226,3 +226,18 @@ class DataManager:
 
     async def get_current_price(self) -> float:
         return self._current_price
+
+    def staleness_seconds(self) -> float:
+        """Seconds elapsed since the last CLOSED primary-tf candle was recorded,
+        beyond the timeframe interval. ~0 under normal operation; grows without
+        bound if the REST poll feed dies (network down, exchange hiccup). The
+        heartbeat uses this to detect a silently stalled feed."""
+        import time
+        tf = self._config.primary_tf
+        last_ts = self._last_closed_ts.get(tf, 0)
+        if last_ts <= 0:
+            return 0.0
+        tf_secs = TIMEFRAME_SECONDS.get(tf, 60)
+        now_ms = time.time() * 1000
+        age_secs = (now_ms - last_ts) / 1000.0
+        return max(0.0, age_secs - tf_secs)

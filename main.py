@@ -8,7 +8,7 @@ from datetime import datetime, date, timezone
 
 from config import load_config
 from database import Database, DailyStats
-from data import DataManager, Candle
+from data import DataManager, Candle, TIMEFRAME_SECONDS
 from exchange import PaperExchange, LiveExchange
 from execution import ExecutionEngine
 from funding import FundingMonitor
@@ -53,6 +53,30 @@ funding_monitor: FundingMonitor = None
 orderflow_monitor: OrderFlowMonitor = None
 whale_monitor: WhaleFlowMonitor = None
 symbol_ctxs: dict[str, "SymbolContext"] = {}
+# Long-lived background loops, kept referenced so they can be cancelled on
+# shutdown and so a crash is logged (a bare create_task() drops the reference
+# and swallows the exception silently).
+_bg_tasks: list[asyncio.Task] = []
+
+
+def _spawn_supervised(coro, name: str) -> asyncio.Task:
+    """Start a background loop, keep a reference, and log loudly if it ever
+    exits — a silent death of daily_reset/heartbeat/reconciliation would let the
+    bot keep trading with a stale daily-loss baseline or an undetected ghost."""
+    task = asyncio.create_task(coro, name=name)
+
+    def _done(t: asyncio.Task) -> None:
+        if t.cancelled():
+            return
+        exc = t.exception()
+        if exc is not None:
+            logger.critical("Background task '%s' CRASHED: %r", name, exc)
+        else:
+            logger.error("Background task '%s' exited unexpectedly", name)
+
+    task.add_done_callback(_done)
+    _bg_tasks.append(task)
+    return task
 
 
 @dataclass
@@ -832,6 +856,28 @@ async def heartbeat_loop() -> None:
             _Path("/tmp/bot_alive").write_text(str(int(_time.time())))
         except Exception:
             pass
+
+        # Stalled-feed detection: if any coin's primary-tf candle feed has not
+        # advanced for well over one interval, the REST poll loop has silently
+        # died — warn so we notice before trading on stale data.
+        try:
+            for sym, ctx in symbol_ctxs.items():
+                stale = ctx.data_mgr.staleness_seconds()
+                # Two missed intervals (plus poll slack) before alarming.
+                tf_secs = TIMEFRAME_SECONDS.get(config.strategy.primary_tf, 60)
+                if stale > max(tf_secs * 2, 180):
+                    msg = (
+                        f"⚠️ {sym} veri akışı {stale/60:.0f} dk durağan — "
+                        f"besleme kopmuş olabilir"
+                    )
+                    logger.warning(msg)
+                    if telegram:
+                        await telegram.send_alert(msg, "WARNING")
+                    if ntfy:
+                        await ntfy.send_alert(msg, "WARNING")
+        except Exception as e:
+            logger.debug("Staleness check failed: %s", e)
+
         since_tg += interval
         if (telegram or ntfy) and since_tg >= tg_every:
             since_tg = 0
@@ -878,69 +924,76 @@ async def position_reconciliation_loop() -> None:
 
             for symbol, positions in by_symbol.items():
                 try:
-                    mexc_pos = await exchange.get_position(symbol)
-                    exch_qty = float(mexc_pos.contracts) if mexc_pos else 0.0
-                    internal_qty = sum(p.quantity for p in positions)
-                    tol = max(internal_qty * 0.01, 1e-9)
-                    if exch_qty + tol >= internal_qty:
-                        continue  # all sleeves still open on the exchange
+                    # Hold the per-symbol lock across the whole detect→close→resync
+                    # sequence so a concurrent entry/close/trailing on this netted
+                    # symbol can't interleave (read stale exchange state, or have
+                    # its just-placed stop cancelled before we re-place siblings').
+                    async with executor._symbol_lock(symbol):
+                        mexc_pos = await exchange.get_position(symbol)
+                        exch_qty = float(mexc_pos.contracts) if mexc_pos else 0.0
+                        internal_qty = sum(p.quantity for p in positions)
+                        tol = max(internal_qty * 0.01, 1e-9)
+                        if exch_qty + tol >= internal_qty:
+                            continue  # all sleeves still open on the exchange
 
-                    # Some quantity closed externally. Close internal sleeves —
-                    # the one whose SL/TP sits nearest the current price first —
-                    # until our internal total matches the exchange again.
-                    try:
-                        current_price = await exchange.get_current_price(symbol)
-                    except Exception:
-                        current_price = positions[0].entry_price
+                        # Some quantity closed externally. Close internal sleeves —
+                        # the one whose SL/TP sits nearest the current price first —
+                        # until our internal total matches the exchange again.
+                        try:
+                            current_price = await exchange.get_current_price(symbol)
+                        except Exception:
+                            current_price = positions[0].entry_price
 
-                    def _proximity(p):
-                        ds = []
-                        if p.sl_price > 0:
-                            ds.append(abs(current_price - p.sl_price))
-                        if p.tp_price > 0:
-                            ds.append(abs(current_price - p.tp_price))
-                        return min(ds) if ds else float("inf")
-                    positions.sort(key=_proximity)
+                        def _proximity(p):
+                            ds = []
+                            if p.sl_price > 0:
+                                ds.append(abs(current_price - p.sl_price))
+                            if p.tp_price > 0:
+                                ds.append(abs(current_price - p.tp_price))
+                            return min(ds) if ds else float("inf")
+                        positions.sort(key=_proximity)
 
-                    to_close = internal_qty - exch_qty
-                    for pos in positions:
-                        if to_close <= tol:
-                            break
-                        if pos.side == "short":
-                            sl_hit = pos.sl_price > 0 and current_price >= pos.sl_price * 0.99
-                            tp_hit = pos.tp_price > 0 and current_price <= pos.tp_price * 1.01
-                        else:
-                            sl_hit = pos.sl_price > 0 and current_price <= pos.sl_price * 1.01
-                            tp_hit = pos.tp_price > 0 and current_price >= pos.tp_price * 0.99
-                        if sl_hit:
-                            exit_price, reason = pos.sl_price, "sl_hit"
-                        elif tp_hit:
-                            exit_price, reason = pos.tp_price, "tp_hit"
-                        else:
-                            exit_price, reason = current_price, "external_close"
+                        to_close = internal_qty - exch_qty
+                        for pos in positions:
+                            if to_close <= tol:
+                                break
+                            if pos.side == "short":
+                                sl_hit = pos.sl_price > 0 and current_price >= pos.sl_price * 0.99
+                                tp_hit = pos.tp_price > 0 and current_price <= pos.tp_price * 1.01
+                            else:
+                                sl_hit = pos.sl_price > 0 and current_price <= pos.sl_price * 1.01
+                                tp_hit = pos.tp_price > 0 and current_price >= pos.tp_price * 0.99
+                            if sl_hit:
+                                exit_price, reason = pos.sl_price, "sl_hit"
+                            elif tp_hit:
+                                exit_price, reason = pos.tp_price, "tp_hit"
+                            else:
+                                exit_price, reason = current_price, "external_close"
 
-                        direction = pos.direction
-                        entry_fee = pos.strategy_scores.get("entry_fee_rate", 0.0001)
-                        raw_pnl = direction * (exit_price - pos.entry_price) * pos.quantity
-                        fees = (pos.entry_price * pos.quantity * entry_fee
-                                + exit_price * pos.quantity * 0.0001)
-                        net_pnl = raw_pnl - fees
+                            direction = pos.direction
+                            entry_fee = pos.strategy_scores.get("entry_fee_rate", 0.0001)
+                            raw_pnl = direction * (exit_price - pos.entry_price) * pos.quantity
+                            fees = (pos.entry_price * pos.quantity * entry_fee
+                                    + exit_price * pos.quantity * 0.0001)
+                            net_pnl = raw_pnl - fees
 
-                        logger.warning(
-                            "Reconciliation: %s %s externally closed on MEXC "
-                            "(reason=%s exit=%.6f pnl=%.2f) — syncing state",
-                            pos.side.upper(), symbol, reason, exit_price, net_pnl,
-                        )
-                        # _close_position_internal records the close, computes the
-                        # authoritative net_pnl AND fires the notify callbacks, so
-                        # we must NOT call on_position_closed again here (would
-                        # double-notify and double-count the loss streak).
-                        await executor._close_position_internal(pos, exit_price, reason)
-                        to_close -= pos.quantity
+                            logger.warning(
+                                "Reconciliation: %s %s externally closed on MEXC "
+                                "(reason=%s exit=%.6f pnl=%.2f) — syncing state",
+                                pos.side.upper(), symbol, reason, exit_price, net_pnl,
+                            )
+                            # _close_position_internal records the close, computes the
+                            # authoritative net_pnl AND fires the notify callbacks, so
+                            # we must NOT call on_position_closed again here (would
+                            # double-notify and double-count the loss streak).
+                            await executor._close_position_internal(pos, exit_price, reason)
+                            to_close -= pos.quantity
 
-                    # Clear the closed sleeve's leftover plan orders and re-assert
-                    # any remaining sibling sleeves' stops on this netted symbol.
-                    await executor.resync_symbol_stops(symbol)
+                        # Clear the closed sleeve's leftover plan orders and re-assert
+                        # any remaining sibling sleeves' stops on this netted symbol.
+                        # We already hold the symbol lock, so call the locked variant
+                        # directly (asyncio.Lock is not re-entrant).
+                        await executor._resync_symbol_stops_locked(symbol)
 
                 except Exception as e:
                     logger.error("Reconciliation check failed for %s: %s", symbol, e)
@@ -1212,9 +1265,9 @@ async def main() -> None:
             config.strategy.primary_tf, make_on_candle_close(ctx)
         )
 
-    asyncio.create_task(daily_reset_loop())
-    asyncio.create_task(heartbeat_loop())
-    asyncio.create_task(position_reconciliation_loop())
+    _spawn_supervised(daily_reset_loop(), "daily_reset_loop")
+    _spawn_supervised(heartbeat_loop(), "heartbeat_loop")
+    _spawn_supervised(position_reconciliation_loop(), "position_reconciliation_loop")
 
     logger.info(
         "Bot running. Coins=%d TF=%s Balance=%.2f",
@@ -1246,6 +1299,15 @@ async def main() -> None:
     await stop_event.wait()
 
     logger.info("Shutting down...")
+    # Cancel the supervised background loops first so none of them fires a trade
+    # or touches the exchange while we are tearing things down.
+    for t in _bg_tasks:
+        t.cancel()
+    for t in _bg_tasks:
+        try:
+            await t
+        except (asyncio.CancelledError, Exception):
+            pass
     if orderflow_monitor is not None:
         await orderflow_monitor.stop()
     if whale_monitor is not None:
@@ -1259,6 +1321,13 @@ async def main() -> None:
     if web_dashboard:
         await web_dashboard.stop()
     await db.close()
+    # Close the ccxt exchange session (LiveExchange holds an aiohttp client that
+    # otherwise logs "Unclosed client session" and leaks the connection).
+    if exchange is not None and hasattr(exchange, "close"):
+        try:
+            await exchange.close()
+        except Exception as e:
+            logger.debug("Exchange close failed: %s", e)
     if dashboard:
         dashboard.stop()
 
