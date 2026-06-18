@@ -717,15 +717,17 @@ async def daily_reset_loop() -> None:
         # balance — the daily-loss limit measures drawdown, not locked margin.
         await executor.capture_daily_start()
         executor.reset_daily()
-        balance = await exchange.get_balance()
+        # Persist the EQUITY baseline (matches the daily-loss limit's measure and
+        # what the startup path reads back after a restart) — not free balance.
+        start_equity = await executor.current_equity()
 
-        logger.info("Daily reset. New starting equity: %.2f", await executor.current_equity())
+        logger.info("Daily reset. New starting equity: %.2f", start_equity)
 
         perf = await db.get_performance_summary(is_paper=config.exchange.paper_mode)
         await db.upsert_daily_stats(DailyStats(
             date=today,
-            starting_balance=balance,
-            ending_balance=balance,
+            starting_balance=start_equity,
+            ending_balance=start_equity,
             total_trades=perf.total_trades,
             winning_trades=perf.winning_trades,
             total_pnl_usdt=perf.total_pnl_usdt,
@@ -1060,8 +1062,25 @@ async def main() -> None:
     await restore_state()
 
     balance = await exchange.get_balance()
-    # Starting equity includes any restored positions' margin + unrealized PnL.
-    await executor.capture_daily_start()
+    # Daily-loss baseline: if we already recorded today's starting equity, reuse
+    # it so a mid-day restart (or a crash-loop) does NOT re-arm a fresh full
+    # daily loss from a lower equity. Only snapshot fresh equity the first time
+    # the bot starts on a given UTC day.
+    today_iso = datetime.now(timezone.utc).date().isoformat()
+    persisted_start = await db.get_daily_starting_balance(today_iso)
+    if persisted_start is not None and persisted_start > 0:
+        executor.set_daily_starting_balance(persisted_start)
+        logger.info("Restored today's daily-loss baseline: %.2f", persisted_start)
+    else:
+        # Starting equity includes any restored positions' margin + unrealized PnL.
+        await executor.capture_daily_start()
+        await db.upsert_daily_stats(DailyStats(
+            date=today_iso,
+            starting_balance=await executor.current_equity(),
+            ending_balance=await executor.current_equity(),
+            total_trades=0, winning_trades=0, total_pnl_usdt=0.0,
+            max_drawdown=0.0, is_paper=config.exchange.paper_mode,
+        ))
 
     # Persist the inception balance on first run; use it consistently across
     # restarts so /status always shows return-since-day-one, not since-last-restart.

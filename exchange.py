@@ -553,6 +553,33 @@ class LiveExchange:
             symbol, "market", close_side, amount, None, {"reduceOnly": True}
         )
         filled_price = float(order.get("average") or order.get("price") or 0)
+        # Same MEXC async-fill issue as entry: average can be 0 right after the
+        # reduce-only close. Re-fetch and fall back to dealAvgPrice, then the
+        # mark price, so the caller never books a $0 exit (huge bogus PnL).
+        if filled_price == 0:
+            try:
+                await asyncio.sleep(1)
+                fetched = await self._exchange.fetch_order(str(order["id"]), symbol)
+                filled_price = float(
+                    fetched.get("average") or fetched.get("price") or
+                    fetched.get("info", {}).get("dealAvgPrice") or 0
+                )
+            except Exception as e:
+                logger.debug("close fill-price re-fetch failed: %s", e)
+        if filled_price == 0:
+            filled_price = float(
+                order.get("info", {}).get("dealAvgPrice") or
+                order.get("info", {}).get("avgPrice") or 0
+            )
+        if filled_price == 0:
+            try:
+                filled_price = await self.get_current_price(symbol)
+                logger.warning(
+                    "Close fill price unavailable for %s — using mark price %.6f",
+                    order.get("id"), filled_price,
+                )
+            except Exception as e:
+                logger.error("Close fill price unavailable and mark fallback failed: %s", e)
         return OrderResult(
             order_id=str(order["id"]),
             symbol=symbol,

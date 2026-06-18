@@ -455,6 +455,22 @@ class ExecutionEngine:
     async def _close_position_internal(
         self, pos: Position, exit_price: float, reason: str
     ) -> None:
+        # Idempotency guard: several independent tasks can race to close the same
+        # position (max-hold force-close, the 2-min reconciliation loop, a Telegram
+        # /close, emergency_close_all). Without this guard the trade would be
+        # logged to the DB twice and the win/loss streak double-counted (which can
+        # wrongly trip the consecutive-loss cooldown). First caller wins.
+        if self._portfolio.get_position_by_id(pos.id) is None:
+            logger.debug("Position %s already closed — skipping duplicate close", pos.id)
+            return
+        # A $0 exit fill (missing close price) would book a huge bogus PnL — fall
+        # back to the entry so the trade records ~0 PnL instead of a phantom loss.
+        if exit_price <= 0:
+            logger.warning(
+                "Close of %s has no exit price — falling back to entry %.6f",
+                pos.id, pos.entry_price,
+            )
+            exit_price = pos.entry_price
         direction = pos.direction
         raw_pnl = direction * (exit_price - pos.entry_price) * pos.quantity
         entry_fee_rate = pos.strategy_scores.get("entry_fee_rate", 0.0001)
