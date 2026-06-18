@@ -827,6 +827,75 @@ async def heartbeat_loop() -> None:
         await asyncio.sleep(interval)
 
 
+async def position_reconciliation_loop() -> None:
+    """Live-mode only: every 2 min, detect positions that were externally closed
+    on MEXC (by SL/TP trigger orders) and sync the internal state.
+
+    Without this, a trigger-order close leaves a ghost position in the bot's
+    portfolio: equity is inflated by the locked margin, the daily-loss check
+    sees a phantom unrealised loss, and the bot may try to open a duplicate
+    trade into a coin that already has an active position on the exchange.
+    """
+    if config.exchange.paper_mode:
+        return
+    # Small startup delay so the exchange client is fully warmed up.
+    await asyncio.sleep(30)
+    while True:
+        try:
+            for pos in list(portfolio.get_open_positions()):
+                try:
+                    mexc_pos = await exchange.get_position(pos.symbol)
+                    if mexc_pos is not None:
+                        continue  # position still live — nothing to do
+
+                    # Position is gone from MEXC → was externally closed
+                    try:
+                        current_price = await exchange.get_current_price(pos.symbol)
+                    except Exception:
+                        current_price = pos.entry_price
+
+                    # Guess whether SL or TP was triggered by comparing current
+                    # price to each level.  We use a 1% tolerance band because
+                    # the price may have moved slightly since the trigger fired.
+                    if pos.side == "short":
+                        sl_hit = pos.sl_price > 0 and current_price >= pos.sl_price * 0.99
+                        tp_hit = pos.tp_price > 0 and current_price <= pos.tp_price * 1.01
+                    else:
+                        sl_hit = pos.sl_price > 0 and current_price <= pos.sl_price * 1.01
+                        tp_hit = pos.tp_price > 0 and current_price >= pos.tp_price * 0.99
+
+                    if sl_hit:
+                        exit_price, reason = pos.sl_price, "sl_hit"
+                    elif tp_hit:
+                        exit_price, reason = pos.tp_price, "tp_hit"
+                    else:
+                        exit_price, reason = current_price, "external_close"
+
+                    direction = pos.direction
+                    entry_fee = pos.strategy_scores.get("entry_fee_rate", 0.0001)
+                    raw_pnl = direction * (exit_price - pos.entry_price) * pos.quantity
+                    fees = (pos.entry_price * pos.quantity * entry_fee
+                            + exit_price * pos.quantity * 0.0001)
+                    net_pnl = raw_pnl - fees
+
+                    logger.warning(
+                        "Reconciliation: %s %s externally closed on MEXC "
+                        "(reason=%s exit=%.6f pnl=%.2f) — syncing state",
+                        pos.side.upper(), pos.symbol, reason, exit_price, net_pnl,
+                    )
+
+                    # Record close in DB + remove from portfolio.
+                    await executor._close_position_internal(pos, exit_price, reason)
+                    # Notify dashboard + Telegram/ntfy.
+                    await on_position_closed(pos, exit_price, net_pnl, reason)
+
+                except Exception as e:
+                    logger.error("Reconciliation check failed for %s: %s", pos.symbol, e)
+        except Exception as e:
+            logger.error("Position reconciliation loop error: %s", e)
+        await asyncio.sleep(120)  # recheck every 2 minutes
+
+
 async def on_position_closed(pos, exit_price: float, net_pnl: float, reason: str) -> None:
     dashboard.add_trade(pos.side, pos.entry_price, exit_price, net_pnl, reason)
     args = (pos.symbol, pos.side, pos.entry_price, exit_price, net_pnl, reason)
@@ -1061,6 +1130,7 @@ async def main() -> None:
 
     asyncio.create_task(daily_reset_loop())
     asyncio.create_task(heartbeat_loop())
+    asyncio.create_task(position_reconciliation_loop())
 
     logger.info(
         "Bot running. Coins=%d TF=%s Balance=%.2f",
