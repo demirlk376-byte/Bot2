@@ -356,9 +356,13 @@ class TelegramNotifier:
         exit_price: float,
         pnl_usdt: float,
         reason: str,
+        pnl_pct: float | None = None,
     ) -> None:
         emoji = "🟢" if pnl_usdt >= 0 else "🔴"
-        pnl_pct = (exit_price - entry_price) / entry_price * 100 * (1 if side == "long" else -1)
+        # Prefer the caller-supplied return-on-margin % (matches the DB stat); fall
+        # back to raw price-move % when not provided.
+        if pnl_pct is None:
+            pnl_pct = (exit_price - entry_price) / entry_price * 100 * (1 if side == "long" else -1)
         text = (
             f"{emoji} <b>TRADE CLOSED</b> - {symbol}\n"
             f"Side: <code>{side.upper()}</code>\n"

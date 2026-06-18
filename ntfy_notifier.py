@@ -111,9 +111,13 @@ class NtfyNotifier:
         exit_price: float,
         pnl_usdt: float,
         reason: str,
+        pnl_pct: float | None = None,
     ) -> None:
         is_win = pnl_usdt >= 0
-        pnl_pct = (exit_price - entry_price) / entry_price * 100 * (1 if side == "long" else -1)
+        # Prefer the caller-supplied return-on-margin % (matches the DB stat); fall
+        # back to raw price-move % when not provided.
+        if pnl_pct is None:
+            pnl_pct = (exit_price - entry_price) / entry_price * 100 * (1 if side == "long" else -1)
         tag = "white_check_mark" if is_win else "x"
         priority = 3 if is_win else 5
         reason_upper = reason.upper().replace("_", " ")

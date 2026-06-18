@@ -1004,11 +1004,16 @@ async def position_reconciliation_loop() -> None:
 
 async def on_position_closed(pos, exit_price: float, net_pnl: float, reason: str) -> None:
     dashboard.add_trade(pos.side, pos.entry_price, exit_price, net_pnl, reason)
+    # Return on deployed margin (net PnL ÷ margin = notional / leverage), matching
+    # the percentage recorded in the DB — not raw price-move %.
+    lev = max(config.exchange.leverage, 1)
+    margin = pos.entry_price * pos.quantity / lev
+    pnl_pct = (net_pnl / margin * 100) if margin > 0 else 0.0
     args = (pos.symbol, pos.side, pos.entry_price, exit_price, net_pnl, reason)
     if telegram:
-        await telegram.send_trade_closed(*args)
+        await telegram.send_trade_closed(*args, pnl_pct=pnl_pct)
     if ntfy:
-        await ntfy.send_trade_closed(*args)
+        await ntfy.send_trade_closed(*args, pnl_pct=pnl_pct)
 
 
 async def main() -> None:

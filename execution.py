@@ -548,7 +548,12 @@ class ExecutionEngine:
             + exit_price * pos.quantity * 0.0001
         )
         net_pnl = raw_pnl - fees
-        denom = pos.entry_price * pos.quantity
+        # pnl_pct is return on the MARGIN actually deployed (notional / leverage),
+        # not on full notional — that is what the trader put up. On 10x leverage a
+        # 1% notional move is a 10% return on capital; reporting it on notional
+        # understated every trade's percentage by the leverage factor.
+        lev = max(self._config.exchange.leverage, 1)
+        denom = pos.entry_price * pos.quantity / lev
         pnl_pct = net_pnl / denom if denom > 0 else 0.0
 
         strategy = pos.strategy_scores.get("strategy", "all")
@@ -584,7 +589,11 @@ class ExecutionEngine:
         pos = self._portfolio.get_position_by_id(paper_pos.id)
         if pos is None:
             return
-        pnl_pct = net_pnl / (pos.entry_price * pos.quantity) if pos.quantity > 0 else 0.0
+        # Return on deployed margin (notional / leverage), not on full notional —
+        # mirrors _close_position_internal so paper and live report consistently.
+        lev = max(self._config.exchange.leverage, 1)
+        denom = pos.entry_price * pos.quantity / lev
+        pnl_pct = net_pnl / denom if denom > 0 else 0.0
         strategy = pos.strategy_scores.get("strategy", "all")
         self._record_trade_outcome(net_pnl, strategy, pos.symbol)
         self._portfolio.remove_position(pos.id)

@@ -132,6 +132,15 @@ class WhaleFlowMonitor:
         avg-trade-size z-score vs the trailing window. Appends it to history.
         Returns None while warming up or if the hour had no trades.
 
+        Matches the backtest's research_microstructure._zscore EXACTLY:
+          z[i] = (s[i] - rolling(win).mean()) / rolling(win).std()
+        pandas' rolling(win) window INCLUDES the current bar and pandas .std()
+        is the SAMPLE std (ddof=1). Earlier this used the prior `win` bars only
+        and numpy's population std (ddof=0); both shifted the z-score, so a live
+        signal could fire where the backtest wouldn't (and vice versa). To
+        reproduce the backtest we build the window as the last (win-1) prior
+        completed hours plus the current hour = win values, and use ddof=1.
+
         Idempotent-ish: call once per closed candle. If the bucket is missing
         (no trades captured, e.g. just after start) returns None without
         polluting the history."""
@@ -139,20 +148,23 @@ class WhaleFlowMonitor:
         if b is None or b[0] <= 0:
             return None
         avg_size = b[1] / b[0]
-        # z-score against PRIOR completed hours only.
-        if len(self._hist) < self._zwin:
+        # Need (win-1) prior hours so that prior+current = win values, matching
+        # pandas rolling(win) which needs `win` observations before a non-NaN.
+        if len(self._hist) < self._zwin - 1:
             self._hist.append(avg_size)
             return None  # still warming up
-        arr = np.array(self._hist, dtype=float)
-        mean = arr.mean()
-        std = arr.std()
+        prior = list(self._hist)[-(self._zwin - 1):]
+        window = np.array(prior + [avg_size], dtype=float)
         self._hist.append(avg_size)
-        if std <= 0:
+        mean = window.mean()
+        std = window.std(ddof=1)  # sample std, matching pandas .std()
+        if std <= 0 or np.isnan(std):
             return 0.0
         return float((avg_size - mean) / std)
 
     def warmup_remaining(self) -> int:
-        return max(0, self._zwin - len(self._hist))
+        # First valid z-score needs (win-1) prior completed hours + the current.
+        return max(0, (self._zwin - 1) - len(self._hist))
 
 
 # ── self-test: validate WhaleStrategy + z-score vs the research backtest ──────
