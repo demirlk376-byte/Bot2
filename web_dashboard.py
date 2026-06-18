@@ -109,7 +109,13 @@ class WebDashboard:
                 price = await self._exchange.get_current_price(p.symbol)
             except Exception:
                 price = p.entry_price
-            upnl = p.direction * (price - p.entry_price) * p.quantity
+            # Guard against a missing entry price (e.g. an exchange fill that came
+            # back as 0): without this the upnl would be direction*price*qty — a
+            # huge bogus number that misrepresents the whole account on the page.
+            if p.entry_price <= 0:
+                upnl = 0.0
+            else:
+                upnl = p.direction * (price - p.entry_price) * p.quantity
             total_upnl += upnl
             # Live get_balance() returns FREE balance (margin locked out). Add the
             # initial margin back so equity reflects the whole account, otherwise
