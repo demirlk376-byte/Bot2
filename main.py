@@ -792,7 +792,7 @@ async def restore_state() -> int:
     # don't re-fire on today's signal after a restart, even if their trade already
     # closed before the restart (slot guard only covers still-open positions).
     try:
-        today_slots = await db.get_today_traded_slots()
+        today_slots = await db.get_today_traded_slots(is_paper=config.exchange.paper_mode)
         if today_slots:
             today_utc = datetime.now(timezone.utc).date()
             for ctx in symbol_ctxs.values():

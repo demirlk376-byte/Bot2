@@ -138,6 +138,25 @@ class RiskManager:
     ) -> Optional[TradeSetup]:
         """Build a TradeSetup from preset SL/TP levels (e.g. range-based day trades).
         risk_pct_override > 0 uses that fraction instead of config max_risk_per_trade."""
+        # Safety net: reject geometrically inverted SL/TP before any live order is
+        # placed. A long must have SL below entry and TP above (short: mirror).
+        # A strategy bug that emits a wrong-side SL would otherwise size a real
+        # order with a "stop" that can never protect — caught here, not on MEXC.
+        if direction > 0:
+            if not (sl_price < entry_price < tp_price):
+                logger.error(
+                    "Rejecting LONG with inverted levels: sl=%.6f entry=%.6f tp=%.6f",
+                    sl_price, entry_price, tp_price)
+                return None
+        elif direction < 0:
+            if not (tp_price < entry_price < sl_price):
+                logger.error(
+                    "Rejecting SHORT with inverted levels: sl=%.6f entry=%.6f tp=%.6f",
+                    sl_price, entry_price, tp_price)
+                return None
+        else:
+            return None
+
         sl_dist = abs(entry_price - sl_price)
         tp_dist = abs(tp_price - entry_price)
         if sl_dist <= 0:

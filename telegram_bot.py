@@ -141,6 +141,28 @@ class TelegramNotifier:
         deposits = await self._db.get_meta_float("total_deposits", 0.0)
         return inception + deposits
 
+    async def _equity_and_upnl(self) -> tuple[float, float]:
+        """Return (equity, unrealized_pnl) with FRESH per-symbol prices.
+
+        get_balance() returns FREE balance (locked margin excluded) in live mode,
+        and the portfolio's cached uPnL is only refreshed on candle close (up to
+        1h stale). So we recompute uPnL from live prices and add the locked margin
+        back, matching the web dashboard and the executor's daily-loss measure —
+        otherwise /status understates equity by the margin and shows stale PnL."""
+        free = await self._exchange.get_balance()
+        lev = max(getattr(self._app_config.exchange, "leverage", 1), 1)
+        upnl = 0.0
+        locked = 0.0
+        for p in self._portfolio.get_open_positions():
+            try:
+                price = await self._exchange.get_current_price(p.symbol)
+            except Exception:
+                price = p.entry_price
+            if p.entry_price > 0:
+                upnl += p.direction * (price - p.entry_price) * p.quantity
+                locked += p.entry_price * p.quantity / lev
+        return free + locked + upnl, upnl
+
     async def _reply(self, update, text: str) -> None:
         try:
             await update.message.reply_text(text, parse_mode="HTML")
@@ -165,17 +187,16 @@ class TelegramNotifier:
         if not self._authorized(update):
             return
         try:
-            balance = await self._exchange.get_balance()
-            upnl = self._portfolio.get_total_unrealized_pnl()
+            equity, upnl = await self._equity_and_upnl()
             invested = await self._invested()
-            true_pnl = balance + upnl - invested
+            true_pnl = equity - invested
             ret = (true_pnl / invested * 100) if invested > 0 else 0.0
             n_open = self._portfolio.get_open_position_count()
             halted = self._executor.is_halted()
             paper = self._app_config.exchange.paper_mode
             text = (
                 f"<b>Durum</b> ({'PAPER' if paper else 'CANLI'})\n"
-                f"Bakiye: <code>${balance:,.2f}</code>\n"
+                f"Bakiye: <code>${equity:,.2f}</code>\n"
                 f"Gerçek kâr: <code>${true_pnl:+.2f}</code> ({ret:+.1f}%)\n"
                 f"Açık pozisyon: <code>{n_open}</code>\n"
                 f"Gerçekleşmemiş PnL: <code>${upnl:+.2f}</code>\n"
@@ -206,13 +227,12 @@ class TelegramNotifier:
         if not self._authorized(update):
             return
         try:
-            balance = await self._exchange.get_balance()
-            upnl = self._portfolio.get_total_unrealized_pnl()
+            equity, _upnl = await self._equity_and_upnl()
             invested = await self._invested()
-            true_pnl = balance + upnl - invested
+            true_pnl = equity - invested
             ret = (true_pnl / invested * 100) if invested > 0 else 0.0
             await self._reply(update,
-                f"Bakiye: <code>${balance:,.2f}</code>\n"
+                f"Bakiye: <code>${equity:,.2f}</code>\n"
                 f"Yatırılan: <code>${invested:,.2f}</code>\n"
                 f"Gerçek kâr: <code>${true_pnl:+.2f}</code> ({ret:+.2f}%)")
         except Exception as e:

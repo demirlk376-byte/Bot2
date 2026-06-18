@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from dataclasses import dataclass, field
@@ -99,20 +100,45 @@ class Database:
     def __init__(self, db_path: str):
         self._path = db_path
         self._db: Optional[aiosqlite.Connection] = None
+        # One shared connection serves many concurrent coroutines (per-coin
+        # candle handlers, reconciliation, max-hold, Telegram /close). Serialize
+        # writes so one coroutine's commit can't flush another's half-written
+        # statement, and so read-modify-write (add_deposit) stays atomic.
+        self._wlock = asyncio.Lock()
 
     async def initialize(self) -> None:
         self._db = await aiosqlite.connect(self._path)
         self._db.row_factory = aiosqlite.Row
+        # WAL improves reader/writer concurrency (dashboard reads while the
+        # engine writes) and reduces "database is locked" stalls.
+        try:
+            await self._db.execute("PRAGMA journal_mode=WAL")
+        except Exception:
+            pass
         await self._db.execute(_CREATE_TRADES)
         await self._db.execute(_CREATE_DAILY)
         await self._db.execute(_CREATE_META)
         await self._db.commit()
 
+    async def add_deposit(self, amount: float) -> float:
+        """Record a capital deposit/withdrawal (negative = withdrawal) so the
+        dashboard can separate added money from real trading profit. Returns the
+        new cumulative deposit total. Survives restarts via the meta table."""
+        async with self._wlock:
+            new_total = await self.get_meta_float("total_deposits", 0.0) + amount
+            await self._db.execute(
+                "INSERT OR REPLACE INTO meta (key, value) VALUES (?,?)",
+                ("total_deposits", str(new_total)),
+            )
+            await self._db.commit()
+            return new_total
+
     async def set_meta(self, key: str, value: str) -> None:
-        await self._db.execute(
-            "INSERT OR REPLACE INTO meta (key, value) VALUES (?,?)", (key, value)
-        )
-        await self._db.commit()
+        async with self._wlock:
+            await self._db.execute(
+                "INSERT OR REPLACE INTO meta (key, value) VALUES (?,?)", (key, value)
+            )
+            await self._db.commit()
 
     async def get_meta(self, key: str) -> Optional[str]:
         async with self._db.execute(
@@ -128,14 +154,6 @@ class Database:
         except (TypeError, ValueError):
             return default
 
-    async def add_deposit(self, amount: float) -> float:
-        """Record a capital deposit/withdrawal (negative = withdrawal) so the
-        dashboard can separate added money from real trading profit. Returns the
-        new cumulative deposit total. Survives restarts via the meta table."""
-        new_total = await self.get_meta_float("total_deposits", 0.0) + amount
-        await self.set_meta("total_deposits", str(new_total))
-        return new_total
-
     async def get_open_trades(self) -> list[TradeRecord]:
         """Trades with no exit yet — used to rebuild the in-memory portfolio
         after a restart so open positions are not orphaned."""
@@ -145,15 +163,19 @@ class Database:
             rows = await cur.fetchall()
         return [_row_to_trade(r) for r in rows]
 
-    async def get_today_traded_slots(self) -> set[str]:
+    async def get_today_traded_slots(self, is_paper: bool | None = None) -> set[str]:
         """Strategy names that already entered a trade today (open or closed).
         Used on restart to re-populate per-strategy _traded_dates so one-per-day
-        intraday strategies (ORB, Asia BO) don't re-fire after a bot restart."""
+        intraday strategies (ORB, Asia BO) don't re-fire after a bot restart.
+
+        is_paper filters to the current run mode so a paper trade from earlier
+        today can't suppress the real live ORB/Asia entry (or vice-versa)."""
         today = datetime.now(timezone.utc).date().isoformat()
+        clause, params = _paper_clause(is_paper)
         async with self._db.execute(
             """SELECT DISTINCT json_extract(strategy_scores, '$.strategy')
-               FROM trades WHERE entry_time LIKE ?""",
-            (f"{today}%",),
+               FROM trades WHERE entry_time LIKE ?""" + clause,
+            (f"{today}%", *params),
         ) as cur:
             rows = await cur.fetchall()
         return {r[0] for r in rows if r[0]}
@@ -163,19 +185,20 @@ class Database:
             await self._db.close()
 
     async def log_trade_open(self, trade: TradeRecord) -> None:
-        await self._db.execute(
-            """INSERT INTO trades
-               (id, symbol, side, entry_price, quantity, sl_price, tp_price,
-                entry_time, strategy_scores, is_paper)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            (
-                trade.id, trade.symbol, trade.side, trade.entry_price,
-                trade.quantity, trade.sl_price, trade.tp_price,
-                trade.entry_time, json.dumps(trade.strategy_scores),
-                int(trade.is_paper),
-            ),
-        )
-        await self._db.commit()
+        async with self._wlock:
+            await self._db.execute(
+                """INSERT INTO trades
+                   (id, symbol, side, entry_price, quantity, sl_price, tp_price,
+                    entry_time, strategy_scores, is_paper)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    trade.id, trade.symbol, trade.side, trade.entry_price,
+                    trade.quantity, trade.sl_price, trade.tp_price,
+                    trade.entry_time, json.dumps(trade.strategy_scores),
+                    int(trade.is_paper),
+                ),
+            )
+            await self._db.commit()
 
     async def log_trade_close(
         self,
@@ -187,14 +210,15 @@ class Database:
         exit_reason: str,
         fees_usdt: float = 0.0,
     ) -> None:
-        await self._db.execute(
-            """UPDATE trades
-               SET exit_price=?, exit_time=?, pnl_usdt=?, pnl_pct=?,
-                   exit_reason=?, fees_usdt=?
-               WHERE id=?""",
-            (exit_price, exit_time, pnl_usdt, pnl_pct, exit_reason, fees_usdt, trade_id),
-        )
-        await self._db.commit()
+        async with self._wlock:
+            await self._db.execute(
+                """UPDATE trades
+                   SET exit_price=?, exit_time=?, pnl_usdt=?, pnl_pct=?,
+                       exit_reason=?, fees_usdt=?
+                   WHERE id=?""",
+                (exit_price, exit_time, pnl_usdt, pnl_pct, exit_reason, fees_usdt, trade_id),
+            )
+            await self._db.commit()
 
     async def get_daily_pnl(self, day: str, is_paper: bool | None = None) -> float:
         clause, params = _paper_clause(is_paper)
@@ -218,18 +242,19 @@ class Database:
         return [_row_to_trade(r) for r in rows]
 
     async def upsert_daily_stats(self, stats: DailyStats) -> None:
-        await self._db.execute(
-            """INSERT OR REPLACE INTO daily_stats
-               (date, starting_balance, ending_balance, total_trades,
-                winning_trades, total_pnl_usdt, max_drawdown, is_paper)
-               VALUES (?,?,?,?,?,?,?,?)""",
-            (
-                stats.date, stats.starting_balance, stats.ending_balance,
-                stats.total_trades, stats.winning_trades, stats.total_pnl_usdt,
-                stats.max_drawdown, int(stats.is_paper),
-            ),
-        )
-        await self._db.commit()
+        async with self._wlock:
+            await self._db.execute(
+                """INSERT OR REPLACE INTO daily_stats
+                   (date, starting_balance, ending_balance, total_trades,
+                    winning_trades, total_pnl_usdt, max_drawdown, is_paper)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (
+                    stats.date, stats.starting_balance, stats.ending_balance,
+                    stats.total_trades, stats.winning_trades, stats.total_pnl_usdt,
+                    stats.max_drawdown, int(stats.is_paper),
+                ),
+            )
+            await self._db.commit()
 
     async def get_daily_starting_balance(self, day: str) -> Optional[float]:
         async with self._db.execute(
