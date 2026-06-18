@@ -284,7 +284,12 @@ class PaperExchange:
     ) -> OrderResult:
         direction = 1 if pos.side == "long" else -1
         raw_pnl = direction * (exit_price - pos.entry_price) * pos.quantity
-        fees = (pos.entry_price + exit_price) * pos.quantity * self.FEE_RATE
+        # Use the entry's ACTUAL fee rate (0% for a maker/limit entry, 0.01% for
+        # a taker/market entry) plus the taker exit fee — mirrors the live path
+        # (execution._close_position_internal). Charging taker on both legs would
+        # bill a phantom entry fee on maker entries and drift the paper equity.
+        fees = (pos.entry_price * pos.fee_rate
+                + exit_price * self.FEE_RATE) * pos.quantity
         net_pnl = raw_pnl - fees
         self._balance += pos.margin_used + net_pnl
 

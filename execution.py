@@ -45,9 +45,21 @@ class ExecutionEngine:
         self._executing: set[str] = set()  # symbols with in-flight execute_signal
         self._consecutive_losses: dict[str, int] = {}   # strategy → streak count
         self._cooldown_until: Optional[datetime] = None
-
+        # Per-symbol lock serializing every operation that mutates a symbol's
+        # exchange position/stops (entry place+set_sl_tp+register, trailing
+        # resync, close, reconciliation). MEXC nets same-symbol sleeves into one
+        # position, so without this a resync on one coroutine could cancel a stop
+        # another coroutine just placed — leaving a live position unprotected.
+        self._symbol_locks: dict[str, asyncio.Lock] = {}
         if isinstance(exchange, PaperExchange):
             exchange.register_close_callback(self._on_paper_position_closed)
+
+    def _symbol_lock(self, symbol: str) -> asyncio.Lock:
+        lock = self._symbol_locks.get(symbol)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._symbol_locks[symbol] = lock
+        return lock
 
     def register_close_callback(self, cb: Callable) -> None:
         self._on_close_callbacks.append(cb)
@@ -304,77 +316,81 @@ class ExecutionEngine:
             getattr(self._config.exchange, "maker_entry", False)
             and hasattr(self._exchange, "place_limit_order")
         )
-        try:
-            if use_maker:
-                order: Optional[OrderResult] = await self._exchange.place_limit_order(
-                    setup.symbol, side, setup.quantity, setup.entry_price, params
-                )
-                if order is None:
-                    return ExecutionResult(False, error="Maker limit unfilled")
-            else:
-                order = await self._exchange.place_market_order(
-                    setup.symbol, side, setup.quantity, params
-                )
-        except Exception as e:
-            logger.error("Order placement failed: %s", e)
-            return ExecutionResult(False, error=str(e))
-
-        # Live mode: place dedicated SL/TP orders. A live position must never sit
-        # without a stop — if placement fails, close immediately for safety.
-        if not self._config.exchange.paper_mode and hasattr(self._exchange, "set_sl_tp"):
-            pos_side = "long" if signal.direction == 1 else "short"
+        # Acquire per-symbol lock before touching the exchange so no concurrent
+        # resync can cancel a stop we just placed before the position is in the
+        # portfolio (at which point resync correctly re-places it).
+        async with self._symbol_lock(symbol):
             try:
-                await self._exchange.set_sl_tp(
-                    setup.symbol, pos_side,
-                    setup.sl_price, setup.tp_price, setup.quantity,
-                )
-                logger.info(
-                    "Live SL/TP placed: sl=%.2f tp=%.2f", setup.sl_price, setup.tp_price
-                )
-            except Exception as e:
-                logger.error("SL/TP placement failed — closing position for safety: %s", e)
-                try:
-                    await self._exchange.close_position(
-                        setup.symbol, pos_side, setup.quantity, "no_stop_safety"
+                if use_maker:
+                    order: Optional[OrderResult] = await self._exchange.place_limit_order(
+                        setup.symbol, side, setup.quantity, setup.entry_price, params
                     )
-                except Exception as ce:
-                    logger.critical("EMERGENCY: could not close unprotected position: %s", ce)
-                return ExecutionResult(False, error="SL/TP placement failed; position closed")
+                    if order is None:
+                        return ExecutionResult(False, error="Maker limit unfilled")
+                else:
+                    order = await self._exchange.place_market_order(
+                        setup.symbol, side, setup.quantity, params
+                    )
+            except Exception as e:
+                logger.error("Order placement failed: %s", e)
+                return ExecutionResult(False, error=str(e))
 
-        scores = {
-            "trend": signal.trend_score,
-            "mean_rev": signal.mean_rev_score,
-            "breakout": signal.breakout_score,
-            "confidence": signal.confidence,
-            "strategy": signal.dominant_strategy,
-            # ATR at entry — used by trailing stop to keep distance consistent
-            # regardless of how ATR changes during the life of the trade.
-            "atr": atr,
-            # Slot key for position uniqueness in multi-strategy parallel mode.
-            "slot": slot_key or symbol,
-            # Track actual entry fee rate so _close_position_internal can compute
-            # fees accurately (maker = 0%, taker = 0.01%).
-            "entry_fee_rate": 0.0 if use_maker else 0.0001,
-        }
-        # Day-trading strategies use a shorter max-hold window. Store it in the
-        # scores dict so _enforce_max_hold can read it per-position.
-        if signal.dominant_strategy in ("orb", "asia_bo"):
-            scores["max_hold"] = getattr(self._config.risk, "day_max_hold_candles", 6)
-        # FVG / IFVG were validated with a 24-candle max-hold (1-day on 1h).
-        elif signal.dominant_strategy in ("fvg", "ifvg"):
-            scores["max_hold"] = 24
+            # Live mode: place dedicated SL/TP orders. A live position must never sit
+            # without a stop — if placement fails, close immediately for safety.
+            if not self._config.exchange.paper_mode and hasattr(self._exchange, "set_sl_tp"):
+                pos_side = "long" if signal.direction == 1 else "short"
+                try:
+                    await self._exchange.set_sl_tp(
+                        setup.symbol, pos_side,
+                        setup.sl_price, setup.tp_price, setup.quantity,
+                    )
+                    logger.info(
+                        "Live SL/TP placed: sl=%.2f tp=%.2f", setup.sl_price, setup.tp_price
+                    )
+                except Exception as e:
+                    logger.error("SL/TP placement failed — closing position for safety: %s", e)
+                    try:
+                        await self._exchange.close_position(
+                            setup.symbol, pos_side, setup.quantity, "no_stop_safety"
+                        )
+                    except Exception as ce:
+                        logger.critical("EMERGENCY: could not close unprotected position: %s", ce)
+                    return ExecutionResult(False, error="SL/TP placement failed; position closed")
 
-        position = self._portfolio.create_position(
-            symbol=setup.symbol,
-            direction=signal.direction,
-            entry_price=order.filled_price,
-            sl_price=setup.sl_price,
-            tp_price=setup.tp_price,
-            quantity=setup.quantity,
-            strategy_scores=scores,
-            is_paper=self._config.exchange.paper_mode,
-            position_id=order.order_id,  # unify portfolio/paper/DB id
-        )
+            scores = {
+                "trend": signal.trend_score,
+                "mean_rev": signal.mean_rev_score,
+                "breakout": signal.breakout_score,
+                "confidence": signal.confidence,
+                "strategy": signal.dominant_strategy,
+                # ATR at entry — used by trailing stop to keep distance consistent
+                # regardless of how ATR changes during the life of the trade.
+                "atr": atr,
+                # Slot key for position uniqueness in multi-strategy parallel mode.
+                "slot": slot_key or symbol,
+                # Track actual entry fee rate so _close_position_internal can compute
+                # fees accurately (maker = 0%, taker = 0.01%).
+                "entry_fee_rate": 0.0 if use_maker else 0.0001,
+            }
+            # Day-trading strategies use a shorter max-hold window. Store it in the
+            # scores dict so _enforce_max_hold can read it per-position.
+            if signal.dominant_strategy in ("orb", "asia_bo"):
+                scores["max_hold"] = getattr(self._config.risk, "day_max_hold_candles", 6)
+            # FVG / IFVG were validated with a 24-candle max-hold (1-day on 1h).
+            elif signal.dominant_strategy in ("fvg", "ifvg"):
+                scores["max_hold"] = 24
+
+            position = self._portfolio.create_position(
+                symbol=setup.symbol,
+                direction=signal.direction,
+                entry_price=order.filled_price,
+                sl_price=setup.sl_price,
+                tp_price=setup.tp_price,
+                quantity=setup.quantity,
+                strategy_scores=scores,
+                is_paper=self._config.exchange.paper_mode,
+                position_id=order.order_id,  # unify portfolio/paper/DB id
+            )
 
         trade_rec = TradeRecord(
             id=position.id,
@@ -414,6 +430,13 @@ class ExecutionEngine:
         (per-order-id cancel is flagged buggy in ccxt's MEXC driver).
 
         Returns True if all remaining sleeves' stops were re-placed."""
+        async with self._symbol_lock(symbol):
+            return await self._resync_symbol_stops_locked(symbol)
+
+    async def _resync_symbol_stops_locked(self, symbol: str) -> bool:
+        """resync body — caller must already hold self._symbol_lock(symbol)
+        (asyncio.Lock is not re-entrant, so close_position/entry call this
+        directly while holding the lock instead of resync_symbol_stops)."""
         if self._config.exchange.paper_mode:
             return True
         if not hasattr(self._exchange, "cancel_stop_orders"):
@@ -444,20 +467,24 @@ class ExecutionEngine:
     ) -> bool:
         """Public close for live mode: places a reduce-only market order, then
         records the fill. Paper mode is handled by PaperExchange.close_position."""
+        symbol = pos.symbol
         try:
-            if hasattr(self._exchange, "close_position"):
-                order = await self._exchange.close_position(
-                    pos.symbol, pos.side, pos.quantity, reason
-                )
-                exit_price = order.filled_price if order else current_price
-            else:
-                exit_price = current_price
-            symbol = pos.symbol
-            await self._close_position_internal(pos, exit_price, reason)
-            # Live: clear this sleeve's leftover SL/TP and re-assert any sibling
-            # sleeve's stops still open on the same (netted) symbol.
-            if not self._config.exchange.paper_mode:
-                await self.resync_symbol_stops(symbol)
+            # Hold the per-symbol lock across close + resync so a concurrent
+            # entry/trailing/reconciliation on the same netted symbol can't
+            # interleave (e.g. cancel a stop we are about to re-place).
+            async with self._symbol_lock(symbol):
+                if hasattr(self._exchange, "close_position"):
+                    order = await self._exchange.close_position(
+                        pos.symbol, pos.side, pos.quantity, reason
+                    )
+                    exit_price = order.filled_price if order else current_price
+                else:
+                    exit_price = current_price
+                await self._close_position_internal(pos, exit_price, reason)
+                # Live: clear this sleeve's leftover SL/TP and re-assert any
+                # sibling sleeve's stops still open on the same (netted) symbol.
+                if not self._config.exchange.paper_mode:
+                    await self._resync_symbol_stops_locked(symbol)
             return True
         except Exception as e:
             logger.error("close_position failed for %s: %s", pos.id, e)

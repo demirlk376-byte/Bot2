@@ -713,37 +713,47 @@ async def daily_reset_loop() -> None:
         seconds_until_midnight = (tomorrow - now).total_seconds()
         await asyncio.sleep(max(seconds_until_midnight, 60))
 
-        today = datetime.now(timezone.utc).date().isoformat()
-        # Snapshot starting EQUITY (free + locked margin + unrealized), not free
-        # balance — the daily-loss limit measures drawdown, not locked margin.
-        await executor.capture_daily_start()
-        executor.reset_daily()
-        # Persist the EQUITY baseline (matches the daily-loss limit's measure and
-        # what the startup path reads back after a restart) — not free balance.
-        start_equity = await executor.current_equity()
+        # Wrap the whole body: an unhandled error here used to kill the loop
+        # permanently (so the daily-loss baseline would never re-arm again).
+        try:
+            today = datetime.now(timezone.utc).date().isoformat()
+            # Snapshot starting EQUITY (free + locked margin + unrealized), not
+            # free balance — the daily-loss limit measures drawdown, not margin.
+            await executor.capture_daily_start()
+            executor.reset_daily()
+            # Persist the EQUITY baseline (matches the daily-loss limit's measure
+            # and what the startup path reads back after a restart).
+            start_equity = await executor.current_equity()
 
-        logger.info("Daily reset. New starting equity: %.2f", start_equity)
+            logger.info("Daily reset. New starting equity: %.2f", start_equity)
 
-        perf = await db.get_performance_summary(is_paper=config.exchange.paper_mode)
-        await db.upsert_daily_stats(DailyStats(
-            date=today,
-            starting_balance=start_equity,
-            ending_balance=start_equity,
-            total_trades=perf.total_trades,
-            winning_trades=perf.winning_trades,
-            total_pnl_usdt=perf.total_pnl_usdt,
-            max_drawdown=perf.max_drawdown,
-            is_paper=config.exchange.paper_mode,
-        ))
+            perf = await db.get_performance_summary(is_paper=config.exchange.paper_mode)
+            await db.upsert_daily_stats(DailyStats(
+                date=today,
+                starting_balance=start_equity,
+                ending_balance=start_equity,
+                total_trades=perf.total_trades,
+                winning_trades=perf.winning_trades,
+                total_pnl_usdt=perf.total_pnl_usdt,
+                max_drawdown=perf.max_drawdown,
+                is_paper=config.exchange.paper_mode,
+            ))
 
-        if telegram:
-            await telegram.send_daily_summary(
-                perf.total_trades, perf.winning_trades, perf.total_pnl_usdt, balance
-            )
-        if ntfy:
-            await ntfy.send_daily_summary(
-                perf.total_trades, perf.winning_trades, perf.total_pnl_usdt, balance
-            )
+            # NOTE: `balance` was an undefined name here before — it raised
+            # NameError and silently killed this loop on the first reset. Use the
+            # equity we just computed.
+            if telegram:
+                await telegram.send_daily_summary(
+                    perf.total_trades, perf.winning_trades,
+                    perf.total_pnl_usdt, start_equity,
+                )
+            if ntfy:
+                await ntfy.send_daily_summary(
+                    perf.total_trades, perf.winning_trades,
+                    perf.total_pnl_usdt, start_equity,
+                )
+        except Exception as e:
+            logger.error("Daily reset failed: %s", e)
 
 
 async def restore_state() -> int:
