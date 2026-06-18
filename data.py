@@ -173,24 +173,35 @@ class DataManager:
                 logger.warning("REST poll error %s %s: %s", self._symbol, timeframe, e)
 
     async def _poll_once(self, timeframe: str) -> None:
-        """Fetch latest candles and fire a close callback for each newly-closed
-        candle. The LAST row from fetch_ohlcv is the still-forming candle and is
-        never analyzed or fired on; everything before it is closed."""
+        """Fetch latest candles and fire a close callback for newly-closed candles.
+        The LAST row from fetch_ohlcv is the still-forming candle and is never
+        analyzed or fired on; everything before it is closed.
+
+        limit=50 (not 3) so that after a network outage or pause longer than a
+        couple of candles we still see every closed candle since we last polled.
+        We backfill the buffer with ALL missed closed candles (so indicators are
+        computed on a complete series), but fire the close callback only for the
+        MOST RECENT one — replaying stale intermediate candles could open trades
+        on signals that are already hours old."""
         buf = self._buffers[timeframe]
         raw = await self._exchange.fetch_ohlcv(
-            self._symbol, timeframe, since=None, limit=3
+            self._symbol, timeframe, since=None, limit=50
         )
         if not raw:
             return
         closed_rows = raw[:-1] if len(raw) > 1 else []
         last_ts = self._last_closed_ts.get(timeframe, 0)
+        new_candles = []
         for row in closed_rows:
             candle = _parse_ohlcv(row)
             if candle.timestamp > last_ts:
-                await buf.update(candle)
-                self._last_closed_ts[timeframe] = candle.timestamp
-                last_ts = candle.timestamp
-                await self._fire_callbacks(timeframe, candle)
+                new_candles.append(candle)
+        if not new_candles:
+            return
+        for candle in new_candles:
+            await buf.update(candle)
+            self._last_closed_ts[timeframe] = candle.timestamp
+        await self._fire_callbacks(timeframe, new_candles[-1])
 
     async def _fire_callbacks(self, timeframe: str, candle: Candle) -> None:
         for cb in self._callbacks.get(timeframe, []):

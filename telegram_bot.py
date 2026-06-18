@@ -213,12 +213,26 @@ class TelegramNotifier:
         if not positions:
             await self._reply(update, "Açık pozisyon yok.")
             return
+        def _fp(v: float) -> str:
+            # Adaptive precision: more decimals for sub-$1 coins so e.g. XRP/DOGE
+            # prices don't collapse to $0.00 / lose meaningful digits.
+            if v >= 100:
+                return f"${v:,.2f}"
+            if v >= 1:
+                return f"${v:,.4f}"
+            return f"${v:,.6f}"
         lines = ["<b>Açık Pozisyonlar</b>"]
         for p in positions:
+            try:
+                price = await self._exchange.get_current_price(p.symbol)
+            except Exception:
+                price = p.entry_price
+            upnl = (p.direction * (price - p.entry_price) * p.quantity
+                    if p.entry_price > 0 else 0.0)
             lines.append(
-                f"{p.side.upper()} {p.symbol}\n"
-                f"  Entry <code>${p.entry_price:,.2f}</code>\n"
-                f"  SL <code>${p.sl_price:,.2f}</code>  TP <code>${p.tp_price:,.2f}</code>\n"
+                f"{p.side.upper()} {p.symbol}  <code>${upnl:+.2f}</code>\n"
+                f"  Entry {_fp(p.entry_price)}  Now {_fp(price)}\n"
+                f"  SL {_fp(p.sl_price)}  TP {_fp(p.tp_price)}\n"
                 f"  Qty <code>{p.quantity:.4f}</code>"
             )
         await self._reply(update, "\n".join(lines))
