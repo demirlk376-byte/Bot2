@@ -417,6 +417,31 @@ class LiveExchange:
             symbol, "market", side, amount, None, params
         )
         filled_price = float(order.get("average") or order.get("price") or 0)
+
+        # MEXC futures sometimes returns average=0 immediately after placement
+        # (fill processing is async). Retry fetch once to get actual fill price.
+        if filled_price == 0:
+            try:
+                await asyncio.sleep(1)
+                fetched = await self._exchange.fetch_order(str(order["id"]), symbol)
+                filled_price = float(
+                    fetched.get("average") or fetched.get("price") or
+                    fetched.get("info", {}).get("dealAvgPrice") or 0
+                )
+            except Exception as e:
+                logger.debug("fill-price re-fetch failed: %s", e)
+        # Secondary fallback: MEXC-specific info fields
+        if filled_price == 0:
+            filled_price = float(
+                order.get("info", {}).get("dealAvgPrice") or
+                order.get("info", {}).get("avgPrice") or 0
+            )
+        if filled_price == 0:
+            logger.warning(
+                "Market order %s filled but price unavailable — position will show $0 entry",
+                order.get("id"),
+            )
+
         return OrderResult(
             order_id=str(order["id"]),
             symbol=symbol,
