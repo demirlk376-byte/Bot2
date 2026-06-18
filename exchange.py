@@ -654,30 +654,6 @@ class LiveExchange:
                 ok = False
         return ok
 
-    async def update_stops(
-        self, symbol: str, position_side: str, sl_price: float, tp_price: float,
-        amount: float,
-    ) -> bool:
-        """Move the live SL (and re-affirm the TP) for an open position: cancel
-        the existing plan orders, then re-place both. Returns True only if the
-        new SL was successfully placed — the caller must keep the old internal SL
-        on failure so trailing retries next candle.
-
-        There is a sub-second window between cancel and re-place where no stop is
-        active, but trailing only fires once breakeven is reached (trade already
-        in profit) and at most once per candle, so the exposure is bounded."""
-        if not await self.cancel_stop_orders(symbol):
-            return False  # couldn't clear old stops — don't risk a duplicate stop
-        try:
-            await self.set_sl_tp(symbol, position_side, sl_price, tp_price, amount)
-            return True
-        except Exception as e:
-            logger.critical(
-                "Trailing SL re-placement FAILED for %s — position may be "
-                "unprotected, will retry next candle: %s", symbol, e,
-            )
-            return False
-
     async def fetch_ohlcv(
         self, symbol: str, timeframe: str, since: Optional[int], limit: int
     ) -> list[list]:

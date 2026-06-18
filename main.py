@@ -656,16 +656,12 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
                 if hasattr(exchange, "update_position_sl"):
                     exchange.update_position_sl(pos.id, new_sl)
             else:
-                # Live: move the actual MEXC stop order FIRST. Only update the
-                # internal SL if the exchange accepted it — otherwise keep the
-                # old SL so trailing retries on the next candle (never silently
-                # diverge from the real stop sitting on the exchange).
-                ok = await exchange.update_stops(
-                    pos.symbol, pos.side, new_sl, pos.tp_price, pos.quantity
-                )
-                if not ok:
-                    continue
+                # Live: update the internal SL, then re-sync ALL of this symbol's
+                # stops on MEXC (cancel-all + re-place every open sleeve). This
+                # moves our stop while keeping any sibling sleeve on the same
+                # netted symbol protected. resync alerts if a re-place fails.
                 pos.sl_price = new_sl
+                await executor.resync_symbol_stops(pos.symbol)
             action = "BE" if pos.breakeven_moved and new_sl == pos.entry_price else "Trail"
             dashboard.log_message(
                 f"[{symbol}] SL {action}: {old_sl:,.2f} → {new_sl:,.2f}"
@@ -852,70 +848,84 @@ async def position_reconciliation_loop() -> None:
     """
     if config.exchange.paper_mode:
         return
+    from collections import defaultdict
     # Small startup delay so the exchange client is fully warmed up.
     await asyncio.sleep(30)
     while True:
         try:
-            for pos in list(portfolio.get_open_positions()):
+            # Group internal positions by symbol. MEXC nets all same-symbol
+            # positions into ONE, so we compare the exchange's total contracts
+            # for a symbol against the SUM of our internal sleeves on it — this
+            # detects a single sleeve closing even while siblings stay open.
+            by_symbol: dict[str, list] = defaultdict(list)
+            for pos in portfolio.get_open_positions():
+                by_symbol[pos.symbol].append(pos)
+
+            for symbol, positions in by_symbol.items():
                 try:
-                    mexc_pos = await exchange.get_position(pos.symbol)
-                    if mexc_pos is not None:
-                        continue  # position still live — nothing to do
+                    mexc_pos = await exchange.get_position(symbol)
+                    exch_qty = float(mexc_pos.contracts) if mexc_pos else 0.0
+                    internal_qty = sum(p.quantity for p in positions)
+                    tol = max(internal_qty * 0.01, 1e-9)
+                    if exch_qty + tol >= internal_qty:
+                        continue  # all sleeves still open on the exchange
 
-                    # Position is gone from MEXC → was externally closed
+                    # Some quantity closed externally. Close internal sleeves —
+                    # the one whose SL/TP sits nearest the current price first —
+                    # until our internal total matches the exchange again.
                     try:
-                        current_price = await exchange.get_current_price(pos.symbol)
+                        current_price = await exchange.get_current_price(symbol)
                     except Exception:
-                        current_price = pos.entry_price
+                        current_price = positions[0].entry_price
 
-                    # Guess whether SL or TP was triggered by comparing current
-                    # price to each level.  We use a 1% tolerance band because
-                    # the price may have moved slightly since the trigger fired.
-                    if pos.side == "short":
-                        sl_hit = pos.sl_price > 0 and current_price >= pos.sl_price * 0.99
-                        tp_hit = pos.tp_price > 0 and current_price <= pos.tp_price * 1.01
-                    else:
-                        sl_hit = pos.sl_price > 0 and current_price <= pos.sl_price * 1.01
-                        tp_hit = pos.tp_price > 0 and current_price >= pos.tp_price * 0.99
+                    def _proximity(p):
+                        ds = []
+                        if p.sl_price > 0:
+                            ds.append(abs(current_price - p.sl_price))
+                        if p.tp_price > 0:
+                            ds.append(abs(current_price - p.tp_price))
+                        return min(ds) if ds else float("inf")
+                    positions.sort(key=_proximity)
 
-                    if sl_hit:
-                        exit_price, reason = pos.sl_price, "sl_hit"
-                    elif tp_hit:
-                        exit_price, reason = pos.tp_price, "tp_hit"
-                    else:
-                        exit_price, reason = current_price, "external_close"
+                    to_close = internal_qty - exch_qty
+                    for pos in positions:
+                        if to_close <= tol:
+                            break
+                        if pos.side == "short":
+                            sl_hit = pos.sl_price > 0 and current_price >= pos.sl_price * 0.99
+                            tp_hit = pos.tp_price > 0 and current_price <= pos.tp_price * 1.01
+                        else:
+                            sl_hit = pos.sl_price > 0 and current_price <= pos.sl_price * 1.01
+                            tp_hit = pos.tp_price > 0 and current_price >= pos.tp_price * 0.99
+                        if sl_hit:
+                            exit_price, reason = pos.sl_price, "sl_hit"
+                        elif tp_hit:
+                            exit_price, reason = pos.tp_price, "tp_hit"
+                        else:
+                            exit_price, reason = current_price, "external_close"
 
-                    direction = pos.direction
-                    entry_fee = pos.strategy_scores.get("entry_fee_rate", 0.0001)
-                    raw_pnl = direction * (exit_price - pos.entry_price) * pos.quantity
-                    fees = (pos.entry_price * pos.quantity * entry_fee
-                            + exit_price * pos.quantity * 0.0001)
-                    net_pnl = raw_pnl - fees
+                        direction = pos.direction
+                        entry_fee = pos.strategy_scores.get("entry_fee_rate", 0.0001)
+                        raw_pnl = direction * (exit_price - pos.entry_price) * pos.quantity
+                        fees = (pos.entry_price * pos.quantity * entry_fee
+                                + exit_price * pos.quantity * 0.0001)
+                        net_pnl = raw_pnl - fees
 
-                    logger.warning(
-                        "Reconciliation: %s %s externally closed on MEXC "
-                        "(reason=%s exit=%.6f pnl=%.2f) — syncing state",
-                        pos.side.upper(), pos.symbol, reason, exit_price, net_pnl,
-                    )
+                        logger.warning(
+                            "Reconciliation: %s %s externally closed on MEXC "
+                            "(reason=%s exit=%.6f pnl=%.2f) — syncing state",
+                            pos.side.upper(), symbol, reason, exit_price, net_pnl,
+                        )
+                        await executor._close_position_internal(pos, exit_price, reason)
+                        await on_position_closed(pos, exit_price, net_pnl, reason)
+                        to_close -= pos.quantity
 
-                    # Cancel the leftover opposite-side trigger order. When SL
-                    # fires, the TP plan order (or vice-versa) stays resting on
-                    # MEXC; if left it could fire against a FUTURE position on the
-                    # same coin. cancel_stop_orders clears all plan orders for it.
-                    if hasattr(exchange, "cancel_stop_orders"):
-                        try:
-                            await exchange.cancel_stop_orders(pos.symbol)
-                        except Exception as e:
-                            logger.error("Could not clear leftover stops for %s: %s",
-                                         pos.symbol, e)
-
-                    # Record close in DB + remove from portfolio.
-                    await executor._close_position_internal(pos, exit_price, reason)
-                    # Notify dashboard + Telegram/ntfy.
-                    await on_position_closed(pos, exit_price, net_pnl, reason)
+                    # Clear the closed sleeve's leftover plan orders and re-assert
+                    # any remaining sibling sleeves' stops on this netted symbol.
+                    await executor.resync_symbol_stops(symbol)
 
                 except Exception as e:
-                    logger.error("Reconciliation check failed for %s: %s", pos.symbol, e)
+                    logger.error("Reconciliation check failed for %s: %s", symbol, e)
         except Exception as e:
             logger.error("Position reconciliation loop error: %s", e)
         await asyncio.sleep(120)  # recheck every 2 minutes
@@ -1060,6 +1070,20 @@ async def main() -> None:
 
     # Rebuild any open positions from before a restart (balance + positions).
     await restore_state()
+
+    # Live: re-assert SL/TP for every restored position whose MEXC position is
+    # still open. Plan orders expire after executeCycle (24h) and may also have
+    # been cancelled while the bot was down — without this a restored position
+    # could sit unprotected. Skip symbols MEXC no longer shows (the
+    # reconciliation loop will close those ghosts shortly after startup).
+    if not config.exchange.paper_mode:
+        for sym in {p.symbol for p in portfolio.get_open_positions()}:
+            try:
+                if await exchange.get_position(sym) is not None:
+                    await executor.resync_symbol_stops(sym)
+                    logger.info("Re-asserted SL/TP for restored position(s) on %s", sym)
+            except Exception as e:
+                logger.error("Could not re-assert stops for %s on restart: %s", sym, e)
 
     balance = await exchange.get_balance()
     # Daily-loss baseline: if we already recorded today's starting equity, reuse

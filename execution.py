@@ -402,6 +402,43 @@ class ExecutionEngine:
         setup_copy.entry_price = order.filled_price
         return ExecutionResult(success=True, position=position, trade_setup=setup_copy)
 
+    async def resync_symbol_stops(self, symbol: str) -> bool:
+        """Live only: cancel ALL plan (SL/TP) orders for a symbol, then re-place
+        the SL/TP for every still-open position on it.
+
+        MEXC nets all same-symbol positions into one, so when several sleeves
+        trade the same coin they share one exchange position. To safely move or
+        remove ONE sleeve's stop we cancel every plan order for the symbol and
+        re-place the stops for the sleeves that remain — so each sibling keeps
+        its protection. Uses only the proven cancel-all + place endpoints
+        (per-order-id cancel is flagged buggy in ccxt's MEXC driver).
+
+        Returns True if all remaining sleeves' stops were re-placed."""
+        if self._config.exchange.paper_mode:
+            return True
+        if not hasattr(self._exchange, "cancel_stop_orders"):
+            return True
+        await self._exchange.cancel_stop_orders(symbol)
+        ok = True
+        for pos in self._portfolio.get_open_positions():
+            if pos.symbol != symbol or pos.sl_price <= 0:
+                continue
+            try:
+                await self._exchange.set_sl_tp(
+                    symbol, pos.side, pos.sl_price, pos.tp_price, pos.quantity
+                )
+            except Exception as e:
+                ok = False
+                logger.critical(
+                    "Re-placing stops for %s %s FAILED — may be unprotected: %s",
+                    pos.side, symbol, e,
+                )
+                await self._alert(
+                    f"⚠️ {symbol} stop yenilenemedi — pozisyon korumasız olabilir!",
+                    "ERROR",
+                )
+        return ok
+
     async def close_position(
         self, pos: Position, reason: str, current_price: float
     ) -> bool:
@@ -415,7 +452,12 @@ class ExecutionEngine:
                 exit_price = order.filled_price if order else current_price
             else:
                 exit_price = current_price
+            symbol = pos.symbol
             await self._close_position_internal(pos, exit_price, reason)
+            # Live: clear this sleeve's leftover SL/TP and re-assert any sibling
+            # sleeve's stops still open on the same (netted) symbol.
+            if not self._config.exchange.paper_mode:
+                await self.resync_symbol_stops(symbol)
             return True
         except Exception as e:
             logger.error("close_position failed for %s: %s", pos.id, e)
