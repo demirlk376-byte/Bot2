@@ -65,6 +65,12 @@ class Portfolio:
 
     def update_unrealized_pnl(self, current_price: float) -> None:
         for pos in self._positions.values():
+            # Guard: a $0 entry (e.g. a missing exchange fill price) would make
+            # unrealized PnL = direction × current_price × qty — a huge bogus
+            # number that can falsely trip the daily loss limit. Skip until a
+            # valid entry is known.
+            if pos.entry_price <= 0:
+                continue
             pos.unrealized_pnl = pos.direction * (current_price - pos.entry_price) * pos.quantity
 
     def update_unrealized_pnl_for(self, symbol: str, current_price: float) -> None:
@@ -72,6 +78,8 @@ class Portfolio:
         its own price, so a single shared price would be wrong)."""
         for pos in self._positions.values():
             if pos.symbol == symbol:
+                if pos.entry_price <= 0:
+                    continue  # see update_unrealized_pnl() — avoid bogus PnL
                 pos.unrealized_pnl = (
                     pos.direction * (current_price - pos.entry_price) * pos.quantity
                 )

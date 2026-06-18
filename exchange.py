@@ -436,11 +436,36 @@ class LiveExchange:
                 order.get("info", {}).get("dealAvgPrice") or
                 order.get("info", {}).get("avgPrice") or 0
             )
+        # Final fallback: read the actual entry price from the open position.
+        # MEXC always reports entryPrice on fetch_positions even when the order
+        # object's fill price is missing — this is the authoritative source and
+        # guarantees we never record a $0 entry (which would corrupt unrealized
+        # PnL → false daily-loss-limit trigger → profitable trades force-closed).
         if filled_price == 0:
-            logger.warning(
-                "Market order %s filled but price unavailable — position will show $0 entry",
-                order.get("id"),
-            )
+            try:
+                pos = await self.get_position(symbol)
+                if pos is not None and pos.entry_price > 0:
+                    filled_price = pos.entry_price
+                    logger.info(
+                        "Fill price recovered from position entryPrice: %.6f", filled_price
+                    )
+            except Exception as e:
+                logger.debug("position entry-price fallback failed: %s", e)
+        # Last resort: use the live mark price so the position is never recorded
+        # with a $0 entry. Slightly off the true fill but bounded and safe.
+        if filled_price == 0:
+            try:
+                filled_price = await self.get_current_price(symbol)
+                logger.warning(
+                    "Fill price unavailable for order %s — using mark price %.6f as entry",
+                    order.get("id"), filled_price,
+                )
+            except Exception as e:
+                logger.error(
+                    "Market order %s filled but price unavailable and mark-price "
+                    "fallback failed (%s) — position will show $0 entry",
+                    order.get("id"), e,
+                )
 
         return OrderResult(
             order_id=str(order["id"]),
