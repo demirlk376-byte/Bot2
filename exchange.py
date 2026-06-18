@@ -436,23 +436,11 @@ class LiveExchange:
                 order.get("info", {}).get("dealAvgPrice") or
                 order.get("info", {}).get("avgPrice") or 0
             )
-        # Final fallback: read the actual entry price from the open position.
-        # MEXC always reports entryPrice on fetch_positions even when the order
-        # object's fill price is missing — this is the authoritative source and
-        # guarantees we never record a $0 entry (which would corrupt unrealized
-        # PnL → false daily-loss-limit trigger → profitable trades force-closed).
-        if filled_price == 0:
-            try:
-                pos = await self.get_position(symbol)
-                if pos is not None and pos.entry_price > 0:
-                    filled_price = pos.entry_price
-                    logger.info(
-                        "Fill price recovered from position entryPrice: %.6f", filled_price
-                    )
-            except Exception as e:
-                logger.debug("position entry-price fallback failed: %s", e)
-        # Last resort: use the live mark price so the position is never recorded
-        # with a $0 entry. Slightly off the true fill but bounded and safe.
+        # Last resort: the live mark price. A market order fills at ~mark, so this
+        # is a faithful proxy for THIS order's fill. We deliberately do NOT fall
+        # back to the position's entryPrice: MEXC nets same-symbol positions, so
+        # on a multi-sleeve symbol fetch_positions returns the BLENDED entry of
+        # all sleeves, which could be materially wrong for this specific order.
         if filled_price == 0:
             try:
                 filled_price = await self.get_current_price(symbol)

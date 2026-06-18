@@ -536,6 +536,20 @@ class ExecutionEngine:
             exit_reason=reason,
             fees_usdt=fees,
         )
+        # Fire close callbacks (dashboard + Telegram/ntfy) so LIVE bot-initiated
+        # closes (max-hold, manual /close, emergency, reconciliation) notify
+        # exactly once — mirroring the paper path. Paper closes go through
+        # _on_paper_position_closed instead and never reach here (the idempotency
+        # guard above returns first), so there is no double-notification.
+        for cb in self._on_close_callbacks:
+            try:
+                if asyncio.iscoroutinefunction(cb):
+                    await cb(pos, exit_price, net_pnl, reason)
+                else:
+                    cb(pos, exit_price, net_pnl, reason)
+            except Exception as e:
+                logger.error("Close callback error: %s", e)
+        return net_pnl
 
     async def _on_paper_position_closed(
         self, paper_pos, exit_price: float, net_pnl: float, fees: float, reason: str

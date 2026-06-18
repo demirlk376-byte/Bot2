@@ -661,7 +661,12 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
                 # moves our stop while keeping any sibling sleeve on the same
                 # netted symbol protected. resync alerts if a re-place fails.
                 pos.sl_price = new_sl
-                await executor.resync_symbol_stops(pos.symbol)
+                ok = await executor.resync_symbol_stops(pos.symbol)
+                if not ok:
+                    logger.error(
+                        "[%s] Trailing moved internal SL to %.4f but exchange "
+                        "re-sync failed — exchange stop may not match", symbol, new_sl,
+                    )
             action = "BE" if pos.breakeven_moved and new_sl == pos.entry_price else "Trail"
             dashboard.log_message(
                 f"[{symbol}] SL {action}: {old_sl:,.2f} → {new_sl:,.2f}"
@@ -916,8 +921,11 @@ async def position_reconciliation_loop() -> None:
                             "(reason=%s exit=%.6f pnl=%.2f) — syncing state",
                             pos.side.upper(), symbol, reason, exit_price, net_pnl,
                         )
+                        # _close_position_internal records the close, computes the
+                        # authoritative net_pnl AND fires the notify callbacks, so
+                        # we must NOT call on_position_closed again here (would
+                        # double-notify and double-count the loss streak).
                         await executor._close_position_internal(pos, exit_price, reason)
-                        await on_position_closed(pos, exit_price, net_pnl, reason)
                         to_close -= pos.quantity
 
                     # Clear the closed sleeve's leftover plan orders and re-assert
