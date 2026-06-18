@@ -19,21 +19,11 @@
       "skipped": 2
     },
     "ETH": {
-      "balance": 10111.209623934456,
-      "position": {
-        "direction": 1,
-        "entry": 1758.51,
-        "sl": 1712.7084303364759,
-        "tp": 1834.8459494392066,
-        "qty": 2.8749366292868554,
-        "atr": 15.267189887841333,
-        "entry_ts": "2026-06-17T12:00:00+00:00",
-        "fng_at_entry": 22,
-        "funding_at_entry": 1.1e-05
-      },
-      "n_trades": 1,
+      "balance": 9977.53710702723,
+      "position": null,
+      "n_trades": 2,
       "n_wins": 1,
-      "total_pnl": 111.20962393445592,
+      "total_pnl": -22.46289297276917,
       "skipped": 1
     },
     "SOL": {
@@ -45,39 +35,19 @@
       "skipped": 2
     },
     "BNB": {
-      "balance": 10103.277367840987,
-      "position": {
-        "direction": 1,
-        "entry": 598.9,
-        "sl": 583.2047745627943,
-        "tp": 625.0587090620093,
-        "qty": 8.434861719686916,
-        "atr": 5.231741812401864,
-        "entry_ts": "2026-06-17T19:00:00+00:00",
-        "fng_at_entry": 22,
-        "funding_at_entry": 7.9e-05
-      },
-      "n_trades": 1,
+      "balance": 9968.89613355652,
+      "position": null,
+      "n_trades": 2,
       "n_wins": 1,
-      "total_pnl": 103.27736784098725,
+      "total_pnl": -31.10386644347865,
       "skipped": 1
     },
     "XRP": {
-      "balance": 10141.272724804008,
-      "position": {
-        "direction": 1,
-        "entry": 1.1806,
-        "sl": 1.1384743621863715,
-        "tp": 1.2508093963560476,
-        "qty": 4294.965578859905,
-        "atr": 0.014041879271209517,
-        "entry_ts": "2026-06-17T19:00:00+00:00",
-        "fng_at_entry": 22,
-        "funding_at_entry": -5.4e-05
-      },
-      "n_trades": 1,
+      "balance": 9958.352491494874,
+      "position": null,
+      "n_trades": 2,
       "n_wins": 1,
-      "total_pnl": 141.27272480400808,
+      "total_pnl": -41.64750850512712,
       "skipped": 1
     }
   }
