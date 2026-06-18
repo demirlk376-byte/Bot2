@@ -604,6 +604,53 @@ class LiveExchange:
         if not sl_ok:
             raise RuntimeError(f"SL placement failed for {symbol} — position will be closed")
 
+    async def cancel_stop_orders(self, symbol: str) -> bool:
+        """Cancel all pending SL/TP plan (trigger) orders for a symbol. Returns
+        True if the cancel call succeeded (or there was nothing to cancel).
+
+        SL/TP are placed as MEXC plan orders, which the regular cancel endpoint
+        does not cover — they need contractPrivatePostPlanorderCancelAll. This is
+        used both when reconciling an externally-closed position (to clear the
+        leftover opposite-side trigger) and before moving a trailing stop."""
+        inner = self._exchange
+        ok = True
+        try:
+            await inner.cancel_all_orders(symbol)
+        except Exception as e:
+            logger.debug("cancel_all_orders failed for %s: %s", symbol, e)
+        if hasattr(inner, "contractPrivatePostPlanorderCancelAll"):
+            try:
+                mexc_sym = symbol.split(":")[0].replace("/", "_")
+                await inner.contractPrivatePostPlanorderCancelAll({"symbol": mexc_sym})
+            except Exception as e:
+                logger.error("Could not cancel plan orders for %s: %s", symbol, e)
+                ok = False
+        return ok
+
+    async def update_stops(
+        self, symbol: str, position_side: str, sl_price: float, tp_price: float,
+        amount: float,
+    ) -> bool:
+        """Move the live SL (and re-affirm the TP) for an open position: cancel
+        the existing plan orders, then re-place both. Returns True only if the
+        new SL was successfully placed — the caller must keep the old internal SL
+        on failure so trailing retries next candle.
+
+        There is a sub-second window between cancel and re-place where no stop is
+        active, but trailing only fires once breakeven is reached (trade already
+        in profit) and at most once per candle, so the exposure is bounded."""
+        if not await self.cancel_stop_orders(symbol):
+            return False  # couldn't clear old stops — don't risk a duplicate stop
+        try:
+            await self.set_sl_tp(symbol, position_side, sl_price, tp_price, amount)
+            return True
+        except Exception as e:
+            logger.critical(
+                "Trailing SL re-placement FAILED for %s — position may be "
+                "unprotected, will retry next candle: %s", symbol, e,
+            )
+            return False
+
     async def fetch_ohlcv(
         self, symbol: str, timeframe: str, since: Optional[int], limit: int
     ) -> list[list]:

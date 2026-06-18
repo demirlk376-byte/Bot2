@@ -613,12 +613,12 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
             continue
 
         # Trailing applies ONLY to the S/R breakout swing strategy. BB mean-rev
-        # has a natural retrace path to TP (trailing hurts it). ORB and Asia BO
-        # were VALIDATED with fixed SL/TP + 6h max-hold (no trailing) — applying
-        # trailing here would make live behaviour diverge from the backtest, so
-        # they keep their fixed exits for a faithful paper-trading test.
+        # has a natural retrace path to TP (trailing hurts it). ORB, Asia BO, FVG,
+        # IFVG and Squeeze were all VALIDATED with FIXED SL/TP (and a max-hold) —
+        # NOT with trailing. Applying trailing to them would make live behaviour
+        # diverge from the backtest, so they keep their fixed exchange-side exits.
         strategy_tag = pos.strategy_scores.get("strategy", "mean_rev")
-        if strategy_tag in ("mean_rev", "orb", "asia_bo"):
+        if strategy_tag != "sr_breakout":
             continue
 
         entry_atr = pos.strategy_scores.get("atr", atr_val)
@@ -651,9 +651,21 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
                 new_sl = min(new_sl, trail_sl)
 
         if new_sl != old_sl:
-            pos.sl_price = new_sl
-            if isinstance(exchange, PaperExchange) and hasattr(exchange, "update_position_sl"):
-                exchange.update_position_sl(pos.id, new_sl)
+            if isinstance(exchange, PaperExchange):
+                pos.sl_price = new_sl
+                if hasattr(exchange, "update_position_sl"):
+                    exchange.update_position_sl(pos.id, new_sl)
+            else:
+                # Live: move the actual MEXC stop order FIRST. Only update the
+                # internal SL if the exchange accepted it — otherwise keep the
+                # old SL so trailing retries on the next candle (never silently
+                # diverge from the real stop sitting on the exchange).
+                ok = await exchange.update_stops(
+                    pos.symbol, pos.side, new_sl, pos.tp_price, pos.quantity
+                )
+                if not ok:
+                    continue
+                pos.sl_price = new_sl
             action = "BE" if pos.breakeven_moved and new_sl == pos.entry_price else "Trail"
             dashboard.log_message(
                 f"[{symbol}] SL {action}: {old_sl:,.2f} → {new_sl:,.2f}"
@@ -883,6 +895,17 @@ async def position_reconciliation_loop() -> None:
                         "(reason=%s exit=%.6f pnl=%.2f) — syncing state",
                         pos.side.upper(), pos.symbol, reason, exit_price, net_pnl,
                     )
+
+                    # Cancel the leftover opposite-side trigger order. When SL
+                    # fires, the TP plan order (or vice-versa) stays resting on
+                    # MEXC; if left it could fire against a FUTURE position on the
+                    # same coin. cancel_stop_orders clears all plan orders for it.
+                    if hasattr(exchange, "cancel_stop_orders"):
+                        try:
+                            await exchange.cancel_stop_orders(pos.symbol)
+                        except Exception as e:
+                            logger.error("Could not clear leftover stops for %s: %s",
+                                         pos.symbol, e)
 
                     # Record close in DB + remove from portfolio.
                     await executor._close_position_internal(pos, exit_price, reason)
