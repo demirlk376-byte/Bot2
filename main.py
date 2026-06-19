@@ -1336,6 +1336,23 @@ async def main() -> None:
     # Start the whale-flow aggregator (no-op if disabled).
     await whale_monitor.start()
 
+    # Startup ping: tells us the bot (re)started. During an unattended month a
+    # silent watchdog/systemd respawn would otherwise go unnoticed — repeated
+    # startup pings are the signal that something is crash-looping.
+    try:
+        mode = "PAPER" if config.exchange.paper_mode else "LIVE"
+        n_open = portfolio.get_open_position_count()
+        start_msg = (
+            f"🚀 Bot başladı [{mode}] · {len(symbol_ctxs)} coin · "
+            f"bakiye ${balance:,.2f} · açık pozisyon {n_open}"
+        )
+        if telegram:
+            await telegram.send_alert(start_msg, "INFO")
+        if ntfy:
+            await ntfy.send_alert(start_msg, "INFO")
+    except Exception as e:
+        logger.debug("Startup notification failed: %s", e)
+
     # Run until interrupted
     stop_event = asyncio.Event()
 
