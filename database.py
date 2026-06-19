@@ -154,31 +154,40 @@ class Database:
         except (TypeError, ValueError):
             return default
 
-    async def get_open_trades(self) -> list[TradeRecord]:
+    async def get_open_trades(self, is_paper: bool | None = None) -> list[TradeRecord]:
         """Trades with no exit yet — used to rebuild the in-memory portfolio
-        after a restart so open positions are not orphaned."""
+        after a restart so open positions are not orphaned.
+
+        is_paper filters to the current run mode: the same trades.db can hold
+        earlier paper-test rows, and a LIVE restart must NOT resurrect a paper
+        position into the live portfolio (it would place real reduce-only stops
+        against a position that doesn't exist on the exchange)."""
+        clause, params = _paper_clause(is_paper)
         async with self._db.execute(
-            "SELECT * FROM trades WHERE exit_time IS NULL"
+            "SELECT * FROM trades WHERE exit_time IS NULL" + clause, params
         ) as cur:
             rows = await cur.fetchall()
         return [_row_to_trade(r) for r in rows]
 
-    async def get_today_traded_slots(self, is_paper: bool | None = None) -> set[str]:
-        """Strategy names that already entered a trade today (open or closed).
-        Used on restart to re-populate per-strategy _traded_dates so one-per-day
-        intraday strategies (ORB, Asia BO) don't re-fire after a bot restart.
+    async def get_today_traded_slots(
+        self, is_paper: bool | None = None
+    ) -> set[tuple[str, str]]:
+        """(symbol, strategy) pairs that already entered a trade today (open or
+        closed). Used on restart to re-populate per-strategy _traded_dates so
+        one-per-day intraday strategies (ORB, Asia BO) don't re-fire after a
+        restart — but PER SYMBOL, so BTC's ORB today does not block ETH's ORB.
 
         is_paper filters to the current run mode so a paper trade from earlier
         today can't suppress the real live ORB/Asia entry (or vice-versa)."""
         today = datetime.now(timezone.utc).date().isoformat()
         clause, params = _paper_clause(is_paper)
         async with self._db.execute(
-            """SELECT DISTINCT json_extract(strategy_scores, '$.strategy')
+            """SELECT DISTINCT symbol, json_extract(strategy_scores, '$.strategy')
                FROM trades WHERE entry_time LIKE ?""" + clause,
             (f"{today}%", *params),
         ) as cur:
             rows = await cur.fetchall()
-        return {r[0] for r in rows if r[0]}
+        return {(r[0], r[1]) for r in rows if r[0] and r[1]}
 
     async def close(self) -> None:
         if self._db:
@@ -229,6 +238,25 @@ class Database:
         ) as cur:
             row = await cur.fetchone()
             return float(row[0]) if row else 0.0
+
+    async def get_daily_trade_stats(
+        self, day: str, is_paper: bool | None = None
+    ) -> tuple[int, int, float]:
+        """(closed_trades, winning_trades, total_pnl) for trades that CLOSED on
+        `day` (YYYY-MM-DD). Used for the daily summary so it reports the day's
+        results, not all-time cumulative totals."""
+        clause, params = _paper_clause(is_paper)
+        async with self._db.execute(
+            "SELECT COUNT(*), "
+            "COALESCE(SUM(CASE WHEN pnl_usdt > 0 THEN 1 ELSE 0 END),0), "
+            "COALESCE(SUM(pnl_usdt),0) FROM trades "
+            "WHERE exit_time LIKE ? AND exit_time IS NOT NULL" + clause,
+            (f"{day}%", *params),
+        ) as cur:
+            row = await cur.fetchone()
+        if not row:
+            return 0, 0, 0.0
+        return int(row[0]), int(row[1]), float(row[2])
 
     async def get_all_trades(
         self, limit: int = 100, is_paper: bool | None = None

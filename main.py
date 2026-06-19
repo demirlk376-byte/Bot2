@@ -148,7 +148,10 @@ def make_on_candle_close(ctx: "SymbolContext"):
             # ADX for regime detection — determines which strategy sleeves are active.
             adx_raw = _adx_indicator(df["high"], df["low"], df["close"],
                                      config.strategy.adx_period).iloc[-1]
-            adx_val = float(adx_raw) if not pd.isna(adx_raw) else 20.0
+            # Use a neutral 20.0 fallback for NaN AND inf: a perfectly flat range
+            # (TR=0) makes the DI ratio non-finite, which would otherwise mis-route
+            # the regime (e.g. treat a dead market as "trending").
+            adx_val = float(adx_raw) if np.isfinite(adx_raw) else 20.0
             regime = _get_regime(adx_val)
             dashboard.update_regime(regime, adx_val)
 
@@ -774,18 +777,20 @@ async def daily_reset_loop() -> None:
                 is_paper=config.exchange.paper_mode,
             ))
 
-            # NOTE: `balance` was an undefined name here before — it raised
-            # NameError and silently killed this loop on the first reset. Use the
-            # equity we just computed.
+            # Daily summary must report the DAY THAT JUST ENDED, not all-time
+            # cumulative totals (which would look like "today" forever). We run
+            # just after midnight UTC, so the ended day is yesterday.
+            yesterday = (datetime.now(timezone.utc).date()
+                         - timedelta(days=1)).isoformat()
+            d_trades, d_wins, d_pnl = await db.get_daily_trade_stats(
+                yesterday, is_paper=config.exchange.paper_mode)
             if telegram:
                 await telegram.send_daily_summary(
-                    perf.total_trades, perf.winning_trades,
-                    perf.total_pnl_usdt, start_equity,
+                    d_trades, d_wins, d_pnl, start_equity,
                 )
             if ntfy:
                 await ntfy.send_daily_summary(
-                    perf.total_trades, perf.winning_trades,
-                    perf.total_pnl_usdt, start_equity,
+                    d_trades, d_wins, d_pnl, start_equity,
                 )
         except Exception as e:
             logger.error("Daily reset failed: %s", e)
@@ -809,7 +814,7 @@ async def restore_state() -> int:
             except ValueError:
                 pass
 
-    open_trades = await db.get_open_trades()
+    open_trades = await db.get_open_trades(is_paper=config.exchange.paper_mode)
     for t in open_trades:
         direction = 1 if t.side == "long" else -1
         try:
@@ -841,10 +846,12 @@ async def restore_state() -> int:
         if today_slots:
             today_utc = datetime.now(timezone.utc).date()
             for ctx in symbol_ctxs.values():
-                if "orb" in today_slots and ctx.orb_strategy is not None:
+                # Per-symbol: only restore the guard for the coin that actually
+                # traded that sleeve today, so BTC's ORB doesn't block ETH's ORB.
+                if (ctx.symbol, "orb") in today_slots and ctx.orb_strategy is not None:
                     ctx.orb_strategy._traded_dates.add(today_utc)
                     logger.info("Restored ORB traded-date for %s", ctx.symbol)
-                if "asia_bo" in today_slots and ctx.asia_bo_strategy is not None:
+                if (ctx.symbol, "asia_bo") in today_slots and ctx.asia_bo_strategy is not None:
                     ctx.asia_bo_strategy._traded_dates.add(today_utc)
                     logger.info("Restored Asia BO traded-date for %s", ctx.symbol)
     except Exception as e:
@@ -946,6 +953,21 @@ async def position_reconciliation_loop() -> None:
                         tol = max(internal_qty * 0.01, 1e-9)
                         if exch_qty + tol >= internal_qty:
                             continue  # all sleeves still open on the exchange
+
+                        # Re-confirm before acting: a single transient read of 0/low
+                        # contracts (network glitch / partial response) must NOT
+                        # trigger a phantom close that books fabricated PnL. Require
+                        # TWO consecutive reads to both show the shortfall.
+                        await asyncio.sleep(2)
+                        confirm = await exchange.get_position(symbol)
+                        confirm_qty = float(confirm.contracts) if confirm else 0.0
+                        if confirm_qty + tol >= internal_qty:
+                            logger.info(
+                                "Reconciliation: %s shortfall not confirmed on re-read "
+                                "(%.6f vs %.6f internal) — skipping",
+                                symbol, confirm_qty, internal_qty)
+                            continue
+                        exch_qty = min(exch_qty, confirm_qty)  # act on the confirmed qty
 
                         # Some quantity closed externally. Close internal sleeves —
                         # the one whose SL/TP sits nearest the current price first —
