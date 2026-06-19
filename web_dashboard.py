@@ -16,8 +16,13 @@ Güvenlik: WEB_TOKEN ayarlanırsa sayfa ?token=... ister. Boşsa herkese açık
 """
 from __future__ import annotations
 
+import asyncio
 import logging
+import os
+import subprocess
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 from strategies.signal_combiner import strategy_label
 
@@ -54,6 +59,7 @@ class WebDashboard:
             app = web.Application()
             app.router.add_get("/", self._handle_index)
             app.router.add_get("/api/state", self._handle_state)
+            app.router.add_post("/api/restart", self._handle_restart)
             self._runner = web.AppRunner(app)
             await self._runner.setup()
             self._site = web.TCPSite(self._runner, self._cfg.host, self._cfg.port)
@@ -97,6 +103,45 @@ class WebDashboard:
         except Exception as e:
             logger.debug("dashboard state error: %s", e)
             return web.json_response({"error": str(e)}, status=500)
+
+    async def _handle_restart(self, request):
+        """git pull + botu yeniden başlat. KONTROL aksiyonu — token ZORUNLU.
+
+        Mekanizma: servis 'botuser' olarak çalışır (systemctl yetkisi yok) ama
+        repo'nun sahibidir, yani git pull yapabilir; ardından process sıfırdan-
+        farklı kodla çıkar ve systemd (Restart=on-failure) onu otomatik geri
+        başlatır — yeni kodla. Açık pozisyonlar DB'den geri yüklenir, MEXC'teki
+        SL/TP server-side olduğu için restart onları etkilemez."""
+        from aiohttp import web
+        # Güvenlik kapısı: token tanımlı DEĞİLSE sayfa herkese açıktır; böyle bir
+        # ortamda restart'a izin vermek tehlikeli olur. Token şart.
+        if not self._cfg.token:
+            return web.json_response(
+                {"error": "Restart kapalı: önce WEB_TOKEN ayarla (güvenlik)."},
+                status=403)
+        if not self._authorized(request):
+            return web.json_response({"error": "unauthorized"}, status=401)
+
+        repo = str(Path(__file__).resolve().parent)
+        pull_out = ""
+        try:
+            r = subprocess.run(
+                ["git", "pull", "--ff-only"], cwd=repo,
+                capture_output=True, text=True, timeout=30,
+            )
+            pull_out = (r.stdout + r.stderr).strip()[-400:]
+            logger.warning("Dashboard restart: git pull → %s", pull_out)
+        except Exception as e:
+            pull_out = f"git pull atlandı/başarısız: {e}"
+            logger.warning("Dashboard restart: %s", pull_out)
+
+        # Yanıtı gönderdikten ~1.5s sonra çık (systemd geri başlatır).
+        async def _bye():
+            await asyncio.sleep(1.5)
+            logger.warning("Dashboard-triggered restart: exiting for systemd respawn")
+            os._exit(1)   # non-zero → Restart=on-failure devreye girer
+        asyncio.create_task(_bye())
+        return web.json_response({"ok": True, "pull": pull_out or "—"})
 
     # ── State ──────────────────────────────────────────────────────────────────
 
@@ -388,6 +433,17 @@ _INDEX_HTML = """<!DOCTYPE html>
   .mb .lbl{font-size:9px;color:var(--dim)}
   .fade{animation:fade .4s ease}
   @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  /* restart butonu */
+  .footer{display:flex;flex-direction:column;align-items:center;gap:8px;margin:26px 0 8px}
+  .rbtn{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;
+    color:var(--dim);background:var(--card);border:1px solid var(--line);
+    border-radius:12px;padding:11px 18px;cursor:pointer;transition:all .2s ease;
+    -webkit-user-select:none;user-select:none}
+  .rbtn:hover,.rbtn:active{color:var(--gold);border-color:rgba(245,196,81,.4);
+    box-shadow:0 0 16px rgba(245,196,81,.12)}
+  .rbtn.busy{opacity:.6;pointer-events:none}
+  .rbtn .ic{font-size:15px}
+  .rmsg{font-size:11px;color:var(--dim);text-align:center;min-height:14px}
 </style>
 </head>
 <body>
@@ -447,6 +503,13 @@ _INDEX_HTML = """<!DOCTYPE html>
 
   <div class="sec"><span>Son Trade'ler</span></div>
   <div class="card" id="trades"><div class="empty">—</div></div>
+
+  <div class="footer">
+    <div class="rbtn" id="rbtn" onclick="doRestart()">
+      <span class="ic">⟳</span><span>Botu Yeniden Başlat</span>
+    </div>
+    <div class="rmsg" id="rmsg"></div>
+  </div>
 </div>
 
 <script>
@@ -674,6 +737,33 @@ function render(d){
         <td class="right ${cls(t.pnl)}">${signed(t.pnl)}</td>
         <td class="right">${reasonBadge(t.reason)}</td>
       </tr>`).join("")+`</tbody></table>`;
+  }
+}
+
+async function doRestart(){
+  if(!TOKEN){ alert("Restart için adres çubuğunda ?token=... gerekli."); return; }
+  if(!confirm("Botu yeniden başlat?\n\nÖnce git pull yapılır, sonra bot yeni kodla\nsıfırdan başlar. Açık pozisyonlar korunur (MEXC'teki\nSL/TP server-side, bot DB'den geri yükler).")) return;
+  const btn=document.getElementById("rbtn"), msg=document.getElementById("rmsg");
+  btn.classList.add("busy"); btn.querySelector("span:last-child").textContent="Başlatılıyor…";
+  msg.textContent="git pull + restart isteniyor…";
+  try{
+    const r=await fetch("/api/restart?token="+encodeURIComponent(TOKEN),{method:"POST"});
+    const j=await r.json();
+    if(!r.ok){ throw new Error(j.error||("HTTP "+r.status)); }
+    msg.textContent="✓ "+(j.pull&&j.pull!=="—"?j.pull.split("\\n").pop():"yeniden başlatılıyor")+" — bağlantı bekleniyor…";
+    // bot inip kalkana kadar bekle, geri gelince sayfayı tazele
+    let tries=0;
+    const wait=setInterval(async()=>{
+      tries++;
+      try{
+        const s=await fetch("/api/state?token="+encodeURIComponent(TOKEN));
+        if(s.ok){ clearInterval(wait); msg.textContent="✓ Bot ayakta — sayfa yenileniyor"; setTimeout(()=>location.reload(),800); }
+      }catch(e){}
+      if(tries>40){ clearInterval(wait); msg.textContent="Bot hâlâ gelmedi — logları kontrol et"; btn.classList.remove("busy"); btn.querySelector("span:last-child").textContent="Botu Yeniden Başlat"; }
+    },1500);
+  }catch(e){
+    msg.textContent="✗ "+e.message;
+    btn.classList.remove("busy"); btn.querySelector("span:last-child").textContent="Botu Yeniden Başlat";
   }
 }
 
