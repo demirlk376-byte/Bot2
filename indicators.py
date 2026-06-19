@@ -51,7 +51,14 @@ def rsi(close: pd.Series, period: int = 14) -> pd.Series:
     avg_gain = gain.ewm(alpha=1 / period, adjust=False).mean()
     avg_loss = loss.ewm(alpha=1 / period, adjust=False).mean()
     rs = avg_gain / avg_loss.replace(0, np.nan)
-    return 100 - (100 / (1 + rs))
+    out = 100 - (100 / (1 + rs))
+    # Zero-loss window (unbroken up-run) → RSI = 100, not NaN. Otherwise the
+    # strongest-momentum candles — exactly where the overbought guard should
+    # bite — get a NaN RSI that silently bypasses the extreme-RSI filters.
+    out = out.where(avg_loss != 0, 100.0)
+    # Flat window (no gain AND no loss) → neutral 50, not 100.
+    out = out.mask((avg_gain == 0) & (avg_loss == 0), 50.0)
+    return out
 
 
 def atr(
@@ -173,10 +180,13 @@ def bb_width(close: pd.Series, period: int = 20, std_dev: float = 2.0) -> pd.Ser
 
 def is_bb_squeeze(close: pd.Series, period: int = 20, std_dev: float = 2.0) -> bool:
     width = bb_width(close, period, std_dev)
-    if len(width.dropna()) < period:
+    if len(width.dropna()) < period + 1:
         return False
     current_width = width.iloc[-1]
-    avg_width = width.tail(period).mean()
+    # Baseline EXCLUDES the current bar — including the value being tested in its
+    # own comparison average biases the threshold and makes the squeeze fire too
+    # rarely.
+    avg_width = width.iloc[-period - 1:-1].mean()
     return current_width < avg_width * 0.7
 
 

@@ -122,6 +122,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
     async def on_candle_close(candle: Candle) -> None:
         try:
             import pandas as pd
+            import numpy as np
 
             df = await ctx.data_mgr.get_candles(config.strategy.primary_tf, 120)
             if len(df) < config.strategy.bb_period + 5:
@@ -990,6 +991,20 @@ async def position_reconciliation_loop() -> None:
                         for pos in positions:
                             if to_close <= tol:
                                 break
+                            # Only close a WHOLE sleeve when the confirmed external
+                            # shortfall actually covers it. A partial shortfall that
+                            # doesn't line up with any whole sleeve (e.g. a manual
+                            # partial close on the netted position) must NOT book a
+                            # full fabricated close — that would record bogus PnL and
+                            # leave the still-live remainder mis-sized. Skip this
+                            # sleeve; a smaller sibling may match instead.
+                            if pos.quantity > to_close + tol:
+                                logger.warning(
+                                    "Reconciliation: %s sleeve %.6f exceeds remaining "
+                                    "shortfall %.6f — partial external close, leaving "
+                                    "this sleeve intact",
+                                    symbol, pos.quantity, to_close)
+                                continue
                             if pos.side == "short":
                                 sl_hit = pos.sl_price > 0 and current_price >= pos.sl_price * 0.99
                                 tp_hit = pos.tp_price > 0 and current_price <= pos.tp_price * 1.01

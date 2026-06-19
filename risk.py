@@ -171,7 +171,10 @@ class RiskManager:
         risk_amount = balance * risk_pct
         sl_dist_pct = sl_dist / entry_price
         quantity = risk_amount / (entry_price * sl_dist_pct)
-        cap_fraction = getattr(self._cfg, "position_cap_fraction", float(leverage))
+        # Default 1.0 (full balance as notional cap) to match calculate_position_size;
+        # a float(leverage) fallback would let levels-based trades take leverage×
+        # the notional cap of ATR-based ones if the field were ever dropped.
+        cap_fraction = getattr(self._cfg, "position_cap_fraction", 1.0)
         max_qty = (balance * cap_fraction) / entry_price
         quantity = min(quantity, max_qty)
         quantity = max(quantity, 0.0)
@@ -183,6 +186,19 @@ class RiskManager:
 
         risk_usdt = sl_dist * quantity
         risk_pct_actual = risk_usdt / balance if balance > 0 else 0.0
+
+        # Hard sanity ceiling: per-sleeve risk overrides legitimately exceed
+        # max_risk_per_trade (ORB/Asia/FVG run 3–8%), so we can't use that as the
+        # bound here — but NO single trade should ever risk >15% of equity. This
+        # catches a fat-fingered *_RISK_PCT in .env (e.g. 0.5 instead of 0.05)
+        # before it sizes a real, oversized order. Skipped in fixed-margin mode.
+        fixed = getattr(self._cfg, "fixed_margin_usdt", 0.0)
+        if fixed <= 0 and risk_pct_actual > 0.15:
+            logger.warning(
+                "Levels trade risk %.1f%% exceeds 15%% hard ceiling — rejecting "
+                "(check per-sleeve *_RISK_PCT config)", risk_pct_actual * 100)
+            return None
+
         pos_value = quantity * entry_price
         margin = pos_value / leverage
 

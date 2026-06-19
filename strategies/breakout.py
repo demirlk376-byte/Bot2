@@ -42,7 +42,8 @@ class BreakoutStrategy:
             df_primary["volume"], 20, self._cfg.volume_spike_mult
         ).iloc[-1]
         squeeze = is_bb_squeeze(close_p, 20, 2.0)
-        adx_val = adx(df_primary["high"], df_primary["low"], close_p).iloc[-1]
+        adx_val = adx(df_primary["high"], df_primary["low"], close_p,
+                      self._cfg.adx_period).iloc[-1]
 
         # Candle body ratio
         candle_range = current_candle["high"] - current_candle["low"]

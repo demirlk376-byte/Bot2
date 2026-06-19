@@ -666,7 +666,12 @@ class LiveExchange:
             symbol=symbol,
             side=close_side,
             filled_price=filled_price,
-            quantity=amount,
+            # Report the ACTUAL closed base-currency size (contracts truncated to
+            # the step, converted back), not the requested `amount`. For non-1
+            # contractSize coins where `amount` doesn't divide evenly, returning
+            # `amount` overstates the close and can leave a dust remainder the
+            # reconciliation loop mistakes for a residual sleeve.
+            quantity=self._to_base(symbol, contracts),
             timestamp=int(time.time() * 1000),
             is_paper=False,
         )
@@ -700,20 +705,31 @@ class LiveExchange:
 
         sl_ok = False
         try:
-            await self._exchange.create_order(
+            sl_resp = await self._exchange.create_order(
                 symbol, "market", close_side, contracts, None,
                 {**base, "triggerPrice": sl_price, "triggerType": sl_trigger},
             )
-            sl_ok = True
+            # Confirm the plan order actually rests: MEXC can return a success
+            # envelope WITHOUT placing the order (business error inside a 200 that
+            # ccxt doesn't raise on). An order id in the response means it was
+            # accepted. Treating create_order's mere return as success would leave
+            # a live position the bot believes is stopped but isn't.
+            sl_ok = bool(sl_resp and (sl_resp.get("id") or
+                                      sl_resp.get("info", {}).get("orderId")))
+            if not sl_ok:
+                logger.error("SL order returned no id (silent reject): %r", sl_resp)
         except Exception as e:
             logger.error("SL order failed: %s", e)
         tp_ok = False
         try:
-            await self._exchange.create_order(
+            tp_resp = await self._exchange.create_order(
                 symbol, "market", close_side, contracts, None,
                 {**base, "triggerPrice": tp_price, "triggerType": tp_trigger},
             )
-            tp_ok = True
+            tp_ok = bool(tp_resp and (tp_resp.get("id") or
+                                      tp_resp.get("info", {}).get("orderId")))
+            if not tp_ok:
+                logger.error("TP order returned no id (silent reject): %r", tp_resp)
         except Exception as e:
             logger.error("TP order failed: %s", e)
         if not sl_ok:

@@ -45,6 +45,9 @@ class ExecutionEngine:
         self._executing: set[str] = set()  # symbols with in-flight execute_signal
         self._consecutive_losses: dict[str, int] = {}   # strategy → streak count
         self._cooldown_until: Optional[datetime] = None
+        # Strong refs to fire-and-forget alert tasks so they aren't GC'd mid-send
+        # and their exceptions are retrieved (not silently dropped).
+        self._bg_tasks: set = set()
         # Per-symbol lock serializing every operation that mutates a symbol's
         # exchange position/stops (entry place+set_sl_tp+register, trailing
         # resync, close, reconciliation). MEXC nets same-symbol sleeves into one
@@ -149,11 +152,13 @@ class ExecutionEngine:
                     "[%s] Consecutive losses: %d — cooldown until %s",
                     label, streak, self._cooldown_until.strftime("%H:%M UTC"),
                 )
-                asyncio.create_task(self._alert(
+                task = asyncio.create_task(self._alert(
                     f"[{label.upper()}] Üst üste {streak} kayıp — "
                     f"{cooldown_min} dk cooldown başladı",
                     "WARNING",
                 ))
+                self._bg_tasks.add(task)
+                task.add_done_callback(self._bg_tasks.discard)
         else:
             self._consecutive_losses[key] = 0
 
