@@ -157,6 +157,17 @@ def make_on_candle_close(ctx: "SymbolContext"):
             # ran above — so the moved SL only affects the NEXT candle's SL check.
             await _update_trailing_stops(ctx.symbol, current_price, atr_val)
 
+            # Stale-feed guard: exits/trailing above always run (they protect open
+            # positions), but do NOT open NEW entries on a stale feed. Normally the
+            # triggering candle is fresh (~0 staleness); this catches a replayed or
+            # clock-skewed candle after an outage so we never enter on old data.
+            tf_secs = TIMEFRAME_SECONDS.get(config.strategy.primary_tf, 3600)
+            if ctx.data_mgr.staleness_seconds() > tf_secs * 2:
+                logger.warning(
+                    "[%s] Feed stale (%.0fs) — skipping new entries this candle",
+                    ctx.symbol, ctx.data_mgr.staleness_seconds())
+                return
+
             # ── Parallel strategy execution with regime filter ────────────────
             # Each strategy has its own position slot so they run independently:
             #   BB   → slot = symbol          (swing, 48h max-hold)

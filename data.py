@@ -128,14 +128,35 @@ class DataManager:
         if self._buffers[self._config.primary_tf].size() > 0:
             self._current_price = self._buffers[self._config.primary_tf].latest_close()
 
+    def _spawn(self, coro, name: str) -> asyncio.Task:
+        """Create a feed task with a done-callback so a silent death (the feed
+        loop raising and the exception never being retrieved) is logged loudly
+        instead of leaving the coin with a frozen candle buffer unnoticed."""
+        task = asyncio.create_task(coro, name=name)
+
+        def _done(t: asyncio.Task) -> None:
+            if t.cancelled():
+                return
+            exc = t.exception()
+            if exc is not None:
+                logger.critical("Feed task '%s' CRASHED: %r — %s feed is now DEAD",
+                                name, exc, self._symbol)
+            elif not self._stop_event.is_set():
+                logger.error("Feed task '%s' exited unexpectedly — %s feed stalled",
+                             name, self._symbol)
+
+        task.add_done_callback(_done)
+        return task
+
     async def start_feeds(self) -> None:
-        self._tasks.append(asyncio.create_task(self._ticker_loop()))
-        self._tasks.append(asyncio.create_task(
-            self._rest_poll_loop(self._config.primary_tf)
-        ))
-        self._tasks.append(asyncio.create_task(
-            self._rest_poll_loop(self._config.confirm_tf)
-        ))
+        self._tasks.append(self._spawn(
+            self._ticker_loop(), f"ticker:{self._symbol}"))
+        self._tasks.append(self._spawn(
+            self._rest_poll_loop(self._config.primary_tf),
+            f"poll:{self._symbol}:{self._config.primary_tf}"))
+        self._tasks.append(self._spawn(
+            self._rest_poll_loop(self._config.confirm_tf),
+            f"poll:{self._symbol}:{self._config.confirm_tf}"))
 
     async def stop(self) -> None:
         self._stop_event.set()
@@ -236,7 +257,10 @@ class DataManager:
         tf = self._config.primary_tf
         last_ts = self._last_closed_ts.get(tf, 0)
         if last_ts <= 0:
-            return 0.0
+            # No candle ever recorded → the feed never came up. Report a large
+            # staleness (not 0/"healthy") so the heartbeat flags it instead of
+            # silently masking a coin whose feed failed to initialize.
+            return 1e9
         tf_secs = TIMEFRAME_SECONDS.get(tf, 60)
         now_ms = time.time() * 1000
         age_secs = (now_ms - last_ts) / 1000.0

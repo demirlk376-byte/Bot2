@@ -399,7 +399,11 @@ class LiveExchange:
 
     async def get_balance(self) -> float:
         bal = await self._exchange.fetch_balance({"type": "swap"})
-        return float(bal["USDT"]["free"])
+        # Defensive: MEXC can transiently return a missing/None free field. Treat
+        # it as 0 rather than raising, so a hiccup degrades to "no free margin"
+        # (entry skipped) instead of crashing the entry/halt path.
+        usdt = bal.get("USDT") or {}
+        return float(usdt.get("free") or 0.0)
 
     def _contract_size(self, symbol: str) -> float:
         """Base-currency units per MEXC contract (e.g. SOL=0.1, BTC=0.0001,
@@ -410,7 +414,7 @@ class LiveExchange:
         except Exception:
             return 1.0
 
-    def _to_contracts(self, symbol: str, base_qty: float) -> float:
+    def _to_contracts(self, symbol: str, base_qty: float, round_up: bool = False) -> float:
         """Convert a base-currency quantity (e.g. 1.004 SOL) into the MEXC
         contract count to send to ccxt.
 
@@ -420,9 +424,18 @@ class LiveExchange:
         not 1 (SOL=0.1, BTC=0.0001, ...) would open contractSize× too small and
         the bot would mis-account every PnL/margin/equity figure by that factor.
         We divide here, then truncate to the contract step so risk never rounds
-        upward."""
+        upward.
+
+        round_up=True nudges the value up one ulp before truncation so a value
+        sitting exactly on a contract step (but stored as 11.9999998 due to float
+        error) lands on the intended step. Used for reduce-only SL/TP sizing so a
+        stop never covers FEWER contracts than the live position (reduceOnly caps
+        the upside, so a tiny over-count is harmless; an under-count leaves part
+        of the position unstopped)."""
         cs = self._contract_size(symbol)
         contracts = base_qty / cs if cs > 0 else base_qty
+        if round_up:
+            contracts *= (1 + 1e-9)
         try:
             return float(self._exchange.amount_to_precision(symbol, contracts))
         except Exception:
@@ -456,6 +469,14 @@ class LiveExchange:
     ) -> OrderResult:
         # `amount` is base-currency (e.g. SOL); convert to MEXC contract count.
         contracts = self._to_contracts(symbol, amount)
+        # Guard: if the size rounds below one contract step the order is garbage
+        # (MEXC would reject or fill 0). Reject here so the caller books a clean
+        # error instead of a phantom $0 position. Covers low-priced coins whose
+        # base-min differs from BTC's.
+        if contracts <= 0:
+            raise ValueError(
+                f"{symbol}: size {amount} → {contracts} contracts (below min step)"
+            )
         # openType must match what was set on set_leverage; without it ccxt defaults
         # to cross (openType=2) regardless of how leverage was configured.
         order_params = {"openType": self._open_type, **params}
@@ -528,6 +549,10 @@ class LiveExchange:
         order_params["postOnly"] = True
         # `amount` is base-currency; convert to MEXC contract count for ccxt.
         contracts = self._to_contracts(symbol, amount)
+        if contracts <= 0:
+            raise ValueError(
+                f"{symbol}: size {amount} → {contracts} contracts (below min step)"
+            )
         try:
             order = await self._exchange.create_order(
                 symbol, "limit", side, contracts, limit_price, order_params
@@ -563,26 +588,39 @@ class LiveExchange:
             if status == "canceled":
                 break
 
-        # Unfilled — cancel and decide fallback
+        # Unfilled — cancel and decide fallback. We only fall back to a MARKET
+        # order if the cancel is CONFIRMED (order definitely did not fill).
+        # Otherwise a market fallback on top of a silently-filled limit would
+        # DOUBLE the position (and the extra leg has no SL/TP).
+        cancelled = False
         try:
             await self._exchange.cancel_order(order_id, symbol)
+            cancelled = True
         except Exception as e:
             logger.debug("cancel_order failed (may be filled): %s", e)
-            # Re-check: it might have filled between poll and cancel
+            # Re-check: it might have filled between poll and cancel.
             try:
                 fetched = await self._exchange.fetch_order(order_id, symbol)
-                if fetched.get("status") == "closed":
+                status = fetched.get("status")
+                if status == "closed":
                     fp = float(fetched.get("average") or limit_price)
                     return OrderResult(order_id, symbol, side, fp,
                                        self._to_base(symbol, contracts),
                                        int(time.time() * 1000), False)
+                if status == "canceled":
+                    cancelled = True
             except Exception:
-                pass
+                # Could neither confirm cancel NOR confirm fill. Firing a market
+                # order now risks a double entry, so skip rather than gamble.
+                logger.warning(
+                    "Limit %s state unknown after cancel failure — skipping market "
+                    "fallback to avoid double entry", order_id)
+                return None
 
-        if fallback_market:
+        if cancelled and fallback_market:
             logger.info("Limit unfilled after %.0fs; falling back to market", timeout)
             return await self.place_market_order(symbol, side, amount, params)
-        logger.info("Limit unfilled after %.0fs; skipping trade", timeout)
+        logger.info("Limit unfilled/uncancelled after %.0fs; skipping trade", timeout)
         return None
 
     async def close_position(
@@ -656,7 +694,9 @@ class LiveExchange:
             base["leverage"] = self._leverage
 
         # `amount` is base-currency; the plan-order vol is also a contract count.
-        contracts = self._to_contracts(symbol, amount)
+        # round_up so the reduce-only stop never covers fewer contracts than the
+        # live position (float-truncation could otherwise leave a sliver unstopped).
+        contracts = self._to_contracts(symbol, amount, round_up=True)
 
         sl_ok = False
         try:
@@ -667,15 +707,25 @@ class LiveExchange:
             sl_ok = True
         except Exception as e:
             logger.error("SL order failed: %s", e)
+        tp_ok = False
         try:
             await self._exchange.create_order(
                 symbol, "market", close_side, contracts, None,
                 {**base, "triggerPrice": tp_price, "triggerType": tp_trigger},
             )
+            tp_ok = True
         except Exception as e:
             logger.error("TP order failed: %s", e)
         if not sl_ok:
             raise RuntimeError(f"SL placement failed for {symbol} — position will be closed")
+        if not tp_ok:
+            # SL protects the downside, so we do NOT force-close (that would book a
+            # guaranteed fee loss). But the validated edge (esp. ORB/Asia) assumes a
+            # fixed TP, so surface this loudly: the position will exit via
+            # max-hold/trailing instead of the intended take-profit.
+            logger.error(
+                "TP placement FAILED for %s (SL IS in place) — position will exit "
+                "via max-hold/trailing, not the intended take-profit", symbol)
 
     async def cancel_stop_orders(self, symbol: str) -> bool:
         """Cancel all pending SL/TP plan (trigger) orders for a symbol. Returns
