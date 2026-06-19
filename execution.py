@@ -342,7 +342,7 @@ class ExecutionEngine:
                 try:
                     await self._exchange.set_sl_tp(
                         setup.symbol, pos_side,
-                        setup.sl_price, setup.tp_price, setup.quantity,
+                        setup.sl_price, setup.tp_price, order.quantity,
                     )
                     logger.info(
                         "Live SL/TP placed: sl=%.2f tp=%.2f", setup.sl_price, setup.tp_price
@@ -351,7 +351,7 @@ class ExecutionEngine:
                     logger.error("SL/TP placement failed — closing position for safety: %s", e)
                     try:
                         await self._exchange.close_position(
-                            setup.symbol, pos_side, setup.quantity, "no_stop_safety"
+                            setup.symbol, pos_side, order.quantity, "no_stop_safety"
                         )
                     except Exception as ce:
                         logger.critical("EMERGENCY: could not close unprotected position: %s", ce)
@@ -386,7 +386,10 @@ class ExecutionEngine:
                 entry_price=order.filled_price,
                 sl_price=setup.sl_price,
                 tp_price=setup.tp_price,
-                quantity=setup.quantity,
+                # Use the order's actual filled base size (post contract-step
+                # truncation), not the pre-rounding setup size, so the portfolio
+                # matches the real exchange position exactly.
+                quantity=order.quantity,
                 strategy_scores=scores,
                 is_paper=self._config.exchange.paper_mode,
                 position_id=order.order_id,  # unify portfolio/paper/DB id
@@ -397,7 +400,7 @@ class ExecutionEngine:
             symbol=setup.symbol,
             side=position.side,
             entry_price=order.filled_price,
-            quantity=setup.quantity,
+            quantity=order.quantity,
             sl_price=setup.sl_price,
             tp_price=setup.tp_price,
             entry_time=position.entry_time.isoformat(),

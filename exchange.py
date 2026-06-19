@@ -400,6 +400,37 @@ class LiveExchange:
         bal = await self._exchange.fetch_balance({"type": "swap"})
         return float(bal["USDT"]["free"])
 
+    def _contract_size(self, symbol: str) -> float:
+        """Base-currency units per MEXC contract (e.g. SOL=0.1, BTC=0.0001,
+        XRP=1). Falls back to 1.0 if the market isn't loaded yet."""
+        try:
+            cs = self._exchange.market(symbol).get("contractSize")
+            return float(cs) if cs else 1.0
+        except Exception:
+            return 1.0
+
+    def _to_contracts(self, symbol: str, base_qty: float) -> float:
+        """Convert a base-currency quantity (e.g. 1.004 SOL) into the MEXC
+        contract count to send to ccxt.
+
+        ccxt's mexc create_order passes `amount` STRAIGHT THROUGH as `vol`
+        (the contract count) — it does NOT divide by contractSize despite the
+        docstring claiming base-currency units. So a coin whose contractSize is
+        not 1 (SOL=0.1, BTC=0.0001, ...) would open contractSize× too small and
+        the bot would mis-account every PnL/margin/equity figure by that factor.
+        We divide here, then truncate to the contract step so risk never rounds
+        upward."""
+        cs = self._contract_size(symbol)
+        contracts = base_qty / cs if cs > 0 else base_qty
+        try:
+            return float(self._exchange.amount_to_precision(symbol, contracts))
+        except Exception:
+            return contracts
+
+    def _to_base(self, symbol: str, contracts: float) -> float:
+        """Convert a ccxt contract count back to base-currency units."""
+        return contracts * self._contract_size(symbol)
+
     async def get_position(self, symbol: str) -> Optional[Position]:
         positions = await self._exchange.fetch_positions([symbol])
         for p in positions:
@@ -408,7 +439,11 @@ class LiveExchange:
                 return Position(
                     symbol=symbol,
                     side=side,
-                    contracts=float(p["contracts"]),
+                    # ccxt reports `contracts` as the contract count; convert to
+                    # base-currency units so it matches the bot's internal
+                    # quantity (which is always base) — the reconciliation loop
+                    # compares the two directly.
+                    contracts=self._to_base(symbol, float(p["contracts"])),
                     entry_price=float(p["entryPrice"]),
                     unrealized_pnl=float(p.get("unrealizedPnl", 0)),
                     leverage=int(p.get("leverage", self._leverage)),
@@ -418,8 +453,10 @@ class LiveExchange:
     async def place_market_order(
         self, symbol: str, side: str, amount: float, params: dict
     ) -> OrderResult:
+        # `amount` is base-currency (e.g. SOL); convert to MEXC contract count.
+        contracts = self._to_contracts(symbol, amount)
         order = await self._exchange.create_order(
-            symbol, "market", side, amount, None, params
+            symbol, "market", side, contracts, None, params
         )
         filled_price = float(order.get("average") or order.get("price") or 0)
 
@@ -465,7 +502,9 @@ class LiveExchange:
             symbol=symbol,
             side=side,
             filled_price=filled_price,
-            quantity=amount,
+            # Report the ACTUAL base-currency size that hit the exchange after the
+            # contract-step truncation, so the portfolio matches reality exactly.
+            quantity=self._to_base(symbol, contracts),
             timestamp=int(time.time() * 1000),
             is_paper=False,
         )
@@ -483,9 +522,11 @@ class LiveExchange:
         this is worth several percent of return (see research_maximize.py)."""
         order_params = dict(params)
         order_params["postOnly"] = True
+        # `amount` is base-currency; convert to MEXC contract count for ccxt.
+        contracts = self._to_contracts(symbol, amount)
         try:
             order = await self._exchange.create_order(
-                symbol, "limit", side, amount, limit_price, order_params
+                symbol, "limit", side, contracts, limit_price, order_params
             )
         except Exception as e:
             logger.warning("Post-only limit rejected (%s); using market", e)
@@ -511,7 +552,8 @@ class LiveExchange:
                 logger.info("Maker limit filled: %s @ %.2f", symbol, filled_price)
                 return OrderResult(
                     order_id=order_id, symbol=symbol, side=side,
-                    filled_price=filled_price, quantity=amount,
+                    filled_price=filled_price,
+                    quantity=self._to_base(symbol, contracts),
                     timestamp=int(time.time() * 1000), is_paper=False,
                 )
             if status == "canceled":
@@ -527,7 +569,8 @@ class LiveExchange:
                 fetched = await self._exchange.fetch_order(order_id, symbol)
                 if fetched.get("status") == "closed":
                     fp = float(fetched.get("average") or limit_price)
-                    return OrderResult(order_id, symbol, side, fp, amount,
+                    return OrderResult(order_id, symbol, side, fp,
+                                       self._to_base(symbol, contracts),
                                        int(time.time() * 1000), False)
             except Exception:
                 pass
@@ -542,8 +585,10 @@ class LiveExchange:
         self, symbol: str, side: str, amount: float, reason: str = "manual"
     ) -> OrderResult:
         close_side = "sell" if side == "long" else "buy"
+        # `amount` is base-currency; convert to MEXC contract count for ccxt.
+        contracts = self._to_contracts(symbol, amount)
         order = await self._exchange.create_order(
-            symbol, "market", close_side, amount, None, {"reduceOnly": True}
+            symbol, "market", close_side, contracts, None, {"reduceOnly": True}
         )
         filled_price = float(order.get("average") or order.get("price") or 0)
         # Same MEXC async-fill issue as entry: average can be 0 right after the
@@ -605,10 +650,13 @@ class LiveExchange:
         if open_type == 1:
             base["leverage"] = self._leverage
 
+        # `amount` is base-currency; the plan-order vol is also a contract count.
+        contracts = self._to_contracts(symbol, amount)
+
         sl_ok = False
         try:
             await self._exchange.create_order(
-                symbol, "market", close_side, amount, None,
+                symbol, "market", close_side, contracts, None,
                 {**base, "triggerPrice": sl_price, "triggerType": sl_trigger},
             )
             sl_ok = True
@@ -616,7 +664,7 @@ class LiveExchange:
             logger.error("SL order failed: %s", e)
         try:
             await self._exchange.create_order(
-                symbol, "market", close_side, amount, None,
+                symbol, "market", close_side, contracts, None,
                 {**base, "triggerPrice": tp_price, "triggerType": tp_trigger},
             )
         except Exception as e:
