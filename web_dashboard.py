@@ -769,7 +769,7 @@ function render(d){
 
 async function doRestart(){
   if(!TOKEN){ alert("Restart için adres çubuğunda ?token=... gerekli."); return; }
-  if(!confirm("Botu yeniden başlat?\n\nÖnce git pull yapılır, sonra bot yeni kodla\nsıfırdan başlar. Açık pozisyonlar korunur (MEXC'teki\nSL/TP server-side, bot DB'den geri yükler).")) return;
+  if(!confirm("Botu yeniden başlat? Önce git pull yapılır, sonra bot yeni kodla sıfırdan başlar. Açık pozisyonlar korunur.")) return;
   const btn=document.getElementById("rbtn"), msg=document.getElementById("rmsg");
   btn.classList.add("busy"); btn.querySelector("span:last-child").textContent="Başlatılıyor…";
   msg.textContent="git pull + restart isteniyor…";
