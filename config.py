@@ -100,6 +100,11 @@ class RiskConfig:
     asia_risk_pct: float = 0.03       # Asia BO risk per trade (% of free balance)
     fvg_risk_pct: float = 0.02        # FVG risk per trade (% of free balance)
     ifvg_risk_pct: float = 0.02       # IFVG risk per trade (% of free balance)
+    # Global risk multiplier applied to EVERY per-trade risk % at load time
+    # (max_risk_per_trade + all per-sleeve pcts). 1.0 = validated baseline.
+    # Multi-coin backtest: 1.25 lifts monthly return ~25% with DD 26%→34%.
+    # >1.5 risks tripping the daily-loss kill switch on a correlated stop-out.
+    risk_scale: float = 1.0
     day_max_hold_candles: int = 6     # force-close after 6h (intraday only)
     # Trailing stop: move SL to breakeven after breakeven_atr_mult×ATR profit,
     # then trail at trailing_atr_mult×ATR below peak price.
@@ -282,8 +287,12 @@ def load_config() -> AppConfig:
         maker_entry=_getbool("MAKER_ENTRY", True),
     )
 
+    # Global risk multiplier — scales every per-trade risk % uniformly. Applied
+    # here so all downstream consumers (risk.py, execution.py overrides) see the
+    # already-scaled values without any change to the sizing logic.
+    risk_scale = _getfloat("RISK_SCALE", 1.0)
     risk = RiskConfig(
-        max_risk_per_trade=_getfloat("MAX_RISK_PCT", 0.02),
+        max_risk_per_trade=_getfloat("MAX_RISK_PCT", 0.02) * risk_scale,
         atr_sl_multiplier=_getfloat("ATR_SL_MULT", 3.0),   # validated: 3x ATR stop
         rr_ratio=_getfloat("RR_RATIO", 1.667),             # TP = 5x ATR (3.0 * 1.667)
         max_positions=_getint("MAX_POSITIONS", 1),
@@ -292,11 +301,12 @@ def load_config() -> AppConfig:
         confidence_sizing=_getbool("CONFIDENCE_SIZING", False),
         position_cap_fraction=_getfloat("POSITION_CAP_FRACTION", 1.0),
         fixed_margin_usdt=_getfloat("FIXED_MARGIN_USDT", 0.0),
-        day_risk_pct=_getfloat("DAY_RISK_PCT", 0.01),
-        orb_risk_pct=_getfloat("ORB_RISK_PCT", 0.05),
-        asia_risk_pct=_getfloat("ASIA_RISK_PCT", 0.03),
-        fvg_risk_pct=_getfloat("FVG_RISK_PCT", 0.02),
-        ifvg_risk_pct=_getfloat("IFVG_RISK_PCT", 0.02),
+        day_risk_pct=_getfloat("DAY_RISK_PCT", 0.01) * risk_scale,
+        orb_risk_pct=_getfloat("ORB_RISK_PCT", 0.05) * risk_scale,
+        asia_risk_pct=_getfloat("ASIA_RISK_PCT", 0.03) * risk_scale,
+        fvg_risk_pct=_getfloat("FVG_RISK_PCT", 0.02) * risk_scale,
+        ifvg_risk_pct=_getfloat("IFVG_RISK_PCT", 0.02) * risk_scale,
+        risk_scale=risk_scale,
         day_max_hold_candles=_getint("DAY_MAX_HOLD_CANDLES", 6),
         trailing_stop_enabled=_getbool("TRAILING_STOP_ENABLED", True),
         breakeven_atr_mult=_getfloat("BREAKEVEN_ATR_MULT", 1.0),
