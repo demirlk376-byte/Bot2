@@ -43,8 +43,11 @@ class ExecutionEngine:
         self._on_close_callbacks: list[Callable] = []
         self._alert_cb: Optional[Callable] = None
         self._executing: set[str] = set()  # symbols with in-flight execute_signal
-        self._consecutive_losses: dict[str, int] = {}   # strategy → streak count
-        self._cooldown_until: Optional[datetime] = None
+        self._consecutive_losses: dict[str, int] = {}   # (strategy:symbol) → streak
+        # Per-(strategy:symbol) cooldown end times. A loss streak on one sleeve
+        # pauses only THAT sleeve, not every coin — the edges are validated
+        # independently, so an ETH-BB streak shouldn't suppress BTC-ORB.
+        self._cooldown_until: dict[str, datetime] = {}
         # Strong refs to fire-and-forget alert tasks so they aren't GC'd mid-send
         # and their exceptions are retrieved (not silently dropped).
         self._bg_tasks: set = set()
@@ -113,7 +116,17 @@ class ExecutionEngine:
         )
 
     async def current_equity(self) -> float:
-        """True account equity = free balance + locked margin + unrealized PnL."""
+        """True account equity. Prefer the exchange's own equity figure (most
+        accurate — folds in fees/funding the bot doesn't track); fall back to a
+        reconstruction (free balance + locked margin + unrealized PnL) for paper
+        mode or if the exchange read fails."""
+        if hasattr(self._exchange, "get_equity"):
+            try:
+                eq = await self._exchange.get_equity()
+                if eq > 0:
+                    return eq
+            except Exception as e:
+                logger.debug("get_equity failed, reconstructing equity: %s", e)
         free = await self._exchange.get_balance()
         return free + self._locked_margin() + self._portfolio.get_total_unrealized_pnl()
 
@@ -147,10 +160,11 @@ class ExecutionEngine:
             self._consecutive_losses[key] = self._consecutive_losses.get(key, 0) + 1
             streak = self._consecutive_losses[key]
             if streak >= limit:
-                self._cooldown_until = datetime.now(timezone.utc) + timedelta(minutes=cooldown_min)
+                until = datetime.now(timezone.utc) + timedelta(minutes=cooldown_min)
+                self._cooldown_until[key] = until
                 logger.warning(
                     "[%s] Consecutive losses: %d — cooldown until %s",
-                    label, streak, self._cooldown_until.strftime("%H:%M UTC"),
+                    label, streak, until.strftime("%H:%M UTC"),
                 )
                 task = asyncio.create_task(self._alert(
                     f"[{label.upper()}] Üst üste {streak} kayıp — "
@@ -168,19 +182,23 @@ class ExecutionEngine:
         if self.is_halted():
             return ExecutionResult(False, error="Trading halted (daily loss limit)")
 
-        if self._cooldown_until is not None:
-            if datetime.now(timezone.utc) < self._cooldown_until:
-                remaining = (self._cooldown_until - datetime.now(timezone.utc)).total_seconds() / 60
-                return ExecutionResult(False, error=f"Cooldown active ({remaining:.0f}m remaining)")
-            else:
-                self._cooldown_until = None
-
         if signal.direction == 0:
             return ExecutionResult(False, error="No signal")
 
         # Multi-coin: the signal carries its own symbol; fall back to the
         # configured primary symbol for single-coin operation.
         symbol = signal.symbol or self._config.exchange.symbol
+
+        # Per-(strategy:symbol) cooldown — only this sleeve is paused after its
+        # own loss streak; other coins/strategies keep trading.
+        cd_key = f"{signal.dominant_strategy}:{symbol}"
+        cd_until = self._cooldown_until.get(cd_key)
+        if cd_until is not None:
+            if datetime.now(timezone.utc) < cd_until:
+                remaining = (cd_until - datetime.now(timezone.utc)).total_seconds() / 60
+                return ExecutionResult(False, error=f"Cooldown active ({remaining:.0f}m remaining)")
+            else:
+                del self._cooldown_until[cd_key]
 
         # Slot key: each strategy sleeve has its own slot so BB, ORB, and Asia BO
         # can run in parallel without blocking one another. S/R breakout shares the
@@ -208,8 +226,10 @@ class ExecutionEngine:
         # Daily-loss limit is measured on EQUITY (free + locked margin + unrealized),
         # not free balance — otherwise locking margin for parallel positions reads
         # as a loss. open_unrealized_pnl is passed 0 here because current_equity()
-        # already folds unrealized PnL into the equity figure.
-        equity = balance + self._locked_margin() + self._portfolio.get_total_unrealized_pnl()
+        # already folds unrealized PnL into the equity figure. Use current_equity()
+        # so live trading reads the exchange's authoritative equity (with paper /
+        # read-failure fallback to the reconstruction).
+        equity = await self.current_equity()
         if not self._risk.check_daily_loss_limit(
             self._daily_starting_balance,
             equity,

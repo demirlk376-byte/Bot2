@@ -405,6 +405,32 @@ class LiveExchange:
         usdt = bal.get("USDT") or {}
         return float(usdt.get("free") or 0.0)
 
+    async def get_equity(self) -> float:
+        """True account equity straight from MEXC (cash + locked margin +
+        unrealized PnL). Used for the daily-loss limit so it measures the real
+        account drawdown instead of a reconstructed free+margin+uPnL figure that
+        can drift from the exchange. Returns 0.0 on any read failure so the
+        caller falls back to its reconstruction."""
+        try:
+            bal = await self._exchange.fetch_balance({"type": "swap"})
+        except Exception as e:
+            logger.debug("get_equity fetch_balance failed: %s", e)
+            return 0.0
+        # MEXC returns native account equity in the raw payload.
+        info = bal.get("info") or {}
+        data = info.get("data") or {}
+        for key in ("equity", "accountEquity", "totalEquity"):
+            v = data.get(key)
+            if v is not None:
+                try:
+                    return float(v)
+                except (TypeError, ValueError):
+                    pass
+        # Fallback to ccxt's normalized total (free + used margin). This omits
+        # unrealized PnL, so the caller's reconstruction is preferred over this;
+        # return 0.0 to signal "no reliable exchange equity".
+        return 0.0
+
     def _contract_size(self, symbol: str) -> float:
         """Base-currency units per MEXC contract (e.g. SOL=0.1, BTC=0.0001,
         XRP=1). Falls back to 1.0 if the market isn't loaded yet."""
