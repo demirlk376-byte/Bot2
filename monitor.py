@@ -16,6 +16,22 @@ from rich.text import Text
 from portfolio import Portfolio
 from strategies.signal_combiner import CombinedSignal
 
+_STRATEGY_DISPLAY: dict[str, str] = {
+    "mean_rev": "BB",
+    "orb": "ORB",
+    "asia_bo": "Asia",
+    "sr_breakout": "S/R",
+    "fvg": "FVG",
+    "ifvg": "IFVG",
+    "squeeze": "Squeeze",
+    "whale": "Whale",
+    "trend": "Trend",
+}
+
+
+def _strat_label(name: str) -> str:
+    return _STRATEGY_DISPLAY.get(name, name)
+
 
 class Dashboard:
     REFRESH_INTERVAL = 2.0
@@ -155,7 +171,7 @@ class Dashboard:
         be_moved = getattr(pos, "breakeven_moved", False)
         peak = getattr(pos, "peak_price", 0.0)
         sl_label = "SL (BE):" if be_moved else ("SL (Trail):" if peak > 0 else "SL:")
-        strategy_tag = pos.strategy_scores.get("strategy", "")
+        strategy_tag = _strat_label(pos.strategy_scores.get("strategy", ""))
         t = Table.grid(padding=1)
         t.add_row("Direction:", Text(f"{pos.side.upper()}  [{strategy_tag}]", style=dir_color))
         t.add_row("Entry:", f"${pos.entry_price:,.2f}")
@@ -177,7 +193,7 @@ class Dashboard:
         for s in reversed(list(self._recent_signals)):
             action_style = "green" if s["action"] == "TRADE" else "dim"
             tbl.add_row(
-                s["time"], s["score"], s["dir"], s["strategy"],
+                s["time"], s["score"], s["dir"], _strat_label(s["strategy"]),
                 Text(s["action"], style=action_style),
             )
         return Panel(tbl, title="Recent Signals (last 5)")

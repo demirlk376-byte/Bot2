@@ -359,6 +359,7 @@ class LiveExchange:
         self._api_secret = api_secret
         self._leverage = leverage
         self._margin_mode = margin_mode
+        self._open_type = 1 if margin_mode == "isolated" else 2
         self._exchange = None
 
     async def initialize(self, symbol: str) -> None:
@@ -455,8 +456,11 @@ class LiveExchange:
     ) -> OrderResult:
         # `amount` is base-currency (e.g. SOL); convert to MEXC contract count.
         contracts = self._to_contracts(symbol, amount)
+        # openType must match what was set on set_leverage; without it ccxt defaults
+        # to cross (openType=2) regardless of how leverage was configured.
+        order_params = {"openType": self._open_type, **params}
         order = await self._exchange.create_order(
-            symbol, "market", side, contracts, None, params
+            symbol, "market", side, contracts, None, order_params
         )
         filled_price = float(order.get("average") or order.get("price") or 0)
 
@@ -520,7 +524,7 @@ class LiveExchange:
 
         Maker entries pay 0% fee on MEXC futures vs 0.01% taker — over a year
         this is worth several percent of return (see research_maximize.py)."""
-        order_params = dict(params)
+        order_params = {"openType": self._open_type, **params}
         order_params["postOnly"] = True
         # `amount` is base-currency; convert to MEXC contract count for ccxt.
         contracts = self._to_contracts(symbol, amount)
@@ -588,7 +592,8 @@ class LiveExchange:
         # `amount` is base-currency; convert to MEXC contract count for ccxt.
         contracts = self._to_contracts(symbol, amount)
         order = await self._exchange.create_order(
-            symbol, "market", close_side, contracts, None, {"reduceOnly": True}
+            symbol, "market", close_side, contracts, None,
+            {"reduceOnly": True, "openType": self._open_type},
         )
         filled_price = float(order.get("average") or order.get("price") or 0)
         # Same MEXC async-fill issue as entry: average can be 0 right after the
