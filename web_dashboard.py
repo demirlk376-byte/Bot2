@@ -19,6 +19,8 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
+from strategies.signal_combiner import strategy_label
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,7 +28,7 @@ class WebDashboard:
     def __init__(
         self, config, *, exchange, portfolio, db, initial_balance: float,
         sleeve_layout: dict | None = None, paper_mode: bool = True,
-        leverage: int = 1,
+        leverage: int = 1, daily_max_loss: float = 0.0,
     ):
         self._cfg = config            # WebDashboardConfig
         self._exchange = exchange
@@ -36,6 +38,7 @@ class WebDashboard:
         self._sleeve_layout = sleeve_layout or {}
         self._paper_mode = paper_mode
         self._leverage = max(1, int(leverage))
+        self._daily_max_loss = float(daily_max_loss)   # e.g. 0.35 → -35% günlük halt
         self._runner = None
         self._site = None
 
@@ -131,7 +134,7 @@ class WebDashboard:
             positions.append({
                 "symbol": p.symbol.split("/")[0],
                 "side": p.side,
-                "strategy": p.strategy_scores.get("strategy", "?"),
+                "strategy": strategy_label(p.strategy_scores.get("strategy", "?")),
                 "entry": p.entry_price,
                 "current": price,
                 "sl": p.sl_price,
@@ -175,7 +178,7 @@ class WebDashboard:
         for s in breakdown:
             wr = s["win"] / s["total"] * 100 if s["total"] else 0.0
             strat.append({
-                "strategy": s["strategy"] or "unknown",
+                "strategy": strategy_label(s["strategy"] or "unknown"),
                 "total": s["total"], "win": s["win"],
                 "wr": wr, "pnl": s["pnl"],
             })
@@ -188,7 +191,7 @@ class WebDashboard:
             trades.append({
                 "symbol": t.symbol.split("/")[0],
                 "side": t.side,
-                "strategy": (t.strategy_scores or {}).get("strategy", "?"),
+                "strategy": strategy_label((t.strategy_scores or {}).get("strategy", "?")),
                 "entry": t.entry_price,
                 "exit": t.exit_price,
                 "pnl": t.pnl_usdt or 0.0,
@@ -233,6 +236,14 @@ class WebDashboard:
             "initial_balance": self._initial_balance,
             "return_pct": ret_pct,
             "daily_pnl": daily_pnl,
+            "daily_max_loss": self._daily_max_loss,
+            # Fraction of today's loss budget consumed (0 = none, 1 = halt). Only
+            # counts losses; a green day reads as 0 risk used. Approximated on
+            # current equity since the exact daily-start equity isn't surfaced here.
+            "daily_risk_used": (
+                max(0.0, -daily_pnl) / (self._daily_max_loss * equity)
+                if self._daily_max_loss > 0 and equity > 0 else 0.0
+            ),
             "unrealized_pnl": total_upnl,
             "open_count": len(positions),
             "positions": positions,
@@ -301,6 +312,22 @@ _INDEX_HTML = """<!DOCTYPE html>
     font-variant-numeric:tabular-nums}
   .pill.g{background:rgba(33,209,128,.15);color:var(--green)}
   .pill.r{background:rgba(255,84,112,.15);color:var(--red)}
+  .bal{transition:color .3s ease}
+  /* günlük risk göstergesi (zarar limitine yakınlık) */
+  .gauge{margin-top:14px}
+  .gauge .gh{display:flex;justify-content:space-between;align-items:center;
+    font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+  .gtrack{height:8px;border-radius:5px;background:var(--card2);overflow:hidden;position:relative}
+  .gtrack>i{display:block;height:100%;border-radius:5px;width:0;
+    transition:width .6s cubic-bezier(.22,.61,.36,1)}
+  /* trade sebep rozetleri */
+  .rb{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;letter-spacing:.2px;white-space:nowrap}
+  .rb.tp{background:rgba(33,209,128,.16);color:var(--green)}
+  .rb.sl{background:rgba(255,84,112,.16);color:var(--red)}
+  .rb.mh{background:rgba(245,196,81,.16);color:var(--gold)}
+  .rb.x{background:rgba(126,138,160,.16);color:var(--dim)}
+  /* pozisyon ilerleme çubuğunda giriş işareti */
+  .prog>.mk{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--txt);opacity:.55}
   .row{display:flex;gap:9px;margin-top:14px}
   .row .box{flex:1;background:var(--card2);border:1px solid var(--line);
     border-radius:12px;padding:11px 12px}
@@ -384,6 +411,10 @@ _INDEX_HTML = """<!DOCTYPE html>
       <div class="box"><div class="k">Bugün</div><div class="v" id="daily">—</div></div>
       <div class="box"><div class="k">Açık PnL</div><div class="v" id="upnl">—</div></div>
     </div>
+    <div class="gauge" id="gauge" style="display:none">
+      <div class="gh"><span>Günlük Risk</span><span id="gtxt">—</span></div>
+      <div class="gtrack"><i id="gbar"></i></div>
+    </div>
   </div>
 
   <div class="sec"><span>Equity Eğrisi</span><span class="sub" id="eqinfo"></span></div>
@@ -425,6 +456,36 @@ const compact = n => Math.abs(n)>=1000 ? (n/1000).toFixed(1)+"k" : fmt(n,Math.ab
 const signed = n => (n>=0?"+$":"-$")+compact(Math.abs(n));
 const cls = n => n>=0?"g":"r";
 const NS = "http://www.w3.org/2000/svg";
+
+// bakiye sayaç animasyonu (önceki değerden yenisine yumuşak geçiş)
+let _bal = null;
+function animateBal(to){
+  const el = document.getElementById("bal");
+  const from = (_bal==null) ? to : _bal;
+  _bal = to;
+  if(from===to){ el.textContent="$"+fmt(to); return; }
+  const t0 = performance.now(), dur = 600;
+  function step(t){
+    const k = Math.min(1,(t-t0)/dur);
+    const e = 1-Math.pow(1-k,3);            // easeOutCubic
+    el.textContent = "$"+fmt(from+(to-from)*e);
+    if(k<1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// trade çıkış sebebi → renkli rozet
+function reasonBadge(r){
+  r = (r||"").toLowerCase();
+  if(r.includes("tp")) return '<span class="rb tp">TP</span>';
+  if(r.includes("sl")) return '<span class="rb sl">SL</span>';
+  if(r.includes("hold")||r.includes("maxhold")) return '<span class="rb mh">SÜRE</span>';
+  if(r.includes("trail")) return '<span class="rb tp">TRAIL</span>';
+  if(r.includes("manual")) return '<span class="rb x">MANUEL</span>';
+  if(r.includes("daily")||r.includes("limit")) return '<span class="rb sl">LİMİT</span>';
+  if(r.includes("external")||r.includes("recon")) return '<span class="rb x">DIŞ</span>';
+  return '<span class="rb x">'+(r.replace(/_/g," ")||"—")+'</span>';
+}
 
 async function tick(){
   try{
@@ -479,7 +540,7 @@ function render(d){
   const mode=document.getElementById("mode");
   mode.textContent = d.paper_mode?"PAPER":"LIVE";
   mode.className = "badge "+(d.paper_mode?"paper":"live");
-  document.getElementById("bal").textContent = "$"+fmt(d.equity);
+  animateBal(d.equity);
   document.getElementById("invested").textContent = "$"+compact(d.invested);
   const tp=document.getElementById("truepnl");
   tp.textContent=signed(d.true_pnl); tp.className="v "+cls(d.true_pnl);
@@ -491,6 +552,20 @@ function render(d){
   const up=document.getElementById("upnl");
   up.textContent=signed(d.unrealized_pnl); up.className="v "+cls(d.unrealized_pnl);
   document.getElementById("oc").textContent=d.open_count;
+
+  // günlük risk göstergesi (zarar limitine ne kadar yakın)
+  const g=document.getElementById("gauge");
+  if(d.daily_max_loss>0){
+    g.style.display="block";
+    const used=Math.max(0,Math.min(1,d.daily_risk_used||0));
+    const bar=document.getElementById("gbar");
+    bar.style.width=(used*100).toFixed(0)+"%";
+    // yeşil → sarı → kırmızı (limite yaklaştıkça)
+    const col = used<0.5?"var(--green)":used<0.8?"var(--gold)":"var(--red)";
+    bar.style.background=col; bar.style.boxShadow="0 0 8px "+col+"66";
+    document.getElementById("gtxt").textContent=
+      (used*100).toFixed(0)+"% / "+(d.daily_max_loss*100).toFixed(0)+"% limit";
+  } else { g.style.display="none"; }
 
   drawChart(d.equity_curve);
 
@@ -519,7 +594,8 @@ function render(d){
       // entry konumunu SL→TP aralığında göster
       const lo=Math.min(p.sl,p.tp), hi=Math.max(p.sl,p.tp);
       const frac=hi>lo?Math.max(0,Math.min(1,(p.current-lo)/(hi-lo))):0.5;
-      const tpSide=p.side==='long';
+      // giriş fiyatının SL→TP aralığındaki konumu (işaret çizgisi)
+      const efrac=hi>lo?Math.max(0,Math.min(1,(p.entry-lo)/(hi-lo))):0.5;
       return `
       <div class="pos ${p.side}-b fade">
         <div class="h">
@@ -536,7 +612,8 @@ function render(d){
           <span class="k">Miktar</span><span>${fmt(p.qty,4)}</span>
         </div>
         <div class="prog"><i style="left:0;width:${(frac*100).toFixed(0)}%;
-          background:linear-gradient(90deg,var(--red),${frac>0.5?'var(--green)':'var(--accent)'})"></i></div>
+          background:linear-gradient(90deg,var(--red),${frac>0.5?'var(--green)':'var(--accent)'})"></i>
+          <span class="mk" style="left:${(efrac*100).toFixed(0)}%"></span></div>
       </div>`;}).join("");
   }
 
@@ -595,7 +672,7 @@ function render(d){
         <td class="${t.side==='long'?'g':'r'}">${t.side==='long'?'L':'S'}</td>
         <td class="sub">${t.strategy}</td>
         <td class="right ${cls(t.pnl)}">${signed(t.pnl)}</td>
-        <td class="right sub">${(t.reason||'').replace('_',' ')}</td>
+        <td class="right">${reasonBadge(t.reason)}</td>
       </tr>`).join("")+`</tbody></table>`;
   }
 }

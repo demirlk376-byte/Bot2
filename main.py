@@ -1309,6 +1309,7 @@ async def main() -> None:
         sleeve_layout=sleeve_layout,
         paper_mode=config.exchange.paper_mode,
         leverage=config.exchange.leverage,
+        daily_max_loss=config.risk.daily_max_loss,
     )
     await web_dashboard.start()
 
