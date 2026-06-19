@@ -12,6 +12,29 @@ from strategies.breakout import BreakoutSignal
 ENTRY_THRESHOLD = 0.42   # trend alone fires in trending regime (0.50 weight) with strength ≥ 0.84
 CONFLICT_STRENGTH = 0.6
 
+# Canonical short labels for each internal strategy name. Used everywhere a
+# strategy is shown to the user (dashboard, Telegram, ntfy) so the same sleeve
+# is never called "mean_rev" in one place and "BB" in another.
+STRATEGY_DISPLAY: dict[str, str] = {
+    "mean_rev": "BB",
+    "trend": "Trend",
+    "breakout": "Breakout",
+    "orb": "ORB",
+    "asia_bo": "Asia",
+    "sr_breakout": "S/R",
+    "fvg": "FVG",
+    "ifvg": "IFVG",
+    "squeeze": "Squeeze",
+    "whale": "Whale",
+    "conflict": "Conflict",
+    "below_threshold": "—",
+}
+
+
+def strategy_label(name: str) -> str:
+    """Map an internal strategy name to its user-facing short label."""
+    return STRATEGY_DISPLAY.get(name, name)
+
 
 @dataclass
 class CombinedSignal:

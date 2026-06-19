@@ -16,7 +16,19 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 
+from strategies.signal_combiner import strategy_label
+
 logger = logging.getLogger(__name__)
+
+
+def _fmt_price(v: float) -> str:
+    """Adaptive price precision so sub-$1 coins (XRP, DOGE) don't collapse to
+    $0.00 in push notifications."""
+    if v >= 100:
+        return f"${v:,.2f}"
+    if v >= 1:
+        return f"${v:,.4f}"
+    return f"${v:,.6f}"
 
 
 @dataclass
@@ -90,14 +102,15 @@ class NtfyNotifier:
         sl_pct = (setup.sl_price - setup.entry_price) / setup.entry_price * 100
         tp_pct = (setup.tp_price - setup.entry_price) / setup.entry_price * 100
         tag = "chart_with_upwards_trend" if setup.direction == 1 else "chart_with_downwards_trend"
+        coin = setup.symbol.split("/")[0]
         body = (
-            f"Entry ${setup.entry_price:,.2f}\n"
-            f"SL ${setup.sl_price:,.2f} ({sl_pct:+.1f}%)\n"
-            f"TP ${setup.tp_price:,.2f} ({tp_pct:+.1f}%)\n"
-            f"Risk ${setup.risk_usdt:.2f} | {signal.dominant_strategy}"
+            f"Entry {_fmt_price(setup.entry_price)}\n"
+            f"SL {_fmt_price(setup.sl_price)} ({sl_pct:+.1f}%)\n"
+            f"TP {_fmt_price(setup.tp_price)} ({tp_pct:+.1f}%)\n"
+            f"Risk ${setup.risk_usdt:.2f} | {strategy_label(signal.dominant_strategy)}"
         )
         await self._post(
-            title=f"BTC {direction} AÇILDI",
+            title=f"{coin} {direction} AÇILDI",
             message=body,
             tags=tag,
             priority=4,
@@ -124,7 +137,7 @@ class NtfyNotifier:
         title = f"{reason_upper} {pnl_usdt:+.2f}$"
         body = (
             f"{side.upper()} {symbol}\n"
-            f"${entry_price:,.2f} → ${exit_price:,.2f}\n"
+            f"{_fmt_price(entry_price)} → {_fmt_price(exit_price)}\n"
             f"PnL ${pnl_usdt:+.2f} ({pnl_pct:+.2f}%)"
         )
         await self._post(title=title, message=body, tags=tag, priority=priority)

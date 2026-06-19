@@ -14,23 +14,16 @@ from rich.table import Table
 from rich.text import Text
 
 from portfolio import Portfolio
-from strategies.signal_combiner import CombinedSignal
-
-_STRATEGY_DISPLAY: dict[str, str] = {
-    "mean_rev": "BB",
-    "orb": "ORB",
-    "asia_bo": "Asia",
-    "sr_breakout": "S/R",
-    "fvg": "FVG",
-    "ifvg": "IFVG",
-    "squeeze": "Squeeze",
-    "whale": "Whale",
-    "trend": "Trend",
-}
+from strategies.signal_combiner import CombinedSignal, strategy_label as _strat_label
 
 
-def _strat_label(name: str) -> str:
-    return _STRATEGY_DISPLAY.get(name, name)
+def _fmt_price(v: float) -> str:
+    """Adaptive price precision so sub-$1 coins don't collapse to $0.00."""
+    if v >= 100:
+        return f"${v:,.2f}"
+    if v >= 1:
+        return f"${v:,.4f}"
+    return f"${v:,.6f}"
 
 
 class Dashboard:
@@ -44,6 +37,7 @@ class Dashboard:
         self._running = False
 
         self._current_price: float = 0.0
+        self._current_symbol: str = ""
         self._balance: float = 0.0
         self._daily_pnl: float = 0.0
         self._total_trades: int = 0
@@ -63,9 +57,11 @@ class Dashboard:
     def stop(self) -> None:
         self._running = False
 
-    def update_price(self, price: float) -> None:
+    def update_price(self, price: float, symbol: str = "") -> None:
         with self._lock:
             self._current_price = price
+            if symbol:
+                self._current_symbol = symbol
 
     def update_balance(self, balance: float) -> None:
         with self._lock:
@@ -142,7 +138,8 @@ class Dashboard:
         return layout
 
     def _header_panel(self) -> Panel:
-        price_text = Text(f"BTC/USDT:USDT  ${self._current_price:,.2f}", style="bold cyan")
+        sym = self._current_symbol or "—"
+        price_text = Text(f"{sym}  {_fmt_price(self._current_price)}", style="bold cyan")
         mode = Text("  [PAPER]", style="bold yellow") if self._portfolio._is_paper else Text("  [LIVE]", style="bold red")
         regime_colors = {"trending": "red", "ranging": "yellow", "neutral": "cyan"}
         regime_style = f"bold {regime_colors.get(self._regime, 'white')}"
@@ -172,15 +169,16 @@ class Dashboard:
         peak = getattr(pos, "peak_price", 0.0)
         sl_label = "SL (BE):" if be_moved else ("SL (Trail):" if peak > 0 else "SL:")
         strategy_tag = _strat_label(pos.strategy_scores.get("strategy", ""))
+        coin = pos.symbol.split("/")[0]
         t = Table.grid(padding=1)
-        t.add_row("Direction:", Text(f"{pos.side.upper()}  [{strategy_tag}]", style=dir_color))
-        t.add_row("Entry:", f"${pos.entry_price:,.2f}")
+        t.add_row("Direction:", Text(f"{pos.side.upper()} {coin}  [{strategy_tag}]", style=dir_color))
+        t.add_row("Entry:", _fmt_price(pos.entry_price))
         t.add_row("Unrealized PnL:", Text(f"${pos.unrealized_pnl:+,.2f}", style=pnl_color))
-        t.add_row(sl_label, Text(f"${pos.sl_price:,.2f}", style="yellow"))
-        t.add_row("TP:", f"${pos.tp_price:,.2f}")
-        t.add_row("Qty:", f"{pos.quantity:.4f} BTC")
+        t.add_row(sl_label, Text(_fmt_price(pos.sl_price), style="yellow"))
+        t.add_row("TP:", _fmt_price(pos.tp_price))
+        t.add_row("Qty:", f"{pos.quantity:.4f} {coin}")
         if peak > 0:
-            t.add_row("Peak:", f"${peak:,.2f}")
+            t.add_row("Peak:", _fmt_price(peak))
         return Panel(t, title="Open Position")
 
     def _signals_table(self) -> Panel:

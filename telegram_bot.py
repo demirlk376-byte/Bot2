@@ -5,9 +5,19 @@ from typing import Optional
 
 from config import TelegramConfig
 from risk import TradeSetup
-from strategies.signal_combiner import CombinedSignal
+from strategies.signal_combiner import CombinedSignal, strategy_label
 
 logger = logging.getLogger(__name__)
+
+
+def _fmt_price(v: float) -> str:
+    """Adaptive price precision so sub-$1 coins (XRP, DOGE) don't collapse to
+    $0.00 in notifications. Mirrors the /positions formatter."""
+    if v >= 100:
+        return f"${v:,.2f}"
+    if v >= 1:
+        return f"${v:,.4f}"
+    return f"${v:,.6f}"
 
 
 class TelegramNotifier:
@@ -213,14 +223,7 @@ class TelegramNotifier:
         if not positions:
             await self._reply(update, "Açık pozisyon yok.")
             return
-        def _fp(v: float) -> str:
-            # Adaptive precision: more decimals for sub-$1 coins so e.g. XRP/DOGE
-            # prices don't collapse to $0.00 / lose meaningful digits.
-            if v >= 100:
-                return f"${v:,.2f}"
-            if v >= 1:
-                return f"${v:,.4f}"
-            return f"${v:,.6f}"
+        _fp = _fmt_price
         lines = ["<b>Açık Pozisyonlar</b>"]
         for p in positions:
             try:
@@ -282,8 +285,9 @@ class TelegramNotifier:
             for s in breakdown:
                 wr = s["win"] / s["total"] * 100 if s["total"] > 0 else 0.0
                 pnl_sign = "🟢" if s["pnl"] >= 0 else "🔴"
+                label = strategy_label(s["strategy"] or "unknown")
                 lines.append(
-                    f"{pnl_sign} <code>{(s['strategy'] or 'unknown'):12s}</code> "
+                    f"{pnl_sign} <code>{label:12s}</code> "
                     f"T:{s['total']} W:{s['win']} ({wr:.0f}%) "
                     f"<code>${s['pnl']:+.2f}</code>"
                 )
@@ -340,11 +344,11 @@ class TelegramNotifier:
         tp_pct = (setup.tp_price - setup.entry_price) / setup.entry_price * 100
         text = (
             f"<b>{direction} OPENED</b> - {setup.symbol}\n"
-            f"Entry: <code>${setup.entry_price:,.2f}</code>\n"
-            f"SL: <code>${setup.sl_price:,.2f}</code> ({sl_pct:+.2f}%)\n"
-            f"TP: <code>${setup.tp_price:,.2f}</code> ({tp_pct:+.2f}%)\n"
+            f"Entry: <code>{_fmt_price(setup.entry_price)}</code>\n"
+            f"SL: <code>{_fmt_price(setup.sl_price)}</code> ({sl_pct:+.2f}%)\n"
+            f"TP: <code>{_fmt_price(setup.tp_price)}</code> ({tp_pct:+.2f}%)\n"
             f"Qty: <code>{setup.quantity:.4f} {setup.symbol.split('/')[0]}</code> | Risk: <code>${setup.risk_usdt:.2f} ({setup.risk_pct:.1%})</code>\n"
-            f"Confidence: <code>{signal.confidence:.0%}</code> | Strategy: <code>{signal.dominant_strategy}</code>"
+            f"Confidence: <code>{signal.confidence:.0%}</code> | Strategy: <code>{strategy_label(signal.dominant_strategy)}</code>"
         )
         await self._send(text)
 
@@ -366,7 +370,7 @@ class TelegramNotifier:
         text = (
             f"{emoji} <b>TRADE CLOSED</b> - {symbol}\n"
             f"Side: <code>{side.upper()}</code>\n"
-            f"Entry: <code>${entry_price:,.2f}</code> → Exit: <code>${exit_price:,.2f}</code>\n"
+            f"Entry: <code>{_fmt_price(entry_price)}</code> → Exit: <code>{_fmt_price(exit_price)}</code>\n"
             f"PnL: <code>${pnl_usdt:+.2f} ({pnl_pct:+.2f}%)</code>\n"
             f"Reason: <code>{reason}</code>"
         )

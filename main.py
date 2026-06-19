@@ -130,7 +130,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
             current_price = await ctx.data_mgr.get_current_price()
             # Per-coin price: a shared single price would be wrong across coins.
             portfolio.update_unrealized_pnl_for(ctx.symbol, current_price)
-            dashboard.update_price(current_price)
+            dashboard.update_price(current_price, ctx.symbol)
 
             # Paper SL/TP fills first — only this coin's positions, using the
             # just-closed candle's range.
