@@ -44,6 +44,7 @@ class WebDashboard:
         self._paper_mode = paper_mode
         self._leverage = max(1, int(leverage))
         self._daily_max_loss = float(daily_max_loss)   # e.g. 0.35 → -35% günlük halt
+        self._start_ts = datetime.now(timezone.utc)    # uptime için (bot başlangıcı)
         self._runner = None
         self._site = None
 
@@ -273,6 +274,9 @@ class WebDashboard:
 
         return {
             "ts": datetime.now(timezone.utc).isoformat(),
+            "uptime_seconds": (
+                datetime.now(timezone.utc) - self._start_ts
+            ).total_seconds(),
             "paper_mode": self._paper_mode,
             "balance": balance,
             "equity": equity,
@@ -444,6 +448,11 @@ _INDEX_HTML = """<!DOCTYPE html>
   .rbtn.busy{opacity:.6;pointer-events:none}
   .rbtn .ic{font-size:15px}
   .rmsg{font-size:11px;color:var(--dim);text-align:center;min-height:14px}
+  /* yeni işlem açılınca kısa parıltı */
+  @keyframes flash{0%{box-shadow:0 8px 30px rgba(0,0,0,.35)}
+    35%{box-shadow:0 0 0 2px var(--accent),0 0 34px rgba(91,140,255,.55)}
+    100%{box-shadow:0 8px 30px rgba(0,0,0,.35)}}
+  .flash{animation:flash 1.1s ease}
 </style>
 </head>
 <body>
@@ -537,6 +546,16 @@ function animateBal(to){
   requestAnimationFrame(step);
 }
 
+// uptime → "3g 4s" / "4s 12d" / "12d"
+function fmtUptime(sec){
+  sec=Math.floor(sec||0);
+  const d=Math.floor(sec/86400), h=Math.floor(sec%86400/3600), m=Math.floor(sec%3600/60);
+  if(d>0) return d+"g "+h+"s";
+  if(h>0) return h+"s "+m+"d";
+  return m+"d";
+}
+let _lastOpen=null;   // yeni pozisyon tespiti için
+
 // trade çıkış sebebi → renkli rozet
 function reasonBadge(r){
   r = (r||"").toLowerCase();
@@ -599,7 +618,15 @@ function drawChart(eq){
 }
 
 function render(d){
-  document.getElementById("ts").textContent = new Date(d.ts).toLocaleTimeString("tr-TR");
+  document.getElementById("ts").textContent =
+    new Date(d.ts).toLocaleTimeString("tr-TR") + " · ⏱ " + fmtUptime(d.uptime_seconds);
+  // yeni pozisyon açıldıysa: titreşim + hero kartı parıltısı (telefon bildirimi gibi)
+  if(_lastOpen!==null && d.open_count>_lastOpen){
+    if(navigator.vibrate) navigator.vibrate([60,40,60]);
+    const hero=document.querySelector(".hero");
+    if(hero){ hero.classList.remove("flash"); void hero.offsetWidth; hero.classList.add("flash"); }
+  }
+  _lastOpen=d.open_count;
   const mode=document.getElementById("mode");
   mode.textContent = d.paper_mode?"PAPER":"LIVE";
   mode.className = "badge "+(d.paper_mode?"paper":"live");
