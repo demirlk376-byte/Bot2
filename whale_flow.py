@@ -58,6 +58,10 @@ class WhaleFlowMonitor:
         self._hist: deque[float] = deque(maxlen=zwin + 5)
         self._task: Optional[asyncio.Task] = None
         self._running = False
+        # Guard: track last finalized candle timestamp to prevent bar_zscore()
+        # from appending the same hour twice if called more than once per candle
+        # (e.g. on a bot restart mid-hour or a duplicate candle close event).
+        self._last_finalized_ms: int = 0
 
     # -- plumbing -----------------------------------------------------------
 
@@ -144,6 +148,8 @@ class WhaleFlowMonitor:
         Idempotent-ish: call once per closed candle. If the bucket is missing
         (no trades captured, e.g. just after start) returns None without
         polluting the history."""
+        if candle_start_ms == self._last_finalized_ms:
+            return None  # already processed this hour; skip to avoid duplicate append
         b = self._buckets.get(candle_start_ms)
         if b is None or b[0] <= 0:
             return None
@@ -152,10 +158,12 @@ class WhaleFlowMonitor:
         # pandas rolling(win) which needs `win` observations before a non-NaN.
         if len(self._hist) < self._zwin - 1:
             self._hist.append(avg_size)
+            self._last_finalized_ms = candle_start_ms
             return None  # still warming up
         prior = list(self._hist)[-(self._zwin - 1):]
         window = np.array(prior + [avg_size], dtype=float)
         self._hist.append(avg_size)
+        self._last_finalized_ms = candle_start_ms
         mean = window.mean()
         std = window.std(ddof=1)  # sample std, matching pandas .std()
         if std <= 0 or np.isnan(std):

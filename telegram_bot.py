@@ -191,7 +191,8 @@ class TelegramNotifier:
             "/strategy – strateji bazlı performans\n"
             "/pause – yeni trade'leri durdur\n"
             "/resume – trade'leri başlat\n"
-            "/close – açık pozisyonu kapat")
+            "/close BTC – BTC pozisyonunu kapat\n"
+            "/close all – tüm pozisyonları kapat")
 
     async def _cmd_status(self, update, context) -> None:
         if not self._authorized(update):
@@ -310,12 +311,29 @@ class TelegramNotifier:
     async def _cmd_close(self, update, context) -> None:
         if not self._authorized(update):
             return
-        positions = list(self._portfolio.get_open_positions())
-        if not positions:
+        args = context.args if context and context.args else []
+        if not args:
+            await self._reply(update,
+                "Kullanım:\n"
+                "/close BTC — sadece BTC pozisyonunu kapat\n"
+                "/close all — tüm pozisyonları kapat")
+            return
+        scope = args[0].upper()
+        all_positions = list(self._portfolio.get_open_positions())
+        if not all_positions:
             await self._reply(update, "Kapatılacak açık pozisyon yok.")
             return
+        if scope == "ALL":
+            targets = all_positions
+        else:
+            # Match by coin name: "BTC" matches "BTC/USDT:USDT"
+            targets = [p for p in all_positions if p.symbol.startswith(scope + "/")]
+            if not targets:
+                syms = ", ".join(p.symbol for p in all_positions)
+                await self._reply(update, f"'{scope}' ile eşleşen pozisyon yok. Açık: {syms}")
+                return
         closed = 0
-        for p in positions:
+        for p in targets:
             try:
                 price = await self._exchange.get_current_price(p.symbol)
                 await self._executor.close_position(p, "manual_telegram", price)

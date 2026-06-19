@@ -86,7 +86,8 @@ class RiskManager:
         # Confidence sizing only ever scales DOWN (size_mult ≤ 1.0), so the
         # validated max risk is never exceeded.
         if size_mult < 1.0:
-            quantity = round(quantity * size_mult, 3)
+            # Floor not round: rounding up would exceed the pre-sized risk budget.
+            quantity = math.floor(quantity * size_mult * 1000) / 1000
 
         if quantity < MIN_BTC_ORDER:
             logger.debug("Position size %.4f below minimum %.4f", quantity, MIN_BTC_ORDER)

@@ -123,10 +123,14 @@ class SqueezeStrategy:
             else:
                 break
 
-        if count < self._min_sq:
+        # Require min_sq + 1 bars: the backtest processes the release candle as
+        # iloc[-1] while still holding min_sq prior squeeze bars in the window,
+        # making the effective threshold min_sq+1. Without the +1 the live code
+        # fires a bar earlier than the validated backtest edge.
+        if count < self._min_sq + 1:
             return SqueezeSignal(
                 0, 0.0,
-                f"squeeze too short ({count} < {self._min_sq} bars)"
+                f"squeeze too short ({count} < {self._min_sq + 1} bars)"
             )
 
         # Direction: 1h close vs KC midline

@@ -420,7 +420,7 @@ _INDEX_HTML = """<!DOCTYPE html>
 
 <script>
 const TOKEN = new URLSearchParams(location.search).get("token") || "";
-const fmt = (n,d=2)=>Number(n).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmt = (n,d=null)=>{const a=Math.abs(Number(n));const dp=d!==null?d:(a>=100?2:a>=1?4:6);return Number(n).toLocaleString("en-US",{minimumFractionDigits:dp,maximumFractionDigits:dp});};
 const compact = n => Math.abs(n)>=1000 ? (n/1000).toFixed(1)+"k" : fmt(n,Math.abs(n)<10?2:0);
 const signed = n => (n>=0?"+$":"-$")+compact(Math.abs(n));
 const cls = n => n>=0?"g":"r";

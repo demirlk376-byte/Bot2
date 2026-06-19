@@ -379,6 +379,35 @@ def load_config() -> AppConfig:
     if not exchange.paper_mode and (not exchange.api_key or not exchange.api_secret):
         raise ValueError("MEXC_API_KEY and MEXC_API_SECRET required for live trading")
 
+    # Fail-fast: catch common .env typos before the bot enters the trade loop.
+    _VALID_TF = {"1m", "3m", "5m", "15m", "30m", "1h", "4h", "1d"}
+    if strategy.primary_tf not in _VALID_TF:
+        raise ValueError(
+            f"PRIMARY_TF='{strategy.primary_tf}' is not a valid timeframe. "
+            f"Valid choices: {sorted(_VALID_TF)}"
+        )
+    if strategy.confirm_tf not in _VALID_TF:
+        raise ValueError(
+            f"CONFIRM_TF='{strategy.confirm_tf}' is not a valid timeframe. "
+            f"Valid choices: {sorted(_VALID_TF)}"
+        )
+    if not (0 < risk_scale <= 2):
+        raise ValueError(
+            f"RISK_SCALE={risk_scale} is out of range; must satisfy 0 < RISK_SCALE <= 2"
+        )
+    if not (0 < risk.daily_max_loss < 1):
+        raise ValueError(
+            f"DAILY_MAX_LOSS_PCT={risk.daily_max_loss} is out of range; "
+            f"must satisfy 0 < DAILY_MAX_LOSS_PCT < 1 (e.g. 0.35 for 35%)"
+        )
+    if risk_scale != 1.0 and getattr(risk, "fixed_margin_usdt", 0.0) > 0:
+        import logging as _log
+        _log.getLogger(__name__).warning(
+            "RISK_SCALE=%.2f is set but FIXED_MARGIN_USDT=%.2f > 0 — "
+            "RISK_SCALE has NO EFFECT when FIXED_MARGIN_USDT is used",
+            risk_scale, risk.fixed_margin_usdt,
+        )
+
     return AppConfig(
         exchange=exchange,
         risk=risk,
