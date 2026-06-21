@@ -106,25 +106,14 @@ class WebDashboard:
         except Exception:
             pass
 
-    # ── Güvenlik ───────────────────────────────────────────────────────────────
-
-    def _authorized(self, request) -> bool:
-        if not self._cfg.token:
-            return True
-        return request.query.get("token", "") == self._cfg.token
-
     # ── Routes ─────────────────────────────────────────────────────────────────
 
     async def _handle_index(self, request):
         from aiohttp import web
-        if not self._authorized(request):
-            return web.Response(status=401, text="Unauthorized — ?token= gerekli")
         return web.Response(text=_INDEX_HTML, content_type="text/html")
 
     async def _handle_state(self, request):
         from aiohttp import web
-        if not self._authorized(request):
-            return web.json_response({"error": "unauthorized"}, status=401)
         try:
             data = await self._build_state()
             return web.json_response(data)
@@ -133,7 +122,7 @@ class WebDashboard:
             return web.json_response({"error": str(e)}, status=500)
 
     async def _handle_restart(self, request):
-        """git pull + botu yeniden başlat. KONTROL aksiyonu — token ZORUNLU.
+        """git pull + botu yeniden başlat.
 
         Mekanizma: servis 'botuser' olarak çalışır (systemctl yetkisi yok) ama
         repo'nun sahibidir, yani git pull yapabilir; ardından process sıfırdan-
@@ -141,14 +130,6 @@ class WebDashboard:
         başlatır — yeni kodla. Açık pozisyonlar DB'den geri yüklenir, MEXC'teki
         SL/TP server-side olduğu için restart onları etkilemez."""
         from aiohttp import web
-        # Güvenlik kapısı: token tanımlı DEĞİLSE sayfa herkese açıktır; böyle bir
-        # ortamda restart'a izin vermek tehlikeli olur. Token şart.
-        if not self._cfg.token:
-            return web.json_response(
-                {"error": "Restart kapalı: önce WEB_TOKEN ayarla (güvenlik)."},
-                status=403)
-        if not self._authorized(request):
-            return web.json_response({"error": "unauthorized"}, status=401)
 
         repo = str(Path(__file__).resolve().parent)
         pull_out = ""
@@ -567,7 +548,6 @@ _INDEX_HTML = """<!DOCTYPE html>
 </div>
 
 <script>
-const TOKEN = new URLSearchParams(location.search).get("token") || "";
 const fmt = (n,d=null)=>{const a=Math.abs(Number(n));const dp=d!==null?d:(a>=100?2:a>=1?4:6);return Number(n).toLocaleString("en-US",{minimumFractionDigits:dp,maximumFractionDigits:dp});};
 const compact = n => Math.abs(n)>=1000 ? (n/1000).toFixed(1)+"k" : fmt(n,Math.abs(n)<10?2:0);
 const signed = n => (n>=0?"+$":"-$")+compact(Math.abs(n));
@@ -616,7 +596,7 @@ function reasonBadge(r){
 
 async function tick(){
   try{
-    const r = await fetch("/api/state"+(TOKEN?("?token="+encodeURIComponent(TOKEN)):""));
+    const r = await fetch("/api/state");
     if(!r.ok){throw new Error("HTTP "+r.status)}
     render(await r.json());
     document.querySelector(".dot").style.background="var(--green)";
@@ -838,22 +818,20 @@ function render(d){
 }
 
 async function doRestart(){
-  if(!TOKEN){ alert("Restart için adres çubuğunda ?token=... gerekli."); return; }
   if(!confirm("Botu yeniden başlat? Önce git pull yapılır, sonra bot yeni kodla sıfırdan başlar. Açık pozisyonlar korunur.")) return;
   const btn=document.getElementById("rbtn"), msg=document.getElementById("rmsg");
   btn.classList.add("busy"); btn.querySelector("span:last-child").textContent="Başlatılıyor…";
   msg.textContent="git pull + restart isteniyor…";
   try{
-    const r=await fetch("/api/restart?token="+encodeURIComponent(TOKEN),{method:"POST"});
+    const r=await fetch("/api/restart",{method:"POST"});
     const j=await r.json();
     if(!r.ok){ throw new Error(j.error||("HTTP "+r.status)); }
     msg.textContent="✓ "+(j.pull&&j.pull!=="—"?j.pull.split("\\n").pop():"yeniden başlatılıyor")+" — bağlantı bekleniyor…";
-    // bot inip kalkana kadar bekle, geri gelince sayfayı tazele
     let tries=0;
     const wait=setInterval(async()=>{
       tries++;
       try{
-        const s=await fetch("/api/state?token="+encodeURIComponent(TOKEN));
+        const s=await fetch("/api/state");
         if(s.ok){ clearInterval(wait); msg.textContent="✓ Bot ayakta — sayfa yenileniyor"; setTimeout(()=>location.reload(),800); }
       }catch(e){}
       if(tries>40){ clearInterval(wait); msg.textContent="Bot hâlâ gelmedi — logları kontrol et"; btn.classList.remove("busy"); btn.querySelector("span:last-child").textContent="Botu Yeniden Başlat"; }
