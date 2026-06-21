@@ -21,7 +21,7 @@ import logging
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from strategies.signal_combiner import strategy_label
@@ -64,7 +64,8 @@ class WebDashboard:
     ) -> None:
         """Son sinyali aktivite listesine ekle (max 25)."""
         entry = {
-            "t": datetime.now(timezone.utc).strftime("%H:%M"),
+            # Türkiye saati (UTC+3) — kullanıcıya göre göster; backend mantığı UTC
+            "t": (datetime.now(timezone.utc) + timedelta(hours=3)).strftime("%H:%M"),
             "sym": symbol.split("/")[0],
             "strat": strategy,
             "dir": direction,
