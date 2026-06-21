@@ -155,6 +155,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
             adx_val = float(adx_raw) if np.isfinite(adx_raw) else 20.0
             regime = _get_regime(adx_val)
             dashboard.update_regime(regime, adx_val)
+            web_dashboard.update_regime(regime, adx_val, ctx.symbol)
 
             # Trailing stop: update SL positions BEFORE the SL/TP check would fire
             # on this candle's high/low, but AFTER PaperExchange.check_sl_tp already
@@ -258,6 +259,8 @@ def make_on_candle_close(ctx: "SymbolContext"):
                 logger.debug(
                     "[%s] BB skipped: regime=%s is_weekend=%s", ctx.symbol, regime, is_weekend
                 )
+                web_dashboard.add_signal(ctx.symbol, "BB", bb_combined.direction,
+                                         mr_sig.reason, f"block:rejim={regime}")
             elif bb_combined.direction != 0:
                 result = await executor.execute_signal(bb_combined, atr_val)
                 if result.success and result.position:
@@ -268,12 +271,19 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         result.position.sl_price,
                         result.position.tp_price,
                     )
+                    web_dashboard.add_signal(ctx.symbol, "BB", bb_combined.direction,
+                                             mr_sig.reason, "exec")
                     if telegram:
                         await telegram.send_trade_opened(result.trade_setup, bb_combined)
                     if ntfy:
                         await ntfy.send_trade_opened(result.trade_setup, bb_combined)
                 elif result.error:
                     logger.debug("[%s] BB skipped: %s", ctx.symbol, result.error)
+                    web_dashboard.add_signal(ctx.symbol, "BB", bb_combined.direction,
+                                             mr_sig.reason, f"block:{result.error}")
+            else:
+                # direction=0: strategy didn't generate a signal
+                web_dashboard.add_signal(ctx.symbol, "BB", 0, mr_sig.reason)
 
             # ── ORB — independent slot, limit entry at NY open range boundary ─
             # Backtest validated: PF 2.53/2.83 with limit entry vs PF 0.74 with
@@ -306,12 +316,20 @@ def make_on_candle_close(ctx: "SymbolContext"):
                             result.position.sl_price,
                             result.position.tp_price,
                         )
+                        web_dashboard.add_signal(ctx.symbol, "ORB", orb_sig.direction,
+                                                 orb_sig.reason, "exec")
                         if telegram:
                             await telegram.send_trade_opened(result.trade_setup, orb_combined)
                         if ntfy:
                             await ntfy.send_trade_opened(result.trade_setup, orb_combined)
                     elif result.error:
                         logger.debug("[%s] ORB skipped: %s", ctx.symbol, result.error)
+                        web_dashboard.add_signal(ctx.symbol, "ORB", orb_sig.direction,
+                                                 orb_sig.reason, f"block:{result.error}")
+                else:
+                    web_dashboard.add_signal(ctx.symbol, "ORB", 0, orb_sig.reason)
+            elif ctx.orb_strategy is not None:
+                web_dashboard.add_signal(ctx.symbol, "ORB", 0, f"block:rejim={regime}")
 
             # ── Asia BO — independent slot, limit entry at London open range ──
             # Fill at asia_high/asia_low when 08:00 UTC bar first closes above/below.
@@ -342,12 +360,20 @@ def make_on_candle_close(ctx: "SymbolContext"):
                             result.position.sl_price,
                             result.position.tp_price,
                         )
+                        web_dashboard.add_signal(ctx.symbol, "Asia", asia_sig.direction,
+                                                 asia_sig.reason, "exec")
                         if telegram:
                             await telegram.send_trade_opened(result.trade_setup, asia_combined)
                         if ntfy:
                             await ntfy.send_trade_opened(result.trade_setup, asia_combined)
                     elif result.error:
                         logger.debug("[%s] Asia BO skipped: %s", ctx.symbol, result.error)
+                        web_dashboard.add_signal(ctx.symbol, "Asia", asia_sig.direction,
+                                                 asia_sig.reason, f"block:{result.error}")
+                else:
+                    web_dashboard.add_signal(ctx.symbol, "Asia", 0, asia_sig.reason)
+            elif ctx.asia_bo_strategy is not None:
+                web_dashboard.add_signal(ctx.symbol, "Asia", 0, f"block:rejim={regime}")
 
             # ── S/R breakout — shares BB slot (swing, 48h hold) ──────────────
             # Only fires when the BB slot is empty. Uses max_positions cap as the
@@ -419,12 +445,18 @@ def make_on_candle_close(ctx: "SymbolContext"):
                             result.position.sl_price,
                             result.position.tp_price,
                         )
+                        web_dashboard.add_signal(ctx.symbol, "FVG", fvg_sig.direction,
+                                                 fvg_sig.reason, "exec")
                         if telegram:
                             await telegram.send_trade_opened(result.trade_setup, fvg_combined)
                         if ntfy:
                             await ntfy.send_trade_opened(result.trade_setup, fvg_combined)
                     elif result.error:
                         logger.debug("[%s] FVG skipped: %s", ctx.symbol, result.error)
+                        web_dashboard.add_signal(ctx.symbol, "FVG", fvg_sig.direction,
+                                                 fvg_sig.reason, f"block:{result.error}")
+                else:
+                    web_dashboard.add_signal(ctx.symbol, "FVG", 0, fvg_sig.reason)
 
             # ── IFVG (Inverse FVG) — independent slot, broken-gap reversal retest ─
             # Same 250-candle buffer (EMA200 trend). Not gated by breakout regime.
@@ -494,14 +526,21 @@ def make_on_candle_close(ctx: "SymbolContext"):
                             result.position.tp_price,
                             sq_sig.squeeze_bars,
                         )
+                        web_dashboard.add_signal(ctx.symbol, "Squeeze", sq_sig.direction,
+                                                 sq_sig.reason, "exec")
                         if telegram:
                             await telegram.send_trade_opened(result.trade_setup, sq_combined)
                         if ntfy:
                             await ntfy.send_trade_opened(result.trade_setup, sq_combined)
                     elif result.error:
                         logger.debug("[%s] Squeeze skipped: %s", ctx.symbol, result.error)
+                        web_dashboard.add_signal(ctx.symbol, "Squeeze", sq_sig.direction,
+                                                 sq_sig.reason, f"block:{result.error}")
                 else:
                     logger.debug("[%s] squeeze: %s", ctx.symbol, sq_sig.reason)
+                    web_dashboard.add_signal(ctx.symbol, "Squeeze", 0, sq_sig.reason)
+            elif ctx.squeeze_strategy is not None:
+                web_dashboard.add_signal(ctx.symbol, "Squeeze", 0, f"block:rejim={regime}")
 
             # ── Whale-flow sleeve — avg-trade-size z-spike, follow the candle ──
             # Monitor-first: avg_size needs live trade count (not in MEXC klines),

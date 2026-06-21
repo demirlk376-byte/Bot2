@@ -47,6 +47,33 @@ class WebDashboard:
         self._start_ts = datetime.now(timezone.utc)    # uptime için (bot başlangıcı)
         self._runner = None
         self._site = None
+        # Canlı sinyal akışı — son 25 olayı tut (thread-safe değil, ama asyncio single-thread OK)
+        self._activity: list = []        # [{"t","sym","strat","dir","reason","action"}, ...]
+        self._regime: dict = {}          # {symbol: {"label","adx"}} — her coin için ayrı
+
+    # ── Sinyal akışı güncellemeleri (main.py tarafından çağrılır) ────────────
+    def update_regime(self, regime: str, adx: float, symbol: str = "") -> None:
+        """ADX değerini ve rejim etiketini depola (her coin için ayrı)."""
+        _lbl = {"trending": "Trend", "ranging": "Sıkışma", "neutral": "Nötr"}.get(regime, regime)
+        key = symbol.split("/")[0] if symbol else "BTC"
+        self._regime[key] = {"label": _lbl, "adx": round(float(adx), 1)}
+
+    def add_signal(
+        self, symbol: str, strategy: str,
+        direction: int, reason: str, action: str = "",
+    ) -> None:
+        """Son sinyali aktivite listesine ekle (max 25)."""
+        entry = {
+            "t": datetime.now(timezone.utc).strftime("%H:%M"),
+            "sym": symbol.split("/")[0],
+            "strat": strategy,
+            "dir": direction,
+            "reason": reason,
+            "action": action,   # "": sinyal yok | "exec": emir verildi | "block": engellendi
+        }
+        self._activity.insert(0, entry)
+        if len(self._activity) > 25:
+            self._activity.pop()
 
     async def start(self) -> None:
         if not self._cfg.enabled:
@@ -309,6 +336,8 @@ class WebDashboard:
             "equity_curve": [e["eq"] for e in eq_curve],
             "monthly": monthly,
             "trades": trades,
+            "regime": dict(self._regime),
+            "activity": list(self._activity[:15]),
         }
 
 
@@ -448,6 +477,19 @@ _INDEX_HTML = """<!DOCTYPE html>
   .rbtn.busy{opacity:.6;pointer-events:none}
   .rbtn .ic{font-size:15px}
   .rmsg{font-size:11px;color:var(--dim);text-align:center;min-height:14px}
+  /* aktivite listesi */
+  .act{padding:7px 0;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:8px;font-size:12px}
+  .act:last-child{border-bottom:none}
+  .act .at{color:var(--dim);white-space:nowrap;font-size:11px;min-width:36px}
+  .act .ab{font-weight:700;min-width:28px;font-size:10px;padding:2px 5px;border-radius:5px;text-align:center}
+  .act .ab.up{background:rgba(33,209,128,.18);color:var(--green)}
+  .act .ab.dn{background:rgba(255,84,112,.18);color:var(--red)}
+  .act .ab.no{background:rgba(126,138,160,.1);color:var(--dim)}
+  .act .ar{flex:1;color:var(--dim);line-height:1.4;word-break:break-word}
+  .act .ar b{color:var(--txt);font-weight:700}
+  .act .ac{font-size:10px;padding:2px 5px;border-radius:5px;white-space:nowrap;font-weight:700}
+  .act .ac.exec{background:rgba(33,209,128,.15);color:var(--green)}
+  .act .ac.block{background:rgba(245,196,81,.15);color:var(--gold)}
   /* yeni işlem açılınca kısa parıltı */
   @keyframes flash{0%{box-shadow:0 8px 30px rgba(0,0,0,.35)}
     35%{box-shadow:0 0 0 2px var(--accent),0 0 34px rgba(91,140,255,.55)}
@@ -509,6 +551,9 @@ _INDEX_HTML = """<!DOCTYPE html>
 
   <div class="sec"><span>Strateji Kırılımı</span></div>
   <div class="card" id="strats"><div class="empty">—</div></div>
+
+  <div class="sec"><span>Son Aktivite</span><span id="regbadge" class="sub"></span></div>
+  <div class="card" id="activity"><div class="empty">sinyal bekleniyor…</div></div>
 
   <div class="sec"><span>Son Trade'ler</span></div>
   <div class="card" id="trades"><div class="empty">—</div></div>
@@ -747,6 +792,31 @@ function render(d){
         <span class="sub" style="min-width:52px;text-align:right">${fmt(s.wr,0)}%</span>
         <b class="${cls(s.pnl)}" style="min-width:62px;text-align:right">${signed(s.pnl)}</b>
       </div>`;}).join("");
+  }
+
+  // regime badges (per-coin)
+  const rb=document.getElementById("regbadge");
+  if(d.regime && Object.keys(d.regime).length){
+    rb.textContent = Object.entries(d.regime).map(([sym,r])=>
+      `${sym} ${r.label} ADX ${r.adx}`).join(" · ");
+  }
+
+  // activity feed
+  const ac=document.getElementById("activity");
+  if(!d.activity||!d.activity.length){
+    ac.innerHTML='<div class="empty">sinyal bekleniyor…</div>';
+  }else{
+    ac.innerHTML=d.activity.map(a=>{
+      const dirCls = a.dir>0?"up":a.dir<0?"dn":"no";
+      const dirTxt = a.dir>0?"▲":a.dir<0?"▼":"—";
+      const acHtml = a.action==="exec"?'<span class="ac exec">GİRDİ</span>':
+                     a.action==="block"?'<span class="ac block">BLOK</span>':"";
+      return `<div class="act">
+        <span class="at">${a.t}</span>
+        <span class="ab ${dirCls}">${dirTxt}</span>
+        <span class="ar"><b>${a.sym} ${a.strat}</b> ${a.reason}</span>
+        ${acHtml}</div>`;
+    }).join("");
   }
 
   // trades
