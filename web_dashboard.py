@@ -790,7 +790,7 @@ function render(d){
       const dirCls = a.dir>0?"up":a.dir<0?"dn":"no";
       const dirTxt = a.dir>0?"▲":a.dir<0?"▼":"—";
       const acHtml = a.action==="exec"?'<span class="ac exec">GİRDİ</span>':
-                     a.action==="block"?'<span class="ac block">BLOK</span>':"";
+                     a.action.startsWith("block")?'<span class="ac block" title="'+a.action+'">BLOK</span>':"";
       return `<div class="act">
         <span class="at">${a.t}</span>
         <span class="ab ${dirCls}">${dirTxt}</span>
