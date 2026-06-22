@@ -201,8 +201,20 @@ class WebDashboard:
             })
 
         # Total account value (equity), not just free balance, so an open
-        # position's locked margin isn't mistaken for a loss.
+        # position's locked margin isn't mistaken for a loss. Prefer the
+        # exchange's authoritative equity (free + locked + uPnL straight from
+        # MEXC) — it stays correct even if the bot's portfolio is momentarily
+        # empty (e.g. an orphaned position after a restart). Only if that read
+        # fails do we fall back to the portfolio-based reconstruction, which
+        # reads locked margin as a loss when the portfolio is empty.
         equity = balance + locked_margin + total_upnl
+        if hasattr(self._exchange, "get_equity"):
+            try:
+                exch_eq = await self._exchange.get_equity()
+                if exch_eq > 0:
+                    equity = exch_eq
+            except Exception:
+                pass
 
         # Invested capital = first balance + every deposit the user added later.
         # True profit is equity − invested, so monthly top-ups never look like

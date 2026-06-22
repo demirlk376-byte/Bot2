@@ -409,26 +409,50 @@ class LiveExchange:
         """True account equity straight from MEXC (cash + locked margin +
         unrealized PnL). Used for the daily-loss limit so it measures the real
         account drawdown instead of a reconstructed free+margin+uPnL figure that
-        can drift from the exchange. Returns 0.0 on any read failure so the
-        caller falls back to its reconstruction."""
+        can drift from the exchange. Returns 0.0 only if NOTHING is readable."""
         try:
             bal = await self._exchange.fetch_balance({"type": "swap"})
         except Exception as e:
             logger.debug("get_equity fetch_balance failed: %s", e)
             return 0.0
-        # MEXC returns native account equity in the raw payload.
+        # MEXC returns native account equity in the raw payload. `data` may be a
+        # dict (single account) or a list of per-asset dicts — handle both.
         info = bal.get("info") or {}
-        data = info.get("data") or {}
-        for key in ("equity", "accountEquity", "totalEquity"):
-            v = data.get(key)
-            if v is not None:
-                try:
-                    return float(v)
-                except (TypeError, ValueError):
-                    pass
-        # Fallback to ccxt's normalized total (free + used margin). This omits
-        # unrealized PnL, so the caller's reconstruction is preferred over this;
-        # return 0.0 to signal "no reliable exchange equity".
+        data = info.get("data")
+        candidates = []
+        if isinstance(data, dict):
+            candidates.append(data)
+        elif isinstance(data, list):
+            candidates.extend(d for d in data if isinstance(d, dict))
+        for d in candidates:
+            # Only trust the USDT asset's equity (or a single-account payload).
+            if d.get("currency") not in (None, "USDT"):
+                continue
+            for key in ("equity", "accountEquity", "totalEquity"):
+                v = d.get(key)
+                if v is not None:
+                    try:
+                        eq = float(v)
+                        if eq > 0:
+                            return eq
+                    except (TypeError, ValueError):
+                        pass
+        # Fallback to ccxt's normalized total = free + used (locked margin). This
+        # is authoritative from the exchange and INCLUDES locked margin, so it
+        # stays correct even if the bot's portfolio is momentarily empty (e.g.
+        # right after a restart before positions are restored). It omits unrealized
+        # PnL, but the 35% daily-loss buffer easily absorbs that. Returning free
+        # alone here was the bug that false-tripped the daily-loss halt: locked
+        # margin read as a total-account loss.
+        usdt = bal.get("USDT") or {}
+        total = usdt.get("total")
+        if total is not None:
+            try:
+                t = float(total)
+                if t > 0:
+                    return t
+            except (TypeError, ValueError):
+                pass
         return 0.0
 
     def _contract_size(self, symbol: str) -> float:
