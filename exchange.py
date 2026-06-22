@@ -505,7 +505,13 @@ class LiveExchange:
             )
         # openType must match what was set on set_leverage; without it ccxt defaults
         # to cross (openType=2) regardless of how leverage was configured.
+        # Isolated margin (openType=1) ADDITIONALLY requires the leverage param on
+        # the entry order itself — MEXC rejects it otherwise ("requires a leverage
+        # parameter for isolated margin orders"). Cross mode (openType=2) must NOT
+        # carry leverage (it's account-level there).
         order_params = {"openType": self._open_type, **params}
+        if self._open_type == 1:
+            order_params.setdefault("leverage", self._leverage)
         order = await self._exchange.create_order(
             symbol, "market", side, contracts, None, order_params
         )
@@ -573,6 +579,10 @@ class LiveExchange:
         this is worth several percent of return (see research_maximize.py)."""
         order_params = {"openType": self._open_type, **params}
         order_params["postOnly"] = True
+        # Isolated margin (openType=1) requires the leverage param on the entry
+        # order; MEXC rejects it otherwise. See place_market_order for details.
+        if self._open_type == 1:
+            order_params.setdefault("leverage", self._leverage)
         # `amount` is base-currency; convert to MEXC contract count for ccxt.
         contracts = self._to_contracts(symbol, amount)
         if contracts <= 0:
