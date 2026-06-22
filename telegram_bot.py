@@ -171,7 +171,21 @@ class TelegramNotifier:
             if p.entry_price > 0:
                 upnl += p.direction * (price - p.entry_price) * p.quantity
                 locked += p.entry_price * p.quantity / lev
-        return free + locked + upnl, upnl
+        equity = free + locked + upnl
+        # Prefer the exchange's TRUE account equity (cash + locked margin + uPnL).
+        # The reconstruction above misses margin locked in positions the portfolio
+        # isn't tracking (e.g. orphaned positions still open on MEXC after a failed
+        # close): it would then report only the free balance and a false huge loss.
+        # get_equity() reads the real figure straight from MEXC. Falls back to the
+        # reconstruction if the exchange read fails.
+        if hasattr(self._exchange, "get_equity"):
+            try:
+                exch_eq = await self._exchange.get_equity()
+                if exch_eq > 0:
+                    equity = exch_eq
+            except Exception:
+                pass
+        return equity, upnl
 
     async def _reply(self, update, text: str) -> None:
         try:
