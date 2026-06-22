@@ -689,9 +689,15 @@ class LiveExchange:
         close_side = "sell" if side == "long" else "buy"
         # `amount` is base-currency; convert to MEXC contract count for ccxt.
         contracts = self._to_contracts(symbol, amount)
+        # Isolated margin (openType=1) requires the leverage param on EVERY order,
+        # including reduce-only closes — MEXC rejects it otherwise. Without this a
+        # close (max-hold / emergency / reconciliation) silently failed, leaving
+        # the position open on MEXC but marked closed in the DB → orphaned.
+        close_params = {"reduceOnly": True, "openType": self._open_type}
+        if self._open_type == 1:
+            close_params["leverage"] = self._leverage
         order = await self._exchange.create_order(
-            symbol, "market", close_side, contracts, None,
-            {"reduceOnly": True, "openType": self._open_type},
+            symbol, "market", close_side, contracts, None, close_params,
         )
         filled_price = float(order.get("average") or order.get("price") or 0)
         # Same MEXC async-fill issue as entry: average can be 0 right after the
