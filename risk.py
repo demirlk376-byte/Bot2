@@ -90,7 +90,9 @@ class RiskManager:
             quantity = math.floor(quantity * size_mult * 1000) / 1000
 
         if quantity < MIN_BTC_ORDER:
-            logger.debug("Position size %.4f below minimum %.4f", quantity, MIN_BTC_ORDER)
+            logger.warning(
+                "[%s] Position size %.6f below minimum %.4f (balance=%.2f entry=%.2f)",
+                symbol, quantity, MIN_BTC_ORDER, balance, entry_price)
             return None
 
         sl_dist = abs(entry_price - sl)
@@ -98,7 +100,7 @@ class RiskManager:
         rr = tp_dist / sl_dist if sl_dist > 0 else 0.0
 
         if rr < 1.5:
-            logger.debug("RR ratio %.2f below minimum 1.5", rr)
+            logger.warning("[%s] RR ratio %.2f below minimum 1.5", symbol, rr)
             return None
 
         risk_usdt = sl_dist * quantity
@@ -164,7 +166,7 @@ class RiskManager:
             return None
         rr = tp_dist / sl_dist
         if rr < 1.5:
-            logger.debug("RR ratio %.2f below minimum 1.5", rr)
+            logger.warning("[%s] Levels RR ratio %.2f below minimum 1.5", symbol, rr)
             return None
 
         risk_pct = risk_pct_override if risk_pct_override > 0 else self._cfg.max_risk_per_trade
@@ -181,7 +183,9 @@ class RiskManager:
         quantity = math.floor(quantity * 1000) / 1000  # floor: avoids risk overrun after rounding
 
         if quantity < MIN_BTC_ORDER:
-            logger.debug("Position size %.4f below minimum %.4f", quantity, MIN_BTC_ORDER)
+            logger.warning(
+                "[%s] Levels position size %.6f below minimum %.4f (balance=%.2f entry=%.2f)",
+                symbol, quantity, MIN_BTC_ORDER, balance, entry_price)
             return None
 
         risk_usdt = sl_dist * quantity
