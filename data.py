@@ -92,8 +92,8 @@ class DataManager:
         self._config = config
         self._symbol = symbol
         self._buffers: dict[str, CandleBuffer] = {
-            config.primary_tf: CandleBuffer(symbol, config.primary_tf),
-            config.confirm_tf: CandleBuffer(symbol, config.confirm_tf),
+            config.primary_tf: CandleBuffer(symbol, config.primary_tf, maxlen=260),
+            config.confirm_tf: CandleBuffer(symbol, config.confirm_tf, maxlen=260),
         }
         self._callbacks: dict[str, list[Callable[[Candle], Awaitable[None]]]] = {
             config.primary_tf: [],
@@ -110,7 +110,7 @@ class DataManager:
         for tf, buf in self._buffers.items():
             try:
                 raw = await self._exchange.fetch_ohlcv(
-                    self._symbol, tf, since=None, limit=200
+                    self._symbol, tf, since=None, limit=260
                 )
                 # ccxt returns the still-forming candle as the LAST element.
                 # Exclude it so the analysis buffer holds only CLOSED candles.
