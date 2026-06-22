@@ -301,12 +301,14 @@ class ExecutionEngine:
                 size_mult=size_mult,
             )
         if setup is None:
+            logger.warning("[%s] trade setup failed (ATR/balance/size too small?)", symbol)
             return ExecutionResult(False, error="Could not build trade setup")
 
         ok, reason = self._risk.validate_new_trade(
             setup, self._portfolio.get_open_position_count()
         )
         if not ok:
+            logger.warning("[%s] validate_new_trade failed: %s", symbol, reason)
             return ExecutionResult(False, error=reason)
 
         # Pre-flight margin check: get_balance() already returns FREE balance

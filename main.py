@@ -256,7 +256,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
                     logger.debug("OrderFlow snapshot failed: %s", e)
 
             if bb_combined.direction != 0 and not bb_allowed:
-                logger.debug(
+                logger.warning(
                     "[%s] BB skipped: regime=%s is_weekend=%s", ctx.symbol, regime, is_weekend
                 )
                 web_dashboard.add_signal(ctx.symbol, "BB", bb_combined.direction,
@@ -278,7 +278,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
                     if ntfy:
                         await ntfy.send_trade_opened(result.trade_setup, bb_combined)
                 elif result.error:
-                    logger.debug("[%s] BB skipped: %s", ctx.symbol, result.error)
+                    logger.warning("[%s] BB skipped: %s", ctx.symbol, result.error)
                     web_dashboard.add_signal(ctx.symbol, "BB", bb_combined.direction,
                                              mr_sig.reason, f"block:{result.error}")
             else:
@@ -323,7 +323,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         if ntfy:
                             await ntfy.send_trade_opened(result.trade_setup, orb_combined)
                     elif result.error:
-                        logger.debug("[%s] ORB skipped: %s", ctx.symbol, result.error)
+                        logger.warning("[%s] ORB skipped: %s", ctx.symbol, result.error)
                         web_dashboard.add_signal(ctx.symbol, "ORB", orb_sig.direction,
                                                  orb_sig.reason, f"block:{result.error}")
                 else:
@@ -367,7 +367,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         if ntfy:
                             await ntfy.send_trade_opened(result.trade_setup, asia_combined)
                     elif result.error:
-                        logger.debug("[%s] Asia BO skipped: %s", ctx.symbol, result.error)
+                        logger.warning("[%s] Asia BO skipped: %s", ctx.symbol, result.error)
                         web_dashboard.add_signal(ctx.symbol, "Asia", asia_sig.direction,
                                                  asia_sig.reason, f"block:{result.error}")
                 else:
@@ -404,12 +404,16 @@ def make_on_candle_close(ctx: "SymbolContext"):
                             result.position.sl_price,
                             result.position.tp_price,
                         )
+                        web_dashboard.add_signal(ctx.symbol, "S/R", sr_sig.direction,
+                                                 sr_sig.reason, "exec")
                         if telegram:
                             await telegram.send_trade_opened(result.trade_setup, sr_combined)
                         if ntfy:
                             await ntfy.send_trade_opened(result.trade_setup, sr_combined)
                     elif result.error:
-                        logger.debug("[%s] S/R skipped: %s", ctx.symbol, result.error)
+                        logger.warning("[%s] S/R skipped: %s", ctx.symbol, result.error)
+                        web_dashboard.add_signal(ctx.symbol, "S/R", sr_sig.direction,
+                                                 sr_sig.reason, f"block:{result.error}")
 
             # ── FVG (Fair Value Gap) — independent slot, limit retest entry ───
             # Price-action sleeve (PF 1.37, positive every year). NOT gated by the
@@ -452,7 +456,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         if ntfy:
                             await ntfy.send_trade_opened(result.trade_setup, fvg_combined)
                     elif result.error:
-                        logger.debug("[%s] FVG skipped: %s", ctx.symbol, result.error)
+                        logger.warning("[%s] FVG skipped: %s", ctx.symbol, result.error)
                         web_dashboard.add_signal(ctx.symbol, "FVG", fvg_sig.direction,
                                                  fvg_sig.reason, f"block:{result.error}")
                 else:
@@ -488,12 +492,16 @@ def make_on_candle_close(ctx: "SymbolContext"):
                             result.position.sl_price,
                             result.position.tp_price,
                         )
+                        web_dashboard.add_signal(ctx.symbol, "IFVG", ifvg_sig.direction,
+                                                 ifvg_sig.reason, "exec")
                         if telegram:
                             await telegram.send_trade_opened(result.trade_setup, ifvg_combined)
                         if ntfy:
                             await ntfy.send_trade_opened(result.trade_setup, ifvg_combined)
                     elif result.error:
-                        logger.debug("[%s] IFVG skipped: %s", ctx.symbol, result.error)
+                        logger.warning("[%s] IFVG skipped: %s", ctx.symbol, result.error)
+                        web_dashboard.add_signal(ctx.symbol, "IFVG", ifvg_sig.direction,
+                                                 ifvg_sig.reason, f"block:{result.error}")
 
             # ── Squeeze — BB+KC volatility coil → momentum breakout ─────────
             # Independent slot (symbol:squeeze), uses bo_allowed gate (trending
@@ -533,7 +541,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         if ntfy:
                             await ntfy.send_trade_opened(result.trade_setup, sq_combined)
                     elif result.error:
-                        logger.debug("[%s] Squeeze skipped: %s", ctx.symbol, result.error)
+                        logger.warning("[%s] Squeeze skipped: %s", ctx.symbol, result.error)
                         web_dashboard.add_signal(ctx.symbol, "Squeeze", sq_sig.direction,
                                                  sq_sig.reason, f"block:{result.error}")
                 else:
@@ -591,7 +599,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
                             if ntfy:
                                 await ntfy.send_trade_opened(result.trade_setup, whale_combined)
                         elif result.error:
-                            logger.debug("[%s] WHALE skipped: %s", ctx.symbol, result.error)
+                            logger.warning("[%s] WHALE skipped: %s", ctx.symbol, result.error)
                 elif z is not None:
                     logger.debug("[%s] whale z=%.2f (no fire)", ctx.symbol, z)
 
