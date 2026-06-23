@@ -66,37 +66,43 @@ async def main() -> None:
         await asyncio.sleep(3)
 
         print("\n[2] Pozisyon ve trigger/plan emirleri okunuyor…")
-        pos = await ex.get_position(TEST_SYMBOL)
-        if pos:
-            print(f"    Pozisyon: {pos.side} qty={pos.contracts} entry={pos.entry_price}")
-            # MEXC pozisyon info'sunda SL/TP alanlari
-            raw = None
-            try:
-                poss = await inner.fetch_positions([TEST_SYMBOL])
-                raw = poss[0].get("info") if poss else None
-            except Exception as e:
-                print(f"    fetch_positions hata: {e}")
-            if raw:
-                for k in ("stopLossPrice", "takeProfitPrice", "slPrice", "tpPrice"):
-                    if k in raw and raw[k] not in (None, "", 0, "0"):
-                        print(f"    >>> pozisyona ILISTIRILMIS {k} = {raw[k]}")
+        found_sltp = False
+        try:
+            poss = await inner.fetch_positions([TEST_SYMBOL])
+        except Exception as e:
+            poss = []
+            print(f"    fetch_positions hata: {e}")
+        for pp in poss:
+            if float(pp.get("contracts") or 0) == 0:
+                continue
+            raw = pp.get("info") or {}
+            print(f"    Pozisyon ham info anahtarlari: {list(raw.keys())}")
+            # MEXC pozisyona iliştirilmiş SL/TP burada gorunur
+            for k in ("stopLossPrice", "takeProfitPrice", "slPrice", "tpPrice",
+                      "stopLoss", "takeProfit", "slTriggerPrice", "tpTriggerPrice"):
+                v = raw.get(k)
+                if v not in (None, "", 0, "0", 0.0):
+                    found_sltp = True
+                    print(f"    >>> pozisyona ILISTIRILMIS {k} = {v}")
 
-        # Plan/trigger emir listesi
-        found_plan = False
+        # Trigger/stop emir listesi (birden cok endpoint dene)
         for method in ("contractPrivateGetPlanorderListOrders",
                        "contractPrivateGetPlanorderListUncompleted",
-                       "contractPrivateGetStoporderListOrders"):
+                       "contractPrivateGetStoporderListOrders",
+                       "contractPrivateGetStoporderListStopOrders"):
             if hasattr(inner, method):
                 try:
                     resp = await getattr(inner, method)({"symbol": mexc_sym})
                     data = resp.get("data") if isinstance(resp, dict) else resp
                     if data:
-                        found_plan = True
-                        print(f"    >>> {method}: {len(data) if isinstance(data,list) else 1} emir bulundu")
+                        found_sltp = True
+                        n = len(data) if isinstance(data, list) else 1
+                        print(f"    >>> {method}: {n} emir bulundu")
                         for d in (data if isinstance(data, list) else [data]):
                             print(f"        {d}")
                 except Exception:
                     continue
+        found_plan = found_sltp
 
         print("\n[3] SONUC:")
         # Karar: trigger emir bulundu YA DA pozisyonda SL/TP alani dolu

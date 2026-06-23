@@ -498,7 +498,13 @@ class LiveExchange:
     async def get_position(self, symbol: str) -> Optional[Position]:
         positions = await self._exchange.fetch_positions([symbol])
         for p in positions:
-            if float(p.get("contracts", 0)) != 0:
+            # MEXC can return any numeric field as None inside an otherwise-valid
+            # position (e.g. unrealizedPnl=None right after open). `.get(k, 0)`
+            # does NOT protect against an explicit None value — the key exists —
+            # so float(None) would crash get_position, which the reconciliation
+            # loop, restore, and safety checks all depend on. Use `or 0` to treat
+            # missing AND None alike.
+            if float(p.get("contracts") or 0) != 0:
                 side = "long" if p["side"] == "long" else "short"
                 return Position(
                     symbol=symbol,
@@ -507,10 +513,10 @@ class LiveExchange:
                     # base-currency units so it matches the bot's internal
                     # quantity (which is always base) — the reconciliation loop
                     # compares the two directly.
-                    contracts=self._to_base(symbol, float(p["contracts"])),
-                    entry_price=float(p["entryPrice"]),
-                    unrealized_pnl=float(p.get("unrealizedPnl", 0)),
-                    leverage=int(p.get("leverage", self._leverage)),
+                    contracts=self._to_base(symbol, float(p.get("contracts") or 0)),
+                    entry_price=float(p.get("entryPrice") or 0),
+                    unrealized_pnl=float(p.get("unrealizedPnl") or 0),
+                    leverage=int(p.get("leverage") or self._leverage),
                 )
         return None
 
