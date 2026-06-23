@@ -1394,11 +1394,14 @@ async def main() -> None:
     # could sit unprotected. Skip symbols MEXC no longer shows (the
     # reconciliation loop will close those ghosts shortly after startup).
     if not config.exchange.paper_mode:
+        # Process sequentially with a gap so rapid cancel+SL+TP bursts from
+        # multiple symbols don't hit MEXC's rate limit (code 510).
         for sym in {p.symbol for p in portfolio.get_open_positions()}:
             try:
                 if await exchange.get_position(sym) is not None:
                     await executor.resync_symbol_stops(sym)
                     logger.info("Re-asserted SL/TP for restored position(s) on %s", sym)
+                    await asyncio.sleep(1.5)   # breathe between symbols
             except Exception as e:
                 logger.error("Could not re-assert stops for %s on restart: %s", sym, e)
 

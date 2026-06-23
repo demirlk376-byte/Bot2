@@ -793,6 +793,40 @@ class LiveExchange:
             is_paper=False,
         )
 
+    async def _place_trigger_order(
+        self, symbol: str, order_type: str, side: str,
+        contracts: float, params: dict, label: str
+    ) -> dict | None:
+        """Place one MEXC plan (trigger) order with retry on rate-limit (code 510).
+
+        MEXC returns code 510 ("Requests are too frequent") when multiple trigger
+        orders are placed in rapid succession — e.g. when a batch of max_hold
+        closes fires simultaneously and each sleeve tries to resync its stops.
+        Three attempts with 1.5 / 3.0 / 6.0 s back-off are enough to clear the
+        window without significantly delaying stop placement.
+        """
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                resp = await self._exchange.create_order(
+                    symbol, order_type, side, contracts, None, params
+                )
+                return resp
+            except Exception as e:
+                last_exc = e
+                err = str(e)
+                if "510" in err or "too frequent" in err.lower() or "rate limit" in err.lower():
+                    wait = 1.5 * (2 ** attempt)   # 1.5 s → 3.0 s → 6.0 s
+                    logger.warning(
+                        "%s order rate-limited for %s (attempt %d/3) — retry in %.1fs",
+                        label, symbol, attempt + 1, wait,
+                    )
+                    await asyncio.sleep(wait)
+                    continue
+                # Non-rate-limit error: don't retry, propagate immediately
+                raise
+        raise last_exc  # type: ignore[misc]
+
     async def set_sl_tp(
         self, symbol: str, position_side: str, sl_price: float, tp_price: float,
         amount: float
@@ -822,9 +856,9 @@ class LiveExchange:
 
         sl_ok = False
         try:
-            sl_resp = await self._exchange.create_order(
-                symbol, "market", close_side, contracts, None,
-                {**base, "triggerPrice": sl_price, "triggerType": sl_trigger},
+            sl_resp = await self._place_trigger_order(
+                symbol, "market", close_side, contracts,
+                {**base, "triggerPrice": sl_price, "triggerType": sl_trigger}, "SL",
             )
             # Confirm the plan order actually rests: MEXC can return a success
             # envelope WITHOUT placing the order (business error inside a 200 that
@@ -839,9 +873,9 @@ class LiveExchange:
             logger.error("SL order failed: %s", e)
         tp_ok = False
         try:
-            tp_resp = await self._exchange.create_order(
-                symbol, "market", close_side, contracts, None,
-                {**base, "triggerPrice": tp_price, "triggerType": tp_trigger},
+            tp_resp = await self._place_trigger_order(
+                symbol, "market", close_side, contracts,
+                {**base, "triggerPrice": tp_price, "triggerType": tp_trigger}, "TP",
             )
             tp_ok = bool(tp_resp and (tp_resp.get("id") or
                                       tp_resp.get("info", {}).get("orderId")))
