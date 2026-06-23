@@ -174,7 +174,8 @@ class PaperExchange:
         return result
 
     async def place_limit_order(
-        self, symbol: str, side: str, amount: float, limit_price: float, params: dict
+        self, symbol: str, side: str, amount: float, limit_price: float, params: dict,
+        fallback_market: bool = True,
     ) -> OrderResult:
         """Maker entry: fill at the limit price with no slippage and the maker
         fee (0% on MEXC futures). In paper mode we assume the resting limit at

@@ -342,6 +342,13 @@ class ExecutionEngine:
             getattr(self._config.exchange, "maker_entry", False)
             and hasattr(self._exchange, "place_limit_order")
         )
+        # Structure-based strategies (ORB, Asia BO, FVG, IFVG, S/R breakout) anchor
+        # SL/TP to the breakout level, NOT the fill price. A market fallback would
+        # fill far from the level and collapse R/R to <1 (e.g. R/R=0.33 for BNB).
+        # For these: no fallback — if limit doesn't fill at the level, skip the trade.
+        # ATR-based strategies (trend/MR/breakout) compute SL/TP from entry_price so
+        # a market fallback keeps R/R intact → fallback_market=True for those.
+        is_structure_based = getattr(signal, "sl_price", 0.0) > 0
         # Acquire per-symbol lock before touching the exchange so no concurrent
         # resync can cancel a stop we just placed before the position is in the
         # portfolio (at which point resync correctly re-places it).
@@ -349,7 +356,8 @@ class ExecutionEngine:
             try:
                 if use_maker:
                     order: Optional[OrderResult] = await self._exchange.place_limit_order(
-                        setup.symbol, side, setup.quantity, setup.entry_price, params
+                        setup.symbol, side, setup.quantity, setup.entry_price, params,
+                        fallback_market=not is_structure_based,
                     )
                     if order is None:
                         return ExecutionResult(False, error="Maker limit unfilled")
