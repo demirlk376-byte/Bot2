@@ -324,17 +324,16 @@ class ExecutionEngine:
             return ExecutionResult(False, error="Insufficient free margin")
 
         side = "buy" if signal.direction == 1 else "sell"
-        # PaperExchange reads SL/TP from the order params (check_sl_tp). For live,
-        # attaching SL/TP via create_order params is unreliable on MEXC, so we
-        # send a clean entry and place dedicated reduce-only SL/TP orders after
-        # the fill (see set_sl_tp call below).
-        if self._config.exchange.paper_mode:
-            params = {
-                "stopLossPrice": setup.sl_price,
-                "takeProfitPrice": setup.tp_price,
-            }
-        else:
-            params = {}
+        # Both paper and live attach SL/TP to the ENTRY order. MEXC's separate
+        # plan-order endpoint (PlanorderPlace) is under maintenance and silently
+        # returns an empty order (no id) — that was force-closing every live
+        # position 2-3s after entry. ccxt forwards stopLossPrice/takeProfitPrice
+        # on the entry order to the WORKING OrderCreate endpoint, which attaches
+        # them to the position. PaperExchange reads the same params in check_sl_tp.
+        params = {
+            "stopLossPrice": setup.sl_price,
+            "takeProfitPrice": setup.tp_price,
+        }
 
         # Maker entry: place a post-only limit at the signal price to pay 0% fee
         # instead of 0.01% taker. Over a year this is worth several % of return
@@ -362,27 +361,43 @@ class ExecutionEngine:
                 logger.error("Order placement failed: %s", e)
                 return ExecutionResult(False, error=str(e))
 
-            # Live mode: place dedicated SL/TP orders. A live position must never sit
-            # without a stop — if placement fails, close immediately for safety.
-            if not self._config.exchange.paper_mode and hasattr(self._exchange, "set_sl_tp"):
+            # Live mode: SL/TP rode on the entry order (params above). VERIFY it
+            # actually rests on MEXC before trusting the position is protected; a
+            # live position must never sit without a stop. If confirmed missing,
+            # close immediately for safety. If the verification READ fails (not the
+            # stop itself), keep the position — the attach path is proven reliable —
+            # but alert loudly to check manually.
+            if not self._config.exchange.paper_mode and hasattr(self._exchange, "has_sltp_orders"):
                 pos_side = "long" if signal.direction == 1 else "short"
-                try:
-                    await self._exchange.set_sl_tp(
-                        setup.symbol, pos_side,
-                        setup.sl_price, setup.tp_price, order.quantity,
-                    )
+                protected = None
+                for _ in range(3):
+                    await asyncio.sleep(1)
+                    protected = await self._exchange.has_sltp_orders(setup.symbol)
+                    if protected:
+                        break
+                if protected is True:
                     logger.info(
-                        "Live SL/TP placed: sl=%.2f tp=%.2f", setup.sl_price, setup.tp_price
+                        "Live SL/TP attached & verified: sl=%.4f tp=%.4f",
+                        setup.sl_price, setup.tp_price,
                     )
-                except Exception as e:
-                    logger.error("SL/TP placement failed — closing position for safety: %s", e)
+                elif protected is False:
+                    logger.error(
+                        "SL/TP NOT attached for %s — closing position for safety",
+                        setup.symbol)
                     try:
                         await self._exchange.close_position(
                             setup.symbol, pos_side, order.quantity, "no_stop_safety"
                         )
                     except Exception as ce:
                         logger.critical("EMERGENCY: could not close unprotected position: %s", ce)
-                    return ExecutionResult(False, error="SL/TP placement failed; position closed")
+                    return ExecutionResult(False, error="SL/TP not attached; position closed")
+                else:
+                    logger.error(
+                        "Could not verify SL/TP for %s (read failed) — position kept; "
+                        "CHECK MANUALLY", setup.symbol)
+                    await self._alert(
+                        f"⚠️ {setup.symbol} SL/TP doğrulanamadı — MEXC'ten kontrol et",
+                        "ERROR")
 
             scores = {
                 "trend": signal.trend_score,

@@ -495,6 +495,48 @@ class LiveExchange:
         """Convert a ccxt contract count back to base-currency units."""
         return contracts * self._contract_size(symbol)
 
+    def _round_sltp_params(self, symbol: str, params: dict) -> dict:
+        """ccxt applies price_to_precision only to triggerPrice, NOT to the
+        stopLossPrice/takeProfitPrice we attach to the entry order (they ride
+        through untouched to MEXC's OrderCreate). Round them to the symbol's
+        price tick ourselves so MEXC doesn't reject an off-tick stop price."""
+        for k in ("stopLossPrice", "takeProfitPrice"):
+            v = params.get(k)
+            if v:
+                try:
+                    params[k] = float(self._exchange.price_to_precision(symbol, v))
+                except Exception:
+                    pass
+        return params
+
+    async def has_sltp_orders(self, symbol: str) -> Optional[bool]:
+        """Verify a position has resting SL/TP stop orders on MEXC.
+
+        Returns True if at least one stop/trigger order exists, False if it is
+        confirmed there are none (a read succeeded and came back empty), and
+        None if it could not be determined (every read failed). Used right after
+        an entry to confirm the entry-attached SL/TP actually rests before
+        trusting the position is protected. MEXC's separate plan-order PLACE
+        endpoint is broken, but these GET/list endpoints still work."""
+        inner = self._exchange
+        mexc_sym = symbol.split(":")[0].replace("/", "_")
+        determined = False
+        for method in ("contractPrivateGetStoporderOpenOrders",
+                       "contractPrivateGetPlanorderListOrders",
+                       "contractPrivateGetStoporderListOrders"):
+            if not hasattr(inner, method):
+                continue
+            try:
+                resp = await getattr(inner, method)({"symbol": mexc_sym})
+                determined = True
+                data = resp.get("data") if isinstance(resp, dict) else resp
+                if data:
+                    return True
+            except Exception as e:
+                logger.debug("has_sltp_orders %s failed: %s", method, e)
+                continue
+        return False if determined else None
+
     async def get_position(self, symbol: str) -> Optional[Position]:
         positions = await self._exchange.fetch_positions([symbol])
         for p in positions:
@@ -542,6 +584,7 @@ class LiveExchange:
         order_params = {"openType": self._open_type, **params}
         if self._open_type == 1:
             order_params.setdefault("leverage", self._leverage)
+        order_params = self._round_sltp_params(symbol, order_params)
         order = await self._exchange.create_order(
             symbol, "market", side, contracts, None, order_params
         )
@@ -613,6 +656,7 @@ class LiveExchange:
         # order; MEXC rejects it otherwise. See place_market_order for details.
         if self._open_type == 1:
             order_params.setdefault("leverage", self._leverage)
+        order_params = self._round_sltp_params(symbol, order_params)
         # `amount` is base-currency; convert to MEXC contract count for ccxt.
         contracts = self._to_contracts(symbol, amount)
         if contracts <= 0:

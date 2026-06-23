@@ -742,17 +742,19 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
                 if hasattr(exchange, "update_position_sl"):
                     exchange.update_position_sl(pos.id, new_sl)
             else:
-                # Live: update the internal SL, then re-sync ALL of this symbol's
-                # stops on MEXC (cancel-all + re-place every open sleeve). This
-                # moves our stop while keeping any sibling sleeve on the same
-                # netted symbol protected. resync alerts if a re-place fails.
-                pos.sl_price = new_sl
-                ok = await executor.resync_symbol_stops(pos.symbol)
-                if not ok:
-                    logger.error(
-                        "[%s] Trailing moved internal SL to %.4f but exchange "
-                        "re-sync failed — exchange stop may not match", symbol, new_sl,
-                    )
+                # Live: moving a stop requires cancelling the working entry-attached
+                # SL/TP and re-placing via MEXC's plan-order endpoint — which is
+                # under maintenance and silently fails, leaving the position
+                # UNPROTECTED. So we keep the original entry-attached SL/TP (still
+                # protective) and skip exchange-side trailing. The position exits at
+                # its fixed SL/TP or max-hold, matching the fixed-stop backtest.
+                # (pos.sl_price is intentionally left unchanged so internal state
+                # stays in sync with the real exchange stop.)
+                logger.info(
+                    "[%s] Trailing suppressed on live (MEXC stop-move unavailable) — "
+                    "keeping entry-attached SL %.4f", symbol, old_sl,
+                )
+                continue
             action = "BE" if pos.breakeven_moved and new_sl == pos.entry_price else "Trail"
             dashboard.log_message(
                 f"[{symbol}] SL {action}: {old_sl:,.2f} → {new_sl:,.2f}"
