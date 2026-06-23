@@ -12,6 +12,12 @@ backtest_live.py — Live sistemin 30 günlük gerçekçi backtesti (v2).
     • BB/MR:   sadece BTC+ETH+SOL, SADECE HAFTA SONU, sniper grade≥2
     • ORB:     limit retrace entry (fill sadece seviyeye dönüşte)
 
+  STOP (araştırma modeli — tick-watcher ile canlıya alınabilir):
+    • Asia BO / ORB: seviyede STOP order. Mum range dışına kapanıyorsa fiyat
+      o mum içinde seviyeyi zaten geçmiştir → bekleyen stop seviyeden dolar.
+      Entry = seviye → R/R 2.0 korunur (research PF 2.15 buradan geliyor).
+    • Canlıda data.py _ticker_loop fiyatı izler, seviye kırılınca market atar.
+
 Kullanım (VPS'te):
     cd /opt/bot2 && venv/bin/python backtest_live.py
 
@@ -337,6 +343,16 @@ def run_strategy(
                 # SL/TP stay at structural levels
                 sl_price = raw_sl
                 tp_price = raw_tp
+            elif model == "stop":
+                # RESEARCH MODEL (PF 2.15): a STOP order rests at the level.
+                # The signal only fires when the candle CLOSES beyond the range,
+                # which means price already crossed the level intra-candle on THIS
+                # candle → a resting stop filled at the level. Entry = level.
+                # SL/TP checks begin on the NEXT candle (open_trade evaluated from
+                # i+1), matching the live tick-watcher behaviour.
+                entry_px = level
+                sl_price = raw_sl
+                tp_price = raw_tp
             else:
                 # NEW: limit at level, fills if NEXT candle range includes level
                 if i + 1 >= n:
@@ -473,7 +489,7 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
     agg: dict[tuple, dict] = {}
     for sym in symbols:
         for strat in strat_names:
-            for model in ("old", "new"):
+            for model in ("old", "new", "stop"):
                 key = (strat, model)
                 r = all_results.get((sym, strat, model))
                 if r is None:
@@ -512,18 +528,30 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
     # Which strategies differ between old/new (show both rows)
     differs = {"asia_bo", "orb", "mr"}
 
+    # model labels per strategy (which models to show, in order)
+    models_for = {
+        "asia_bo":     ["old", "stop"],
+        "orb":         ["old", "new", "stop"],
+        "fvg":         ["old"],
+        "sr_breakout": ["old"],
+        "squeeze":     ["old"],
+        "mr":          ["old", "new"],
+    }
+    label_for = {
+        ("asia_bo", "old"):  "(market)",
+        ("asia_bo", "stop"): "(STOP=research)",
+        ("orb", "old"):      "(market)",
+        ("orb", "new"):      "(limit-retrace)",
+        ("orb", "stop"):     "(STOP=research)",
+        ("mr", "old"):       "(5coin/7d/g0)",
+        ("mr", "new"):       "(3coin/wknd/g2)",
+    }
+
     for strat in strats_to_show:
         label = strat_names[strat]
-        for model in ("old", "new"):
-            # For strategies that are identical between old/new, print only once
-            if strat not in differs and model == "new":
-                continue
-
+        for model in models_for.get(strat, ["old"]):
             key = (strat, model)
             if key not in agg:
-                if strat == "asia_bo" and model == "new":
-                    print(f"{'Asia BO (disabled)':<26} {'—':>7} {'—':>7} {'  —':>6} "
-                          f"{'  —':>6} {'  —':>6} {'     —':>8} {'       —':>10}  ⛔")
                 continue
             a = agg[key]
             n_filled = a["filled"]
@@ -534,16 +562,7 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
             rr_avg   = avg_rr(a)
             pnl      = a["total_pnl"]
 
-            if strat not in differs:
-                model_label = ""
-            elif strat == "asia_bo":
-                model_label = "(market)" if model == "old" else "(disabled)"
-            elif strat == "orb":
-                model_label = "(market)" if model == "old" else "(limit-retrace)"
-            elif strat == "mr":
-                model_label = "(5coin/7d/g0)" if model == "old" else "(3coin/wknd/g2)"
-            else:
-                model_label = f"({model})"
+            model_label = label_for.get((strat, model), "")
             row_label   = f"{label} {model_label}".strip()
             marker = "✅" if pf_val >= 1.5 else ("⚠️ " if pf_val >= 1.0 else "❌")
             print(f"{row_label:<26} {a['signals']:>7} {n_filled:>7} {fill_pct:>5.0f}% "
@@ -554,22 +573,22 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
 
     # Per-symbol detail
     print(f"\n{'─'*116}")
-    print("  PER COIN DETAYI — ESKİ vs YENİ P&L($)")
+    print("  PER COIN DETAYI — AsiaBo market vs STOP(research), ORB, MR  P&L($)")
     print(f"{'─'*116}")
-    print(f"{'Coin':<8} {'AsiaBo OLD':>11} {'AsiaBo NEW':>11}  "
-          f"{'ORB OLD':>10} {'ORB NEW':>10}  {'MR OLD':>9} {'MR NEW':>9}")
+    print(f"{'Coin':<8} {'Asia MKT':>9} {'Asia STOP':>10}  "
+          f"{'ORB OLD':>9} {'ORB STOP':>9}  {'MR OLD':>9} {'MR NEW':>9}")
     print("─" * 72)
     for sym in symbols:
         coin = sym.split("/")[0]
         def pnl_str(r): return f"{r.total_pnl:+.2f}" if r else "  N/A"  # noqa: E731
-        a_old = all_results.get((sym, "asia_bo",     "old"))
-        o_old = all_results.get((sym, "orb",         "old"))
-        o_new = all_results.get((sym, "orb",         "new"))
-        m_old = all_results.get((sym, "mr",          "old"))
-        m_new = all_results.get((sym, "mr",          "new"))
-        asia_new_str = "KAPALI" if a_old else "  N/A"  # new=disabled for all coins
-        print(f"{coin:<8} {pnl_str(a_old):>11} {asia_new_str:>11}  "
-              f"{pnl_str(o_old):>10} {pnl_str(o_new):>10}  "
+        a_old  = all_results.get((sym, "asia_bo",     "old"))
+        a_stop = all_results.get((sym, "asia_bo",     "stop"))
+        o_old  = all_results.get((sym, "orb",         "old"))
+        o_stop = all_results.get((sym, "orb",         "stop"))
+        m_old  = all_results.get((sym, "mr",          "old"))
+        m_new  = all_results.get((sym, "mr",          "new"))
+        print(f"{coin:<8} {pnl_str(a_old):>9} {pnl_str(a_stop):>10}  "
+              f"{pnl_str(o_old):>9} {pnl_str(o_stop):>9}  "
               f"{pnl_str(m_old):>9} {pnl_str(m_new):>9}")
 
     # Summary
@@ -587,9 +606,21 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
         for sym in symbols for s in strat_names
         if (sym, s, "new") in all_results
     )
+    # STOP system: same as NEW but Asia BO + ORB use the research stop-entry model.
+    # Fall back: if a strat has no "stop" result use its "new" (FVG/SR/Squeeze/MR).
+    def best(sym, s):
+        for m in ("stop", "new", "old"):
+            r = all_results.get((sym, s, m))
+            if r is not None:
+                return r.total_pnl
+        return 0.0
+    all_stop_pnl = sum(best(sym, s) for sym in symbols for s in strat_names)
+
     print(f"  30 GÜN TOPLAM P&L  |  ESKİ SİSTEM: {all_old_pnl:+.2f}$  |  "
           f"YENİ SİSTEM: {all_new_pnl:+.2f}$  |  FARK: {all_new_pnl-all_old_pnl:+.2f}$")
     print(f"  (YENİ: AsiaBo 0 katkı; MR sadece BTC/ETH/SOL hafta sonu; ORB limit-retrace)")
+    print(f"\n  >>> STOP-ENTRY SİSTEMİ (AsiaBo+ORB araştırma modeli): {all_stop_pnl:+.2f}$ <<<")
+    print(f"      (AsiaBo STOP + ORB STOP + FVG/SR/Squeeze + MR yeni — tick-watcher gerekli)")
     print("═" * 116 + "\n")
 
 
@@ -616,13 +647,15 @@ async def main() -> None:
     #   sym_filter=None → all SYMBOLS; otherwise a set of allowed symbols
     strat_configs = [
         ("asia_bo",     RISK_ASIA, 1.0, 2.0, [
-            # OLD: all coins, market entry at close
-            ("old", False, 0, None),
-            # NEW: DISABLED (PF 0.78 live-model — zararlı strateji kapatıldı)
+            # OLD: market entry at close (R/R collapses → PF ~0.69)
+            ("old",  False, 0, None),
+            # STOP: research model — stop fills AT level on breakout candle (PF ~2.15?)
+            ("stop", False, 0, None),
         ]),
         ("orb",         RISK_ORB,  1.0, 2.0, [
-            ("old", False, 0, None),   # OLD: market entry at close
-            ("new", False, 0, None),   # NEW: limit retrace (next-candle range check)
+            ("old",  False, 0, None),   # OLD: market entry at close
+            ("new",  False, 0, None),   # NEW: limit retrace (next-candle range check)
+            ("stop", False, 0, None),   # STOP: research model — fill at level on break
         ]),
         ("fvg",         RISK_FVG,  0.0, 2.5, [
             ("old", False, 0, None),   # ESKİ=YENİ (limit retest by design)
