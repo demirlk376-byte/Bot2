@@ -362,6 +362,12 @@ class LiveExchange:
         self._margin_mode = margin_mode
         self._open_type = 1 if margin_mode == "isolated" else 2
         self._exchange = None
+        # Global mutex for plan-order (SL/TP) operations. MEXC's futures plan-order
+        # endpoint has a strict per-second rate limit: concurrent cancel+place bursts
+        # from multiple symbols closing simultaneously reliably hit code 510. Allowing
+        # only ONE symbol's stop operations at a time (cancel → SL → TP) prevents
+        # the burst entirely without adding arbitrary sleeps.
+        self._stop_order_lock = asyncio.Lock()
 
     async def initialize(self, symbol: str) -> None:
         # Create the ccxt.pro client ONCE. This is called per-symbol in multi-coin
@@ -828,6 +834,15 @@ class LiveExchange:
         raise last_exc  # type: ignore[misc]
 
     async def set_sl_tp(
+        self, symbol: str, position_side: str, sl_price: float, tp_price: float,
+        amount: float
+    ) -> None:
+        # Acquire the global stop-order mutex so concurrent closes on different
+        # symbols don't burst the plan-order endpoint simultaneously (MEXC 510).
+        async with self._stop_order_lock:
+            await self._set_sl_tp_locked(symbol, position_side, sl_price, tp_price, amount)
+
+    async def _set_sl_tp_locked(
         self, symbol: str, position_side: str, sl_price: float, tp_price: float,
         amount: float
     ) -> None:

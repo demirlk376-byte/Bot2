@@ -16,6 +16,13 @@ from strategies.signal_combiner import CombinedSignal
 logger = logging.getLogger(__name__)
 
 
+class _null_ctx:
+    """Async context manager that does nothing — used as a no-op when the
+    exchange object doesn't have a _stop_order_lock (e.g. PaperExchange)."""
+    async def __aenter__(self): return self
+    async def __aexit__(self, *_): pass
+
+
 @dataclass
 class ExecutionResult:
     success: bool
@@ -504,25 +511,34 @@ class ExecutionEngine:
             return True
         if not hasattr(self._exchange, "cancel_stop_orders"):
             return True
-        await self._exchange.cancel_stop_orders(symbol)
-        ok = True
-        for pos in self._portfolio.get_open_positions():
-            if pos.symbol != symbol or pos.sl_price <= 0:
-                continue
-            try:
-                await self._exchange.set_sl_tp(
-                    symbol, pos.side, pos.sl_price, pos.tp_price, pos.quantity
-                )
-            except Exception as e:
-                ok = False
-                logger.critical(
-                    "Re-placing stops for %s %s FAILED — may be unprotected: %s",
-                    pos.side, symbol, e,
-                )
-                await self._alert(
-                    f"⚠️ {symbol} stop yenilenemedi — pozisyon korumasız olabilir!",
-                    "ERROR",
-                )
+        # Hold the exchange-level stop-order mutex for the entire cancel→place
+        # sequence so concurrent resyncs on OTHER symbols (e.g. two max_hold
+        # closes firing at the same second) don't interleave and burst MEXC's
+        # plan-order rate limit (code 510). set_sl_tp also acquires this mutex,
+        # so we call the internal _set_sl_tp_locked directly to avoid deadlock.
+        stop_lock = getattr(self._exchange, "_stop_order_lock", None)
+        async with (stop_lock if stop_lock is not None else _null_ctx()):
+            await self._exchange.cancel_stop_orders(symbol)
+            ok = True
+            for pos in self._portfolio.get_open_positions():
+                if pos.symbol != symbol or pos.sl_price <= 0:
+                    continue
+                try:
+                    set_fn = getattr(self._exchange, "_set_sl_tp_locked",
+                                     self._exchange.set_sl_tp)
+                    await set_fn(
+                        symbol, pos.side, pos.sl_price, pos.tp_price, pos.quantity
+                    )
+                except Exception as e:
+                    ok = False
+                    logger.critical(
+                        "Re-placing stops for %s %s FAILED — may be unprotected: %s",
+                        pos.side, symbol, e,
+                    )
+                    await self._alert(
+                        f"⚠️ {symbol} stop yenilenemedi — pozisyon korumasız olabilir!",
+                        "ERROR",
+                    )
         return ok
 
     async def close_position(
