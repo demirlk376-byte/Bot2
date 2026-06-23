@@ -475,6 +475,7 @@ def run_stop_touch(
     risk_pct: float,
     sl_atr: float = 1.0,
     rr: float = 2.0,
+    max_hold: int = 6,    # live ORB/Asia use day_max_hold_candles=6 (NOT 48)
 ) -> RunResult:
     """
     Physically accurate model of a resting STOP order at the breakout level.
@@ -531,7 +532,7 @@ def run_stop_touch(
             else:
                 if hi >= sl: exit_px, reason = sl, "sl_hit"
                 elif lo <= tp: exit_px, reason = tp, "tp_hit"
-            if exit_px is None and age >= MAX_HOLD:
+            if exit_px is None and age >= max_hold:
                 exit_px, reason = close_px, "max_hold"
             if exit_px is not None:
                 _close_trade(open_trade, exit_px, reason, i)

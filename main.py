@@ -24,7 +24,7 @@ from strategies.asia_bo import AsiaBoStrategy, AsiaBoSignal
 from strategies.fvg import FvgStrategy, FvgSignal
 from strategies.ifvg import IfvgStrategy, IfvgSignal
 from strategies.mean_reversion import MeanReversionStrategy
-from strategies.orb import OrbStrategy, OrbSignal
+from strategies.orb import OrbStrategy, OrbSignal, ORB_HOUR
 from strategies.sr_breakout import SrBreakoutStrategy, SrBreakoutSignal
 from strategies.signal_combiner import SignalCombiner, CombinedSignal
 from ntfy_notifier import NtfyNotifier
@@ -80,6 +80,18 @@ def _spawn_supervised(coro, name: str) -> asyncio.Task:
 
 
 @dataclass
+class OrbArmed:
+    """A primed ORB stop-entry watch for one symbol on one calendar day. The
+    ticker loop checks `price` against the boundaries each tick and fires a market
+    order the instant either is crossed (matching the validated stop-touch model)."""
+    trade_date: date
+    orb_high: float
+    orb_low: float
+    orb_range: float
+    atr: float
+
+
+@dataclass
 class SymbolContext:
     """Per-coin trading context. Each coin has its own data feed and strategy
     instance, but all share the exchange, portfolio, executor and balance."""
@@ -93,6 +105,10 @@ class SymbolContext:
     ifvg_strategy: IfvgStrategy = None
     squeeze_strategy: "SqueezeStrategy" = None
     whale_strategy: "WhaleStrategy" = None
+    # Live ORB stop-entry: armed once per day after the 14:00 UTC range candle,
+    # consumed by the tick-watcher. None = not armed.
+    orb_armed: "OrbArmed | None" = None
+    _orb_firing: bool = False   # re-entrancy guard while a fire is in flight
 
 
 def active_sleeves_for(ctx: "SymbolContext", cfg) -> list[str]:
@@ -285,11 +301,22 @@ def make_on_candle_close(ctx: "SymbolContext"):
                 # direction=0: strategy didn't generate a signal
                 web_dashboard.add_signal(ctx.symbol, "BB", 0, mr_sig.reason)
 
-            # ── ORB — independent slot, limit entry at NY open range boundary ─
-            # Backtest validated: PF 2.53/2.83 with limit entry vs PF 0.74 with
-            # close entry. Fill assumption: when 15:00 UTC bar closes above
-            # orb_high, we fill at orb_high (price already touched it intrabar).
-            if ctx.orb_strategy is not None and bo_allowed:
+            # ── ORB — independent slot, NY open range breakout ────────────────
+            # Two entry modes:
+            #   stop-entry (default): arm a tick-watcher that fires a MARKET order
+            #     the instant price touches the range boundary intra-candle. Live
+            #     30-day backtest: PF 1.65 / +12.95$ (false pokes included) vs
+            #     limit-retrace PF 1.41 / +6.43$. No regime gate — matches the
+            #     validated model. Entries fire in make_on_orb_tick(), not here.
+            #   limit-retrace (legacy, ORB_STOP_ENTRY=false): candle-close entry.
+            if ctx.orb_strategy is not None and config.strategy.orb_stop_entry:
+                await _maybe_arm_orb(ctx, df, atr_val)
+                armed = ctx.orb_armed is not None
+                web_dashboard.add_signal(
+                    ctx.symbol, "ORB", 0,
+                    "stop-entry armed (tick-watch)" if armed else "ORB range not set",
+                )
+            elif ctx.orb_strategy is not None and bo_allowed:
                 orb_sig = ctx.orb_strategy.analyze(df)
                 if orb_sig.direction != 0:
                     trigger = orb_sig.orb_high if orb_sig.direction == 1 else orb_sig.orb_low
@@ -610,6 +637,123 @@ def make_on_candle_close(ctx: "SymbolContext"):
             logger.error("[%s] on_candle_close error: %s", ctx.symbol, e, exc_info=True)
 
     return on_candle_close
+
+
+async def _maybe_arm_orb(ctx: "SymbolContext", df, atr_val: float) -> None:
+    """Prime the ORB stop-entry watch once per day, after today's 14:00 UTC range
+    candle is in the buffer (i.e. from 15:00 UTC). Idempotent: re-arming the same
+    day is a no-op, and a day already traded stays disarmed. Runs every candle
+    close so a mid-day restart re-arms on the next close (restart-safe)."""
+    import pandas as pd
+    if ctx.orb_strategy is None:
+        return
+    today = datetime.now(timezone.utc).date()
+    # Already traded this sleeve today → never re-arm (one trade/day, matches
+    # the backtest and the strategy's own _traded_dates guard).
+    if today in ctx.orb_strategy._traded_dates:
+        ctx.orb_armed = None
+        return
+    # Already armed for today → keep the existing range (don't recompute/clobber).
+    if ctx.orb_armed is not None and ctx.orb_armed.trade_date == today:
+        return
+    # Locate today's 14:00 UTC range candle. Index is tz-naive UTC (ms epoch),
+    # matching OrbStrategy.analyze()'s own hour/date masking.
+    idx = pd.to_datetime(df.index)
+    mask = (idx.date == today) & (idx.hour == ORB_HOUR)
+    rng = df[mask]
+    if rng.empty:
+        return  # before 15:00 UTC, or range candle not yet in buffer
+    orb_high = float(rng["high"].max())
+    orb_low = float(rng["low"].min())
+    orb_range = orb_high - orb_low
+    if orb_range <= 0:
+        return
+    ctx.orb_armed = OrbArmed(
+        trade_date=today, orb_high=orb_high, orb_low=orb_low,
+        orb_range=orb_range, atr=float(atr_val),
+    )
+    logger.info(
+        "[%s] ORB armed (stop-entry): range %.4f–%.4f (size %.4f)",
+        ctx.symbol, orb_low, orb_high, orb_range,
+    )
+
+
+def make_on_orb_tick(ctx: "SymbolContext"):
+    """Build a tick handler that fires an ORB stop-entry the instant price crosses
+    the armed range boundary. Reuses executor.execute_signal so every safety check
+    (daily-loss halt, cooldown, slot guard, margin, live SL/TP verify) still applies.
+    Entry is a MARKET order at ~level (force_market) → R/R stays ~2.0."""
+
+    async def on_orb_tick(symbol: str, price: float) -> None:
+        armed = ctx.orb_armed
+        if armed is None or ctx._orb_firing:
+            return
+        today = datetime.now(timezone.utc).date()
+        if armed.trade_date != today:
+            ctx.orb_armed = None
+            return
+
+        if price >= armed.orb_high:
+            direction, level = 1, armed.orb_high
+            sl_price = armed.orb_low
+            tp_price = armed.orb_high + 2.0 * armed.orb_range
+        elif price <= armed.orb_low:
+            direction, level = -1, armed.orb_low
+            sl_price = armed.orb_high
+            tp_price = armed.orb_low - 2.0 * armed.orb_range
+        else:
+            return  # still inside the range
+
+        # Disarm + lock BEFORE awaiting so a burst of ticks can't double-fire.
+        ctx._orb_firing = True
+        ctx.orb_armed = None
+        # Burn the day immediately (matches OrbStrategy.analyze, which records the
+        # date on signal generation regardless of execution outcome).
+        ctx.orb_strategy._traded_dates.add(today)
+        try:
+            reason = (
+                f"ORB stop-entry: {price:.4f} crossed "
+                f"{'high' if direction == 1 else 'low'} {level:.4f} "
+                f"(range {armed.orb_low:.4f}–{armed.orb_high:.4f})"
+            )
+            orb_combined = CombinedSignal(
+                direction=direction,
+                confidence=0.80,
+                trend_score=0.0,
+                mean_rev_score=0.0,
+                breakout_score=direction * 0.80,
+                dominant_strategy="orb",
+                reasons=[reason],
+                entry_price=level,        # SL/TP anchored to the level
+                sl_price=sl_price,
+                tp_price=tp_price,
+                symbol=ctx.symbol,
+                position_slot=f"{ctx.symbol}:orb",
+                force_market=True,        # take the breakout now, at ~level
+            )
+            result = await executor.execute_signal(orb_combined, armed.atr)
+            if result.success and result.position:
+                logger.info(
+                    "ORB stop-entry opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                    result.position.side.upper(), ctx.symbol,
+                    result.position.entry_price,
+                    result.position.sl_price, result.position.tp_price,
+                )
+                web_dashboard.add_signal(ctx.symbol, "ORB", direction, reason, "exec")
+                if telegram:
+                    await telegram.send_trade_opened(result.trade_setup, orb_combined)
+                if ntfy:
+                    await ntfy.send_trade_opened(result.trade_setup, orb_combined)
+            elif result.error:
+                logger.warning("[%s] ORB stop-entry skipped: %s", ctx.symbol, result.error)
+                web_dashboard.add_signal(ctx.symbol, "ORB", direction, reason,
+                                         f"block:{result.error}")
+        except Exception as e:
+            logger.error("[%s] ORB tick fire error: %s", ctx.symbol, e, exc_info=True)
+        finally:
+            ctx._orb_firing = False
+
+    return on_orb_tick
 
 
 _ORDERFLOW_CSV = "orderflow_log.csv"
@@ -1367,6 +1511,10 @@ async def main() -> None:
         ctx.data_mgr.subscribe_candle_close(
             config.strategy.primary_tf, make_on_candle_close(ctx)
         )
+        # ORB stop-entry: a tick-watcher that fires a market order the instant
+        # price crosses the opening-range boundary (validated vs limit-retrace).
+        if ctx.orb_strategy is not None and config.strategy.orb_stop_entry:
+            ctx.data_mgr.subscribe_price_tick(make_on_orb_tick(ctx))
 
     _spawn_supervised(daily_reset_loop(), "daily_reset_loop")
     _spawn_supervised(heartbeat_loop(), "heartbeat_loop")

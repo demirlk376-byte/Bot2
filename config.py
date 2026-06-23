@@ -177,6 +177,12 @@ class StrategyConfig:
     # Intraday breakout strategies (validated edge: ORB PF 1.44, Asia BO PF 2.15)
     orb_enabled: bool = True
     asia_bo_enabled: bool = False
+    # ORB stop-entry: enter at the opening-range boundary the instant price TOUCHES
+    # it intra-candle (a live tick-watcher firing a market order at ~level), instead
+    # of waiting for the 1h candle to close past the level. Live 30-day backtest:
+    # stop-touch (false pokes included) PF 1.65 / +12.95$ vs limit-retrace PF 1.41 /
+    # +6.43$. Asia BO is NOT enabled here — its stop-touch model failed (PF 0.61).
+    orb_stop_entry: bool = True
     # S/R breakout (swing momentum, validated: lb80 touch3 SL3ATR RR3.0 PF 1.72).
     # Uses the normal 48h max-hold + full risk (it's a swing trade, not intraday).
     sr_breakout_enabled: bool = True
@@ -339,6 +345,7 @@ def load_config() -> AppConfig:
         whale_rr=_getfloat("WHALE_RR", 1.5),
         whale_min_body_atr=_getfloat("WHALE_MIN_BODY_ATR", 0.5),
         orb_enabled=_getbool("ORB_ENABLED", True),
+        orb_stop_entry=_getbool("ORB_STOP_ENTRY", True),
         asia_bo_enabled=_getbool("ASIA_BO_ENABLED", False),
         sr_breakout_enabled=_getbool("SR_BREAKOUT_ENABLED", True),
         sr_breakout_symbols=sr_breakout_symbols,

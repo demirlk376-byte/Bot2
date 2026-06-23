@@ -50,6 +50,11 @@ class CombinedSignal:
     tp_price: float = 0.0     # preset TP (day-trading strategies); 0 = use ATR-based calc
     symbol: str = ""          # which market this signal is for (multi-coin)
     position_slot: str = ""   # uniqueness key for the position slot (empty → use symbol)
+    # Force a market order even when maker_entry is on. ORB stop-entry fires the
+    # instant price touches the level, so the fill must be immediate (a maker limit
+    # would sit/retrace and defeat the breakout). Price is already at the level, so
+    # the taker fill is ~level with only a few ticks of slippage.
+    force_market: bool = False
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
 

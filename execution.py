@@ -341,6 +341,9 @@ class ExecutionEngine:
         use_maker = (
             getattr(self._config.exchange, "maker_entry", False)
             and hasattr(self._exchange, "place_limit_order")
+            # ORB stop-entry fires AT the level — take it immediately with a market
+            # order; a maker limit would wait for a retrace and miss the breakout.
+            and not getattr(signal, "force_market", False)
         )
         # Structure-based strategies (ORB, Asia BO, FVG, IFVG, S/R breakout) anchor
         # SL/TP to the breakout level, NOT the fill price. A market fallback would

@@ -99,6 +99,10 @@ class DataManager:
             config.primary_tf: [],
             config.confirm_tf: [],
         }
+        # Tick-level callbacks: invoked on every price update (intra-candle), used
+        # by stop-entry watchers that must fire the instant price crosses a level
+        # rather than waiting for the 1h candle to close.
+        self._tick_callbacks: list[Callable[[str, float], Awaitable[None]]] = []
         self._current_price: float = 0.0
         self._stop_event = asyncio.Event()
         self._tasks: list[asyncio.Task] = []
@@ -179,6 +183,15 @@ class DataManager:
                     # stop, not at the next candle close (paper mode).
                     if hasattr(self._exchange, "check_sl_tp_tick"):
                         await self._exchange.check_sl_tp_tick(self._symbol, price)
+                    # Tick-level entry watchers (ORB stop-entry): fire the instant
+                    # price crosses the armed breakout level. Each callback guards
+                    # itself (disarms before awaiting) so a burst of ticks can't
+                    # double-fire. Exceptions are isolated per-callback.
+                    for cb in self._tick_callbacks:
+                        try:
+                            await cb(self._symbol, price)
+                        except Exception as e:
+                            logger.error("Tick callback error (%s): %s", self._symbol, e)
                 backoff = 1
             except Exception as e:
                 logger.warning("Ticker feed error: %s (retry in %ds)", e, backoff)
@@ -237,6 +250,13 @@ class DataManager:
         if timeframe not in self._callbacks:
             self._callbacks[timeframe] = []
         self._callbacks[timeframe].append(callback)
+
+    def subscribe_price_tick(
+        self, callback: Callable[[str, float], Awaitable[None]]
+    ) -> None:
+        """Register an async callback(symbol, price) fired on every tick.
+        Used by intra-candle stop-entry watchers."""
+        self._tick_callbacks.append(callback)
 
     async def get_candles(self, timeframe: str, n: int = 100) -> pd.DataFrame:
         buf = self._buffers.get(timeframe)
