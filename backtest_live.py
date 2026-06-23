@@ -66,8 +66,14 @@ SYMBOLS = [
 DAYS = 30
 # Warmup candles (for EMA200, ATR etc.)
 WARMUP = 210
-# Total candles to fetch
-TOTAL_CANDLES = DAYS * 24 + WARMUP
+# Shift the 30-day test window back by this many days (env BT_OFFSET_DAYS).
+#   0   → most recent 30 days (current month)
+#   30  → the 30 days before that (previous month)
+#   60  → two months ago, etc.
+# Lets us re-run the SAME full system on a different month to check robustness.
+OFFSET_DAYS = int(os.environ.get("BT_OFFSET_DAYS", "0"))
+# Total candles to fetch (warmup + window + however far back we shift)
+TOTAL_CANDLES = DAYS * 24 + WARMUP + OFFSET_DAYS * 24
 
 STARTING_BALANCE = 95.0   # Mevcut hesap bakiyesi
 LEVERAGE        = 10
@@ -143,12 +149,31 @@ async def fetch_ohlcv(symbol: str, limit: int) -> pd.DataFrame:
         "enableRateLimit": True,
     })
     try:
-        raw = await ex.fetch_ohlcv(symbol, "1h", limit=limit)
-        df = pd.DataFrame(raw, columns=["ts", "open", "high", "low", "close", "volume"])
+        tf_ms = 3_600_000  # 1h
+        # Page backward from now so we can fetch more than the per-call cap (~1000).
+        since = ex.milliseconds() - limit * tf_ms
+        rows: list = []
+        seen: set = set()
+        while True:
+            chunk = await ex.fetch_ohlcv(symbol, "1h", since=since, limit=1000)
+            if not chunk:
+                break
+            new = [c for c in chunk if c[0] not in seen]
+            for c in new:
+                seen.add(c[0])
+            rows.extend(new)
+            # advance past the newest candle we just got
+            since = chunk[-1][0] + tf_ms
+            if len(chunk) < 1000 or len(rows) >= limit:
+                break
+            await asyncio.sleep(ex.rateLimit / 1000)
+        rows.sort(key=lambda c: c[0])
+        df = pd.DataFrame(rows, columns=["ts", "open", "high", "low", "close", "volume"])
         df.index = pd.to_datetime(df["ts"], unit="ms", utc=True)
         df.index = df.index.tz_convert("UTC")
         df.drop(columns=["ts"], inplace=True)
-        return df
+        # keep only the most recent `limit` candles
+        return df.iloc[-limit:]
     finally:
         await ex.close()
 
@@ -847,10 +872,24 @@ async def main() -> None:
         print(f"  {coin}... ", end="", flush=True)
         try:
             df = await fetch_ohlcv(sym, TOTAL_CANDLES)
+            # Drop the most recent OFFSET_DAYS so the trading window lands on an
+            # EARLIER month; keep WARMUP + 30 days of that window.
+            if OFFSET_DAYS > 0:
+                end = len(df) - OFFSET_DAYS * 24
+                start = max(0, end - (WARMUP + DAYS * 24))
+                df = df.iloc[start:end]
             dfs[sym] = df
             print(f"OK ({len(df)} mum, {df.index[0].date()} – {df.index[-1].date()})")
         except Exception as e:
             print(f"HATA: {e}")
+
+    # Announce which window we are testing
+    if OFFSET_DAYS > 0:
+        print(f"\n  ⏪ TEST PENCERESİ {OFFSET_DAYS} GÜN GERİYE KAYDIRILDI "
+              f"(BT_OFFSET_DAYS={OFFSET_DAYS}) — farklı ay, AYNI sistem.")
+    else:
+        print(f"\n  📅 TEST PENCERESİ: son 30 gün (güncel ay). Farklı ay için "
+              f"BT_OFFSET_DAYS=30/60/90 ver.")
 
     all_results: dict = {}
 
