@@ -355,8 +355,15 @@ class ExecutionEngine:
         async with self._symbol_lock(symbol):
             try:
                 if use_maker:
+                    # Structure-based trades need more time: the 1h candle already
+                    # closed past the level, so the limit fills only on a retrace.
+                    # 10 minutes gives a reasonable retrace window without holding
+                    # through a full candle on a bad fill. ATR-based trades keep the
+                    # default 45s (limit is near current price, fills quickly or not).
+                    limit_timeout = 600.0 if is_structure_based else 45.0
                     order: Optional[OrderResult] = await self._exchange.place_limit_order(
                         setup.symbol, side, setup.quantity, setup.entry_price, params,
+                        timeout=limit_timeout,
                         fallback_market=not is_structure_based,
                     )
                     if order is None:
