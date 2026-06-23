@@ -153,7 +153,7 @@ class StrategyConfig:
     funding_enabled: bool = False
     funding_mode: str = "monitor"     # "monitor" (log only) | "filter" (skip contrarian) | "boost"
     funding_extreme: float = 0.0005   # |funding| above this per interval = crowded positioning
-    sniper_min_grade: int = 0         # 0=off, 1/2/3 = min confluence score to trade
+    sniper_min_grade: int = 2         # 0=off, 1/2/3 = min confluence score to trade
     # Order-flow collector (live-only, monitor-first). Uses watchTrades +
     # fetchOrderBook to log taker delta + depth imbalance alongside each signal.
     # Cannot be backtested → ships OFF; never affects trades, only builds a
@@ -176,7 +176,7 @@ class StrategyConfig:
     whale_symbols: tuple = ("BTC/USDT:USDT",)  # BTC-only per backtest
     # Intraday breakout strategies (validated edge: ORB PF 1.44, Asia BO PF 2.15)
     orb_enabled: bool = True
-    asia_bo_enabled: bool = True
+    asia_bo_enabled: bool = False
     # S/R breakout (swing momentum, validated: lb80 touch3 SL3ATR RR3.0 PF 1.72).
     # Uses the normal 48h max-hold + full risk (it's a swing trade, not intraday).
     sr_breakout_enabled: bool = True
@@ -327,7 +327,7 @@ def load_config() -> AppConfig:
         funding_enabled=_getbool("FUNDING_ENABLED", False),
         funding_mode=_get("FUNDING_MODE", "monitor"),
         funding_extreme=_getfloat("FUNDING_EXTREME", 0.0005),
-        sniper_min_grade=_getint("SNIPER_MIN_GRADE", 0),
+        sniper_min_grade=_getint("SNIPER_MIN_GRADE", 2),
         orderflow_enabled=_getbool("ORDERFLOW_ENABLED", False),
         orderflow_mode=_get("ORDERFLOW_MODE", "monitor"),
         orderflow_window_min=_getfloat("ORDERFLOW_WINDOW_MIN", 15.0),
@@ -339,7 +339,7 @@ def load_config() -> AppConfig:
         whale_rr=_getfloat("WHALE_RR", 1.5),
         whale_min_body_atr=_getfloat("WHALE_MIN_BODY_ATR", 0.5),
         orb_enabled=_getbool("ORB_ENABLED", True),
-        asia_bo_enabled=_getbool("ASIA_BO_ENABLED", True),
+        asia_bo_enabled=_getbool("ASIA_BO_ENABLED", False),
         sr_breakout_enabled=_getbool("SR_BREAKOUT_ENABLED", True),
         sr_breakout_symbols=sr_breakout_symbols,
         bb_symbols=bb_symbols,

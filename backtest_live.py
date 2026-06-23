@@ -1,22 +1,21 @@
 """
-backtest_live.py — Mevcut live sistemin 30 günlük gerçekçi backtesti.
+backtest_live.py — Live sistemin 30 günlük gerçekçi backtesti (v2).
 
-Karşılaştırma:
-  OLD: Market entry (eski sistem) — yapısal seviye geçildikten sonra close'a dolar
-  NEW: Limit entry (yeni sistem)  — seviyeye dönen fiyata limit emir
+İki sistem karşılaştırılır:
+  ESKİ (önceki config):
+    • Asia BO: açık, market entry (R/R düşüyor)
+    • BB/MR:   tüm 5 coin, tüm haftanın her günü, sniper grade=0
+    • ORB:     market entry
 
-Neden sadece Asia BO ve ORB karşılaştırılıyor?
-  • FVG/IFVG: Zaten retest (limit) girişi — her iki modelde aynı.
-  • S/R Breakout: SL/TP fill fiyatına göre hesaplanır — her iki modelde aynı.
-  • Squeeze/MR:   ATR tabanlı — her iki modelde aynı.
-  • Asia BO / ORB: SL/TP YAPISAL SEVİYEYE ankrajlı, fill=close → R/R çöküşü.
+  YENİ (güncel config sonrası):
+    • Asia BO: KAPALI (live backtest PF 0.69/0.78 → zararlı)
+    • BB/MR:   sadece BTC+ETH+SOL, SADECE HAFTA SONU, sniper grade≥2
+    • ORB:     limit retrace entry (fill sadece seviyeye dönüşte)
 
 Kullanım (VPS'te):
     cd /opt/bot2 && venv/bin/python backtest_live.py
 
-Çıktı:
-  • Her strateji için: Trade sayısı, Fill oranı, WR, PF, Toplam P&L
-  • OLD vs NEW yan yana karşılaştırma tablosu
+Çıktı: her strateji için sinyal/fill/WR/PF/P&L — ESKİ vs YENİ tablo
 """
 from __future__ import annotations
 
@@ -72,6 +71,9 @@ RISK_IFVG  = 0.02   # %2
 RISK_SR    = 0.02   # %2
 RISK_SQ    = 0.02   # %2
 RISK_MR    = 0.02   # %2
+
+# YENİ sistem BB/MR kısıtı: sadece bu 3 coin (BNB/XRP doğrulanamadı)
+BB_SYMBOLS_NEW = {"BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"}
 
 
 # ── Data structures ───────────────────────────────────────────────────────────
@@ -165,6 +167,8 @@ def run_strategy(
     risk_pct: float,
     sl_atr: float = 0.0,
     rr: float = 2.0,
+    weekend_only: bool = False,   # True → skip weekday candles (BB/MR new system)
+    sniper_grade: int = 0,        # minimum sniper confluence required (0=off)
 ) -> RunResult:
     """
     strategy_name: "asia_bo" | "orb" | "fvg" | "ifvg" | "sr_breakout" | "squeeze" | "mr"
@@ -188,7 +192,7 @@ def run_strategy(
         strat = SqueezeStrategy()
     elif strategy_name == "mr":
         from config import StrategyConfig
-        strat = MeanReversionStrategy(StrategyConfig())
+        strat = MeanReversionStrategy(StrategyConfig(sniper_min_grade=sniper_grade))
     else:
         return res
 
@@ -198,6 +202,44 @@ def run_strategy(
 
     n = len(df)
     for i in range(WARMUP, n):
+        # Weekend-only filter: 0=Mon … 4=Fri, 5=Sat, 6=Sun
+        if weekend_only and df.index[i].weekday() < 5:
+            # Still need to check/close open trades on weekday candles
+            if open_trade is not None:
+                candle = df.iloc[i]
+                d = open_trade.direction
+                hi, lo = float(candle["high"]), float(candle["low"])
+                sl, tp = open_trade.sl_price, open_trade.tp_price
+                exit_px = None; exit_reason = ""
+                if d == 1:
+                    if lo <= sl:
+                        exit_px, exit_reason = sl, "sl_hit"
+                    elif hi >= tp:
+                        exit_px, exit_reason = tp, "tp_hit"
+                else:
+                    if hi >= sl:
+                        exit_px, exit_reason = sl, "sl_hit"
+                    elif lo <= tp:
+                        exit_px, exit_reason = tp, "tp_hit"
+                age = i - open_trade.entry_idx
+                if exit_px is None and age >= MAX_HOLD:
+                    exit_px = float(candle["close"]); exit_reason = "max_hold"
+                if exit_px is not None:
+                    entry = open_trade.entry_price
+                    qty   = open_trade.quantity
+                    fee   = (entry + exit_px) * qty * FEE_TAKER
+                    pnl   = d * (exit_px - entry) * qty - fee
+                    balance += pnl
+                    open_trade.exit_idx = i; open_trade.exit_price = exit_px
+                    open_trade.exit_reason = exit_reason; open_trade.pnl_usdt = pnl
+                    res.trades.append(open_trade)
+                    res.total_filled += 1
+                    if pnl >= 0: res.winners += 1; res.gross_win += pnl
+                    else: res.losers += 1; res.gross_loss += abs(pnl)
+                    res.total_pnl += pnl
+                    open_trade = None
+            continue  # don't look for new entries on weekdays
+
         sub = df.iloc[:i + 1].copy()
         candle = df.iloc[i]
 
@@ -411,11 +453,12 @@ def run_strategy(
 
 # ── Print comparison table ────────────────────────────────────────────────────
 def print_table(all_results: dict, symbols: list[str]) -> None:
-    sep = "─" * 108
+    sep = "─" * 116
 
-    print("\n" + "═" * 108)
+    print("\n" + "═" * 116)
     print("  MEVCUT SİSTEM 30 GÜNLÜK BACKTEST  —  Başlangıç bakiyesi: ${:.2f}".format(STARTING_BALANCE))
-    print("═" * 108)
+    print("  ESKİ: AsiaBo+5coin+7d+grade0 | YENİ: AsiaBo KAPALI, ORB limit, MR 3coin/wknd/grade2")
+    print("═" * 116)
 
     strat_names = {
         "asia_bo":    "Asia BO",
@@ -461,13 +504,13 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
         return sum(a["rr_vals"]) / len(a["rr_vals"]) if a["rr_vals"] else 0.0
 
     # Table header
-    print(f"\n{'Strateji':<12} {'Model':<6} {'Sinyal':>7} {'Dolan':>7} {'Fill%':>6} "
+    print(f"\n{'Strateji':<26} {'Sinyal':>7} {'Dolan':>7} {'Fill%':>6} "
           f"{'WR%':>6} {'PF':>6} {'Avg R/R':>8} {'P&L($)':>10}")
     print(sep)
 
     strats_to_show = ["asia_bo", "orb", "fvg", "sr_breakout", "squeeze", "mr"]
-    # Which strategies differ between old/new
-    differs = {"asia_bo", "orb"}
+    # Which strategies differ between old/new (show both rows)
+    differs = {"asia_bo", "orb", "mr"}
 
     for strat in strats_to_show:
         label = strat_names[strat]
@@ -478,6 +521,9 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
 
             key = (strat, model)
             if key not in agg:
+                if strat == "asia_bo" and model == "new":
+                    print(f"{'Asia BO (disabled)':<26} {'—':>7} {'—':>7} {'  —':>6} "
+                          f"{'  —':>6} {'  —':>6} {'     —':>8} {'       —':>10}  ⛔")
                 continue
             a = agg[key]
             n_filled = a["filled"]
@@ -488,34 +534,49 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
             rr_avg   = avg_rr(a)
             pnl      = a["total_pnl"]
 
-            model_label = "" if strat not in differs else f"({model})"
+            if strat not in differs:
+                model_label = ""
+            elif strat == "asia_bo":
+                model_label = "(market)" if model == "old" else "(disabled)"
+            elif strat == "orb":
+                model_label = "(market)" if model == "old" else "(limit-retrace)"
+            elif strat == "mr":
+                model_label = "(5coin/7d/g0)" if model == "old" else "(3coin/wknd/g2)"
+            else:
+                model_label = f"({model})"
             row_label   = f"{label} {model_label}".strip()
             marker = "✅" if pf_val >= 1.5 else ("⚠️ " if pf_val >= 1.0 else "❌")
-            print(f"{row_label:<18} {a['signals']:>7} {n_filled:>7} {fill_pct:>5.0f}% "
+            print(f"{row_label:<26} {a['signals']:>7} {n_filled:>7} {fill_pct:>5.0f}% "
                   f"{wr_pct:>5.0f}% {pf_str:>6} {rr_avg:>8.2f} {pnl:>+10.2f}  {marker}")
 
         if strat in differs:
             print(sep)
 
     # Per-symbol detail
-    print(f"\n{'─'*108}")
-    print("  PER COIN DETAYI (Asia BO + ORB — 2 modelin karşılaştırması)")
-    print(f"{'─'*108}")
-    print(f"{'Coin':<8} {'Asia OLD':>10} {'Asia NEW':>10}   {'ORB OLD':>10} {'ORB NEW':>10}")
-    print(f"{'':8} {'P&L($)':>10} {'P&L($)':>10}   {'P&L($)':>10} {'P&L($)':>10}")
-    print("─" * 64)
+    print(f"\n{'─'*116}")
+    print("  PER COIN DETAYI — ESKİ vs YENİ P&L($)")
+    print(f"{'─'*116}")
+    print(f"{'Coin':<8} {'AsiaBo OLD':>11} {'AsiaBo NEW':>11}  "
+          f"{'ORB OLD':>10} {'ORB NEW':>10}  {'MR OLD':>9} {'MR NEW':>9}")
+    print("─" * 72)
     for sym in symbols:
         coin = sym.split("/")[0]
-        a_old = all_results.get((sym, "asia_bo", "old"))
-        a_new = all_results.get((sym, "asia_bo", "new"))
-        o_old = all_results.get((sym, "orb",     "old"))
-        o_new = all_results.get((sym, "orb",     "new"))
-        def pnl_str(r): return f"{r.total_pnl:+.2f}" if r else "  n/a"
-        print(f"{coin:<8} {pnl_str(a_old):>10} {pnl_str(a_new):>10}   "
-              f"{pnl_str(o_old):>10} {pnl_str(o_new):>10}")
+        def pnl_str(r): return f"{r.total_pnl:+.2f}" if r else "  N/A"  # noqa: E731
+        a_old = all_results.get((sym, "asia_bo",     "old"))
+        o_old = all_results.get((sym, "orb",         "old"))
+        o_new = all_results.get((sym, "orb",         "new"))
+        m_old = all_results.get((sym, "mr",          "old"))
+        m_new = all_results.get((sym, "mr",          "new"))
+        asia_new_str = "KAPALI" if a_old else "  N/A"  # new=disabled for all coins
+        print(f"{coin:<8} {pnl_str(a_old):>11} {asia_new_str:>11}  "
+              f"{pnl_str(o_old):>10} {pnl_str(o_new):>10}  "
+              f"{pnl_str(m_old):>9} {pnl_str(m_new):>9}")
 
     # Summary
-    print(f"\n{'═'*108}")
+    # OLD: AsiaBo(market) + ORB(market) + FVG + S/R + Squeeze + MR(5coin/7d/grade0)
+    # NEW: AsiaBo KAPALI(0) + ORB(limit-retrace) + FVG + S/R + Squeeze + MR(3coin/wknd/grade2)
+    # FVG/S/R/Squeeze: "new" mirrored from "old" — same value, correct for both totals
+    print(f"\n{'═'*116}")
     all_old_pnl = sum(
         all_results[(sym, s, "old")].total_pnl
         for sym in symbols for s in strat_names
@@ -528,8 +589,8 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
     )
     print(f"  30 GÜN TOPLAM P&L  |  ESKİ SİSTEM: {all_old_pnl:+.2f}$  |  "
           f"YENİ SİSTEM: {all_new_pnl:+.2f}$  |  FARK: {all_new_pnl-all_old_pnl:+.2f}$")
-    print(f"  (FVG/S/R/Squeeze/MR modeller arası aynı olduğundan toplama 1 kez eklendi)")
-    print("═" * 108 + "\n")
+    print(f"  (YENİ: AsiaBo 0 katkı; MR sadece BTC/ETH/SOL hafta sonu; ORB limit-retrace)")
+    print("═" * 116 + "\n")
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
@@ -550,14 +611,34 @@ async def main() -> None:
 
     all_results: dict = {}
 
+    # strat_configs: (name, risk_pct, sl_atr, rr, runs)
+    # runs = list of (model, weekend_only, sniper_grade, sym_filter)
+    #   sym_filter=None → all SYMBOLS; otherwise a set of allowed symbols
     strat_configs = [
-        # (name,        risk_pct,  sl_atr, rr,   run_old, run_new)
-        ("asia_bo",     RISK_ASIA, 1.0,    2.0,  True,  True),
-        ("orb",         RISK_ORB,  1.0,    2.0,  True,  True),
-        ("fvg",         RISK_FVG,  0.0,    2.5,  True,  False),  # old==new
-        ("sr_breakout", RISK_SR,   3.0,    3.0,  True,  False),  # old==new
-        ("squeeze",     RISK_SQ,   2.0,    2.5,  True,  False),  # old==new
-        ("mr",          RISK_MR,   1.5,    2.0,  True,  False),  # old==new
+        ("asia_bo",     RISK_ASIA, 1.0, 2.0, [
+            # OLD: all coins, market entry at close
+            ("old", False, 0, None),
+            # NEW: DISABLED (PF 0.78 live-model — zararlı strateji kapatıldı)
+        ]),
+        ("orb",         RISK_ORB,  1.0, 2.0, [
+            ("old", False, 0, None),   # OLD: market entry at close
+            ("new", False, 0, None),   # NEW: limit retrace (next-candle range check)
+        ]),
+        ("fvg",         RISK_FVG,  0.0, 2.5, [
+            ("old", False, 0, None),   # ESKİ=YENİ (limit retest by design)
+        ]),
+        ("sr_breakout", RISK_SR,   3.0, 3.0, [
+            ("old", False, 0, None),   # ESKİ=YENİ
+        ]),
+        ("squeeze",     RISK_SQ,   2.0, 2.5, [
+            ("old", False, 0, None),   # ESKİ=YENİ
+        ]),
+        ("mr",          RISK_MR,   1.5, 2.0, [
+            # OLD: tüm 5 coin, tüm haftanın her günü, sniper grade=0 (filtre yok)
+            ("old", False, 0, None),
+            # NEW: sadece BTC+ETH+SOL, SADECE HAFTA SONU, sniper grade≥2
+            ("new", True,  2, BB_SYMBOLS_NEW),
+        ]),
     ]
 
     for sym in SYMBOLS:
@@ -567,22 +648,27 @@ async def main() -> None:
         coin = sym.split("/")[0]
         print(f"\n  [{coin}] strateji koşturuluyor ...")
 
-        for name, risk, sl_a, rr_v, do_old, do_new in strat_configs:
-            for model in ("old", "new"):
-                if model == "old" and not do_old:
-                    continue
-                if model == "new" and not do_new:
-                    # For strategies where old==new, store old result as "new" too
-                    all_results[(sym, name, "new")] = all_results.get((sym, name, "old"))
+        for name, risk, sl_a, rr_v, runs in strat_configs:
+            for model, wknd, grade, sym_filter in runs:
+                if sym_filter is not None and sym not in sym_filter:
                     continue
                 try:
-                    r = run_strategy(df, name, model, sym, risk, sl_atr=sl_a, rr=rr_v)
+                    r = run_strategy(df, name, model, sym, risk, sl_atr=sl_a, rr=rr_v,
+                                     weekend_only=wknd, sniper_grade=grade)
                     all_results[(sym, name, model)] = r
-                    print(f"    {name:14} {model}: {r.total_signals:3} sinyal, "
-                          f"{r.total_filled:3} trade, pnl={r.total_pnl:+.2f}$")
+                    grade_str = f" grade≥{grade}" if grade > 0 else ""
+                    wknd_str  = " [wknd]" if wknd else ""
+                    print(f"    {name:14} {model}{grade_str}{wknd_str}: "
+                          f"{r.total_signals:3} sinyal, {r.total_filled:3} trade, "
+                          f"pnl={r.total_pnl:+.2f}$")
                 except Exception as e:
                     print(f"    {name} {model}: HATA — {e}")
                     import traceback; traceback.print_exc()
+
+        # For strategies that are identical old/new, mirror old→new so aggregates work
+        for same in ("fvg", "sr_breakout", "squeeze"):
+            if (sym, same, "old") in all_results:
+                all_results[(sym, same, "new")] = all_results[(sym, same, "old")]
 
     print_table(all_results, SYMBOLS)
 
