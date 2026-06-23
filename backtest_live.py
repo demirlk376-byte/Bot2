@@ -18,6 +18,12 @@ backtest_live.py — Live sistemin 30 günlük gerçekçi backtesti (v2).
       Entry = seviye → R/R 2.0 korunur (research PF 2.15 buradan geliyor).
     • Canlıda data.py _ticker_loop fiyatı izler, seviye kırılınca market atar.
 
+  BUFFER (false poke filtreli — yeni Asia BO modeli):
+    • Asia BO: seviyeden 0.2×ATR öteye geçmeden ateşleme YOK.
+      Sığ false poke'lar filtrelenir; giriş = seviye+0.2×ATR (biraz daha geç).
+    • R/R ATR bazlı: SL = giriş−1×ATR, TP = giriş+2×ATR.
+    • Backtest pozitif çıkarsa Asia BO tick-watcher buffer ile açılır.
+
 Kullanım (VPS'te):
     cd /opt/bot2 && venv/bin/python backtest_live.py
 
@@ -476,6 +482,7 @@ def run_stop_touch(
     sl_atr: float = 1.0,
     rr: float = 2.0,
     max_hold: int = 6,    # live ORB/Asia use day_max_hold_candles=6 (NOT 48)
+    buffer_atr: float = 0.0,  # require price to exceed level by this many ATRs before firing
 ) -> RunResult:
     """
     Physically accurate model of a resting STOP order at the breakout level.
@@ -486,6 +493,11 @@ def run_stop_touch(
     POKES (price pierces the level then reverses), which the close-confirmed model
     silently excludes. This is the realistic lower-bound for live performance.
 
+    buffer_atr > 0:  fire only when price exceeds level by buffer×ATR. Filters
+    shallow false pokes at the cost of a slightly worse entry. SL/TP anchored from
+    the actual entry (ATR-based), not from the structural level. Only implemented
+    for asia_bo (ORB already viable without buffer).
+
     Range rules:
       asia_bo: range = high/low of 00:00–07:59 UTC candles; watch from 08:00 UTC.
                SL = level ∓ sl_atr×ATR, TP = level ± rr×sl_atr×ATR.
@@ -493,7 +505,8 @@ def run_stop_touch(
                SL = opposite range edge, TP = level ± rr×range.
     One trade per calendar day per symbol; first touch wins.
     """
-    res = RunResult(strategy=strategy_name, model="stop_touch", symbol=symbol)
+    _model = "stop_buf" if buffer_atr > 0 else "stop_touch"
+    res = RunResult(strategy=strategy_name, model=_model, symbol=symbol)
     balance = STARTING_BALANCE
     traded_dates: set = set()
     open_trade: Optional[BtTrade] = None
@@ -544,6 +557,7 @@ def run_stop_touch(
         if today in traded_dates:
             continue
 
+        atr_v = 0.0  # initialise; set inside each branch
         if strategy_name == "asia_bo":
             if ts.hour < ASIA_END_HOUR:   # 8
                 continue
@@ -559,9 +573,13 @@ def run_stop_touch(
                                  df["close"].iloc[:i + 1], 14).iloc[-1])
             if pd.isna(atr_v) or atr_v <= 0:
                 continue
-            sl_dist = sl_atr * atr_v
+            sl_dist  = sl_atr * atr_v
+            buf_dist = buffer_atr * atr_v   # 0 when no buffer
             long_sl  = hi_lvl - sl_dist; long_tp  = hi_lvl + rr * sl_dist
             short_sl = lo_lvl + sl_dist; short_tp = lo_lvl - rr * sl_dist
+            # Buffer-adjusted trigger levels: require price to go buffer×ATR past level
+            trigger_h = hi_lvl + buf_dist
+            trigger_l = lo_lvl - buf_dist
         else:  # orb
             if ts.hour <= ORB_HOUR:       # 14 → trade from 15:00
                 continue
@@ -576,9 +594,12 @@ def run_stop_touch(
                 continue
             long_sl  = lo_lvl; long_tp  = hi_lvl + rr * rng_size
             short_sl = hi_lvl; short_tp = lo_lvl - rr * rng_size
+            # ORB: buffer not applied (already viable without it)
+            trigger_h = hi_lvl
+            trigger_l = lo_lvl
 
-        long_touch  = hi >= hi_lvl
-        short_touch = lo <= lo_lvl
+        long_touch  = hi >= trigger_h
+        short_touch = lo <= trigger_l
         if not long_touch and not short_touch:
             continue
 
@@ -586,14 +607,25 @@ def run_stop_touch(
         # the open is assumed hit first (price moves to the near edge sooner).
         if long_touch and short_touch:
             open_px = float(candle["open"])
-            direction = 1 if abs(open_px - hi_lvl) <= abs(open_px - lo_lvl) else -1
+            direction = 1 if abs(open_px - trigger_h) <= abs(open_px - trigger_l) else -1
         else:
             direction = 1 if long_touch else -1
 
         if direction == 1:
-            entry_px, sl_price, tp_price = hi_lvl, long_sl, long_tp
+            if buffer_atr > 0 and strategy_name == "asia_bo":
+                # Entry is at the trigger (level + buffer) → anchor SL/TP from entry
+                entry_px = trigger_h
+                sl_price = entry_px - sl_atr * atr_v
+                tp_price = entry_px + rr * sl_atr * atr_v
+            else:
+                entry_px, sl_price, tp_price = hi_lvl, long_sl, long_tp
         else:
-            entry_px, sl_price, tp_price = lo_lvl, short_sl, short_tp
+            if buffer_atr > 0 and strategy_name == "asia_bo":
+                entry_px = trigger_l
+                sl_price = entry_px + sl_atr * atr_v
+                tp_price = entry_px - rr * sl_atr * atr_v
+            else:
+                entry_px, sl_price, tp_price = lo_lvl, short_sl, short_tp
 
         # Validate geometry / R/R
         if direction == 1 and not (sl_price < entry_px < tp_price):
@@ -661,7 +693,7 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
     agg: dict[tuple, dict] = {}
     for sym in symbols:
         for strat in strat_names:
-            for model in ("old", "new", "stop", "stop_touch"):
+            for model in ("old", "new", "stop", "stop_touch", "stop_buf"):
                 key = (strat, model)
                 r = all_results.get((sym, strat, model))
                 if r is None:
@@ -702,7 +734,7 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
 
     # model labels per strategy (which models to show, in order)
     models_for = {
-        "asia_bo":     ["old", "stop", "stop_touch"],
+        "asia_bo":     ["old", "stop", "stop_touch", "stop_buf"],
         "orb":         ["old", "new", "stop", "stop_touch"],
         "fvg":         ["old"],
         "sr_breakout": ["old"],
@@ -713,6 +745,7 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
         ("asia_bo", "old"):        "(market)",
         ("asia_bo", "stop"):       "(STOP confirmed)",
         ("asia_bo", "stop_touch"): "(STOP touch=real)",
+        ("asia_bo", "stop_buf"):   "(BUF +0.2×ATR)",
         ("orb", "old"):            "(market)",
         ("orb", "new"):            "(limit-retrace)",
         ("orb", "stop"):           "(STOP confirmed)",
@@ -747,20 +780,21 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
 
     # Per-symbol detail — focus on STOP confirmed vs STOP touch (=realistic live)
     print(f"\n{'─'*116}")
-    print("  PER COIN DETAYI — AsiaBo & ORB: STOP confirmed vs STOP touch(=GERÇEKÇİ)  P&L($)")
+    print("  PER COIN DETAYI — AsiaBo & ORB: STOP confirmed / STOP touch(=GERÇEKÇİ) / BUF  P&L($)")
     print(f"{'─'*116}")
-    print(f"{'Coin':<8} {'Asia conf':>10} {'Asia REAL':>10}  "
+    print(f"{'Coin':<8} {'Asia conf':>10} {'Asia REAL':>10} {'Asia BUF':>10}  "
           f"{'ORB conf':>10} {'ORB REAL':>10}  {'MR NEW':>9}")
-    print("─" * 74)
+    print("─" * 84)
     for sym in symbols:
         coin = sym.split("/")[0]
         def pnl_str(r): return f"{r.total_pnl:+.2f}" if r else "  N/A"  # noqa: E731
         a_stop  = all_results.get((sym, "asia_bo", "stop"))
         a_touch = all_results.get((sym, "asia_bo", "stop_touch"))
+        a_buf   = all_results.get((sym, "asia_bo", "stop_buf"))
         o_stop  = all_results.get((sym, "orb",     "stop"))
         o_touch = all_results.get((sym, "orb",     "stop_touch"))
         m_new   = all_results.get((sym, "mr",      "new"))
-        print(f"{coin:<8} {pnl_str(a_stop):>10} {pnl_str(a_touch):>10}  "
+        print(f"{coin:<8} {pnl_str(a_stop):>10} {pnl_str(a_touch):>10} {pnl_str(a_buf):>10}  "
               f"{pnl_str(o_stop):>10} {pnl_str(o_touch):>10}  "
               f"{pnl_str(m_new):>9}")
 
@@ -787,17 +821,18 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
                 return r.total_pnl
         return 0.0
     # confirmed: prefer close-confirmed stop; touch: prefer realistic stop_touch
-    all_stop_pnl  = sum(best(sym, s, ("stop", "new", "old"))
-                        for sym in symbols for s in strat_names)
-    all_touch_pnl = sum(best(sym, s, ("stop_touch", "new", "old"))
-                        for sym in symbols for s in strat_names)
+    # buf: asia_bo uses buffer model, orb/others use stop_touch/new/old
+    all_stop_pnl  = sum(best(sym, s, ("stop",       "new", "old")) for sym in symbols for s in strat_names)
+    all_touch_pnl = sum(best(sym, s, ("stop_touch", "new", "old")) for sym in symbols for s in strat_names)
+    all_buf_pnl   = sum(best(sym, s, ("stop_buf", "stop_touch", "new", "old")) for sym in symbols for s in strat_names)
 
     print(f"  30 GÜN TOPLAM P&L  |  ESKİ SİSTEM: {all_old_pnl:+.2f}$  |  "
           f"YENİ SİSTEM: {all_new_pnl:+.2f}$  |  FARK: {all_new_pnl-all_old_pnl:+.2f}$")
     print(f"  (YENİ: AsiaBo 0 katkı; MR sadece BTC/ETH/SOL hafta sonu; ORB limit-retrace)")
-    print(f"\n  STOP-CONFIRMED (kapanış teyitli, İYİMSER):  {all_stop_pnl:+.2f}$")
-    print(f"  >>> STOP-TOUCH (dokunuşta, GERÇEKÇİ — false poke dahil): {all_touch_pnl:+.2f}$ <<<")
-    print(f"      (Bu ikincisi canlı tick-watcher'ın gerçekte üreteceği rakam.)")
+    print(f"\n  STOP-CONFIRMED (kapanış teyitli, İYİMSER):           {all_stop_pnl:+.2f}$")
+    print(f"  STOP-TOUCH (dokunuşta, GERÇEKÇİ — false poke dahil): {all_touch_pnl:+.2f}$")
+    print(f"  >>> ASIA BUF+0.2ATR (false poke filtreli): {all_buf_pnl:+.2f}$ <<<")
+    print(f"      (Asia touch→buf farkı = false poke filtresi kazancı. Pozitifse Asia açılır.)")
     print("═" * 116 + "\n")
 
 
@@ -887,6 +922,19 @@ async def main() -> None:
             except Exception as e:
                 print(f"    {name} stop_touch: HATA — {e}")
                 import traceback; traceback.print_exc()
+
+        # Buffer breakout: Asia BO with 0.2×ATR filter to eliminate shallow false pokes.
+        # Entry = level+0.2ATR; SL/TP anchored from entry (ATR-based). If this shows
+        # positive PF, the live tick-watcher will be updated with the buffer guard.
+        try:
+            r = run_stop_touch(df, "asia_bo", sym, RISK_ASIA, sl_atr=1.0, rr=2.0,
+                               buffer_atr=0.2)
+            all_results[(sym, "asia_bo", "stop_buf")] = r
+            print(f"    {'asia_bo':14} stop_buf(0.2): {r.total_signals:3} sinyal, "
+                  f"{r.total_filled:3} trade, pnl={r.total_pnl:+.2f}$")
+        except Exception as e:
+            print(f"    asia_bo stop_buf: HATA — {e}")
+            import traceback; traceback.print_exc()
 
         # For strategies that are identical old/new, mirror old→new so aggregates work
         for same in ("fvg", "sr_breakout", "squeeze"):
