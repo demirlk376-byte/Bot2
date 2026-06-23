@@ -40,8 +40,8 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(__file__))
 
 from indicators import atr as atr_fn, find_sr_levels, is_volume_spike, ema as ema_fn
-from strategies.asia_bo import AsiaBoStrategy
-from strategies.orb import OrbStrategy
+from strategies.asia_bo import AsiaBoStrategy, ASIA_END_HOUR
+from strategies.orb import OrbStrategy, ORB_HOUR
 from strategies.fvg import FvgStrategy
 from strategies.ifvg import IfvgStrategy
 from strategies.sr_breakout import SrBreakoutStrategy
@@ -467,6 +467,177 @@ def run_strategy(
     return res
 
 
+# ── Faithful intra-candle STOP simulation (fires on TOUCH, incl. false pokes) ──
+def run_stop_touch(
+    df: pd.DataFrame,
+    strategy_name: str,   # "asia_bo" | "orb"
+    symbol: str,
+    risk_pct: float,
+    sl_atr: float = 1.0,
+    rr: float = 2.0,
+) -> RunResult:
+    """
+    Physically accurate model of a resting STOP order at the breakout level.
+
+    Unlike run_strategy(model="stop") — which only counts breakouts CONFIRMED by a
+    candle close beyond the range — this fires the instant price TOUCHES the level
+    intra-candle, exactly like a live stop order. That means it also catches FALSE
+    POKES (price pierces the level then reverses), which the close-confirmed model
+    silently excludes. This is the realistic lower-bound for live performance.
+
+    Range rules:
+      asia_bo: range = high/low of 00:00–07:59 UTC candles; watch from 08:00 UTC.
+               SL = level ∓ sl_atr×ATR, TP = level ± rr×sl_atr×ATR.
+      orb:     range = high/low of the 14:00 UTC candle; watch from 15:00 UTC.
+               SL = opposite range edge, TP = level ± rr×range.
+    One trade per calendar day per symbol; first touch wins.
+    """
+    res = RunResult(strategy=strategy_name, model="stop_touch", symbol=symbol)
+    balance = STARTING_BALANCE
+    traded_dates: set = set()
+    open_trade: Optional[BtTrade] = None
+    n = len(df)
+
+    def _close_trade(t: BtTrade, exit_px: float, reason: str, idx: int) -> None:
+        nonlocal balance
+        d = t.direction
+        fee = (t.entry_price + exit_px) * t.quantity * FEE_TAKER
+        pnl = d * (exit_px - t.entry_price) * t.quantity - fee
+        balance += pnl
+        t.exit_idx = idx; t.exit_price = exit_px
+        t.exit_reason = reason; t.pnl_usdt = pnl
+        res.trades.append(t)
+        res.total_filled += 1
+        if pnl >= 0:
+            res.winners += 1; res.gross_win += pnl
+        else:
+            res.losers += 1; res.gross_loss += abs(pnl)
+        res.total_pnl += pnl
+
+    for i in range(WARMUP, n):
+        candle = df.iloc[i]
+        ts = df.index[i]
+        hi, lo, close_px = float(candle["high"]), float(candle["low"]), float(candle["close"])
+
+        # ── Manage open trade (pessimistic: SL before TP) ────────────────────
+        if open_trade is not None:
+            d = open_trade.direction
+            sl, tp = open_trade.sl_price, open_trade.tp_price
+            age = i - open_trade.entry_idx
+            exit_px = None; reason = ""
+            if d == 1:
+                if lo <= sl: exit_px, reason = sl, "sl_hit"
+                elif hi >= tp: exit_px, reason = tp, "tp_hit"
+            else:
+                if hi >= sl: exit_px, reason = sl, "sl_hit"
+                elif lo <= tp: exit_px, reason = tp, "tp_hit"
+            if exit_px is None and age >= MAX_HOLD:
+                exit_px, reason = close_px, "max_hold"
+            if exit_px is not None:
+                _close_trade(open_trade, exit_px, reason, i)
+                open_trade = None
+            continue
+
+        # ── Look for a breakout touch ────────────────────────────────────────
+        today = ts.date()
+        if today in traded_dates:
+            continue
+
+        if strategy_name == "asia_bo":
+            if ts.hour < ASIA_END_HOUR:   # 8
+                continue
+            mask = (pd.to_datetime(df.index).date == today) & (df.index.hour < ASIA_END_HOUR)
+            rng = df[mask]
+            if len(rng) < 4:
+                continue
+            hi_lvl = float(rng["high"].max())
+            lo_lvl = float(rng["low"].min())
+            if hi_lvl <= lo_lvl:
+                continue
+            atr_v = float(atr_fn(df["high"].iloc[:i + 1], df["low"].iloc[:i + 1],
+                                 df["close"].iloc[:i + 1], 14).iloc[-1])
+            if pd.isna(atr_v) or atr_v <= 0:
+                continue
+            sl_dist = sl_atr * atr_v
+            long_sl  = hi_lvl - sl_dist; long_tp  = hi_lvl + rr * sl_dist
+            short_sl = lo_lvl + sl_dist; short_tp = lo_lvl - rr * sl_dist
+        else:  # orb
+            if ts.hour <= ORB_HOUR:       # 14 → trade from 15:00
+                continue
+            mask = (pd.to_datetime(df.index).date == today) & (df.index.hour == ORB_HOUR)
+            rng = df[mask]
+            if rng.empty:
+                continue
+            hi_lvl = float(rng["high"].max())
+            lo_lvl = float(rng["low"].min())
+            rng_size = hi_lvl - lo_lvl
+            if rng_size <= 0:
+                continue
+            long_sl  = lo_lvl; long_tp  = hi_lvl + rr * rng_size
+            short_sl = hi_lvl; short_tp = lo_lvl - rr * rng_size
+
+        long_touch  = hi >= hi_lvl
+        short_touch = lo <= lo_lvl
+        if not long_touch and not short_touch:
+            continue
+
+        # Resolve direction. If both touched on one candle, the boundary nearer
+        # the open is assumed hit first (price moves to the near edge sooner).
+        if long_touch and short_touch:
+            open_px = float(candle["open"])
+            direction = 1 if abs(open_px - hi_lvl) <= abs(open_px - lo_lvl) else -1
+        else:
+            direction = 1 if long_touch else -1
+
+        if direction == 1:
+            entry_px, sl_price, tp_price = hi_lvl, long_sl, long_tp
+        else:
+            entry_px, sl_price, tp_price = lo_lvl, short_sl, short_tp
+
+        # Validate geometry / R/R
+        if direction == 1 and not (sl_price < entry_px < tp_price):
+            continue
+        if direction == -1 and not (tp_price < entry_px < sl_price):
+            continue
+        sl_d = abs(entry_px - sl_price)
+        rr_actual = abs(tp_price - entry_px) / sl_d if sl_d > 0 else 0.0
+        if rr_actual < 1.0:
+            continue
+
+        res.total_signals += 1
+        traded_dates.add(today)
+
+        qty, margin = size_position(balance, entry_px, sl_price, risk_pct)
+        if qty <= 0 or margin > balance * 0.95:
+            continue
+        balance -= margin + entry_px * qty * FEE_TAKER
+
+        t = BtTrade(
+            symbol=symbol, strategy=strategy_name, direction=direction,
+            entry_price=entry_px, sl_price=sl_price, tp_price=tp_price,
+            quantity=qty, entry_idx=i, model="stop_touch", rr_at_fill=rr_actual,
+        )
+
+        # Same-candle resolution: after filling at the level mid-candle, the REST
+        # of this candle can still hit SL or TP. Pessimistic: SL before TP.
+        exit_px = None; reason = ""
+        if direction == 1:
+            if lo <= sl_price: exit_px, reason = sl_price, "sl_hit"
+            elif hi >= tp_price: exit_px, reason = tp_price, "tp_hit"
+        else:
+            if hi >= sl_price: exit_px, reason = sl_price, "sl_hit"
+            elif lo <= tp_price: exit_px, reason = tp_price, "tp_hit"
+        if exit_px is not None:
+            _close_trade(t, exit_px, reason, i)
+        else:
+            open_trade = t
+
+    if open_trade is not None:
+        _close_trade(open_trade, float(df.iloc[-1]["close"]), "end_of_data", n - 1)
+
+    return res
+
+
 # ── Print comparison table ────────────────────────────────────────────────────
 def print_table(all_results: dict, symbols: list[str]) -> None:
     sep = "─" * 116
@@ -489,7 +660,7 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
     agg: dict[tuple, dict] = {}
     for sym in symbols:
         for strat in strat_names:
-            for model in ("old", "new", "stop"):
+            for model in ("old", "new", "stop", "stop_touch"):
                 key = (strat, model)
                 r = all_results.get((sym, strat, model))
                 if r is None:
@@ -530,21 +701,23 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
 
     # model labels per strategy (which models to show, in order)
     models_for = {
-        "asia_bo":     ["old", "stop"],
-        "orb":         ["old", "new", "stop"],
+        "asia_bo":     ["old", "stop", "stop_touch"],
+        "orb":         ["old", "new", "stop", "stop_touch"],
         "fvg":         ["old"],
         "sr_breakout": ["old"],
         "squeeze":     ["old"],
         "mr":          ["old", "new"],
     }
     label_for = {
-        ("asia_bo", "old"):  "(market)",
-        ("asia_bo", "stop"): "(STOP=research)",
-        ("orb", "old"):      "(market)",
-        ("orb", "new"):      "(limit-retrace)",
-        ("orb", "stop"):     "(STOP=research)",
-        ("mr", "old"):       "(5coin/7d/g0)",
-        ("mr", "new"):       "(3coin/wknd/g2)",
+        ("asia_bo", "old"):        "(market)",
+        ("asia_bo", "stop"):       "(STOP confirmed)",
+        ("asia_bo", "stop_touch"): "(STOP touch=real)",
+        ("orb", "old"):            "(market)",
+        ("orb", "new"):            "(limit-retrace)",
+        ("orb", "stop"):           "(STOP confirmed)",
+        ("orb", "stop_touch"):     "(STOP touch=real)",
+        ("mr", "old"):             "(5coin/7d/g0)",
+        ("mr", "new"):             "(3coin/wknd/g2)",
     }
 
     for strat in strats_to_show:
@@ -571,25 +744,24 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
         if strat in differs:
             print(sep)
 
-    # Per-symbol detail
+    # Per-symbol detail — focus on STOP confirmed vs STOP touch (=realistic live)
     print(f"\n{'─'*116}")
-    print("  PER COIN DETAYI — AsiaBo market vs STOP(research), ORB, MR  P&L($)")
+    print("  PER COIN DETAYI — AsiaBo & ORB: STOP confirmed vs STOP touch(=GERÇEKÇİ)  P&L($)")
     print(f"{'─'*116}")
-    print(f"{'Coin':<8} {'Asia MKT':>9} {'Asia STOP':>10}  "
-          f"{'ORB OLD':>9} {'ORB STOP':>9}  {'MR OLD':>9} {'MR NEW':>9}")
-    print("─" * 72)
+    print(f"{'Coin':<8} {'Asia conf':>10} {'Asia REAL':>10}  "
+          f"{'ORB conf':>10} {'ORB REAL':>10}  {'MR NEW':>9}")
+    print("─" * 74)
     for sym in symbols:
         coin = sym.split("/")[0]
         def pnl_str(r): return f"{r.total_pnl:+.2f}" if r else "  N/A"  # noqa: E731
-        a_old  = all_results.get((sym, "asia_bo",     "old"))
-        a_stop = all_results.get((sym, "asia_bo",     "stop"))
-        o_old  = all_results.get((sym, "orb",         "old"))
-        o_stop = all_results.get((sym, "orb",         "stop"))
-        m_old  = all_results.get((sym, "mr",          "old"))
-        m_new  = all_results.get((sym, "mr",          "new"))
-        print(f"{coin:<8} {pnl_str(a_old):>9} {pnl_str(a_stop):>10}  "
-              f"{pnl_str(o_old):>9} {pnl_str(o_stop):>9}  "
-              f"{pnl_str(m_old):>9} {pnl_str(m_new):>9}")
+        a_stop  = all_results.get((sym, "asia_bo", "stop"))
+        a_touch = all_results.get((sym, "asia_bo", "stop_touch"))
+        o_stop  = all_results.get((sym, "orb",     "stop"))
+        o_touch = all_results.get((sym, "orb",     "stop_touch"))
+        m_new   = all_results.get((sym, "mr",      "new"))
+        print(f"{coin:<8} {pnl_str(a_stop):>10} {pnl_str(a_touch):>10}  "
+              f"{pnl_str(o_stop):>10} {pnl_str(o_touch):>10}  "
+              f"{pnl_str(m_new):>9}")
 
     # Summary
     # OLD: AsiaBo(market) + ORB(market) + FVG + S/R + Squeeze + MR(5coin/7d/grade0)
@@ -606,21 +778,25 @@ def print_table(all_results: dict, symbols: list[str]) -> None:
         for sym in symbols for s in strat_names
         if (sym, s, "new") in all_results
     )
-    # STOP system: same as NEW but Asia BO + ORB use the research stop-entry model.
-    # Fall back: if a strat has no "stop" result use its "new" (FVG/SR/Squeeze/MR).
-    def best(sym, s):
-        for m in ("stop", "new", "old"):
+    # STOP-CONFIRMED system: Asia BO + ORB use close-confirmed stop-entry (optimistic).
+    def best(sym, s, prefer):
+        for m in prefer:
             r = all_results.get((sym, s, m))
             if r is not None:
                 return r.total_pnl
         return 0.0
-    all_stop_pnl = sum(best(sym, s) for sym in symbols for s in strat_names)
+    # confirmed: prefer close-confirmed stop; touch: prefer realistic stop_touch
+    all_stop_pnl  = sum(best(sym, s, ("stop", "new", "old"))
+                        for sym in symbols for s in strat_names)
+    all_touch_pnl = sum(best(sym, s, ("stop_touch", "new", "old"))
+                        for sym in symbols for s in strat_names)
 
     print(f"  30 GÜN TOPLAM P&L  |  ESKİ SİSTEM: {all_old_pnl:+.2f}$  |  "
           f"YENİ SİSTEM: {all_new_pnl:+.2f}$  |  FARK: {all_new_pnl-all_old_pnl:+.2f}$")
     print(f"  (YENİ: AsiaBo 0 katkı; MR sadece BTC/ETH/SOL hafta sonu; ORB limit-retrace)")
-    print(f"\n  >>> STOP-ENTRY SİSTEMİ (AsiaBo+ORB araştırma modeli): {all_stop_pnl:+.2f}$ <<<")
-    print(f"      (AsiaBo STOP + ORB STOP + FVG/SR/Squeeze + MR yeni — tick-watcher gerekli)")
+    print(f"\n  STOP-CONFIRMED (kapanış teyitli, İYİMSER):  {all_stop_pnl:+.2f}$")
+    print(f"  >>> STOP-TOUCH (dokunuşta, GERÇEKÇİ — false poke dahil): {all_touch_pnl:+.2f}$ <<<")
+    print(f"      (Bu ikincisi canlı tick-watcher'ın gerçekte üreteceği rakam.)")
     print("═" * 116 + "\n")
 
 
@@ -697,6 +873,19 @@ async def main() -> None:
                 except Exception as e:
                     print(f"    {name} {model}: HATA — {e}")
                     import traceback; traceback.print_exc()
+
+        # Faithful intra-candle STOP (fires on touch incl. false pokes) for the
+        # two breakout strategies — the realistic live lower-bound.
+        for name, risk, sl_a, rr_v in (("asia_bo", RISK_ASIA, 1.0, 2.0),
+                                       ("orb", RISK_ORB, 1.0, 2.0)):
+            try:
+                r = run_stop_touch(df, name, sym, risk, sl_atr=sl_a, rr=rr_v)
+                all_results[(sym, name, "stop_touch")] = r
+                print(f"    {name:14} stop_touch: {r.total_signals:3} sinyal, "
+                      f"{r.total_filled:3} trade, pnl={r.total_pnl:+.2f}$")
+            except Exception as e:
+                print(f"    {name} stop_touch: HATA — {e}")
+                import traceback; traceback.print_exc()
 
         # For strategies that are identical old/new, mirror old→new so aggregates work
         for same in ("fvg", "sr_breakout", "squeeze"):
