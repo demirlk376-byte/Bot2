@@ -1192,12 +1192,18 @@ async def position_reconciliation_loop() -> None:
                             # leave the still-live remainder mis-sized. Skip this
                             # sleeve; a smaller sibling may match instead.
                             if pos.quantity > to_close + tol:
+                                # Sleeve is larger than the shortfall — a partial
+                                # external close reduced part of this sleeve on MEXC.
+                                # Shrink the sleeve's tracked quantity to match MEXC
+                                # reality (exch_qty) so future resync stop placements
+                                # use the correct size and aren't silently rejected.
                                 logger.warning(
                                     "Reconciliation: %s sleeve %.6f exceeds remaining "
-                                    "shortfall %.6f — partial external close, leaving "
-                                    "this sleeve intact",
-                                    symbol, pos.quantity, to_close)
-                                continue
+                                    "shortfall %.6f — partial external close; "
+                                    "adjusting sleeve qty to %.6f",
+                                    symbol, pos.quantity, to_close, exch_qty)
+                                pos.quantity = exch_qty
+                                break
                             if pos.side == "short":
                                 sl_hit = pos.sl_price > 0 and current_price >= pos.sl_price * 0.99
                                 tp_hit = pos.tp_price > 0 and current_price <= pos.tp_price * 1.01

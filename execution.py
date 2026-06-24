@@ -511,6 +511,31 @@ class ExecutionEngine:
             return True
         if not hasattr(self._exchange, "cancel_stop_orders"):
             return True
+
+        # Fetch the ACTUAL MEXC position size before placing any stop.
+        # After a partial external close the portfolio qty may exceed the real
+        # exchange qty, causing a reduce-only plan order to be silently rejected
+        # (MEXC returns 200 with all-None fields when the requested size > position).
+        exch_qty: float | None = None
+        if hasattr(self._exchange, "get_position"):
+            try:
+                exch_pos = await self._exchange.get_position(symbol)
+                if exch_pos and exch_pos.contracts:
+                    exch_qty = float(exch_pos.contracts)
+                else:
+                    exch_qty = 0.0
+            except Exception as e:
+                logger.debug("resync: could not fetch MEXC position for %s: %s", symbol, e)
+
+        # Nothing on the exchange — clear any stale plan orders and return.
+        if exch_qty is not None and exch_qty <= 0:
+            await self._exchange.cancel_stop_orders(symbol)
+            logger.info(
+                "resync %s: MEXC position is 0 — skipping stop placement "
+                "(position already closed on exchange)", symbol,
+            )
+            return True
+
         # Hold the exchange-level stop-order mutex for the entire cancel→place
         # sequence so concurrent resyncs on OTHER symbols (e.g. two max_hold
         # closes firing at the same second) don't interleave and burst MEXC's
@@ -520,14 +545,36 @@ class ExecutionEngine:
         async with (stop_lock if stop_lock is not None else _null_ctx()):
             await self._exchange.cancel_stop_orders(symbol)
             ok = True
-            for pos in self._portfolio.get_open_positions():
-                if pos.symbol != symbol or pos.sl_price <= 0:
-                    continue
+
+            # When the portfolio total exceeds the real MEXC position (partial
+            # external close not yet reconciled), cap each sleeve's stop to its
+            # proportional share of the actual exchange qty. This prevents the
+            # reduce-only plan order from being silently rejected by MEXC.
+            portfolio_positions = [
+                p for p in self._portfolio.get_open_positions()
+                if p.symbol == symbol and p.sl_price > 0
+            ]
+            total_portfolio_qty = sum(p.quantity for p in portfolio_positions)
+
+            for pos in portfolio_positions:
+                if exch_qty is not None and total_portfolio_qty > 0 and exch_qty < total_portfolio_qty:
+                    # Prorate this sleeve's share of the real position
+                    stop_qty = pos.quantity * (exch_qty / total_portfolio_qty)
+                    stop_qty = round(stop_qty, 6)
+                    if stop_qty <= 0:
+                        continue
+                    logger.warning(
+                        "resync %s: capping stop from %.6f → %.6f "
+                        "(MEXC position %.6f < portfolio %.6f — partial external close)",
+                        symbol, pos.quantity, stop_qty, exch_qty, total_portfolio_qty,
+                    )
+                else:
+                    stop_qty = pos.quantity
                 try:
                     set_fn = getattr(self._exchange, "_set_sl_tp_locked",
                                      self._exchange.set_sl_tp)
                     await set_fn(
-                        symbol, pos.side, pos.sl_price, pos.tp_price, pos.quantity
+                        symbol, pos.side, pos.sl_price, pos.tp_price, stop_qty
                     )
                 except Exception as e:
                     ok = False
