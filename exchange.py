@@ -390,6 +390,14 @@ class LiveExchange:
                 },
                 "enableRateLimit": True,
             })
+            # ccxt's load_markets() calls fetch_currencies(), which on MEXC hits the
+            # SPOT-private endpoint spotPrivateGetCapitalConfigGetall. A futures-only
+            # API key has no spot-wallet permission, so that call fails with
+            # code 10072 "Api key info invalid" and crashes startup before any trade.
+            # We only trade USDT-M swaps — the currency list is unnecessary — so skip
+            # the private currency fetch. Swap markets still load via the public
+            # markets endpoint.
+            self._exchange.has["fetchCurrencies"] = False
             await self._exchange.load_markets()
         # MEXC requires openType (1=isolated, 2=cross) and positionType (1=long,
         # 2=short) for set_leverage; margin mode is implicit in openType so we
