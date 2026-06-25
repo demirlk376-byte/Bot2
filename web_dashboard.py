@@ -223,6 +223,11 @@ class WebDashboard:
         inception = await self._db.get_meta_float(
             "inception_balance", self._initial_balance
         )
+        # Bogus inception (< $1): written during a bad startup with expired key
+        # or empty account. Fall back to current equity so return shows 0% until
+        # main.py rewrites the value on next restart.
+        if inception < 1.0:
+            inception = equity
         deposits = await self._db.get_meta_float("total_deposits", 0.0)
         invested = inception + deposits
         true_pnl = equity - invested

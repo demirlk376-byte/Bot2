@@ -1434,12 +1434,17 @@ async def main() -> None:
 
     # Persist the inception balance on first run; use it consistently across
     # restarts so /status always shows return-since-day-one, not since-last-restart.
+    # Guard: if the stored value is < $1 it was written during a bad startup
+    # (expired key, empty account, etc.) and would produce a nonsense return %.
+    # Overwrite it with today's real balance so the dashboard shows 0% from now.
     inception_raw = await db.get_meta("inception_balance")
-    if inception_raw is None:
+    stored_inception = float(inception_raw) if inception_raw is not None else 0.0
+    if stored_inception < 1.0:
         await db.set_meta("inception_balance", str(balance))
         inception_balance = balance
+        logger.info("inception_balance reset to %.2f (was %.4f — bogus startup value)", balance, stored_inception)
     else:
-        inception_balance = float(inception_raw)
+        inception_balance = stored_inception
 
     combiner = SignalCombiner(config.strategy)
 
