@@ -1304,9 +1304,18 @@ async def main() -> None:
             leverage=config.exchange.leverage,
             margin_mode=config.exchange.margin_mode,
         )
-        # Set leverage/margin per coin before trading.
-        for sym in symbols:
-            await live.initialize(sym)
+        try:
+            # Set leverage/margin per coin before trading.
+            for sym in symbols:
+                await live.initialize(sym)
+        except Exception as exc:
+            # Exchange init failed (e.g. code 402 expired key, code 10072 wrong
+            # permissions). Start a minimal error-dashboard so the user can see
+            # what went wrong and click Restart — no SSH required.
+            err = str(exc)[:500]
+            logger.critical("Exchange init failed — showing error dashboard: %s", err)
+            await WebDashboard.start_error_page(config.web, err)
+            raise  # propagate so systemd restarts after fix
         exchange = live
 
     portfolio = Portfolio(is_paper=config.exchange.paper_mode)

@@ -109,6 +109,69 @@ class WebDashboard:
         except Exception:
             pass
 
+    @staticmethod
+    async def start_error_page(cfg, error_msg: str) -> None:
+        """Start a minimal aiohttp server on the dashboard port that shows the
+        startup error (e.g. expired API key). This keeps the dashboard accessible
+        even when the exchange fails to initialize, so the user can see what went
+        wrong and click Restart without SSH-ing in."""
+        if not cfg.enabled:
+            return
+        try:
+            from aiohttp import web
+        except Exception:
+            return
+        html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trading Bot — Başlatma Hatası</title>
+<style>
+body{{margin:0;background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;
+display:flex;align-items:center;justify-content:center;min-height:100vh}}
+.box{{background:#161b22;border:1px solid #30363d;border-radius:12px;
+padding:32px;max-width:520px;width:90%;text-align:center}}
+h1{{color:#f85149;font-size:1.4rem;margin:0 0 12px}}
+pre{{background:#0d1117;border:1px solid #30363d;border-radius:8px;
+padding:14px;font-size:12px;color:#8b949e;text-align:left;
+overflow-x:auto;white-space:pre-wrap;word-break:break-all}}
+button{{background:#1f6feb;color:#fff;border:none;border-radius:8px;
+padding:12px 28px;font-size:15px;cursor:pointer;margin-top:20px}}
+button:hover{{background:#388bfd}}
+.hint{{color:#8b949e;font-size:13px;margin-top:10px}}
+</style></head><body><div class="box">
+<h1>&#9888; Bot Başlatılamadı</h1>
+<pre>{error_msg}</pre>
+<div class="hint">API anahtarını yenile, .env dosyasını güncelle, sonra yeniden başlat.</div>
+<button onclick="fetch('/api/restart',{{method:'POST'}}).then(()=>setTimeout(()=>location.reload(),8000))">
+Yeniden Başlat
+</button>
+</div></body></html>"""
+
+        repo = str(Path(__file__).resolve().parent)
+
+        async def _index(r):
+            return web.Response(text=html, content_type="text/html")
+
+        async def _restart(r):
+            try:
+                subprocess.run(["git", "pull", "--ff-only"], cwd=repo,
+                               capture_output=True, timeout=30)
+            except Exception:
+                pass
+            async def _bye():
+                await asyncio.sleep(1.5)
+                os._exit(1)
+            asyncio.create_task(_bye())
+            return web.json_response({"ok": True})
+
+        app = web.Application()
+        app.router.add_get("/", _index)
+        app.router.add_post("/api/restart", _restart)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, cfg.host, cfg.port, reuse_address=True)
+        await site.start()
+        logger.warning("Error dashboard on http://%s:%d — %s", cfg.host, cfg.port, error_msg)
+
     # ── Routes ─────────────────────────────────────────────────────────────────
 
     async def _handle_index(self, request):

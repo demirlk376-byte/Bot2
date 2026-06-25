@@ -173,9 +173,16 @@ class SqueezeStrategy:
         if len(df4) < self._kc_period + 2:
             return 0
         kc_mid4 = ema_fn(df4["close"], self._kc_period)
-        # Use the last COMPLETE 4h bar (iloc[-2] since iloc[-1] may be incomplete)
-        c4   = float(df4["close"].iloc[-2])
-        mid4 = float(kc_mid4.iloc[-2])
+        # Pick the correct 4h bar: if the last 1h candle is the final hour of a
+        # 4h period (hours 3, 7, 11, 15, 19, 23 UTC), iloc[-1] is a fully closed
+        # 4h bar — use it. Otherwise the last 4h bar is still forming, so fall
+        # back to iloc[-2] (the previous complete bar). This halves the average
+        # trend-filter lag from ~6h to ~2h vs always using iloc[-2].
+        last_hour = df_1h.index[-1].hour
+        four_h_closed = (last_hour % 4 == 3)
+        bar_idx = -1 if four_h_closed else -2
+        c4   = float(df4["close"].iloc[bar_idx])
+        mid4 = float(kc_mid4.iloc[bar_idx])
         if pd.isna(mid4):
             return 0
         return 1 if c4 > mid4 else -1
