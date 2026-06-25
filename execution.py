@@ -15,6 +15,13 @@ from strategies.signal_combiner import CombinedSignal
 
 logger = logging.getLogger(__name__)
 
+# BTC, ETH, SOL are highly correlated — a single macro news event can stop
+# out all three simultaneously. Capping same-direction exposure across this
+# group prevents 3× correlated loss from one market move.
+_CORRELATED_GROUPS: tuple[frozenset, ...] = (
+    frozenset({"BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"}),
+)
+
 
 class _null_ctx:
     """Async context manager that does nothing — used as a no-op when the
@@ -206,6 +213,26 @@ class ExecutionEngine:
                 return ExecutionResult(False, error=f"Cooldown active ({remaining:.0f}m remaining)")
             else:
                 del self._cooldown_until[cd_key]
+
+        # Correlation cap: prevent piling into the same direction across coins
+        # that historically move together (BTC/ETH/SOL). Opening 3 correlated
+        # shorts is effectively 3× the risk of a single short — a 2-cap limits
+        # gross directional exposure without blocking individual coin signals.
+        max_corr = getattr(self._config.risk, "max_correlated_direction", 2)
+        if max_corr > 0 and signal.direction != 0:
+            for grp in _CORRELATED_GROUPS:
+                if symbol in grp:
+                    same_dir = sum(
+                        1 for p in self._portfolio.get_open_positions()
+                        if p.symbol in grp and p.direction == signal.direction
+                    )
+                    if same_dir >= max_corr:
+                        side = "long" if signal.direction == 1 else "short"
+                        return ExecutionResult(
+                            False,
+                            error=f"Correlation cap: {same_dir}/{max_corr} {side} already open in correlated group",
+                        )
+                    break
 
         # Slot key: each strategy sleeve has its own slot so BB, ORB, and Asia BO
         # can run in parallel without blocking one another. S/R breakout shares the

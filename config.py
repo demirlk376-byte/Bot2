@@ -125,6 +125,11 @@ class RiskConfig:
     # ORB weekend PF 3.22 vs overall 1.44. Wire the edge directly into live sizing.
     bb_weekday_enabled: bool = True    # set false to skip BB on Mon–Fri
     orb_weekend_mult: float = 1.5      # scale ORB risk up on Sat/Sun (capped at 8%)
+    # Correlation cap: max open positions in the SAME direction across a correlated
+    # coin group (BTC/ETH/SOL move together). A single macro move can stop out all
+    # three simultaneously — allowing 3 correlated shorts is 3× the effective risk.
+    # 0 = disabled. 2 = at most 2 same-direction positions from the group at once.
+    max_correlated_direction: int = 2
 
 
 @dataclass
@@ -327,6 +332,7 @@ def load_config() -> AppConfig:
         cooldown_minutes=_getint("COOLDOWN_MINUTES", 240),
         bb_weekday_enabled=_getbool("BB_WEEKDAY_ENABLED", True),
         orb_weekend_mult=_getfloat("ORB_WEEKEND_MULT", 1.5),
+        max_correlated_direction=_getint("MAX_CORRELATED_DIRECTION", 2),
     )
 
     strategy = StrategyConfig(
