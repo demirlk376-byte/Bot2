@@ -91,7 +91,9 @@ class WebDashboard:
             app.router.add_post("/api/restart", self._handle_restart)
             self._runner = web.AppRunner(app)
             await self._runner.setup()
-            self._site = web.TCPSite(self._runner, self._cfg.host, self._cfg.port)
+            self._site = web.TCPSite(
+                self._runner, self._cfg.host, self._cfg.port, reuse_address=True
+            )
             await self._site.start()
             logger.info(
                 "Web dashboard running on http://%s:%d", self._cfg.host, self._cfg.port

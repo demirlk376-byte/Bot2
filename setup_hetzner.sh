@@ -52,7 +52,7 @@ WorkingDirectory=$BOT_DIR
 EnvironmentFile=$BOT_DIR/.env
 ExecStart=$BOT_DIR/venv/bin/python main.py
 Restart=on-failure
-RestartSec=30
+RestartSec=5
 StandardOutput=journal
 StandardError=journal
 
