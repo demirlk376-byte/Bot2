@@ -16,7 +16,8 @@ import pandas as pd
 
 sys.path.insert(0, "/home/user/Bot2")
 
-from config import AppConfig, ExchangeConfig, RiskConfig, StrategyConfig, TelegramConfig
+from config import (AppConfig, ExchangeConfig, RiskConfig, StrategyConfig,
+                    TelegramConfig, NtfyConfig, WebDashboardConfig)
 from indicators import bollinger_bands, rsi, atr
 from strategies.mean_reversion import MeanReversionStrategy
 from risk import RiskManager
@@ -62,6 +63,8 @@ def make_config(vol_filter=True, risk=0.02):
         strategy=StrategyConfig(primary_tf="1h", confirm_tf="4h",
                                 vol_filter_enabled=vol_filter),
         telegram=TelegramConfig(token="", chat_id="", enabled=False),
+        ntfy=NtfyConfig(enabled=False, topic=""),
+        web=WebDashboardConfig(enabled=False, host="127.0.0.1", port=8080),
         db_path="./test.db", log_level="ERROR", paper_initial_balance=10000.0,
     )
 

@@ -169,16 +169,29 @@ class RiskManager:
             logger.warning("[%s] Levels RR ratio %.2f below minimum 1.5", symbol, rr)
             return None
 
-        risk_pct = risk_pct_override if risk_pct_override > 0 else self._cfg.max_risk_per_trade
-        risk_amount = balance * risk_pct
-        sl_dist_pct = sl_dist / entry_price
-        quantity = risk_amount / (entry_price * sl_dist_pct)
-        # Default 1.0 (full balance as notional cap) to match calculate_position_size;
-        # a float(leverage) fallback would let levels-based trades take leverage×
-        # the notional cap of ATR-based ones if the field were ever dropped.
-        cap_fraction = getattr(self._cfg, "position_cap_fraction", 1.0)
-        max_qty = (balance * cap_fraction) / entry_price
-        quantity = min(quantity, max_qty)
+        fixed = getattr(self._cfg, "fixed_margin_usdt", 0.0)
+        if fixed > 0:
+            # Fixed-margin mode: size EVERY sleeve off a constant margin so the
+            # levels-based sleeves (ORB/Asia/FVG/IFVG/Squeeze/SR) match the BB
+            # path in calculate_position_size. Without this they sized off
+            # risk-%/SL-distance and silently ignored fixed_margin_usdt — a tight
+            # intraday SL on BTC could lock $21–$40 margin per trade, and four
+            # such positions could pin almost the whole balance on a small
+            # account. Here the per-trade margin is bounded to `fixed`; the dollar
+            # risk then scales only with SL distance, exactly like the BB path.
+            used_margin = min(balance, fixed)
+            quantity = used_margin * leverage / entry_price
+        else:
+            risk_pct = risk_pct_override if risk_pct_override > 0 else self._cfg.max_risk_per_trade
+            risk_amount = balance * risk_pct
+            sl_dist_pct = sl_dist / entry_price
+            quantity = risk_amount / (entry_price * sl_dist_pct)
+            # Default 1.0 (full balance as notional cap) to match calculate_position_size;
+            # a float(leverage) fallback would let levels-based trades take leverage×
+            # the notional cap of ATR-based ones if the field were ever dropped.
+            cap_fraction = getattr(self._cfg, "position_cap_fraction", 1.0)
+            max_qty = (balance * cap_fraction) / entry_price
+            quantity = min(quantity, max_qty)
         quantity = max(quantity, 0.0)
         quantity = math.floor(quantity * 1000) / 1000  # floor: avoids risk overrun after rounding
 
