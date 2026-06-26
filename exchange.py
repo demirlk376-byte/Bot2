@@ -877,45 +877,61 @@ class LiveExchange:
         # live position (float-truncation could otherwise leave a sliver unstopped).
         contracts = self._to_contracts(symbol, amount, round_up=True)
 
+        def _has_id(resp) -> bool:
+            return bool(resp and (resp.get("id") or resp.get("info", {}).get("orderId")))
+
+        # MEXC plan-order endpoint occasionally returns a 200 with all fields
+        # None (a silent business-layer reject). Retry up to 3 times with a
+        # short back-off before treating it as a hard failure — this covers
+        # transient rate-limit echoes and brief exchange hiccups at startup.
         sl_ok = False
-        try:
-            sl_resp = await self._place_trigger_order(
-                symbol, "market", close_side, contracts,
-                {**base, "triggerPrice": sl_price, "triggerType": sl_trigger}, "SL",
-            )
-            # Confirm the plan order actually rests: MEXC can return a success
-            # envelope WITHOUT placing the order (business error inside a 200 that
-            # ccxt doesn't raise on). An order id in the response means it was
-            # accepted. Treating create_order's mere return as success would leave
-            # a live position the bot believes is stopped but isn't.
-            sl_ok = bool(sl_resp and (sl_resp.get("id") or
-                                      sl_resp.get("info", {}).get("orderId")))
-            if not sl_ok:
-                logger.error("SL order returned no id (silent reject): %r", sl_resp)
-        except Exception as e:
-            logger.error("SL order failed: %s", e)
+        for _attempt in range(3):
+            try:
+                sl_resp = await self._place_trigger_order(
+                    symbol, "market", close_side, contracts,
+                    {**base, "triggerPrice": sl_price, "triggerType": sl_trigger}, "SL",
+                )
+                if _has_id(sl_resp):
+                    sl_ok = True
+                    break
+                logger.warning(
+                    "SL silent reject for %s (attempt %d/3) — will retry",
+                    symbol, _attempt + 1,
+                )
+                await asyncio.sleep(1.5 * (2 ** _attempt))  # 1.5 s → 3 s → 6 s
+            except Exception as e:
+                logger.warning("SL order error for %s (attempt %d/3): %s", symbol, _attempt + 1, e)
+                await asyncio.sleep(1.5 * (2 ** _attempt))
+        if not sl_ok:
+            logger.error("SL placement failed for %s after 3 attempts", symbol)
+
         tp_ok = False
-        try:
-            tp_resp = await self._place_trigger_order(
-                symbol, "market", close_side, contracts,
-                {**base, "triggerPrice": tp_price, "triggerType": tp_trigger}, "TP",
-            )
-            tp_ok = bool(tp_resp and (tp_resp.get("id") or
-                                      tp_resp.get("info", {}).get("orderId")))
-            if not tp_ok:
-                logger.error("TP order returned no id (silent reject): %r", tp_resp)
-        except Exception as e:
-            logger.error("TP order failed: %s", e)
+        for _attempt in range(3):
+            try:
+                tp_resp = await self._place_trigger_order(
+                    symbol, "market", close_side, contracts,
+                    {**base, "triggerPrice": tp_price, "triggerType": tp_trigger}, "TP",
+                )
+                if _has_id(tp_resp):
+                    tp_ok = True
+                    break
+                logger.warning(
+                    "TP silent reject for %s (attempt %d/3) — will retry",
+                    symbol, _attempt + 1,
+                )
+                await asyncio.sleep(1.5 * (2 ** _attempt))
+            except Exception as e:
+                logger.warning("TP order error for %s (attempt %d/3): %s", symbol, _attempt + 1, e)
+                await asyncio.sleep(1.5 * (2 ** _attempt))
+        if not tp_ok:
+            logger.warning("TP placement failed for %s after 3 attempts — will exit via max-hold", symbol)
+
         if not sl_ok:
             raise RuntimeError(f"SL placement failed for {symbol} — position will be closed")
         if not tp_ok:
-            # SL protects the downside, so we do NOT force-close (that would book a
-            # guaranteed fee loss). But the validated edge (esp. ORB/Asia) assumes a
-            # fixed TP, so surface this loudly: the position will exit via
-            # max-hold/trailing instead of the intended take-profit.
             logger.error(
-                "TP placement FAILED for %s (SL IS in place) — position will exit "
-                "via max-hold/trailing, not the intended take-profit", symbol)
+                "TP placement FAILED for %s after 3 attempts (SL IS in place) — "
+                "position will exit via max-hold/trailing", symbol)
 
     async def cancel_stop_orders(self, symbol: str) -> bool:
         """Cancel all pending SL/TP plan (trigger) orders for a symbol. Returns
