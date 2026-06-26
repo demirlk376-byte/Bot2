@@ -57,12 +57,30 @@ symbol_ctxs: dict[str, "SymbolContext"] = {}
 # shutdown and so a crash is logged (a bare create_task() drops the reference
 # and swallows the exception silently).
 _bg_tasks: list[asyncio.Task] = []
+_respawn_tasks: set[asyncio.Task] = set()
+# Set once the notifiers are wired in main(); lets these module-level
+# supervisors push a phone alert when a critical background loop dies.
+_alert_hook = None
 
 
-def _spawn_supervised(coro, name: str) -> asyncio.Task:
-    """Start a background loop, keep a reference, and log loudly if it ever
-    exits — a silent death of daily_reset/heartbeat/reconciliation would let the
-    bot keep trading with a stale daily-loss baseline or an undetected ghost."""
+async def _emit_alert(message: str, level: str = "ERROR") -> None:
+    if _alert_hook is not None:
+        try:
+            await _alert_hook(message, level)
+        except Exception as e:
+            logger.debug("alert hook failed: %s", e)
+
+
+def _spawn_supervised(factory, name: str, *, restart: bool = False) -> asyncio.Task:
+    """Start a background loop, keep a reference, and log loudly if it ever exits.
+
+    `factory` may be a coroutine OR a zero-arg coroutine FUNCTION. Pass a
+    FUNCTION with restart=True for loops critical to unattended safety
+    (reconciliation, daily_reset, heartbeat): a crash is then ALERTED to the
+    owner's phone AND the loop is auto-respawned after a short backoff, instead
+    of being silently lost for the rest of the run (a dead reconciliation loop
+    would let ghost positions and a stale daily-loss baseline go undetected)."""
+    coro = factory() if callable(factory) else factory
     task = asyncio.create_task(coro, name=name)
 
     def _done(t: asyncio.Task) -> None:
@@ -73,10 +91,30 @@ def _spawn_supervised(coro, name: str) -> asyncio.Task:
             logger.critical("Background task '%s' CRASHED: %r", name, exc)
         else:
             logger.error("Background task '%s' exited unexpectedly", name)
+        if restart and callable(factory):
+            rt = asyncio.create_task(_respawn_supervised(factory, name, exc))
+            _respawn_tasks.add(rt)
+            rt.add_done_callback(_respawn_tasks.discard)
 
     task.add_done_callback(_done)
     _bg_tasks.append(task)
     return task
+
+
+async def _respawn_supervised(factory, name: str, exc) -> None:
+    """Alert the owner and restart a critical background loop after a short
+    backoff so a tight crash-loop can't hammer the exchange."""
+    try:
+        await _emit_alert(
+            f"⚠️ Arka plan görevi '{name}' çöktü ({exc!r}) — 5 sn sonra "
+            f"yeniden başlatılıyor.",
+            "ERROR",
+        )
+        await asyncio.sleep(5)
+        logger.warning("Respawning background task '%s'", name)
+        _spawn_supervised(factory, name, restart=True)
+    except Exception as e:
+        logger.critical("Failed to respawn background task '%s': %s", name, e)
 
 
 @dataclass
@@ -955,7 +993,10 @@ async def daily_reset_loop() -> None:
             executor.reset_daily()
             # Persist the EQUITY baseline (matches the daily-loss limit's measure
             # and what the startup path reads back after a restart).
-            start_equity = await executor.current_equity()
+            # Use the baseline capture_daily_start just validated (it keeps the
+            # prior value if equity was unreadable) rather than re-reading equity,
+            # which can return None on a transient failure.
+            start_equity = executor.get_daily_starting_balance()
 
             logger.info("Daily reset. New starting equity: %.2f", start_equity)
 
@@ -1399,6 +1440,9 @@ async def main() -> None:
         if ntfy:
             await ntfy.send_alert(message, level)
     executor.register_alert_callback(_send_alert)
+    # Let the module-level background-task supervisors push phone alerts too.
+    global _alert_hook
+    _alert_hook = _send_alert
 
     # Rebuild any open positions from before a restart (balance + positions).
     await restore_state()
@@ -1420,6 +1464,45 @@ async def main() -> None:
             except Exception as e:
                 logger.error("Could not re-assert stops for %s on restart: %s", sym, e)
 
+        # Startup sweep over ALL configured symbols (exchange = source of truth).
+        # restore_state() rebuilds the portfolio from the DB only, so a position
+        # that exists on MEXC but has no DB row (a crash in the fill→DB-write
+        # window, or a manually-opened position) would otherwise run UNMANAGED
+        # forever — no max-hold, no trailing, no bot close, no alert. Detect both:
+        #   • exchange position with NO tracked sleeve  → ORPHAN POSITION → alert
+        #   • flat symbol with stale resting entry/plan orders → cancel them
+        tracked = {p.symbol for p in portfolio.get_open_positions()}
+        for sym in symbol_ctxs:
+            try:
+                ex_pos = await exchange.get_position(sym)
+            except Exception as e:
+                logger.error("startup sweep: get_position(%s) failed: %s", sym, e)
+                continue
+            if ex_pos is not None and sym not in tracked:
+                logger.critical(
+                    "ORPHAN POSITION on %s: %s %.6f @ %.4f — exists on MEXC but is "
+                    "NOT tracked by the bot. It will NOT be managed (no SL/TP "
+                    "re-assert, no max-hold). Manual intervention required.",
+                    sym, ex_pos.side, ex_pos.contracts, ex_pos.entry_price,
+                )
+                await _send_alert(
+                    f"🚨 SAHİPSİZ POZİSYON {sym}: {ex_pos.side} "
+                    f"{ex_pos.contracts:.4f} @ {ex_pos.entry_price:.4f} — MEXC'te "
+                    f"var ama bot takip ETMİYOR. Manuel kontrol et!",
+                    "ERROR",
+                )
+                await asyncio.sleep(1.0)
+            elif ex_pos is None and sym not in tracked:
+                # No position on this symbol — clear any stale resting entry /
+                # plan orders left over from a crash (cancel_stop_orders also
+                # calls cancel_all_orders). Position-attached SL/TP is sticky and
+                # is unaffected; there is no position here to protect anyway.
+                try:
+                    await exchange.cancel_stop_orders(sym)
+                    await asyncio.sleep(0.5)   # breathe — avoid MEXC rate limit
+                except Exception as e:
+                    logger.debug("startup order sweep %s: %s", sym, e)
+
     balance = await exchange.get_balance()
     # Daily-loss baseline: if we already recorded today's starting equity, reuse
     # it so a mid-day restart (or a crash-loop) does NOT re-arm a fresh full
@@ -1433,10 +1516,11 @@ async def main() -> None:
     else:
         # Starting equity includes any restored positions' margin + unrealized PnL.
         await executor.capture_daily_start()
+        init_eq = executor.get_daily_starting_balance()
         await db.upsert_daily_stats(DailyStats(
             date=today_iso,
-            starting_balance=await executor.current_equity(),
-            ending_balance=await executor.current_equity(),
+            starting_balance=init_eq,
+            ending_balance=init_eq,
             total_trades=0, winning_trades=0, total_pnl_usdt=0.0,
             max_drawdown=0.0, is_paper=config.exchange.paper_mode,
         ))
@@ -1539,9 +1623,9 @@ async def main() -> None:
         if ctx.orb_strategy is not None and config.strategy.orb_stop_entry:
             ctx.data_mgr.subscribe_price_tick(make_on_orb_tick(ctx))
 
-    _spawn_supervised(daily_reset_loop(), "daily_reset_loop")
-    _spawn_supervised(heartbeat_loop(), "heartbeat_loop")
-    _spawn_supervised(position_reconciliation_loop(), "position_reconciliation_loop")
+    _spawn_supervised(daily_reset_loop, "daily_reset_loop", restart=True)
+    _spawn_supervised(heartbeat_loop, "heartbeat_loop", restart=True)
+    _spawn_supervised(position_reconciliation_loop, "position_reconciliation_loop", restart=True)
 
     logger.info(
         "Bot running. Coins=%d TF=%s Balance=%.2f",

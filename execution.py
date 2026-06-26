@@ -118,6 +118,9 @@ class ExecutionEngine:
     def set_daily_starting_balance(self, balance: float) -> None:
         self._daily_starting_balance = balance
 
+    def get_daily_starting_balance(self) -> float:
+        return self._daily_starting_balance
+
     def _locked_margin(self) -> float:
         """Sum of margin locked in open positions. get_balance() returns FREE
         balance (margin already deducted), so the daily-loss check must add this
@@ -129,25 +132,50 @@ class ExecutionEngine:
             for p in self._portfolio.get_open_positions()
         )
 
-    async def current_equity(self) -> float:
+    async def current_equity(self) -> float | None:
         """True account equity. Prefer the exchange's own equity figure (most
         accurate — folds in fees/funding the bot doesn't track); fall back to a
         reconstruction (free balance + locked margin + unrealized PnL) for paper
-        mode or if the exchange read fails."""
+        mode.
+
+        LIVE: returns None when equity is UNREADABLE (transient exchange/balance
+        failure). Callers MUST treat None as 'unknown — do not act', NOT as a
+        loss: get_balance()/get_equity() degrade a failed read to 0.0, and the
+        old reconstruction (free=0 + locked + uPnL) understated equity by the
+        whole free-cash component — on a small account that false-tripped the
+        daily-loss kill switch and emergency_close_all. We never halt or
+        force-close off a read that may simply have failed."""
         if hasattr(self._exchange, "get_equity"):
             try:
                 eq = await self._exchange.get_equity()
-                if eq > 0:
-                    return eq
             except Exception as e:
-                logger.debug("get_equity failed, reconstructing equity: %s", e)
+                logger.debug("get_equity failed — equity unreadable: %s", e)
+                return None
+            # get_equity already falls back to ccxt's `total` internally; a
+            # non-positive result here means the balance endpoint was unreadable
+            # (or the account is genuinely empty). Either way, do NOT reconstruct
+            # a misleading low figure — signal 'unknown'.
+            return eq if eq > 0 else None
+        # Paper mode: the simulated balance is always readable.
         free = await self._exchange.get_balance()
         return free + self._locked_margin() + self._portfolio.get_total_unrealized_pnl()
 
     async def capture_daily_start(self) -> None:
         """Snapshot today's starting EQUITY (not free balance) so the daily-loss
-        limit measures realized+unrealized drawdown, not locked margin."""
-        self._daily_starting_balance = await self.current_equity()
+        limit measures realized+unrealized drawdown, not locked margin.
+
+        If equity is unreadable (None), KEEP the prior baseline rather than
+        overwriting it with a bogus 0 — a 0 baseline disables the daily-loss
+        switch for the whole day (check returns 'allowed' when start<=0)."""
+        eq = await self.current_equity()
+        if eq is not None and eq > 0:
+            self._daily_starting_balance = eq
+        else:
+            logger.warning(
+                "capture_daily_start: equity unreadable — keeping prior baseline "
+                "%.2f (daily-loss switch unchanged)",
+                self._daily_starting_balance or 0.0,
+            )
 
     def reset_daily(self) -> None:
         self._trading_halted.clear()
@@ -264,6 +292,11 @@ class ExecutionEngine:
         # so live trading reads the exchange's authoritative equity (with paper /
         # read-failure fallback to the reconstruction).
         equity = await self.current_equity()
+        if equity is None:
+            # Equity unreadable (transient exchange hiccup). Skip THIS entry
+            # rather than evaluating the daily-loss limit on a bogus figure —
+            # never halt / emergency-close off a failed balance read.
+            return ExecutionResult(False, error="Equity unreadable — entry skipped")
         if not self._risk.check_daily_loss_limit(
             self._daily_starting_balance,
             equity,
@@ -637,6 +670,50 @@ class ExecutionEngine:
                         f"⚠️ {symbol} stop yenilenemedi — pozisyon korumasız olabilir!",
                         "ERROR",
                     )
+
+        # Re-protection failed via the plan-order fallback (MEXC's PlanorderPlace
+        # endpoint is unreliable). The entry path force-closes a confirmed-naked
+        # position rather than leaving it open with only an alert; mirror that
+        # here so the resync/restart path is fail-SAFE (flat) instead of
+        # fail-OPEN (naked). Only close on a CONFIRMED-naked read (has_sltp_orders
+        # returns False, not None) so we never close a position that is actually
+        # protected or whose protection state is merely unknown.
+        if not ok:
+            check = getattr(self._exchange, "has_sltp_orders", None)
+            confirmed_naked = False
+            if check is not None:
+                try:
+                    confirmed_naked = (await check(symbol)) is False
+                except Exception as e:
+                    logger.debug("resync %s: protection re-check failed: %s", symbol, e)
+            if confirmed_naked:
+                # _close_position_internal is idempotent (id-keyed), so a position
+                # already closed by a concurrent path is skipped safely inside it.
+                for pos in list(portfolio_positions):
+                    try:
+                        exit_px = pos.entry_price
+                        if hasattr(self._exchange, "close_position"):
+                            order = await self._exchange.close_position(
+                                pos.symbol, pos.side, pos.quantity, "no_stop_safety"
+                            )
+                            if order and getattr(order, "filled_price", 0):
+                                exit_px = order.filled_price
+                        await self._close_position_internal(pos, exit_px, "no_stop_safety")
+                        logger.critical(
+                            "resync %s: re-protection FAILED and position confirmed "
+                            "naked — force-closed %s sleeve for safety",
+                            symbol, pos.side,
+                        )
+                        await self._alert(
+                            f"🛡️ {symbol} korumasız kaldı ({pos.side}) — "
+                            f"güvenlik için kapatıldı.",
+                            "ERROR",
+                        )
+                    except Exception as e:
+                        logger.critical(
+                            "resync %s: SAFETY CLOSE FAILED — MANUAL ACTION NEEDED: %s",
+                            symbol, e,
+                        )
         return ok
 
     async def close_position(
