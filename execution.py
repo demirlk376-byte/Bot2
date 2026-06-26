@@ -65,6 +65,19 @@ class ExecutionEngine:
         # Strong refs to fire-and-forget alert tasks so they aren't GC'd mid-send
         # and their exceptions are retrieved (not silently dropped).
         self._bg_tasks: set = set()
+        # Global lock that serializes the guard-check + slot-reservation phase of
+        # every execute_signal() call. Without this, N simultaneous candle-close
+        # events for N correlated coins all pass the correlation-cap and
+        # MAX_POSITIONS checks before any one of them adds to the portfolio, then
+        # all place orders — opening N instead of max M. The lock is held ONLY for
+        # the in-memory checks + reservation (no I/O), so it doesn't serialize the
+        # order-placement itself (concurrent fills across different slots are fine).
+        self._entry_gate = asyncio.Lock()
+        # In-flight slot tracking: maps slot_key → symbol / direction for
+        # concurrent guard checks under _entry_gate (portfolio only shows confirmed
+        # open positions, not in-flight reservations).
+        self._inflight_symbol: dict[str, str] = {}
+        self._inflight_direction: dict[str, int] = {}
         # Per-symbol lock serializing every operation that mutates a symbol's
         # exchange position/stops (entry place+set_sl_tp+register, trailing
         # resync, close, reconciliation). MEXC nets same-symbol sleeves into one
@@ -221,9 +234,6 @@ class ExecutionEngine:
     async def execute_signal(
         self, signal: CombinedSignal, atr: float
     ) -> ExecutionResult:
-        if self.is_halted():
-            return ExecutionResult(False, error="Trading halted (daily loss limit)")
-
         if signal.direction == 0:
             return ExecutionResult(False, error="No signal")
 
@@ -231,54 +241,86 @@ class ExecutionEngine:
         # configured primary symbol for single-coin operation.
         symbol = signal.symbol or self._config.exchange.symbol
 
-        # Per-(strategy:symbol) cooldown — only this sleeve is paused after its
-        # own loss streak; other coins/strategies keep trading.
-        cd_key = f"{signal.dominant_strategy}:{symbol}"
-        cd_until = self._cooldown_until.get(cd_key)
-        if cd_until is not None:
-            if datetime.now(timezone.utc) < cd_until:
-                remaining = (cd_until - datetime.now(timezone.utc)).total_seconds() / 60
-                return ExecutionResult(False, error=f"Cooldown active ({remaining:.0f}m remaining)")
-            else:
-                del self._cooldown_until[cd_key]
+        # All guard checks AND the slot reservation are atomic under _entry_gate.
+        # Without this, N simultaneous candle-close events for N correlated coins
+        # (BTC/ETH/SOL all closing the same 1h candle) each see an empty portfolio,
+        # all pass the correlation-cap and MAX_POSITIONS checks, then all place
+        # orders — opening N instead of the configured maximum. The lock is held
+        # ONLY for the in-memory checks + reservation (no I/O), so order placements
+        # still run concurrently across different slots.
+        async with self._entry_gate:
+            if self.is_halted():
+                return ExecutionResult(False, error="Trading halted (daily loss limit)")
 
-        # Correlation cap: prevent piling into the same direction across coins
-        # that historically move together (BTC/ETH/SOL). Opening 3 correlated
-        # shorts is effectively 3× the risk of a single short — a 2-cap limits
-        # gross directional exposure without blocking individual coin signals.
-        max_corr = getattr(self._config.risk, "max_correlated_direction", 2)
-        if max_corr > 0 and signal.direction != 0:
-            for grp in _CORRELATED_GROUPS:
-                if symbol in grp:
-                    same_dir = sum(
-                        1 for p in self._portfolio.get_open_positions()
-                        if p.symbol in grp and p.direction == signal.direction
-                    )
-                    if same_dir >= max_corr:
-                        side = "long" if signal.direction == 1 else "short"
-                        return ExecutionResult(
-                            False,
-                            error=f"Correlation cap: {same_dir}/{max_corr} {side} already open in correlated group",
+            # Per-(strategy:symbol) cooldown — only this sleeve is paused after its
+            # own loss streak; other coins/strategies keep trading.
+            cd_key = f"{signal.dominant_strategy}:{symbol}"
+            cd_until = self._cooldown_until.get(cd_key)
+            if cd_until is not None:
+                if datetime.now(timezone.utc) < cd_until:
+                    remaining = (cd_until - datetime.now(timezone.utc)).total_seconds() / 60
+                    return ExecutionResult(False, error=f"Cooldown active ({remaining:.0f}m remaining)")
+                else:
+                    del self._cooldown_until[cd_key]
+
+            # MAX_POSITIONS: count confirmed open (portfolio) + in-flight entries.
+            # A slot reserved by a concurrent coroutine is already counted, so a
+            # burst of N simultaneous signals can't all sneak past the cap before
+            # any one of them completes and registers in the portfolio.
+            max_pos = getattr(self._config.risk, "max_positions", 4)
+            total_open = self._portfolio.get_open_position_count() + len(self._executing)
+            if total_open >= max_pos:
+                return ExecutionResult(False, error=f"Max positions ({max_pos}) reached")
+
+            # Correlation cap: prevent piling into the same direction across coins
+            # that historically move together (BTC/ETH/SOL). Count BOTH confirmed
+            # portfolio positions AND in-flight reservations for the same direction
+            # so three simultaneous ORB signals can't all pass when the cap is 2.
+            max_corr = getattr(self._config.risk, "max_correlated_direction", 2)
+            if max_corr > 0 and signal.direction != 0:
+                for grp in _CORRELATED_GROUPS:
+                    if symbol in grp:
+                        same_dir = sum(
+                            1 for p in self._portfolio.get_open_positions()
+                            if p.symbol in grp and p.direction == signal.direction
                         )
-                    break
+                        same_dir += sum(
+                            1 for slot, d in self._inflight_direction.items()
+                            if d == signal.direction
+                            and self._inflight_symbol.get(slot) in grp
+                        )
+                        if same_dir >= max_corr:
+                            side = "long" if signal.direction == 1 else "short"
+                            return ExecutionResult(
+                                False,
+                                error=f"Correlation cap: {same_dir}/{max_corr} {side} already open in correlated group",
+                            )
+                        break
 
-        # Slot key: each strategy sleeve has its own slot so BB, ORB, and Asia BO
-        # can run in parallel without blocking one another. S/R breakout shares the
-        # BB slot (both are 48h swing trades — only one at a time makes sense).
-        slot_key = signal.position_slot or symbol
+            # Slot key: each strategy sleeve has its own slot so BB, ORB, and Asia BO
+            # can run in parallel without blocking one another. S/R breakout shares the
+            # BB slot (both are 48h swing trades — only one at a time makes sense).
+            slot_key = signal.position_slot or symbol
 
-        # Check both the portfolio AND an in-flight guard: asyncio yields between
-        # the portfolio check and portfolio.create_position, so two concurrent
-        # signal handlers for the same slot could both pass the first check.
-        if self._portfolio.get_position_for_slot(slot_key) is not None:
-            return ExecutionResult(False, error=f"Slot '{slot_key}' already occupied")
-        if slot_key in self._executing:
-            return ExecutionResult(False, error=f"Execution in progress for slot '{slot_key}'")
-        self._executing.add(slot_key)
+            if self._portfolio.get_position_for_slot(slot_key) is not None:
+                return ExecutionResult(False, error=f"Slot '{slot_key}' already occupied")
+            if slot_key in self._executing:
+                return ExecutionResult(False, error=f"Execution in progress for slot '{slot_key}'")
+
+            # Reserve the slot BEFORE releasing the gate. Subsequent coroutines that
+            # acquire the gate will see this reservation in the counts above and be
+            # blocked if limits are reached — even before a portfolio entry exists.
+            self._executing.add(slot_key)
+            self._inflight_symbol[slot_key] = symbol
+            self._inflight_direction[slot_key] = signal.direction
+
+        # Gate released — order placement runs concurrently across different slots.
         try:
             return await self._execute_signal_inner(signal, atr, symbol, slot_key)
         finally:
             self._executing.discard(slot_key)
+            self._inflight_symbol.pop(slot_key, None)
+            self._inflight_direction.pop(slot_key, None)
 
     async def _execute_signal_inner(
         self, signal: CombinedSignal, atr: float, symbol: str, slot_key: str = ""
