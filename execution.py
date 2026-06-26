@@ -573,6 +573,30 @@ class ExecutionEngine:
             await self._exchange.cancel_stop_orders(symbol)
             ok = True
 
+            # The entry-attached SL/TP (set on the entry order, position-level) is
+            # sticky — it survives cancel_stop_orders and is MEXC's reliable exit
+            # mechanism. If it is still present, placing plan (trigger) orders on
+            # top would DOUBLE-protect the position (one set in the TP/SL tab, one
+            # in the Trigger tab). So when attached protection exists we stop here:
+            # the cancel above already cleared any stale plan orders, leaving a
+            # single clean layer. Only fall through to plan-order placement when
+            # the position has NO attached protection at all (emergency fallback).
+            check_fn = getattr(self._exchange, "has_attached_protection", None)
+            if check_fn is not None:
+                try:
+                    if await check_fn(symbol):
+                        logger.info(
+                            "resync %s: already protected by entry-attached SL/TP — "
+                            "skipping plan-order placement (no duplicate Trigger orders)",
+                            symbol,
+                        )
+                        return True
+                except Exception as e:
+                    logger.debug(
+                        "resync %s: protection check failed (%s) — placing plan stops",
+                        symbol, e,
+                    )
+
             # When the portfolio total exceeds the real MEXC position (partial
             # external close not yet reconciled), cap each sleeve's stop to its
             # proportional share of the actual exchange qty. This prevents the

@@ -577,6 +577,51 @@ class LiveExchange:
                 )
         return None
 
+    async def has_attached_protection(self, symbol: str) -> bool:
+        """True if the MEXC position already carries entry-attached SL/TP — the
+        position-level stop set on the entry order, which is sticky (survives
+        cancel_stop_orders) and is MEXC's reliable exit mechanism.
+
+        resync uses this to avoid stacking duplicate plan (trigger) orders on top
+        of working protection. CONSERVATIVE: returns True only on a POSITIVE
+        finding; on any error/uncertainty it returns False so the caller falls
+        back to placing a stop — a position is never left unprotected by a
+        false positive."""
+        inner = self._exchange
+        # 1) Position info: MEXC exposes the attached SL/TP as fields on the
+        #    position (exact key varies by account/ccxt version — probe several).
+        try:
+            poss = await inner.fetch_positions([symbol])
+            for pp in poss:
+                if float(pp.get("contracts") or 0) == 0:
+                    continue
+                raw = pp.get("info") or {}
+                for k in ("stopLossPrice", "takeProfitPrice", "slPrice", "tpPrice",
+                          "stopLoss", "takeProfit", "slTriggerPrice", "tpTriggerPrice"):
+                    v = raw.get(k)
+                    if v not in (None, "", 0, "0", 0.0):
+                        logger.info("protection check %s: attached %s=%s", symbol, k, v)
+                        return True
+        except Exception as e:
+            logger.debug("protection check %s: fetch_positions failed: %s", symbol, e)
+        # 2) Stop-order list: on some accounts the attached TP/SL shows up here
+        #    (and NOT in the plan-order list, which holds trigger-limit orders).
+        mexc_sym = symbol.split(":")[0].replace("/", "_")
+        for method in ("contractPrivateGetStoporderListOrders",
+                       "contractPrivateGetStoporderListStopOrders"):
+            if hasattr(inner, method):
+                try:
+                    resp = await getattr(inner, method)({"symbol": mexc_sym})
+                    data = resp.get("data") if isinstance(resp, dict) else resp
+                    if data:
+                        n = len(data) if isinstance(data, list) else 1
+                        logger.info("protection check %s: %s → %d stop order(s)",
+                                    symbol, method, n)
+                        return True
+                except Exception:
+                    continue
+        return False
+
     async def place_market_order(
         self, symbol: str, side: str, amount: float, params: dict
     ) -> OrderResult:
