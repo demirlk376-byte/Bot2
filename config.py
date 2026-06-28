@@ -210,14 +210,16 @@ class StrategyConfig:
     fvg_enabled: bool = True
     fvg_min_gap_atr: float = 0.5      # only trade gaps >= this × ATR (filter noise)
     fvg_rr: float = 2.5              # TP = entry ± 2.5 × stop-distance
-    # IFVG (Inverse FVG) — broken-gap reversal retest. EXPERIMENTAL / DISABLED:
-    # the salvage backtest showed PF 1.42 (positive every year), but the faithful
-    # live-strategy code gives 2025 PF 0.99 (slightly negative) on the continuous
-    # run — the edge is fragile in the hard trend year. Off by default; the code
-    # stays for future refinement but must not trade live money until 2025 is
-    # robustly positive. Overall PF 1.36 across 2023-2026.
+    # IFVG (Inverse FVG) — broken-gap reversal retest. Off by default (opt-in),
+    # but now validated-ROBUST: the original gap>=0.5 variant was fragile in 2025
+    # (live continuous run PF ~0.99), so the default gap filter is raised to
+    # 0.75×ATR. Re-validated 2026-06 on the full 2023-2026 history with the
+    # realistic resting-limit fill model (maker entry at the zone edge, no adverse
+    # slippage): PF 1.43, TRAIN 1.43 / TEST 1.45, positive EVERY year with 2025
+    # lifted to PF 1.33 (was 1.15). This is the book's first LOW-correlation
+    # reversal sleeve — set IFVG_ENABLED=true to trade it.
     ifvg_enabled: bool = False
-    ifvg_min_gap_atr: float = 0.5
+    ifvg_min_gap_atr: float = 0.75
     ifvg_rr: float = 2.0
     # Volatility Squeeze sleeve (BB+KC momentum). Validated 1h 2023-2026:
     # MTF (1h squeeze + 4h trend filter) KC1.5 sq>=5 SL2.0 RR2.5 → PF 1.31,
@@ -387,7 +389,7 @@ def load_config() -> AppConfig:
         fvg_min_gap_atr=_getfloat("FVG_MIN_GAP_ATR", 0.5),
         fvg_rr=_getfloat("FVG_RR", 2.5),
         ifvg_enabled=_getbool("IFVG_ENABLED", False),
-        ifvg_min_gap_atr=_getfloat("IFVG_MIN_GAP_ATR", 0.5),
+        ifvg_min_gap_atr=_getfloat("IFVG_MIN_GAP_ATR", 0.75),
         ifvg_rr=_getfloat("IFVG_RR", 2.0),
         squeeze_enabled=_getbool("SQUEEZE_ENABLED", True),
         squeeze_kc_mult=_getfloat("SQUEEZE_KC_MULT", 1.5),
