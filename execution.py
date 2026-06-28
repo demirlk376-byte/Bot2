@@ -302,6 +302,29 @@ class ExecutionEngine:
             # BB slot (both are 48h swing trades — only one at a time makes sense).
             slot_key = signal.position_slot or symbol
 
+            # One-position-per-symbol guard (LIVE/netted only). MEXC one-way mode nets
+            # every same-symbol sleeve into ONE position that (a) carries only ONE
+            # position-level attached SL/TP — a 2nd sleeve's entry overwrites the
+            # first's stop, leaving it protected at the wrong level — and (b) cannot be
+            # long and short at once, so an opposite-direction sleeve would reduce/flip
+            # the existing position instead of opening its own. Either way the netted
+            # legs diverge from their validated per-sleeve risk. Until per-sleeve plan
+            # stops are reliable, enforce one live position per symbol so each position
+            # keeps its own correct, sticky attached stop. Paper tracks positions
+            # independently (real per-position SL/TP), so this is live-only — paper and
+            # backtests keep full multi-sleeve concurrency.
+            if not self._config.exchange.paper_mode:
+                if any(p.symbol == symbol for p in self._portfolio.get_open_positions()):
+                    return ExecutionResult(
+                        False,
+                        error=f"{symbol} already holds a position (one-per-symbol in netted mode)",
+                    )
+                if any(s == symbol for s in self._inflight_symbol.values()):
+                    return ExecutionResult(
+                        False,
+                        error=f"{symbol} entry already in flight (one-per-symbol in netted mode)",
+                    )
+
             if self._portfolio.get_position_for_slot(slot_key) is not None:
                 return ExecutionResult(False, error=f"Slot '{slot_key}' already occupied")
             if slot_key in self._executing:
