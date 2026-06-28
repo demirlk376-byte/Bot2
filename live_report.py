@@ -58,11 +58,60 @@ def _fmt_pf(pf):
     return "inf" if pf == float("inf") else f"{pf:.2f}"
 
 
+def _compact_summary(rows, mode, days) -> str:
+    """Phone-friendly one-glance summary for push notifications."""
+    if not rows:
+        return f"📊 {mode} {'%dg' % days if days else 'tüm'}: kapanan işlem yok (henüz)."
+    p = [r["pnl_usdt"] or 0.0 for r in rows]
+    w = sum(1 for v in p if v > 0)
+    head = (f"📊 {mode} {'%dg' % days if days else 'tüm'} | {len(rows)}t "
+            f"WR{w/len(rows):.0%} PF{_fmt_pf(_pf(p))} {sum(p):+.2f}U")
+    bys = defaultdict(list)
+    for r in rows:
+        bys[_sleeve(r["strategy_scores"])].append(r["pnl_usdt"] or 0.0)
+    legs = " | ".join(
+        f"{s} {len(v)}t {sum(v):+.1f}"
+        for s, v in sorted(bys.items(), key=lambda kv: -sum(kv[1]))
+    )
+    return head + "\n" + legs
+
+
+def _send_ntfy(cfg, text: str) -> bool:
+    import requests
+    if not getattr(cfg.ntfy, "enabled", False) or not cfg.ntfy.topic:
+        return False
+    url = f"{cfg.ntfy.server.rstrip('/')}/{cfg.ntfy.topic}"
+    try:
+        r = requests.post(url, data=text.encode("utf-8"),
+                          headers={"Title": "Haftalik Rapor", "Priority": "default"},
+                          timeout=15)
+        return r.status_code < 300
+    except Exception as e:
+        print(f"  ntfy send failed: {e}")
+        return False
+
+
+def _send_telegram(cfg, text: str) -> bool:
+    import requests
+    if not getattr(cfg.telegram, "enabled", False) or not cfg.telegram.token:
+        return False
+    url = f"https://api.telegram.org/bot{cfg.telegram.token}/sendMessage"
+    try:
+        r = requests.post(url, json={"chat_id": cfg.telegram.chat_id, "text": text},
+                          timeout=15)
+        return r.status_code < 300
+    except Exception as e:
+        print(f"  telegram send failed: {e}")
+        return False
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default="trades.db")
     ap.add_argument("--paper", action="store_true", help="report paper trades (default: live)")
     ap.add_argument("--days", type=int, default=0, help="only trades closed in the last N days (0=all)")
+    ap.add_argument("--notify", action="store_true",
+                    help="push a compact summary to ntfy/Telegram (uses the bot's .env config)")
     args = ap.parse_args()
 
     is_paper = 1 if args.paper else 0
@@ -92,6 +141,8 @@ def main():
             print(f"\n  {len(opn)} OPEN position(s):")
             for o in opn:
                 print(f"    {o['symbol']:16s} {o['side']:5s} {str(o['s']):9s} @ {o['entry_price']:.4f}  ({o['entry_time']})")
+        if args.notify:
+            _do_notify(rows, mode, args.days)
         return
 
     pnls_all = [r["pnl_usdt"] or 0.0 for r in rows]
@@ -161,6 +212,26 @@ def main():
     if not args.paper:
         print("\n  NOTE: slippage is 'n/a' for trades opened before intended_entry logging")
         print("        was added — it populates going forward. Re-run after more trades.")
+
+    if args.notify:
+        _do_notify(rows, mode, args.days)
+
+
+def _do_notify(rows, mode, days):
+    """Build the compact summary and push it to whatever channels are enabled."""
+    try:
+        from config import load_config
+        cfg = load_config()
+    except Exception as e:
+        print(f"  notify: could not load config ({e}) — skipping push")
+        return
+    text = _compact_summary(rows, mode, days)
+    sent = []
+    if _send_ntfy(cfg, text):
+        sent.append("ntfy")
+    if _send_telegram(cfg, text):
+        sent.append("telegram")
+    print(f"\n  notify: sent to {', '.join(sent) if sent else 'nothing (no channel enabled/reachable)'}")
 
 
 if __name__ == "__main__":
