@@ -387,6 +387,9 @@ class ExecutionEngine:
             elif signal.dominant_strategy == "ifvg":
                 risk_override = getattr(self._config.risk, "ifvg_risk_pct",
                                         getattr(self._config.risk, "day_risk_pct", 0.0))
+            elif signal.dominant_strategy == "donchian":
+                risk_override = getattr(self._config.risk, "donchian_risk_pct",
+                                        getattr(self._config.risk, "day_risk_pct", 0.0))
             else:
                 risk_override = 0.0
             setup = self._risk.build_trade_setup_from_levels(
@@ -548,6 +551,10 @@ class ExecutionEngine:
             # FVG / IFVG were validated with a 24-candle max-hold (1-day on 1h).
             elif signal.dominant_strategy in ("fvg", "ifvg"):
                 scores["max_hold"] = 24
+            # Donchian is a 4h swing: 30×4h bars = 120h, stored in 1h-candle units
+            # (the max-hold enforcer counts in primary-tf = 1h candles).
+            elif signal.dominant_strategy == "donchian":
+                scores["max_hold"] = 120
 
             position = self._portfolio.create_position(
                 symbol=setup.symbol,

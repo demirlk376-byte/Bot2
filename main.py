@@ -21,6 +21,7 @@ from monitor import Dashboard
 from portfolio import Portfolio
 from risk import RiskManager
 from strategies.asia_bo import AsiaBoStrategy, AsiaBoSignal
+from strategies.donchian import DonchianStrategy, DonchianSignal
 from strategies.fvg import FvgStrategy, FvgSignal
 from strategies.ifvg import IfvgStrategy, IfvgSignal
 from strategies.mean_reversion import MeanReversionStrategy
@@ -143,6 +144,7 @@ class SymbolContext:
     ifvg_strategy: IfvgStrategy = None
     squeeze_strategy: "SqueezeStrategy" = None
     whale_strategy: "WhaleStrategy" = None
+    donchian_strategy: DonchianStrategy = None
     # Live ORB stop-entry: armed once per day after the 14:00 UTC range candle,
     # consumed by the tick-watcher. None = not armed.
     orb_armed: "OrbArmed | None" = None
@@ -164,6 +166,7 @@ def active_sleeves_for(ctx: "SymbolContext", cfg) -> list[str]:
     if ctx.fvg_strategy is not None: sleeves.append("FVG")
     if ctx.ifvg_strategy is not None: sleeves.append("IFVG")
     if ctx.squeeze_strategy is not None: sleeves.append("Squeeze")
+    if ctx.donchian_strategy is not None: sleeves.append("Donch")
     if ctx.whale_strategy is not None:
         whale_mode = getattr(cfg.strategy, "whale_mode", "monitor")
         sleeves.append("Whale" + ("" if whale_mode == "trade" else "(mon)"))
@@ -614,6 +617,59 @@ def make_on_candle_close(ctx: "SymbolContext"):
                     web_dashboard.add_signal(ctx.symbol, "Squeeze", 0, sq_sig.reason)
             elif ctx.squeeze_strategy is not None:
                 web_dashboard.add_signal(ctx.symbol, "Squeeze", 0, f"block:rejim={regime}")
+
+            # ── Donchian — 4h channel swing breakout (HTF, 1-5 day holds) ─────
+            # Runs on the 4h buffer, only when a 4h candle just closed (the
+            # just-closed 1h candle is the last hour of a 4h period: UTC hour%4==3).
+            # NOT regime-gated — its own EMA200 trend filter is the regime filter
+            # (matches the validated backtest). force_market: taker fill ~close,
+            # exactly the close-confirmed entry that was validated.
+            if ctx.donchian_strategy is not None and (df.index[-1].hour % 4 == 3):
+                df_4h = await ctx.data_mgr.get_candles(config.strategy.confirm_tf, 260)
+                dch_min = max(config.strategy.donchian_channel + 2,
+                              config.strategy.donchian_ema_trend)
+                if df_4h is not None and len(df_4h) >= dch_min:
+                    atr_4h = atr(df_4h["high"], df_4h["low"], df_4h["close"],
+                                 config.strategy.atr_period).iloc[-1]
+                    if not (pd.isna(atr_4h) or atr_4h <= 0):
+                        dch_sig = ctx.donchian_strategy.analyze(df_4h, float(atr_4h))
+                        if dch_sig.direction != 0:
+                            dch_combined = CombinedSignal(
+                                direction=dch_sig.direction,
+                                confidence=dch_sig.strength,
+                                trend_score=0.0,
+                                mean_rev_score=0.0,
+                                breakout_score=dch_sig.direction * dch_sig.strength,
+                                dominant_strategy="donchian",
+                                reasons=[dch_sig.reason],
+                                entry_price=dch_sig.entry_price,
+                                sl_price=dch_sig.sl_price,
+                                tp_price=dch_sig.tp_price,
+                                symbol=ctx.symbol,
+                                position_slot=f"{ctx.symbol}:donchian",
+                                force_market=True,
+                            )
+                            result = await executor.execute_signal(dch_combined, float(atr_4h))
+                            if result.success and result.position:
+                                logger.info(
+                                    "DONCHIAN trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                                    result.position.side.upper(), ctx.symbol,
+                                    result.position.entry_price,
+                                    result.position.sl_price,
+                                    result.position.tp_price,
+                                )
+                                web_dashboard.add_signal(ctx.symbol, "Donch", dch_sig.direction,
+                                                         dch_sig.reason, "exec")
+                                if telegram:
+                                    await telegram.send_trade_opened(result.trade_setup, dch_combined)
+                                if ntfy:
+                                    await ntfy.send_trade_opened(result.trade_setup, dch_combined)
+                            elif result.error:
+                                logger.warning("[%s] Donchian skipped: %s", ctx.symbol, result.error)
+                                web_dashboard.add_signal(ctx.symbol, "Donch", dch_sig.direction,
+                                                         dch_sig.reason, f"block:{result.error}")
+                        else:
+                            web_dashboard.add_signal(ctx.symbol, "Donch", 0, dch_sig.reason)
 
             # ── Whale-flow sleeve — avg-trade-size z-spike, follow the candle ──
             # Monitor-first: avg_size needs live trade count (not in MEXC klines),
@@ -1420,6 +1476,21 @@ async def main() -> None:
                 and (
                     config.strategy.whale_symbols is None
                     or sym in config.strategy.whale_symbols
+                )
+                else None
+            ),
+            donchian_strategy=(
+                DonchianStrategy(
+                    channel=config.strategy.donchian_channel,
+                    rr=config.strategy.donchian_rr,
+                    sl_atr=config.strategy.donchian_sl_atr,
+                    ema_trend=config.strategy.donchian_ema_trend,
+                    buffer_atr=config.strategy.donchian_buffer_atr,
+                )
+                if config.strategy.donchian_enabled
+                and (
+                    config.strategy.donchian_symbols is None
+                    or sym in config.strategy.donchian_symbols
                 )
                 else None
             ),

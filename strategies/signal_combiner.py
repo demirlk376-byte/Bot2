@@ -25,6 +25,7 @@ STRATEGY_DISPLAY: dict[str, str] = {
     "fvg": "FVG",
     "ifvg": "IFVG",
     "squeeze": "Squeeze",
+    "donchian": "Donch",
     "whale": "Whale",
     "conflict": "Conflict",
     "below_threshold": "—",

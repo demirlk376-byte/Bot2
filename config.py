@@ -100,6 +100,7 @@ class RiskConfig:
     asia_risk_pct: float = 0.03       # Asia BO risk per trade (% of free balance)
     fvg_risk_pct: float = 0.02        # FVG risk per trade (% of free balance)
     ifvg_risk_pct: float = 0.02       # IFVG risk per trade (% of free balance)
+    donchian_risk_pct: float = 0.02   # Donchian 4h swing risk per trade (% of free balance)
     # Global risk multiplier applied to EVERY per-trade risk % at load time
     # (max_risk_per_trade + all per-sleeve pcts). 1.0 = validated baseline.
     # Multi-coin backtest: 1.25 lifts monthly return ~25% with DD 26%→34%.
@@ -227,6 +228,20 @@ class StrategyConfig:
     squeeze_sl_atr: float = 2.0
     squeeze_rr: float = 2.5
     squeeze_mtf: bool = True
+    # Donchian Channel swing breakout (4h) — the first higher-timeframe / multi-day
+    # swing sleeve. Validated BTC 4h 2023-01..2026-04 (honest TRAIN/TEST, TAKER
+    # cost): close-confirmed market entry, channel=40, RR2.0, SL2.0×ATR, EMA200
+    # trend filter → PF 1.26 (TRAIN 1.28 / TEST 1.11), POSITIVE EVERY YEAR
+    # (2023 1.39 | 2024 1.35 | 2025 1.08 | 2026 1.11). Decorrelated from the 1h
+    # intraday book by holding period (1-5 day swings). BTC-only (only coin with
+    # local 4h history to validate); extend the allowlist after validating others.
+    donchian_enabled: bool = False
+    donchian_channel: int = 40        # channel lookback (prior N 4h bars, excl current)
+    donchian_rr: float = 2.0          # TP = entry ± RR × stop-distance
+    donchian_sl_atr: float = 2.0      # SL = entry ± 2.0 × ATR(14, 4h)
+    donchian_ema_trend: int = 200     # HTF trend filter (EMA200 on 4h)
+    donchian_buffer_atr: float = 0.0  # require break beyond channel by this × ATR
+    donchian_symbols: list[str] | None = ("BTC/USDT:USDT",)  # validated BTC-only
 
 
 @dataclass
@@ -290,6 +305,14 @@ def load_config() -> AppConfig:
         if raw_bb_symbols else None
     )
 
+    # Donchian validated on BTC only (only coin with local 4h history). Empty env
+    # → BTC-only default; set DONCHIAN_SYMBOLS to extend after validating others.
+    raw_donchian_symbols = os.getenv("DONCHIAN_SYMBOLS", "").strip()
+    donchian_symbols = (
+        [_normalize_symbol(s) for s in raw_donchian_symbols.split(",") if s.strip()]
+        if raw_donchian_symbols else ["BTC/USDT:USDT"]
+    )
+
     exchange = ExchangeConfig(
         api_key=_get("MEXC_API_KEY", ""),
         api_secret=_get("MEXC_API_SECRET", ""),
@@ -320,6 +343,7 @@ def load_config() -> AppConfig:
         asia_risk_pct=_getfloat("ASIA_RISK_PCT", 0.03) * risk_scale,
         fvg_risk_pct=_getfloat("FVG_RISK_PCT", 0.02) * risk_scale,
         ifvg_risk_pct=_getfloat("IFVG_RISK_PCT", 0.02) * risk_scale,
+        donchian_risk_pct=_getfloat("DONCHIAN_RISK_PCT", 0.02) * risk_scale,
         risk_scale=risk_scale,
         day_max_hold_candles=_getint("DAY_MAX_HOLD_CANDLES", 6),
         trailing_stop_enabled=_getbool("TRAILING_STOP_ENABLED", True),
@@ -371,6 +395,13 @@ def load_config() -> AppConfig:
         squeeze_sl_atr=_getfloat("SQUEEZE_SL_ATR", 2.0),
         squeeze_rr=_getfloat("SQUEEZE_RR", 2.5),
         squeeze_mtf=_getbool("SQUEEZE_MTF", True),
+        donchian_enabled=_getbool("DONCHIAN_ENABLED", False),
+        donchian_channel=_getint("DONCHIAN_CHANNEL", 40),
+        donchian_rr=_getfloat("DONCHIAN_RR", 2.0),
+        donchian_sl_atr=_getfloat("DONCHIAN_SL_ATR", 2.0),
+        donchian_ema_trend=_getint("DONCHIAN_EMA_TREND", 200),
+        donchian_buffer_atr=_getfloat("DONCHIAN_BUFFER_ATR", 0.0),
+        donchian_symbols=donchian_symbols,
     )
 
     telegram = TelegramConfig(
