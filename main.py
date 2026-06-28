@@ -1469,7 +1469,13 @@ async def main() -> None:
                     sl_atr=config.strategy.squeeze_sl_atr,
                     rr=config.strategy.squeeze_rr,
                     mtf_filter=config.strategy.squeeze_mtf,
-                ) if config.strategy.squeeze_enabled else None
+                )
+                if config.strategy.squeeze_enabled
+                and (
+                    config.strategy.squeeze_symbols is None
+                    or sym in config.strategy.squeeze_symbols
+                )
+                else None
             ),
             whale_strategy=(
                 WhaleStrategy(

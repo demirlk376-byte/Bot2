@@ -237,6 +237,11 @@ class StrategyConfig:
     squeeze_sl_atr: float = 2.0
     squeeze_rr: float = 2.5
     squeeze_mtf: bool = True
+    # Squeeze was validated on BTC ONLY (research_squeeze.py); unlike BB/ORB/Asia/
+    # S/R it was never cross-coin tested, so restrict it to BTC by default rather
+    # than letting it trade unvalidated coins (BNB/XRP/ETH/SOL). Widen via
+    # SQUEEZE_SYMBOLS once other coins are validated.
+    squeeze_symbols: list[str] | None = ("BTC/USDT:USDT",)
     # Donchian Channel swing breakout (4h) — ENABLED: the first higher-timeframe /
     # multi-day swing sleeve. Validated BTC 4h 2023-01..2026-04 (honest TRAIN/TEST,
     # TAKER cost) under its REAL live execution model (close-confirmed market entry
@@ -331,6 +336,12 @@ def load_config() -> AppConfig:
         [_normalize_symbol(s) for s in raw_ifvg_symbols.split(",") if s.strip()]
         if raw_ifvg_symbols else ["BTC/USDT:USDT"]
     )
+    # Squeeze validated on BTC only (never cross-coin tested). Empty env → BTC-only.
+    raw_squeeze_symbols = os.getenv("SQUEEZE_SYMBOLS", "").strip()
+    squeeze_symbols = (
+        [_normalize_symbol(s) for s in raw_squeeze_symbols.split(",") if s.strip()]
+        if raw_squeeze_symbols else ["BTC/USDT:USDT"]
+    )
 
     exchange = ExchangeConfig(
         api_key=_get("MEXC_API_KEY", ""),
@@ -410,6 +421,7 @@ def load_config() -> AppConfig:
         ifvg_rr=_getfloat("IFVG_RR", 2.0),
         ifvg_symbols=ifvg_symbols,
         squeeze_enabled=_getbool("SQUEEZE_ENABLED", True),
+        squeeze_symbols=squeeze_symbols,
         squeeze_kc_mult=_getfloat("SQUEEZE_KC_MULT", 1.5),
         squeeze_min_bars=_getint("SQUEEZE_MIN_BARS", 5),
         squeeze_sl_atr=_getfloat("SQUEEZE_SL_ATR", 2.0),
