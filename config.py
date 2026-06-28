@@ -232,14 +232,17 @@ class StrategyConfig:
     squeeze_sl_atr: float = 2.0
     squeeze_rr: float = 2.5
     squeeze_mtf: bool = True
-    # Donchian Channel swing breakout (4h) — the first higher-timeframe / multi-day
-    # swing sleeve. Validated BTC 4h 2023-01..2026-04 (honest TRAIN/TEST, TAKER
-    # cost): close-confirmed market entry, channel=40, RR2.0, SL2.0×ATR, EMA200
-    # trend filter → PF 1.26 (TRAIN 1.28 / TEST 1.11), POSITIVE EVERY YEAR
-    # (2023 1.39 | 2024 1.35 | 2025 1.08 | 2026 1.11). Decorrelated from the 1h
-    # intraday book by holding period (1-5 day swings). BTC-only (only coin with
-    # local 4h history to validate); extend the allowlist after validating others.
-    donchian_enabled: bool = False
+    # Donchian Channel swing breakout (4h) — ENABLED: the first higher-timeframe /
+    # multi-day swing sleeve. Validated BTC 4h 2023-01..2026-04 (honest TRAIN/TEST,
+    # TAKER cost) under its REAL live execution model (close-confirmed market entry
+    # = force_market, so backtest == live, no execution gap): channel=40, RR2.0,
+    # SL2.0×ATR, EMA200 trend filter → PF 1.35 (TRAIN 1.39 / TEST 1.11), POSITIVE
+    # EVERY YEAR (2023 1.72 | 2024 1.35 | 2025 1.08 | 2026 1.11). Thinner recent
+    # edge than IFVG but decorrelated from the 1h intraday book by HOLDING PERIOD
+    # (1-5 day swings) → genuine diversification. BTC-only (only coin with local 4h
+    # history to validate). Independent slot {symbol}:donchian (needs a MAX_POSITIONS
+    # seat); holds for days, so size it modestly (donchian_risk_pct).
+    donchian_enabled: bool = True
     donchian_channel: int = 40        # channel lookback (prior N 4h bars, excl current)
     donchian_rr: float = 2.0          # TP = entry ± RR × stop-distance
     donchian_sl_atr: float = 2.0      # SL = entry ± 2.0 × ATR(14, 4h)
@@ -399,7 +402,7 @@ def load_config() -> AppConfig:
         squeeze_sl_atr=_getfloat("SQUEEZE_SL_ATR", 2.0),
         squeeze_rr=_getfloat("SQUEEZE_RR", 2.5),
         squeeze_mtf=_getbool("SQUEEZE_MTF", True),
-        donchian_enabled=_getbool("DONCHIAN_ENABLED", False),
+        donchian_enabled=_getbool("DONCHIAN_ENABLED", True),
         donchian_channel=_getint("DONCHIAN_CHANNEL", 40),
         donchian_rr=_getfloat("DONCHIAN_RR", 2.0),
         donchian_sl_atr=_getfloat("DONCHIAN_SL_ATR", 2.0),
