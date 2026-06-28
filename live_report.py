@@ -29,9 +29,12 @@ def _parse_time(s: str):
     if not s:
         return None
     try:
-        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
     except Exception:
         return None
+    # Normalize to UTC-aware so naive inputs (e.g. a "2026-06-28" epoch) compare
+    # cleanly against the tz-aware entry/exit timestamps.
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
 
 
 def _sleeve(scores_json: str) -> str:
@@ -110,26 +113,58 @@ def main():
     ap.add_argument("--db", default="trades.db")
     ap.add_argument("--paper", action="store_true", help="report paper trades (default: live)")
     ap.add_argument("--days", type=int, default=0, help="only trades closed in the last N days (0=all)")
+    ap.add_argument("--since", default="",
+                    help="only trades OPENED on/after this UTC date/time (e.g. 2026-06-28). "
+                         "Overrides the stored epoch for this run.")
+    ap.add_argument("--set-epoch", default="",
+                    help="persist a clean-start epoch ('now' or an ISO date) so all future "
+                         "reports ignore dev-era trades opened before it, then exit.")
     ap.add_argument("--notify", action="store_true",
                     help="push a compact summary to ntfy/Telegram (uses the bot's .env config)")
     args = ap.parse_args()
 
-    is_paper = 1 if args.paper else 0
     con = sqlite3.connect(args.db)
     con.row_factory = sqlite3.Row
+    con.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)")
+
+    # --set-epoch: record the clean-start cutoff and exit. Everything before it
+    # (the unstable development period) is then excluded from every report.
+    if args.set_epoch:
+        when = (datetime.now(timezone.utc).isoformat() if args.set_epoch.lower() == "now"
+                else args.set_epoch)
+        con.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('report_epoch', ?)", (when,))
+        con.commit()
+        print(f"✓ report epoch set to {when}\n  Future reports count only trades opened on/after this.")
+        return
+
+    is_paper = 1 if args.paper else 0
     rows = con.execute(
         "SELECT * FROM trades WHERE is_paper=? AND exit_time IS NOT NULL AND exit_time!=''",
         (is_paper,),
     ).fetchall()
+
+    # Clean-start cutoff: explicit --since wins, else the persisted epoch. Filters
+    # by ENTRY time (when the CURRENT code opened the trade), so a dev-era trade
+    # that closed after the epoch is still excluded.
+    epoch_row = con.execute("SELECT value FROM meta WHERE key='report_epoch'").fetchone()
+    cutoff_src = args.since or (epoch_row["value"] if epoch_row else "")
+    epoch_cut = _parse_time(cutoff_src) if cutoff_src else None
+    if epoch_cut is not None:
+        rows = [r for r in rows
+                if (_parse_time(r["entry_time"]) or datetime.min.replace(tzinfo=timezone.utc)) >= epoch_cut]
 
     if args.days > 0:
         cutoff = datetime.now(timezone.utc) - timedelta(days=args.days)
         rows = [r for r in rows if (_parse_time(r["exit_time"]) or datetime.min.replace(tzinfo=timezone.utc)) >= cutoff]
 
     mode = "PAPER" if args.paper else "LIVE"
+    win = (f"  (last {args.days}d)" if args.days else "  (all time)")
+    if epoch_cut is not None:
+        win += f"  since {cutoff_src[:16]}"
     print("=" * 74)
-    print(f"  REALIZED {mode} PERFORMANCE — {args.db}"
-          + (f"  (last {args.days}d)" if args.days else "  (all time)"))
+    print(f"  REALIZED {mode} PERFORMANCE — {args.db}{win}")
+    if epoch_cut is not None:
+        print(f"  (clean epoch active — dev-era trades before {cutoff_src[:16]} excluded)")
     print("=" * 74)
     if not rows:
         print("  No closed trades yet. (Bot may still be warming up / no exits.)")
