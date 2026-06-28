@@ -223,6 +223,11 @@ class StrategyConfig:
     ifvg_enabled: bool = True
     ifvg_min_gap_atr: float = 0.75
     ifvg_rr: float = 2.0
+    # IFVG validated BTC-only (the only coin with local history to test the
+    # broken-gap-retest edge). Cross-coin transfer is UNVALIDATED — the project
+    # already learned (BB->ETH) that edges don't always carry — so restrict to BTC
+    # by default. Widen via IFVG_SYMBOLS once other coins are validated.
+    ifvg_symbols: list[str] | None = ("BTC/USDT:USDT",)
     # Volatility Squeeze sleeve (BB+KC momentum). Validated 1h 2023-2026:
     # MTF (1h squeeze + 4h trend filter) KC1.5 sq>=5 SL2.0 RR2.5 → PF 1.31,
     # positive every year, Max DD 18%, 26/36 months profitable.
@@ -319,6 +324,13 @@ def load_config() -> AppConfig:
         [_normalize_symbol(s) for s in raw_donchian_symbols.split(",") if s.strip()]
         if raw_donchian_symbols else ["BTC/USDT:USDT"]
     )
+    # IFVG validated on BTC only. Empty env → BTC-only default; set IFVG_SYMBOLS
+    # to extend after validating other coins.
+    raw_ifvg_symbols = os.getenv("IFVG_SYMBOLS", "").strip()
+    ifvg_symbols = (
+        [_normalize_symbol(s) for s in raw_ifvg_symbols.split(",") if s.strip()]
+        if raw_ifvg_symbols else ["BTC/USDT:USDT"]
+    )
 
     exchange = ExchangeConfig(
         api_key=_get("MEXC_API_KEY", ""),
@@ -396,6 +408,7 @@ def load_config() -> AppConfig:
         ifvg_enabled=_getbool("IFVG_ENABLED", True),
         ifvg_min_gap_atr=_getfloat("IFVG_MIN_GAP_ATR", 0.75),
         ifvg_rr=_getfloat("IFVG_RR", 2.0),
+        ifvg_symbols=ifvg_symbols,
         squeeze_enabled=_getbool("SQUEEZE_ENABLED", True),
         squeeze_kc_mult=_getfloat("SQUEEZE_KC_MULT", 1.5),
         squeeze_min_bars=_getint("SQUEEZE_MIN_BARS", 5),

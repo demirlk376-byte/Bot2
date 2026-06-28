@@ -1445,7 +1445,13 @@ async def main() -> None:
                 IfvgStrategy(
                     min_gap_atr=config.strategy.ifvg_min_gap_atr,
                     rr=config.strategy.ifvg_rr,
-                ) if config.strategy.ifvg_enabled else None
+                )
+                if config.strategy.ifvg_enabled
+                and (
+                    config.strategy.ifvg_symbols is None
+                    or sym in config.strategy.ifvg_symbols
+                )
+                else None
             ),
             sr_breakout_strategy=(
                 SrBreakoutStrategy()
