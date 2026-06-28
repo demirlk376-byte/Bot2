@@ -566,6 +566,12 @@ class ExecutionEngine:
                 # Track actual entry fee rate so _close_position_internal can compute
                 # fees accurately (maker = 0%, taker = 0.01%).
                 "entry_fee_rate": 0.0 if use_maker else 0.0001,
+                # Intended entry (the signal's level/price BEFORE the fill) so the
+                # live report can measure realized entry slippage = actual fill vs
+                # this. Critical for validating the live-vs-backtest discount on the
+                # structure sleeves (ORB/Donchian fill at ~level; FVG/IFVG at the
+                # zone edge). order.filled_price below is the actual fill.
+                "intended_entry": float(getattr(signal, "entry_price", 0.0) or setup.entry_price),
             }
             # Day-trading strategies use a shorter max-hold window. Store it in the
             # scores dict so _enforce_max_hold can read it per-position.
