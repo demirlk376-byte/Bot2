@@ -210,15 +210,17 @@ class StrategyConfig:
     fvg_enabled: bool = True
     fvg_min_gap_atr: float = 0.5      # only trade gaps >= this × ATR (filter noise)
     fvg_rr: float = 2.5              # TP = entry ± 2.5 × stop-distance
-    # IFVG (Inverse FVG) — broken-gap reversal retest. Off by default (opt-in),
-    # but now validated-ROBUST: the original gap>=0.5 variant was fragile in 2025
+    # IFVG (Inverse FVG) — broken-gap reversal retest. ENABLED: validated-robust
+    # and the book's first LOW-correlation reversal sleeve (every other sleeve is
+    # long-momentum/breakout). The original gap>=0.5 variant was fragile in 2025
     # (live continuous run PF ~0.99), so the default gap filter is raised to
     # 0.75×ATR. Re-validated 2026-06 on the full 2023-2026 history with the
-    # realistic resting-limit fill model (maker entry at the zone edge, no adverse
-    # slippage): PF 1.43, TRAIN 1.43 / TEST 1.45, positive EVERY year with 2025
-    # lifted to PF 1.33 (was 1.15). This is the book's first LOW-correlation
-    # reversal sleeve — set IFVG_ENABLED=true to trade it.
-    ifvg_enabled: bool = False
+    # production strategy class (250-bar rolling window) and the realistic
+    # resting-limit fill model (maker entry at the zone edge, no adverse slippage):
+    # PF 1.35, TRAIN 1.34 / TEST 1.45, positive EVERY year with 2025 lifted to
+    # PF 1.20 (was ~0.99). Entry is a resting maker limit → no slippage/execution
+    # gap vs backtest. Independent slot {symbol}:ifvg (needs a MAX_POSITIONS seat).
+    ifvg_enabled: bool = True
     ifvg_min_gap_atr: float = 0.75
     ifvg_rr: float = 2.0
     # Volatility Squeeze sleeve (BB+KC momentum). Validated 1h 2023-2026:
@@ -388,7 +390,7 @@ def load_config() -> AppConfig:
         fvg_enabled=_getbool("FVG_ENABLED", True),
         fvg_min_gap_atr=_getfloat("FVG_MIN_GAP_ATR", 0.5),
         fvg_rr=_getfloat("FVG_RR", 2.5),
-        ifvg_enabled=_getbool("IFVG_ENABLED", False),
+        ifvg_enabled=_getbool("IFVG_ENABLED", True),
         ifvg_min_gap_atr=_getfloat("IFVG_MIN_GAP_ATR", 0.75),
         ifvg_rr=_getfloat("IFVG_RR", 2.0),
         squeeze_enabled=_getbool("SQUEEZE_ENABLED", True),
