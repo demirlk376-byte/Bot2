@@ -227,7 +227,11 @@ class StrategyConfig:
     # broken-gap-retest edge). Cross-coin transfer is UNVALIDATED — the project
     # already learned (BB->ETH) that edges don't always carry — so restrict to BTC
     # by default. Widen via IFVG_SYMBOLS once other coins are validated.
-    ifvg_symbols: list[str] | None = ("BTC/USDT:USDT",)
+    # Cross-coin validated 2026-06 (validate_crosscoin.py, real data, strict
+    # train+test bar): IFVG transfers to BNB (PF 1.31, TR1.25/TE1.78, positive
+    # every year) — added. ETH/SOL did NOT transfer (TE 0.87/0.42); XRP borderline
+    # (TR 1.12). Widen further only on fresh evidence.
+    ifvg_symbols: list[str] | None = ("BTC/USDT:USDT", "BNB/USDT:USDT")
     # Volatility Squeeze sleeve (BB+KC momentum). Validated 1h 2023-2026:
     # MTF (1h squeeze + 4h trend filter) KC1.5 sq>=5 SL2.0 RR2.5 → PF 1.31,
     # positive every year, Max DD 18%, 26/36 months profitable.
@@ -241,7 +245,10 @@ class StrategyConfig:
     # S/R it was never cross-coin tested, so restrict it to BTC by default rather
     # than letting it trade unvalidated coins (BNB/XRP/ETH/SOL). Widen via
     # SQUEEZE_SYMBOLS once other coins are validated.
-    squeeze_symbols: list[str] | None = ("BTC/USDT:USDT",)
+    # Cross-coin validated 2026-06 (validate_crosscoin.py): Squeeze transfers to
+    # SOL (PF 1.40, TR1.42/TE1.23, positive every year incl 2026) — added.
+    # ETH/BNB/XRP did NOT pass. Widen further only on fresh evidence.
+    squeeze_symbols: list[str] | None = ("BTC/USDT:USDT", "SOL/USDT:USDT")
     # Donchian Channel swing breakout (4h) — ENABLED: the first higher-timeframe /
     # multi-day swing sleeve. Validated BTC 4h 2023-01..2026-04 (honest TRAIN/TEST,
     # TAKER cost) under its REAL live execution model (close-confirmed market entry
@@ -329,18 +336,18 @@ def load_config() -> AppConfig:
         [_normalize_symbol(s) for s in raw_donchian_symbols.split(",") if s.strip()]
         if raw_donchian_symbols else ["BTC/USDT:USDT"]
     )
-    # IFVG validated on BTC only. Empty env → BTC-only default; set IFVG_SYMBOLS
-    # to extend after validating other coins.
+    # IFVG validated on BTC + BNB (cross-coin tested 2026-06). Empty env → that
+    # default; set IFVG_SYMBOLS to override.
     raw_ifvg_symbols = os.getenv("IFVG_SYMBOLS", "").strip()
     ifvg_symbols = (
         [_normalize_symbol(s) for s in raw_ifvg_symbols.split(",") if s.strip()]
-        if raw_ifvg_symbols else ["BTC/USDT:USDT"]
+        if raw_ifvg_symbols else ["BTC/USDT:USDT", "BNB/USDT:USDT"]
     )
-    # Squeeze validated on BTC only (never cross-coin tested). Empty env → BTC-only.
+    # Squeeze validated on BTC + SOL (cross-coin tested 2026-06). Empty env → that default.
     raw_squeeze_symbols = os.getenv("SQUEEZE_SYMBOLS", "").strip()
     squeeze_symbols = (
         [_normalize_symbol(s) for s in raw_squeeze_symbols.split(",") if s.strip()]
-        if raw_squeeze_symbols else ["BTC/USDT:USDT"]
+        if raw_squeeze_symbols else ["BTC/USDT:USDT", "SOL/USDT:USDT"]
     )
 
     exchange = ExchangeConfig(
