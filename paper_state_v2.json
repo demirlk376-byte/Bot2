@@ -6,7 +6,7 @@
       "n_trades": 5,
       "n_wins": 2,
       "total_pnl": -144.00702113637024,
-      "skipped": 3
+      "skipped": 4
     },
     "ETH": {
       "balance": 10120.485586339548,
@@ -14,7 +14,7 @@
       "n_trades": 5,
       "n_wins": 3,
       "total_pnl": 120.48558633954755,
-      "skipped": 2
+      "skipped": 3
     },
     "SOL": {
       "balance": 10539.181734121228,
@@ -22,7 +22,7 @@
       "n_trades": 2,
       "n_wins": 2,
       "total_pnl": 539.1817341212275,
-      "skipped": 2
+      "skipped": 3
     },
     "BNB": {
       "balance": 10026.773774308334,
@@ -48,7 +48,7 @@
       "n_trades": 4,
       "n_wins": 1,
       "total_pnl": -156.2801955487848,
-      "skipped": 1
+      "skipped": 2
     }
   }
 }
