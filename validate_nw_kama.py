@@ -25,9 +25,10 @@ SPLIT = pd.Timestamp("2026-01-01", tz="UTC")
 
 def load_1h_remote(sym):
     import requests, glob
-    # local CSVs first (dev box), else binance.vision (VPS)
+    # local CSVs only if they cover >=24 months; otherwise download the full
+    # 2023-2026 history (a short local set silently shrinks the test window).
     files = sorted(glob.glob(f"{sym}-1m-*.csv"))
-    if files:
+    if files and len(files) >= 24:
         fr = []
         for f in files:
             d = pd.read_csv(f, header=None).iloc[:, :6]
@@ -132,6 +133,8 @@ GRID = [
     ("agree", 5, 25, 2.0, 10, 0), ("agree", 3, 15, 2.0, 5, 0),
 ]
 
+SUMMARY = {}   # coin -> list of (config_label, ntot, pf_tr, pf_te)
+
 def run_tf(df1h, rule, mh, coin):
     df = df1h.resample(rule).agg({"open":"first","high":"max","low":"min",
                                   "close":"last","volume":"sum"}).dropna()
@@ -147,12 +150,16 @@ def run_tf(df1h, rule, mh, coin):
         pf_tr = r_tr.pf if r_tr.gross_loss > 0 else (9.99 if r_tr.gross_win > 0 else 0)
         pf_te = r_te.pf if r_te.gross_loss > 0 else (9.99 if r_te.gross_win > 0 else 0)
         ok = "PASS" if (pf_tr > 1.2 and pf_te > 1.1 and ntot >= 30) else "  no"
+        if rule == "1D" and mode == "event":
+            SUMMARY.setdefault(coin, []).append((f"h{h}w{win}m{mult}", ntot, pf_tr, pf_te))
         print(f"    {mode:<5s} h{h} w{win:<2d} m{mult} er{er:<2d} lb{lb}: "
               f"n{ntot:>3d} TR PF{pf_tr:4.2f}(n{r_tr.trades}) TE PF{pf_te:4.2f}(n{r_te.trades}) "
               f"${r_tr.pnl + r_te.pnl:+8.1f} [{ok}]")
 
 def main():
-    coins = [c.upper() for c in sys.argv[1:]] or ["BTCUSDT", "ETHUSDT"]
+    coins = [c.upper() for c in sys.argv[1:]] or [
+        "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
+        "DOGEUSDT", "ADAUSDT", "LINKUSDT", "AVAXUSDT", "LTCUSDT"]
     for coin in coins:
         print(f"\n# loading {coin} ...")
         df = load_1h_remote(coin)
@@ -160,8 +167,21 @@ def main():
             print(f"  insufficient data ({0 if df is None else len(df)} bars) — skipped"); continue
         run_tf(df, "2D", 12, coin)   # the requested 2-day chart
         run_tf(df, "1D", 15, coin)   # context
-    print("\nKARAR: PASS için TRAIN PF>1.2 & TEST PF>1.1 & n>=30 — VE komşu configlerde")
-    print("de tutarlı olmalı (tek şanslı hücre sayılmaz). PASS yoksa kombo kitaba girmez.")
+    print("\n" + "=" * 74)
+    print("  EVENT-1D AILESI COIN OZETI (kac config train+test IKISINDE de pozitif)")
+    print("=" * 74)
+    grand_n = 0; coin_pass = 0
+    for coin, rows in SUMMARY.items():
+        both_pos = sum(1 for (_, n, tr, te) in rows if tr > 1.2 and te > 1.0 and n >= 5)
+        tot_n = max((n for (_, n, _, _) in rows), default=0)
+        grand_n += tot_n
+        mark = "GUCLU" if both_pos >= 3 else ("kismi" if both_pos >= 2 else "zayif")
+        if both_pos >= 3: coin_pass += 1
+        print(f"  {coin:<10} {both_pos}/{len(rows)} config pozitif | temsili n={tot_n:<4d} [{mark}]")
+    print(f"\n  Toplam temsili islem (tum coinler): ~{grand_n}/3.5yil = ~{grand_n/3.5:.0f}/yil")
+    print(f"  GUCLU coin sayisi: {coin_pass}/{len(SUMMARY)}")
+    print("\nKARAR: >=5 coin GUCLU ise cok-coin scanner sleeve TASARIMINA gecmeye deger.")
+    print("Aksi halde kombo kitaba girmez. (Parametreler on-kayitli, test-tuning yok.)")
 
 if __name__ == "__main__":
     main()
