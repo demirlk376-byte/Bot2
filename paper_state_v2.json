@@ -18,7 +18,17 @@
     },
     "SOL": {
       "balance": 10539.181734121228,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 79.02,
+        "sl": 76.52519232902434,
+        "tp": 83.17801278495944,
+        "qty": 66.68679912757041,
+        "atr": 0.8316025569918865,
+        "entry_ts": "2026-07-08T02:00:00+00:00",
+        "fng_at_entry": 20,
+        "funding_at_entry": -3.7e-05
+      },
       "n_trades": 2,
       "n_wins": 2,
       "total_pnl": 539.1817341212275,
@@ -26,7 +36,17 @@
     },
     "BNB": {
       "balance": 10184.086340007303,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 572.6,
+        "sl": 560.9850615909077,
+        "tp": 591.9582306818206,
+        "qty": 8.892845214816017,
+        "atr": 3.8716461363641157,
+        "entry_ts": "2026-07-08T02:00:00+00:00",
+        "fng_at_entry": 20,
+        "funding_at_entry": 5e-06
+      },
       "n_trades": 6,
       "n_wins": 3,
       "total_pnl": 184.08634000730524,
