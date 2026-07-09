@@ -925,7 +925,15 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
       1. Breakeven: after be_mult×ATR profit → SL moves to entry (risk-free).
       2. Trailing: ONLY after breakeven, trail at trail_mult×ATR below peak.
     BB mean-reversion trades are excluded — trailing hurts mean-rev because the
-    retracement that moves SL to breakeven is part of the normal path to TP."""
+    retracement that moves SL to breakeven is part of the normal path to TP.
+
+    EXIT-MODEL EVIDENCE (scratch_exits test, BTC 1m intrabar, 2025-05..2026-04):
+    vs fixed SL/TP — BE: ORB +5.5R / IFVG +3.0R (DD down), FVG -3.1R;
+    trailing: ORB +4.5R / IFVG +3.1R; TP1/TP2 partial: WORSE on every sleeve
+    (raises WR, cuts total — rejected). So when MEXC's plan-order endpoint works
+    again (see the live-suppression block below), enable BE/trailing for
+    ORB + IFVG only; keep FVG and BB on fixed stops. ~+3-4% uplift, small but
+    real; single-regime sample, re-verify on longer data before enabling."""
     if not getattr(config.risk, "trailing_stop_enabled", True):
         return
 
