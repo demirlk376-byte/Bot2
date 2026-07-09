@@ -457,7 +457,13 @@ def load_config() -> AppConfig:
 
     web = WebDashboardConfig(
         enabled=_getbool("WEB_DASHBOARD_ENABLED", False),
-        host=_get("WEB_DASHBOARD_HOST", "0.0.0.0"),
+        # SECURITY: default to localhost-only. Binding to 0.0.0.0 exposes the
+        # unauthenticated dashboard to the whole internet — and this box holds the
+        # MEXC API keys in .env, so an exposed port is a real attack surface
+        # (observed: live botnet/exploit probes hitting :8080). To view the
+        # dashboard remotely, SSH-tunnel it (ssh -L 8080:127.0.0.1:8080). Only set
+        # WEB_DASHBOARD_HOST=0.0.0.0 behind a firewall/VPN with auth.
+        host=_get("WEB_DASHBOARD_HOST", "127.0.0.1"),
         port=_getint("WEB_DASHBOARD_PORT", 8080),
         token=_get("WEB_DASHBOARD_TOKEN", ""),
     )
