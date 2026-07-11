@@ -81,7 +81,7 @@ def bb_arrays(close, period=20, std=2.0):
 
 def run(start_after=None, label=""):
     print("Veri yükleniyor (tüm mevcut BTC ayları)...")
-    m1 = load_months(["/home/user/Bot2/BTCUSDT-1m-*.csv"])
+    m1 = load_months([str(Path(__file__).parent / "BTCUSDT-1m-*.csv")])
     if start_after is not None:
         m1 = m1[m1.index >= start_after]
     df = to_1h(m1)
