@@ -193,6 +193,31 @@ class ExecutionEngine:
     def reset_daily(self) -> None:
         self._trading_halted.clear()
 
+    async def enforce_daily_loss(self) -> None:
+        """Periodic daily-loss check (audit finding: the limit only ran on NEW
+        entry signals, so an open position bleeding between signals could sail
+        past -35% unhalted). Called from the 2-min reconciliation loop. No-ops
+        when already halted, baseline unset, or equity unreadable — never acts
+        on a failed balance read."""
+        if self.is_halted() or self._daily_starting_balance <= 0:
+            return
+        equity = await self.current_equity()
+        if equity is None:
+            return
+        if not self._risk.check_daily_loss_limit(
+            self._daily_starting_balance, equity, 0.0
+        ):
+            self.halt_trading("Daily loss limit reached (periodic check)")
+            await self.emergency_close_all("daily_loss_limit")
+            loss_pct = (
+                (self._daily_starting_balance - equity) / self._daily_starting_balance
+            )
+            await self._alert(
+                f"GÜNLÜK ZARAR LİMİTİ (-{loss_pct*100:.1f}%) — periyodik kontrol "
+                "yakaladı. Pozisyonlar kapatıldı, bugünlük trade durdu.",
+                "ERROR",
+            )
+
     def resume_trading(self) -> None:
         """Manually clear a halt (e.g. via Telegram /resume)."""
         self._trading_halted.clear()
@@ -565,7 +590,10 @@ class ExecutionEngine:
                 "slot": slot_key or symbol,
                 # Track actual entry fee rate so _close_position_internal can compute
                 # fees accurately (maker = 0%, taker = 0.01%).
-                "entry_fee_rate": 0.0 if use_maker else 0.0001,
+                # Keyed off the ACTUAL fill type, not the maker attempt: a
+                # rejected/timed-out post-only limit falls back to a market
+                # (taker) fill, which must be booked at the taker rate.
+                "entry_fee_rate": 0.0 if getattr(order, "was_maker", False) else 0.0001,
                 # Intended entry (the signal's level/price BEFORE the fill) so the
                 # live report can measure realized entry slippage = actual fill vs
                 # this. Critical for validating the live-vs-backtest discount on the

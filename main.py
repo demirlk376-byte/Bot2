@@ -1051,6 +1051,9 @@ async def daily_reset_loop() -> None:
         # permanently (so the daily-loss baseline would never re-arm again).
         try:
             today = datetime.now(timezone.utc).date().isoformat()
+            # Keep yesterday's baseline BEFORE re-capturing — needed below for
+            # the books-vs-bank reconciliation of the day that just ended.
+            prev_baseline = executor.get_daily_starting_balance()
             # Snapshot starting EQUITY (free + locked margin + unrealized), not
             # free balance — the daily-loss limit measures drawdown, not margin.
             await executor.capture_daily_start()
@@ -1083,6 +1086,27 @@ async def daily_reset_loop() -> None:
                          - timedelta(days=1)).isoformat()
             d_trades, d_wins, d_pnl = await db.get_daily_trade_stats(
                 yesterday, is_paper=config.exchange.paper_mode)
+
+            # Books-vs-bank reconciliation (audit safety net): the exchange
+            # equity change over the ended day should ≈ the DB's realized PnL.
+            # A persistent residual means untracked costs (funding, fee-rate
+            # drift, missed partial closes) — any future accounting bug
+            # surfaces here within a day instead of silently skewing PF.
+            # Deposits/withdrawals and open-position unrealized swings also
+            # land in the residual, hence alert (not halt) + generous threshold.
+            if prev_baseline > 0 and start_equity > 0:
+                drift = (start_equity - prev_baseline) - d_pnl
+                threshold = max(1.0, 0.02 * prev_baseline)
+                if abs(drift) > threshold:
+                    await _emit_alert(
+                        f"📒 Defter-banka farkı: dün equity {prev_baseline:.2f}→"
+                        f"{start_equity:.2f} (Δ{start_equity - prev_baseline:+.2f}) "
+                        f"ama DB PnL {d_pnl:+.2f} → fark {drift:+.2f} USDT. "
+                        "Para yatırdıysan/çektiysen normaldir; aksi halde funding/"
+                        "fee kayması veya kaçık kapanış olabilir — live_report ile bak.",
+                        "WARNING",
+                    )
+
             if telegram:
                 await telegram.send_daily_summary(
                     d_trades, d_wins, d_pnl, start_equity,
@@ -1231,6 +1255,15 @@ async def position_reconciliation_loop() -> None:
     await asyncio.sleep(30)
     while True:
         try:
+            # Periodic daily-loss enforcement: the entry-path check only runs
+            # when a NEW signal fires, so an open position bleeding between
+            # signals could pass -35% unhalted. This closes that window at the
+            # reconciliation cadence (~2 min).
+            try:
+                await executor.enforce_daily_loss()
+            except Exception as e:
+                logger.error("Periodic daily-loss check failed: %s", e)
+
             # Group internal positions by symbol. MEXC nets all same-symbol
             # positions into ONE, so we compare the exchange's total contracts
             # for a symbol against the SUM of our internal sleeves on it — this

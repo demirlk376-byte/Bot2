@@ -19,6 +19,11 @@ class OrderResult:
     quantity: float
     timestamp: int
     is_paper: bool
+    # True only when the fill actually executed as a post-only maker limit.
+    # The entry fee rate must be keyed off THIS, not off the maker ATTEMPT —
+    # place_limit_order falls back to a market (taker) fill on rejection or
+    # timeout, and booking those at 0% overstated PnL (audit finding).
+    was_maker: bool = False
 
 
 @dataclass
@@ -204,6 +209,7 @@ class PaperExchange:
             order_id=pos_id, symbol=symbol, side=side,
             filled_price=fill_price, quantity=amount,
             timestamp=int(time.time() * 1000), is_paper=True,
+            was_maker=True,
         )
         self._order_history.append(result)
         logger.info(
@@ -754,6 +760,7 @@ class LiveExchange:
                     filled_price=filled_price,
                     quantity=self._to_base(symbol, contracts),
                     timestamp=int(time.time() * 1000), is_paper=False,
+                    was_maker=True,
                 )
             if status == "canceled":
                 break
@@ -776,7 +783,8 @@ class LiveExchange:
                     fp = float(fetched.get("average") or limit_price)
                     return OrderResult(order_id, symbol, side, fp,
                                        self._to_base(symbol, contracts),
-                                       int(time.time() * 1000), False)
+                                       int(time.time() * 1000), False,
+                                       was_maker=True)
                 if status == "canceled":
                     cancelled = True
             except Exception:
