@@ -1,18 +1,21 @@
 """
-check_mexc_stopmove.py — MEXC stop-taşıma (plan-order place + targeted cancel)
-endpoint'i SAĞLIKLI mı? BE/trailing'i canlıda açmadan önce koşulacak probe.
+check_mexc_stopmove.py — MEXC stop-taşıma endpoint'leri SAĞLIKLI mı?
+BE/trailing'i canlıda açmadan (STOP_MOVE_ENABLED=true) önce koşulacak probe.
 
-Neden: Canlıda SL taşımak = yeni plan emri yerleştir + eskisini iptal et.
-MEXC'in planorder/place endpoint'i geçmişte sessizce reddetti (200 dönüp emir
-koymuyordu). Bot bu yüzden canlı stop taşımayı STOP_MOVE_ENABLED=false ile
-kapalı tutar. Bu script endpoint'in BUGÜN çalışıp çalışmadığını kanıtlar.
+Canlı girişler korumayı GİRİŞE İLİŞTİRİLMİŞ (position-attached) SL/TP olarak
+koyar — bu, plan-order listesinde DEĞİL stoporder ailesinde durur. Bot SL
+taşırken de öncelikle bu iliştirilmiş stopu stoporder/change_price ile yerinde
+değiştirir (atomik; ekstra emir yok, TP aynen korunur). İliştirilmiş stop
+yoksa plan-order place+cancel yedeğine düşer. Bu script iki mekanizmayı da
+gerçek pozisyon üzerinde SIFIR riskle test eder:
 
-Güvenlik: Aktif probe yalnızca AÇIK POZİSYON + YERLEŞİK SL varken çalışır ve
-mevcut SL'den kesinlikle DAHA UZAK (long'da daha aşağı, short'ta daha yukarı)
-reduce-only bir tetik emri koyar → gerçek SL her zaman önce tetiklenir, probe
-emri hiçbir koşulda pozisyonu etkileyemez. Test bitince emir hedefli iptal
-edilir; iptal başarısız olsa bile emir reduce-only'dir ve 24 saatte kendisi
-düşer (executeCycle=1).
+  Probe A (change_price): SL'yi mevcut yerinden %0.5 DAHA UZAĞA taşı (long'da
+  aşağı, short'ta yukarı — asla tetiklenme yönüne değil), borsadan doğrula,
+  sonra AYNEN eski fiyatına geri al. Pozisyon hiçbir anda korumasız kalmaz.
+
+  Probe B (plan place+cancel, yalnız iliştirilmiş stop yoksa): gerçek SL'den
+  kesinlikle daha uzak reduce-only bir tetik koy, listede doğrula, hedefli
+  iptal et. Gerçek SL her zaman önce tetiklenir.
 
 Kullanım (VPS):
     cd /opt/bot2 && venv/bin/python check_mexc_stopmove.py          # read-only
@@ -41,48 +44,67 @@ async def list_plan_orders(ex: LiveExchange, symbol: str) -> list[dict]:
     return list(data or [])
 
 
-async def probe_symbol(ex: LiveExchange, symbol: str, do_probe: bool) -> bool | None:
-    """None = bu sembolde probe koşulamadı (pozisyon/SL yok); True/False = sonuç."""
-    pos = await ex.get_position(symbol)
-    if pos is None:
-        print(f"  {symbol}: pozisyon yok — probe atlanıyor")
-        return None
-
-    orders = await list_plan_orders(ex, symbol)
-    sl_trigger = 2 if pos.side == "long" else 1
-    resting_sl = [o for o in orders if int(o.get("triggerType", 0)) == sl_trigger]
-    print(f"  {symbol}: {pos.side} {pos.contracts} @ {pos.entry_price:.4f} | "
-          f"{len(orders)} plan emri ({len(resting_sl)} SL yönlü)")
-    if not resting_sl:
-        print("    yerleşik SL plan emri yok — probe güvenli değil, atlanıyor")
-        return None
-    if not do_probe:
-        print("    (aktif test için --probe ile çalıştır)")
-        return None
-
-    # Mevcut SL'den %1 DAHA UZAK bir probe tetiği: gerçek SL her zaman önce vurur.
-    cur_sl = min((float(o.get("triggerPrice") or 0) for o in resting_sl),
-                 default=0.0) if pos.side == "long" else \
-             max((float(o.get("triggerPrice") or 0) for o in resting_sl), default=0.0)
-    if cur_sl <= 0:
-        print("    SL tetik fiyatı okunamadı — atlanıyor")
-        return None
-    probe_price = cur_sl * (0.99 if pos.side == "long" else 1.01)
-    probe_price = float(ex._exchange.price_to_precision(symbol, probe_price))
-
-    print(f"    PROBE: {probe_price} tetikli reduce-only plan emri yerleştiriliyor "
-          f"(mevcut SL {cur_sl} — probe kesinlikle daha uzak)")
-
-    # place → listede doğrula → hedefli cancel → doğrula
+async def probe_change_price(ex: LiveExchange, symbol: str, side: str,
+                             attached: dict) -> bool:
+    """İliştirilmiş stopun SL'ini %0.5 uzağa taşı → doğrula → geri al."""
     inner = ex._exchange
-    close_side = "sell" if pos.side == "long" else "buy"
+    order_id = attached.get("id") or attached.get("orderId")
+    cur_sl = float(attached.get("stopLossPrice") or 0)
+    cur_tp = float(attached.get("takeProfitPrice") or 0)
+    if not order_id or cur_sl <= 0:
+        print(f"    stop id/SL okunamadı (id={order_id} sl={cur_sl}) — atlanıyor")
+        return False
+
+    away = cur_sl * (0.995 if side == "long" else 1.005)   # tetiklenme yönünün TERSİ
+    away = float(inner.price_to_precision(symbol, away))
+    print(f"    PROBE A (change_price): SL {cur_sl} → {away} (uzağa) → geri {cur_sl}")
+
+    async def _change(sl_price: float) -> bool:
+        try:
+            resp = await inner.contractPrivatePostStoporderChangePrice({
+                "orderId": order_id,
+                "stopLossPrice": sl_price,
+                "takeProfitPrice": cur_tp,
+            })
+        except Exception as e:
+            print(f"    ✗ change_price exception: {e}")
+            return False
+        if isinstance(resp, dict) and resp.get("success") is False:
+            print(f"    ✗ change_price reject: {resp}")
+            return False
+        await asyncio.sleep(1.5)
+        chk = await ex._get_attached_stop(symbol)
+        got = float((chk or {}).get("stopLossPrice") or 0)
+        ok = got > 0 and abs(got - sl_price) / sl_price <= 0.001
+        print(f"    {'✓' if ok else '✗'} doğrulama: borsa SL={got} (beklenen {sl_price})")
+        return ok
+
+    moved = await _change(away)
+    restored = await _change(cur_sl)   # her durumda eski SL'e dönmeyi dene
+    if not restored:
+        print(f"    ! SL {cur_sl} değerine GERİ ALINAMADI — MEXC arayüzünden "
+              f"elle kontrol edin (şu an {'daha uzak/güvenli' if moved else 'değişmemiş'} olmalı)")
+    return moved and restored
+
+
+async def probe_plan_orders(ex: LiveExchange, symbol: str, side: str,
+                            sl_level: float, contracts_base: float) -> bool:
+    """Plan-order place + hedefli cancel testi (gerçek SL'den daha uzak tetik)."""
+    inner = ex._exchange
+    sl_trigger = 2 if side == "long" else 1
+    probe_price = sl_level * (0.99 if side == "long" else 1.01)
+    probe_price = float(inner.price_to_precision(symbol, probe_price))
+    print(f"    PROBE B (plan place+cancel): tetik {probe_price} "
+          f"(gerçek SL {sl_level} — probe kesinlikle daha uzak)")
+
+    close_side = "sell" if side == "long" else "buy"
     open_type = 1 if ex._margin_mode == "isolated" else 2
     params = {"orderType": 5, "executeCycle": 1, "openType": open_type,
               "reduceOnly": True, "triggerPrice": probe_price,
               "triggerType": sl_trigger}
     if open_type == 1:
         params["leverage"] = ex._leverage
-    contracts = ex._to_contracts(symbol, pos.contracts, round_up=False)
+    contracts = ex._to_contracts(symbol, contracts_base, round_up=False)
 
     try:
         resp = await inner.create_order(symbol, "market", close_side,
@@ -90,11 +112,9 @@ async def probe_symbol(ex: LiveExchange, symbol: str, do_probe: bool) -> bool | 
     except Exception as e:
         print(f"    ✗ PLACE başarısız (exception): {e}")
         return False
-    new_id = None
-    if resp:
-        new_id = resp.get("id") or (resp.get("info") or {}).get("orderId")
+    new_id = (resp or {}).get("id") or ((resp or {}).get("info") or {}).get("orderId")
     if not new_id:
-        print(f"    ✗ PLACE sessiz reject (200 ama id yok): {resp}")
+        print(f"    ✗ PLACE sessiz reject (yanıtta id yok): {resp}")
         return False
     print(f"    ✓ PLACE ok — emir id {new_id}")
 
@@ -103,28 +123,58 @@ async def probe_symbol(ex: LiveExchange, symbol: str, do_probe: bool) -> bool | 
     listed = any(str(o.get("id") or o.get("orderId")) == str(new_id) for o in after)
     print(f"    {'✓' if listed else '✗'} LIST doğrulama: emir {'listede' if listed else 'LİSTEDE YOK'}")
 
-    cancel_ok = False
     try:
         await inner.contractPrivatePostPlanorderCancel(
             [{"symbol": _mexc_sym(symbol), "orderId": str(new_id)}])
-        cancel_ok = True
     except Exception as e:
         print(f"    ✗ HEDEFLİ CANCEL başarısız: {e}")
-        try:
-            # Temizlik: probe emrini asılı bırakma (SL/TP dahil hepsini
-            # süpürmemek için önce hedefli denedik; bu son çare de hedefli
-            # olmayan cancel_all DEĞİL — sadece uyarı basar).
-            print("    ! probe emri asılı kaldı — 24 saatte kendisi düşer "
-                  "(executeCycle=1) veya MEXC arayüzünden elle iptal edin")
-        except Exception:
-            pass
-    if cancel_ok:
-        await asyncio.sleep(1.5)
-        final = await list_plan_orders(ex, symbol)
-        gone = not any(str(o.get("id") or o.get("orderId")) == str(new_id) for o in final)
-        print(f"    {'✓' if gone else '✗'} CANCEL doğrulama: emir {'silindi' if gone else 'HÂLÂ listede'}")
-        return bool(listed and gone)
-    return False
+        print("    ! probe emri asılı kaldı — reduce-only + gerçek SL'den uzak "
+              "(zararsız); 24 saatte kendisi düşer veya MEXC arayüzünden iptal edin")
+        return False
+    await asyncio.sleep(1.5)
+    final = await list_plan_orders(ex, symbol)
+    gone = not any(str(o.get("id") or o.get("orderId")) == str(new_id) for o in final)
+    print(f"    {'✓' if gone else '✗'} CANCEL doğrulama: emir {'silindi' if gone else 'HÂLÂ listede'}")
+    return bool(listed and gone)
+
+
+async def probe_symbol(ex: LiveExchange, symbol: str, do_probe: bool) -> bool | None:
+    """None = bu sembolde probe koşulamadı; True/False = sonuç."""
+    pos = await ex.get_position(symbol)
+    if pos is None:
+        print(f"  {symbol}: pozisyon yok — probe atlanıyor")
+        return None
+
+    attached = await ex._get_attached_stop(symbol)
+    plans = await list_plan_orders(ex, symbol)
+    sl_trigger = 2 if pos.side == "long" else 1
+    plan_sl = [o for o in plans if int(o.get("triggerType", 0)) == sl_trigger]
+
+    att_sl = float((attached or {}).get("stopLossPrice") or 0)
+    att_tp = float((attached or {}).get("takeProfitPrice") or 0)
+    print(f"  {symbol}: {pos.side} {pos.contracts} @ {pos.entry_price:.4f}")
+    if attached is not None:
+        print(f"    iliştirilmiş koruma: SL={att_sl} TP={att_tp}  ✓ (stoporder)")
+    if plans:
+        print(f"    plan emirleri: {len(plans)} ({len(plan_sl)} SL yönlü)")
+    if attached is None and not plan_sl:
+        print("    ⚠ NE İLİŞTİRİLMİŞ NE PLAN SL BULUNDU — pozisyon korumasız "
+              "görünüyor, botun reconciliation logunu kontrol edin!")
+        return None
+    if not do_probe:
+        print("    (aktif test için --probe ile çalıştır)")
+        return None
+
+    # move_stop_loss'un GERÇEKTE kullanacağı mekanizmayı test et:
+    if attached is not None:
+        return await probe_change_price(ex, symbol, pos.side, attached)
+    sl_level = min((float(o.get("triggerPrice") or 0) for o in plan_sl)) \
+        if pos.side == "long" else \
+        max((float(o.get("triggerPrice") or 0) for o in plan_sl))
+    if sl_level <= 0:
+        print("    SL tetik fiyatı okunamadı — atlanıyor")
+        return None
+    return await probe_plan_orders(ex, symbol, pos.side, sl_level, pos.contracts)
 
 
 async def main() -> None:
@@ -163,7 +213,7 @@ async def main() -> None:
         print("  SONUÇ YOK — probe koşulacak açık pozisyon + yerleşik SL bulunamadı.")
         print("  Bot bir pozisyon açtığında tekrar deneyin: --probe")
     elif all(results):
-        print("  ✓ PROBE BAŞARILI — plan-order place + hedefli cancel çalışıyor.")
+        print("  ✓ PROBE BAŞARILI — stop-taşıma mekanizması çalışıyor.")
         print("  .env'e STOP_MOVE_ENABLED=true ekleyip botu yeniden başlatabilirsin:")
         print("    ORB+IFVG BE@1R + sr_breakout trailing canlıda aktifleşir (~+%3-4).")
     else:
