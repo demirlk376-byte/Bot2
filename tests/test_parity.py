@@ -5,11 +5,16 @@ Doğrulanmış edge (+28.2%) araştırma scriptlerinden geliyor. Eğer canlı mo
 (strategies/risk/exchange sınıfları) bu mantıktan SAPARSA edge anlamsız olur.
 
 Bu test, GERÇEK üretim sınıflarını —
-    MeanReversionStrategy  (sinyal)
+    MeanReversionStrategy  (sinyal: BB extreme + hacim + sniper grade>=2)
     RiskManager            (SL/TP + pozisyon boyutu)
-    PaperExchange          (maker giriş + SL/TP fill)
+    PaperExchange          (maker giriş %0 / taker çıkış fee + SL/TP fill)
 — geçmiş BTC verisi üzerinde bar-bar çalıştırır ve bağımsız bir referans
 backtest ile karşılaştırır. İkisi kuruşu kuruşuna eşleşmeli.
+
+Referans, üretim davranışını DEFAULT config ile modeller; üretim default'u
+değişirse (ör. sniper_min_grade, fee modeli) referans da güncellenmeli —
+aksi halde bu test doğru şekilde KIRILIR (2026-06 örnekleri: 61c249d maker
+giriş fee %0, 2b7a224 sniper_min_grade=2).
 
 Ayrıca birim testler: SL/TP hesabı, pozisyon boyutu (cap dahil), SL-önce fill.
 
@@ -29,7 +34,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import RiskConfig, StrategyConfig
-from indicators import bollinger_bands, atr
+from indicators import bollinger_bands, atr, vwap, atr_percentile
 from risk import RiskManager
 from exchange import PaperExchange
 from strategies.mean_reversion import MeanReversionStrategy
@@ -40,7 +45,7 @@ RR     = 5.0 / 3.0      # TP = 5xATR
 MH     = 48
 LEV    = 10
 INIT   = 10_000.0
-FEE    = 0.0001         # PaperExchange exit fee modeli
+FEE    = 0.0001         # taker (çıkış); maker giriş = %0 — PaperExchange ile aynı
 N_BARS = 2200          # ilk ~3 ay (hız için)
 
 
@@ -67,6 +72,11 @@ def reference(df):
     atr_s = atr(df["high"],df["low"],df["close"],14)
     vma = df["volume"].rolling(20).mean().values
     bbp = ((df["close"]-lw)/(up-lw).replace(0,np.nan)).values
+    # Sniper confluence bileşenleri (üretim default: sniper_min_grade=2).
+    # Rolling pencereler yalnızca geçmişe bakar → tam seri değeri i'de,
+    # üretimin prefix (df.iloc[:i+1]) üzerinde hesapladığıyla birebir aynı.
+    atrp = atr_percentile(df["high"],df["low"],df["close"],14,lookback=50).values
+    vw   = vwap(df["high"],df["low"],df["close"],df["volume"],24).values
     n=len(c); bal=INIT; ot=None; trades=[]
     for i in range(60,n):
         a=atr_s.iloc[i]
@@ -82,7 +92,7 @@ def reference(df):
                 elif lo[i]<=tp: ep,r=tp,"tp"
             if ep is None and hd>=MH: ep,r=c[i],"mh"
             if ep is not None:
-                fees=(e+ep)*qty*FEE        # maker giriş 0 + çıkış; PaperExchange ile aynı
+                fees=ep*qty*FEE            # maker giriş %0 + taker çıkış; PaperExchange ile aynı
                 pnl=d*(ep-e)*qty-fees
                 bal+=pnl
                 trades.append({"pnl":pnl,"reason":r}); ot=None
@@ -91,6 +101,17 @@ def reference(df):
         if np.isnan(bp) or not(bp<0 or bp>1): continue
         dr=1 if bp<0 else -1
         if np.isnan(vma[i]) or vol[i]<vma[i]: continue
+        # Sniper 3-puanlık confluence: skor >= 2 şart (üretim MeanReversionStrategy
+        # _sniper_grade ile aynı kurallar).
+        score=0
+        if i+1>=65 and not np.isnan(atrp[i]) and atrp[i]>=50: score+=1       # ATR%>=50
+        overshoot=abs(bp) if dr==1 else abs(bp-1.0)
+        if overshoot<0.5: score+=1                                           # küçük taşma
+        if not np.isnan(vw[i]) and vw[i]>0:
+            dev=(c[i]-vw[i])/vw[i]
+            edge=(-dev if dr==1 else dev)*100
+            if edge>=0.5: score+=1                                           # yönlü VWAP mesafesi
+        if score<2: continue
         e=c[i]; sld=SL_M*a
         sl=e-dr*sld; tp=e+dr*RR*sld
         sl_pct=abs(e-sl)/e
