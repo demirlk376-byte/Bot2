@@ -231,6 +231,27 @@ def main():
         print(f"  {s:9s} {len(rs):>3d}  {w/len(rs):>3.0%}  {_fmt_pf(_pf(p)):>5s}  "
               f"{sum(p):>+9.2f}  {avg_hold:>6.1f}h  {slip_s:>12s}  {exits_s}")
 
+    # ── per-coin ──────────────────────────────────────────────────────────────
+    # Budamanın ikinci ekseni: sleeve iyi olsa da belirli bir coin sürüklüyor
+    # olabilir (paper scanner'da XRP ❌ örneği). Coin satırının altında o coinin
+    # sleeve kırılımı — "SOL kaybediyor" değil "SOL'da squeeze kaybediyor" denir.
+    byc = defaultdict(list)
+    for r in rows:
+        byc[(r["symbol"] or "?").split("/")[0]].append(r)
+    print("\n  COIN        n    WR    PF      netPnL   sleeves")
+    print("  " + "-" * 70)
+    for c in sorted(byc, key=lambda k: -sum((x["pnl_usdt"] or 0.0) for x in byc[k])):
+        rs = byc[c]
+        p = [x["pnl_usdt"] or 0.0 for x in rs]
+        w = sum(1 for v in p if v > 0)
+        bysl = defaultdict(float)
+        for x in rs:
+            bysl[_sleeve(x["strategy_scores"])] += x["pnl_usdt"] or 0.0
+        sl_s = " ".join(f"{k}:{v:+.2f}" for k, v in
+                        sorted(bysl.items(), key=lambda kv: -kv[1]))
+        print(f"  {c:9s} {len(rs):>3d}  {w/len(rs):>3.0%}  {_fmt_pf(_pf(p)):>5s}  "
+              f"{sum(p):>+9.2f}   {sl_s}")
+
     # ── weekly PnL ────────────────────────────────────────────────────────────
     byw = defaultdict(list)
     for r in rows:
