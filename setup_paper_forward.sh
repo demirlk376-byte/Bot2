@@ -23,7 +23,17 @@ VENV_PY=$LIVE_DIR/venv/bin/python
 [ -d "$LIVE_DIR" ] || { echo "HATA: $LIVE_DIR yok"; exit 1; }
 [ -x "$VENV_PY" ]  || { echo "HATA: $VENV_PY yok"; exit 1; }
 
+# 0) Git "dubious ownership" koruması: root, farklı kullanıcıya ait repoyu
+#    klonlarken/okurken git reddediyor — iki dizini de güvenli ilan et.
+git config --global --add safe.directory "$LIVE_DIR"
+git config --global --add safe.directory "$LIVE_DIR/.git"
+git config --global --add safe.directory "$PAPER_DIR"
+
 # 1) Kod kopyası (yerel clone — canlı repo neyse o, aynı branch)
+#    Önceki başarısız denemeden yarım dizin kaldıysa (içinde .git yok) temizle.
+if [ -d "$PAPER_DIR" ] && [ ! -d "$PAPER_DIR/.git" ]; then
+    rm -rf "$PAPER_DIR"
+fi
 if [ ! -d "$PAPER_DIR" ]; then
     git clone "$LIVE_DIR" "$PAPER_DIR"
     git -C "$PAPER_DIR" checkout "$(git -C $LIVE_DIR rev-parse --abbrev-ref HEAD)"
