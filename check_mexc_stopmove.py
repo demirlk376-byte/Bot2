@@ -46,41 +46,28 @@ async def list_plan_orders(ex: LiveExchange, symbol: str) -> list[dict]:
 
 async def probe_change_price(ex: LiveExchange, symbol: str, side: str,
                              attached: dict) -> bool:
-    """İliştirilmiş stopun SL'ini %0.5 uzağa taşı → doğrula → geri al."""
-    inner = ex._exchange
-    order_id = attached.get("id") or attached.get("orderId")
+    """İliştirilmiş stopun SL'ini %0.5 uzağa taşı → doğrula → geri al.
+
+    Taşımayı ÜRETİM kod yolu (_change_attached_sl: change_plan_price →
+    change_price fallback + borsadan re-read doğrulaması) yapar — probe neyi
+    test ediyorsa bot canlıda AYNISINI çalıştırır."""
     cur_sl = float(attached.get("stopLossPrice") or 0)
-    cur_tp = float(attached.get("takeProfitPrice") or 0)
-    if not order_id or cur_sl <= 0:
-        print(f"    stop id/SL okunamadı (id={order_id} sl={cur_sl}) — atlanıyor")
+    if cur_sl <= 0:
+        print(f"    SL okunamadı ({attached.get('id')}) — atlanıyor")
         return False
 
     away = cur_sl * (0.995 if side == "long" else 1.005)   # tetiklenme yönünün TERSİ
-    away = float(inner.price_to_precision(symbol, away))
-    print(f"    PROBE A (change_price): SL {cur_sl} → {away} (uzağa) → geri {cur_sl}")
+    away = float(ex._exchange.price_to_precision(symbol, away))
+    print(f"    PROBE A (attached SL modify): SL {cur_sl} → {away} (uzağa) → geri {cur_sl}")
 
-    async def _change(sl_price: float) -> bool:
-        try:
-            resp = await inner.contractPrivatePostStoporderChangePrice({
-                "orderId": order_id,
-                "stopLossPrice": sl_price,
-                "takeProfitPrice": cur_tp,
-            })
-        except Exception as e:
-            print(f"    ✗ change_price exception: {e}")
-            return False
-        if isinstance(resp, dict) and resp.get("success") is False:
-            print(f"    ✗ change_price reject: {resp}")
-            return False
-        await asyncio.sleep(1.5)
-        chk = await ex._get_attached_stop(symbol)
-        got = float((chk or {}).get("stopLossPrice") or 0)
-        ok = got > 0 and abs(got - sl_price) / sl_price <= 0.001
-        print(f"    {'✓' if ok else '✗'} doğrulama: borsa SL={got} (beklenen {sl_price})")
-        return ok
+    moved = await ex._change_attached_sl(symbol, attached, away)
+    print(f"    {'✓' if moved else '✗'} taşıma: {'borsa onayladı' if moved else 'başarısız'}")
 
-    moved = await _change(away)
-    restored = await _change(cur_sl)   # her durumda eski SL'e dönmeyi dene
+    # Her durumda eski SL'e dönmeyi dene (taşıma başarısızsa zaten yerinde;
+    # attached dict'i tazele ki id'ler değiştiyse doğru stopu hedefleyelim).
+    fresh = await ex._get_attached_stop(symbol) or attached
+    restored = await ex._change_attached_sl(symbol, fresh, cur_sl)
+    print(f"    {'✓' if restored else '✗'} geri alma: SL {cur_sl}")
     if not restored:
         print(f"    ! SL {cur_sl} değerine GERİ ALINAMADI — MEXC arayüzünden "
               f"elle kontrol edin (şu an {'daha uzak/güvenli' if moved else 'değişmemiş'} olmalı)")

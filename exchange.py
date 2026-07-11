@@ -1044,13 +1044,22 @@ class LiveExchange:
         self, symbol: str, attached: dict, new_sl: float
     ) -> bool:
         """Modify the position-attached stop's SL price in place, keeping the
-        existing TP untouched (change_price treats 0 as 'cancel that side', so
-        the current TP must be passed through explicitly)."""
+        existing TP untouched (a 0 price means 'cancel that side', so the
+        current TP must be passed through explicitly).
+
+        MEXC has TWO modify endpoints and the ids are NOT interchangeable
+        (probe evidence 2026-07-11: change_price with the stoporder-list id →
+        code 2040 "Order does not exist"):
+          • stoporder/change_plan_price {stopPlanOrderId: <stoporder list
+            'id'>} — modifies the resting stop-plan order itself. This is the
+            one that matches what _get_attached_stop returns → tried FIRST.
+          • stoporder/change_price {orderId: <the ORIGINAL entry order id —
+            the list entry's 'orderId' field>} — keyed off the parent order.
+            Tried as fallback when the first form is rejected."""
         inner = self._exchange
-        if not hasattr(inner, "contractPrivatePostStoporderChangePrice"):
-            return False
-        order_id = attached.get("id") or attached.get("orderId")
-        if not order_id:
+        stop_id = attached.get("id")
+        parent_id = attached.get("orderId")
+        if not stop_id and not parent_id:
             logger.warning("move_stop_loss %s: attached stop has no id: %s",
                            symbol, attached)
             return False
@@ -1059,20 +1068,39 @@ class LiveExchange:
             new_sl = float(inner.price_to_precision(symbol, new_sl))
         except Exception:
             pass
-        try:
-            resp = await inner.contractPrivatePostStoporderChangePrice({
-                "orderId": order_id,
-                "stopLossPrice": new_sl,
-                "takeProfitPrice": cur_tp,
-            })
-        except Exception as e:
-            logger.warning("move_stop_loss %s: change_price failed: %s", symbol, e)
+
+        attempts = []
+        if stop_id and hasattr(inner, "contractPrivatePostStoporderChangePlanPrice"):
+            attempts.append(("change_plan_price",
+                             inner.contractPrivatePostStoporderChangePlanPrice,
+                             {"stopPlanOrderId": stop_id,
+                              "stopLossPrice": new_sl,
+                              "takeProfitPrice": cur_tp}))
+        if parent_id and hasattr(inner, "contractPrivatePostStoporderChangePrice"):
+            attempts.append(("change_price",
+                             inner.contractPrivatePostStoporderChangePrice,
+                             {"orderId": parent_id,
+                              "stopLossPrice": new_sl,
+                              "takeProfitPrice": cur_tp}))
+        if not attempts:
             return False
-        # MEXC contract responses carry success:true/false; treat an explicit
-        # false as failure, otherwise verify by re-reading the stop order.
-        if isinstance(resp, dict) and resp.get("success") is False:
-            logger.warning("move_stop_loss %s: change_price rejected: %s",
-                           symbol, resp)
+
+        ok = False
+        for name, fn, payload in attempts:
+            try:
+                resp = await fn(payload)
+            except Exception as e:
+                logger.warning("move_stop_loss %s: %s failed: %s", symbol, name, e)
+                continue
+            # MEXC contract responses carry success:true/false; an explicit
+            # false is a reject → try the next form.
+            if isinstance(resp, dict) and resp.get("success") is False:
+                logger.warning("move_stop_loss %s: %s rejected: %s",
+                               symbol, name, resp)
+                continue
+            ok = True
+            break
+        if not ok:
             return False
         check = await self._get_attached_stop(symbol)
         if check is not None:
@@ -1082,8 +1110,8 @@ class LiveExchange:
                     "move_stop_loss %s: change_price verify mismatch "
                     "(want %.6f, exchange shows %.6f)", symbol, new_sl, got)
                 return False
-        logger.info("move_stop_loss %s: attached SL changed to %.6f (order %s)",
-                    symbol, new_sl, order_id)
+        logger.info("move_stop_loss %s: attached SL changed to %.6f (stop %s)",
+                    symbol, new_sl, stop_id or parent_id)
         return True
 
     async def _move_sl_via_plan_orders(
