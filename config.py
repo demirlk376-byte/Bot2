@@ -68,6 +68,13 @@ class ExchangeConfig:
     symbols: list[str] | None = None  # full list when trading multiple coins
     base_currency: str = "USDT"
     maker_entry: bool = True   # use post-only limit entries (0% maker fee vs 0.01% taker)
+    # Live mid-life stop moves (BE/trailing) require MEXC's plan-order PLACE
+    # endpoint to work reliably. It has a history of silent rejects, so this
+    # ships OFF: run check_mexc_stopmove.py on the VPS first; only set
+    # STOP_MOVE_ENABLED=true when the probe reports the endpoint healthy.
+    # OFF = live positions keep their entry-time SL/TP (validated fixed-stop
+    # behaviour); paper mode always moves stops internally regardless.
+    stop_move_enabled: bool = False
 
 
 @dataclass
@@ -359,6 +366,7 @@ def load_config() -> AppConfig:
         symbol=symbols[0],
         symbols=symbols,
         maker_entry=_getbool("MAKER_ENTRY", True),
+        stop_move_enabled=_getbool("STOP_MOVE_ENABLED", False),
     )
 
     # Global risk multiplier — scales every per-trade risk % uniformly. Applied

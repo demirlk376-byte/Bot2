@@ -986,6 +986,89 @@ class LiveExchange:
                 "TP placement FAILED for %s after 3 attempts (SL IS in place) — "
                 "position will exit via max-hold/trailing", symbol)
 
+    async def move_stop_loss(
+        self, symbol: str, position_side: str, new_sl: float, amount: float
+    ) -> bool:
+        """Fail-safe mid-life SL move (BE/trailing): place the NEW stop first,
+        verify it rests, THEN cancel the old one. Order matters — the position
+        must never sit without a resting stop, and MEXC's plan-order place
+        endpoint has a history of silent rejects.
+
+        Failure semantics (every branch leaves the position protected):
+          • can't list existing plan orders → abort, nothing touched
+          • new stop placement fails/silent-rejects → abort, old stop rests
+          • old-stop cancel fails → return True anyway: the new (tighter) stop
+            triggers first; the old reduce-only trigger left behind is a no-op
+            once the position is gone and the reconciliation orphan-cleanup
+            removes it.
+        Returns True only when the NEW stop is confirmed resting (caller may
+        then update its internal sl_price)."""
+        async with self._stop_order_lock:
+            inner = self._exchange
+            mexc_sym = symbol.split(":")[0].replace("/", "_")
+            sl_trigger = 2 if position_side == "long" else 1
+
+            # 1) Snapshot the currently-resting SL plan orders (same triggerType).
+            #    If we can't read them we can't cancel them later, which would
+            #    stack duplicates on every candle — abort instead.
+            try:
+                resp = await inner.contractPrivateGetPlanorderListOrders(
+                    {"symbol": mexc_sym, "states": "1"})
+                data = resp.get("data") if isinstance(resp, dict) else resp
+            except Exception as e:
+                logger.warning("move_stop_loss %s: plan-order list failed: %s",
+                               symbol, e)
+                return False
+            old_ids = []
+            for o in (data or []):
+                try:
+                    if int(o.get("triggerType", 0)) == sl_trigger:
+                        old_ids.append(str(o.get("id") or o.get("orderId")))
+                except Exception:
+                    continue
+
+            # 2) Place the new SL trigger (market-on-trigger, reduce-only).
+            close_side = "sell" if position_side == "long" else "buy"
+            open_type = 1 if self._margin_mode == "isolated" else 2
+            params = {
+                "orderType": 5, "executeCycle": 1, "openType": open_type,
+                "reduceOnly": True,
+                "triggerPrice": new_sl, "triggerType": sl_trigger,
+            }
+            if open_type == 1:
+                params["leverage"] = self._leverage
+            contracts = self._to_contracts(symbol, amount, round_up=True)
+            try:
+                new_resp = await self._place_trigger_order(
+                    symbol, "market", close_side, contracts, params, "SL-move")
+            except Exception as e:
+                logger.warning("move_stop_loss %s: new SL placement failed: %s",
+                               symbol, e)
+                return False
+            new_id = None
+            if new_resp:
+                new_id = new_resp.get("id") or new_resp.get("info", {}).get("orderId")
+            if not new_id:
+                # Silent business-layer reject (200 with empty fields) — the old
+                # stop still rests, so simply report failure.
+                logger.warning("move_stop_loss %s: new SL silently rejected", symbol)
+                return False
+
+            # 3) Cancel the old SL trigger(s) by id. Best-effort — see docstring.
+            stale = [oid for oid in old_ids if oid and oid != str(new_id)]
+            if stale and hasattr(inner, "contractPrivatePostPlanorderCancel"):
+                try:
+                    await inner.contractPrivatePostPlanorderCancel(
+                        [{"symbol": mexc_sym, "orderId": oid} for oid in stale])
+                except Exception as e:
+                    logger.warning(
+                        "move_stop_loss %s: old SL cancel failed (%s) — harmless, "
+                        "new stop %s rests and orphan cleanup will collect the rest",
+                        symbol, e, new_id)
+            logger.info("move_stop_loss %s: SL moved to %.6f (order %s, %d old cancelled)",
+                        symbol, new_sl, new_id, len(stale))
+            return True
+
     async def cancel_stop_orders(self, symbol: str) -> bool:
         """Cancel all pending SL/TP plan (trigger) orders for a symbol. Returns
         True if the cancel call succeeded (or there was nothing to cancel).

@@ -920,88 +920,117 @@ def _get_regime(adx_val: float) -> str:
 
 
 async def _update_trailing_stops(symbol: str, current_price: float, atr_val: float) -> None:
-    """Each candle: update trailing SL for directional (breakout) positions.
-    Logic:
-      1. Breakeven: after be_mult×ATR profit → SL moves to entry (risk-free).
-      2. Trailing: ONLY after breakeven, trail at trail_mult×ATR below peak.
-    BB mean-reversion trades are excluded — trailing hurts mean-rev because the
-    retracement that moves SL to breakeven is part of the normal path to TP.
+    """Each candle: update the SL of positions whose sleeve has a VALIDATED
+    stop-move edge. Two models:
+      • sr_breakout: BE after be_mult×ATR profit, then trail at trail_mult×ATR
+        below the peak (the sleeve was validated with this exit).
+      • orb / ifvg: BE-ONLY at +1R (R = entry→initial-SL distance). No trailing,
+        no partial TP — exactly the model the exit research validated.
+    BB mean-reversion and FVG are excluded — the retracement that would move SL
+    to breakeven is part of their normal path to TP (BE measurably hurts them).
 
     EXIT-MODEL EVIDENCE (scratch_exits test, BTC 1m intrabar, 2025-05..2026-04):
-    vs fixed SL/TP — BE: ORB +5.5R / IFVG +3.0R (DD down), FVG -3.1R;
-    trailing: ORB +4.5R / IFVG +3.1R; TP1/TP2 partial: WORSE on every sleeve
-    (raises WR, cuts total — rejected). So when MEXC's plan-order endpoint works
-    again (see the live-suppression block below), enable BE/trailing for
-    ORB + IFVG only; keep FVG and BB on fixed stops. ~+3-4% uplift, small but
-    real; single-regime sample, re-verify on longer data before enabling."""
+    vs fixed SL/TP — BE@1R: ORB +5.5R / IFVG +3.0R (DD down), FVG -3.1R;
+    trailing(1.5R): ORB +4.5R / IFVG +3.1R; TP1/TP2 partial: WORSE on every
+    sleeve (raises WR, cuts total — rejected). ~+3-4% uplift, small but real;
+    single-regime sample — re-verify on longer data when 2023/24 1m is around.
+
+    LIVE GATING: a mid-life stop move needs MEXC's plan-order endpoint, which
+    has a history of silent rejects. Moves are therefore applied on live ONLY
+    when STOP_MOVE_ENABLED=true (set it after check_mexc_stopmove.py reports
+    the endpoint healthy). The move itself is fail-safe: LiveExchange.
+    move_stop_loss places the new stop and confirms it rests BEFORE cancelling
+    the old one, and internal state (sl_price / breakeven_moved) is committed
+    only after the exchange confirms — a failed move changes nothing and is
+    simply retried on the next candle."""
     if not getattr(config.risk, "trailing_stop_enabled", True):
         return
 
     be_mult = config.risk.breakeven_atr_mult
     trail_mult = config.risk.trailing_atr_mult
+    live_moves_ok = config.exchange.stop_move_enabled
 
     for pos in portfolio.get_open_positions():
         if pos.symbol != symbol:
             continue
 
-        # Trailing applies ONLY to the S/R breakout swing strategy. BB mean-rev
-        # has a natural retrace path to TP (trailing hurts it). ORB, Asia BO, FVG,
-        # IFVG and Squeeze were all VALIDATED with FIXED SL/TP (and a max-hold) —
-        # NOT with trailing. Applying trailing to them would make live behaviour
-        # diverge from the backtest, so they keep their fixed exchange-side exits.
+        # Sleeves NOT listed here were validated with fixed SL/TP + max-hold;
+        # moving their stops would diverge live behaviour from the backtest.
         strategy_tag = pos.strategy_scores.get("strategy", "mean_rev")
-        if strategy_tag != "sr_breakout":
+        if strategy_tag not in ("sr_breakout", "orb", "ifvg"):
             continue
 
-        entry_atr = pos.strategy_scores.get("atr", atr_val)
         old_sl = pos.sl_price
         new_sl = old_sl
+        be_now = False   # committed to pos.breakeven_moved only after a real move
 
-        if pos.direction == 1:  # long
-            if pos.peak_price == 0.0 or current_price > pos.peak_price:
-                pos.peak_price = current_price
-
-            if not pos.breakeven_moved and current_price >= pos.entry_price + be_mult * entry_atr:
+        if strategy_tag == "sr_breakout":
+            entry_atr = pos.strategy_scores.get("atr", atr_val)
+            if pos.direction == 1:  # long
+                if pos.peak_price == 0.0 or current_price > pos.peak_price:
+                    pos.peak_price = current_price
+                if not pos.breakeven_moved and current_price >= pos.entry_price + be_mult * entry_atr:
+                    new_sl = max(new_sl, pos.entry_price)
+                    be_now = True
+                # Trail ONLY after breakeven — prevents immediate SL tightening
+                if pos.breakeven_moved or be_now:
+                    trail_sl = pos.peak_price - trail_mult * entry_atr
+                    new_sl = max(new_sl, trail_sl)
+            else:  # short
+                if pos.peak_price == 0.0 or current_price < pos.peak_price:
+                    pos.peak_price = current_price
+                if not pos.breakeven_moved and current_price <= pos.entry_price - be_mult * entry_atr:
+                    new_sl = min(new_sl, pos.entry_price)
+                    be_now = True
+                if pos.breakeven_moved or be_now:
+                    trail_sl = pos.peak_price + trail_mult * entry_atr
+                    new_sl = min(new_sl, trail_sl)
+        else:
+            # orb / ifvg: BE-only at +1R. After BE there is nothing further to do.
+            if pos.breakeven_moved:
+                continue
+            r_dist = abs(pos.entry_price - pos.sl_price)  # pre-BE ⇒ initial R
+            if r_dist <= 0:
+                continue
+            if pos.direction == 1 and current_price >= pos.entry_price + r_dist:
                 new_sl = max(new_sl, pos.entry_price)
-                pos.breakeven_moved = True
-
-            # Trail ONLY after breakeven — prevents immediate SL tightening on new trades
-            if pos.breakeven_moved:
-                trail_sl = pos.peak_price - trail_mult * entry_atr
-                new_sl = max(new_sl, trail_sl)
-
-        else:  # short
-            if pos.peak_price == 0.0 or current_price < pos.peak_price:
-                pos.peak_price = current_price
-
-            if not pos.breakeven_moved and current_price <= pos.entry_price - be_mult * entry_atr:
+                be_now = True
+            elif pos.direction == -1 and current_price <= pos.entry_price - r_dist:
                 new_sl = min(new_sl, pos.entry_price)
-                pos.breakeven_moved = True
-
-            if pos.breakeven_moved:
-                trail_sl = pos.peak_price + trail_mult * entry_atr
-                new_sl = min(new_sl, trail_sl)
+                be_now = True
 
         if new_sl != old_sl:
             if isinstance(exchange, PaperExchange):
                 pos.sl_price = new_sl
+                if be_now:
+                    pos.breakeven_moved = True
                 if hasattr(exchange, "update_position_sl"):
                     exchange.update_position_sl(pos.id, new_sl)
-            else:
-                # Live: moving a stop requires cancelling the working entry-attached
-                # SL/TP and re-placing via MEXC's plan-order endpoint — which is
-                # under maintenance and silently fails, leaving the position
-                # UNPROTECTED. So we keep the original entry-attached SL/TP (still
-                # protective) and skip exchange-side trailing. The position exits at
-                # its fixed SL/TP or max-hold, matching the fixed-stop backtest.
-                # (pos.sl_price is intentionally left unchanged so internal state
-                # stays in sync with the real exchange stop.)
+            elif not live_moves_ok:
+                # Live with stop-move disabled: keep the original exchange-side
+                # SL/TP (still protective, matches the fixed-stop backtest) and
+                # keep internal state in sync with the REAL exchange stop.
                 logger.info(
-                    "[%s] Trailing suppressed on live (MEXC stop-move unavailable) — "
-                    "keeping entry-attached SL %.4f", symbol, old_sl,
+                    "[%s] Stop move suppressed on live (STOP_MOVE_ENABLED=false) — "
+                    "keeping exchange SL %.4f", symbol, old_sl,
                 )
                 continue
-            action = "BE" if pos.breakeven_moved and new_sl == pos.entry_price else "Trail"
+            else:
+                pos_side = "long" if pos.direction == 1 else "short"
+                try:
+                    moved = await exchange.move_stop_loss(
+                        pos.symbol, pos_side, new_sl, pos.quantity)
+                except Exception as e:
+                    logger.warning("[%s] move_stop_loss error: %s", symbol, e)
+                    moved = False
+                if not moved:
+                    # Exchange stop unchanged — leave internal state unchanged
+                    # too; the same move is recomputed and retried next candle.
+                    continue
+                pos.sl_price = new_sl
+                if be_now:
+                    pos.breakeven_moved = True
+            action = "BE" if be_now and new_sl == pos.entry_price else "Trail"
             dashboard.log_message(
                 f"[{symbol}] SL {action}: {old_sl:,.2f} → {new_sl:,.2f}"
             )
