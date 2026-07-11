@@ -8,7 +8,7 @@ IDENTICAL params to BTC live-bot (zero re-tuning):
   S/R  : pivot breakout (vol spike + 0.2% clear), SL=3×ATR TP=5×ATR
 
 Data: data.binance.vision 1h spot 2023-2025
-Split: TRAIN 2023-2024 | TEST 2025
+Split: TRAIN 2023-2024 | TEST 2025-2026
 
 Run on VPS:
   python3 research_strategies_crosscoin.py
@@ -24,10 +24,23 @@ import pandas as pd
 import requests
 
 # ── Common params ────────────────────────────────────────────────────────
-COINS   = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]
-YEARS   = [2023, 2024, 2025]
+# Varsayılan: YENİ aday coinler (mevcut 5'li zaten doğrulandı). MEXC futures
+# likiditesi yüksek + Binance spot verisi mevcut + fiyat aralığı çeşitli
+# (düşük fiyatlı coinler küçük hesapta lot adımı avantajı sağlar).
+# Kullanım:
+#   python3 research_strategies_crosscoin.py                    # aday tarama
+#   python3 research_strategies_crosscoin.py DOGEUSDT SUIUSDT   # seçili coinler
+#   python3 research_strategies_crosscoin.py --current          # eski 5'li
+import sys
+CANDIDATES = ["DOGEUSDT", "ADAUSDT", "LINKUSDT", "AVAXUSDT",
+              "LTCUSDT", "DOTUSDT", "NEARUSDT", "SUIUSDT"]
+CURRENT    = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]
+_args = [a for a in sys.argv[1:] if not a.startswith("-")]
+COINS   = (CURRENT if "--current" in sys.argv
+           else _args if _args else CANDIDATES)
+YEARS   = [2023, 2024, 2025, 2026]   # eksik aylar (404) sessizce atlanır
 TRAIN   = {2023, 2024}
-TEST    = {2025}
+TEST    = {2025, 2026}
 BAL     = 10_000.0
 FEE     = 0.0001      # maker entry + market exit (conservative)
 
@@ -454,7 +467,7 @@ def print_result(name: str, all_trades: list, btc_ref: dict, coin: str):
     bpf_tr = items[0][1][0] if items else 0
     bpf_te = items[1][1][0] if len(items) > 1 else 0
     print(f"  {'TRAIN 2023-24':<16} {rs_tr['pf']:>6.2f} {rs_tr['wr']:>6.1f}% {rs_tr['n']:>5}    PF {bpf_tr:.2f}  {verdict(rs_tr['pf'], 1.10)}")
-    print(f"  {'TEST  2025':<16} {rs_te['pf']:>6.2f} {rs_te['wr']:>6.1f}% {rs_te['n']:>5}    PF {bpf_te:.2f}  {verdict(rs_te['pf'], 1.05)}")
+    print(f"  {'TEST  2025-26':<16} {rs_te['pf']:>6.2f} {rs_te['wr']:>6.1f}% {rs_te['n']:>5}    PF {bpf_te:.2f}  {verdict(rs_te['pf'], 1.05)}")
 
     if all_trades:
         by_yr = _by_year(all_trades)
@@ -469,8 +482,8 @@ def print_result(name: str, all_trades: list, btc_ref: dict, coin: str):
 # ── Main ─────────────────────────────────────────────────────────────────
 def main():
     print("=" * 65)
-    print("Strategy Cross-Coin Robustness — ETH & SOL  (BTC params, no retuning)")
-    print("TRAIN 2023-2024  |  TEST 2025")
+    print(f"Strategy Cross-Coin Robustness — {', '.join(c.replace('USDT','') for c in COINS)}  (BTC params, no retuning)")
+    print("TRAIN 2023-2024  |  TEST 2025-2026")
     print("=" * 65)
 
     for coin in COINS:
