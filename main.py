@@ -50,7 +50,7 @@ web_dashboard: WebDashboard = None
 combiner: SignalCombiner = None
 db: Database = None
 config = None
-funding_monitor: FundingMonitor = None
+funding_monitors: dict[str, FundingMonitor] = {}  # symbol -> monitor
 orderflow_monitors: dict[str, OrderFlowMonitor] = {}  # symbol -> collector
 whale_monitor: WhaleFlowMonitor = None
 symbol_ctxs: dict[str, "SymbolContext"] = {}
@@ -279,22 +279,26 @@ def make_on_candle_close(ctx: "SymbolContext"):
 
             # Funding rate / order-flow checks apply to the BB signal only
             # (they're not meaningful for intraday range-breakout strategies).
+            # Per-symbol monitor: each coin's OWN funding gates/annotates its
+            # signal — BTC funding must never speak for SOL.
+            _fund_mon = funding_monitors.get(ctx.symbol)
             if (
                 bb_combined.direction != 0
-                and funding_monitor is not None
-                and funding_monitor.enabled
+                and _fund_mon is not None
+                and _fund_mon.enabled
             ):
-                snap = await funding_monitor.fetch()
-                assess = funding_monitor.evaluate(bb_combined.direction, snap)
+                snap = await _fund_mon.fetch()
+                assess = _fund_mon.evaluate(bb_combined.direction, snap)
                 logger.info("Funding read: %s -> bias=%.2f", assess.reason, assess.bias)
                 dashboard.log_message(f"Funding: {assess.reason}")
-                if funding_monitor.mode == "filter" and assess.should_skip:
+                _log_funding_csv(ctx.symbol, bb_combined, mr_sig, snap, assess)
+                if _fund_mon.mode == "filter" and assess.should_skip:
                     dashboard.log_message(
                         f"BB signal SKIPPED by funding filter ({assess.reason})"
                     )
                     logger.info("BB skipped: funding contrary+extreme (%s)", assess.reason)
                     bb_combined.direction = 0
-                elif funding_monitor.mode == "boost":
+                elif _fund_mon.mode == "boost":
                     bb_combined.confidence = min(bb_combined.confidence * assess.bias, 1.0)
 
             _of_mon = orderflow_monitors.get(ctx.symbol)
@@ -848,6 +852,37 @@ def make_on_orb_tick(ctx: "SymbolContext"):
             ctx._orb_firing = False
 
     return on_orb_tick
+
+
+_FUNDING_CSV = "funding_log.csv"
+
+
+def _log_funding_csv(symbol, combined, mr_sig, snap, assess) -> None:
+    """Append every BB-signal funding/OI read to a CSV — the forward dataset
+    that decides (at a pre-registered n) whether the funding filter earns its
+    way into live. Mirrors _log_orderflow_csv; snap can be None on API misses."""
+    import csv
+    from pathlib import Path
+    header = ["ts", "symbol", "direction", "bb_pos", "confidence",
+              "funding_rate", "open_interest", "aligned", "contrary",
+              "extreme", "oi_falling", "bias"]
+    row = [
+        datetime.now(timezone.utc).isoformat(), symbol, combined.direction,
+        round(getattr(mr_sig, "bb_pos", 0.0), 4), round(combined.confidence, 4),
+        (snap.funding_rate if snap else ""),
+        (snap.open_interest if snap else ""),
+        int(assess.aligned), int(assess.contrary),
+        int(assess.extreme), int(assess.oi_falling), round(assess.bias, 4),
+    ]
+    try:
+        exists = Path(_FUNDING_CSV).exists()
+        with open(_FUNDING_CSV, "a", newline="") as f:
+            w = csv.writer(f)
+            if not exists:
+                w.writerow(header)
+            w.writerow(row)
+    except Exception as e:
+        logger.debug("funding csv write failed: %s", e)
 
 
 _ORDERFLOW_CSV = "orderflow_log.csv"
@@ -1433,7 +1468,7 @@ async def on_position_closed(pos, exit_price: float, net_pnl: float, reason: str
 async def main() -> None:
     global exchange, executor, portfolio, dashboard
     global telegram, ntfy, web_dashboard, combiner, db, config
-    global funding_monitor, orderflow_monitors, whale_monitor, symbol_ctxs
+    global funding_monitors, orderflow_monitors, whale_monitor, symbol_ctxs
 
     config = load_config()
     logging.getLogger().setLevel(config.log_level)
@@ -1695,13 +1730,19 @@ async def main() -> None:
     combiner = SignalCombiner(config.strategy)
 
     # Funding monitor tracks the primary symbol (read-only dataset building).
-    funding_monitor = FundingMonitor(
-        exchange,
-        config.exchange.symbol,
-        enabled=config.strategy.funding_enabled,
-        mode=config.strategy.funding_mode,
-        extreme_threshold=config.strategy.funding_extreme,
-    )
+    # One funding monitor per traded symbol (fetch is cached + on-demand, so
+    # this adds no standing load). Monitor-first: reads are LOGGED next to each
+    # BB signal (funding_log.csv) to build the forward dataset; filter/boost
+    # modes only ever act on the signal coin's OWN funding.
+    for _sym in config.exchange.symbols:
+        funding_monitors[_sym] = FundingMonitor(
+            exchange,
+            _sym,
+            enabled=config.strategy.funding_enabled,
+            mode=config.strategy.funding_mode,
+            extreme_threshold=config.strategy.funding_extreme,
+        )
+    funding_monitor = funding_monitors[config.exchange.symbol]
     if funding_monitor.enabled:
         logger.info(
             "Funding monitor ON (mode=%s, extreme=%.4f%%)",
