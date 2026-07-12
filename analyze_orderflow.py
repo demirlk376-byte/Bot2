@@ -18,13 +18,16 @@ flow_aligned (kolektörün kendi bayrağı) ve tekil özellik kovalarına bölü
     3. Kural, veri 2x büyüdüğünde (sonraki kontrol) yönünü korur
   Bugünkü koşu n~50 ile SADECE KEŞİF — karar 4 haftalık değerlendirmede.
 
-Kullanım (VPS):  cd /opt/bot2 && venv/bin/python analyze_orderflow.py
+Kullanım (VPS):
+  cd /opt/bot2       && venv/bin/python analyze_orderflow.py            # canlı
+  cd /opt/bot2-paper && /opt/bot2/venv/bin/python analyze_orderflow.py --paper
 """
 from __future__ import annotations
 
 import csv
 import os
 import sqlite3
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -64,11 +67,13 @@ def main() -> None:
     with open(OF_CSV) as f:
         sigs = list(csv.DictReader(f))
 
+    is_paper = 1 if "--paper" in sys.argv else 0
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
     trades = con.execute(
         "SELECT symbol, side, entry_time, pnl_usdt FROM trades "
-        "WHERE is_paper=0 AND exit_time IS NOT NULL AND exit_time!=''"
+        "WHERE is_paper=? AND exit_time IS NOT NULL AND exit_time!=''",
+        (is_paper,),
     ).fetchall()
     tparsed = [(r["symbol"], r["side"], _t(r["entry_time"]), r["pnl_usdt"] or 0.0)
                for r in trades]

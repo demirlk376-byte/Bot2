@@ -51,7 +51,7 @@ combiner: SignalCombiner = None
 db: Database = None
 config = None
 funding_monitor: FundingMonitor = None
-orderflow_monitor: OrderFlowMonitor = None
+orderflow_monitors: dict[str, OrderFlowMonitor] = {}  # symbol -> collector
 whale_monitor: WhaleFlowMonitor = None
 symbol_ctxs: dict[str, "SymbolContext"] = {}
 # Long-lived background loops, kept referenced so they can be cancelled on
@@ -297,15 +297,15 @@ def make_on_candle_close(ctx: "SymbolContext"):
                 elif funding_monitor.mode == "boost":
                     bb_combined.confidence = min(bb_combined.confidence * assess.bias, 1.0)
 
+            _of_mon = orderflow_monitors.get(ctx.symbol)
             if (
                 bb_combined.direction != 0
-                and orderflow_monitor is not None
-                and orderflow_monitor.enabled
-                and ctx.symbol == config.exchange.symbol
+                and _of_mon is not None
+                and _of_mon.enabled
             ):
                 try:
-                    of_snap = await orderflow_monitor.snapshot()
-                    of_assess = orderflow_monitor.evaluate(bb_combined.direction, of_snap)
+                    of_snap = await _of_mon.snapshot()
+                    of_assess = _of_mon.evaluate(bb_combined.direction, of_snap)
                     logger.info("OrderFlow: %s", of_assess.reason)
                     dashboard.log_message(f"OrderFlow: {of_assess.reason}")
                     _log_orderflow_csv(ctx.symbol, bb_combined, mr_sig, of_snap, of_assess)
@@ -1433,7 +1433,7 @@ async def on_position_closed(pos, exit_price: float, net_pnl: float, reason: str
 async def main() -> None:
     global exchange, executor, portfolio, dashboard
     global telegram, ntfy, web_dashboard, combiner, db, config
-    global funding_monitor, orderflow_monitor, whale_monitor, symbol_ctxs
+    global funding_monitor, orderflow_monitors, whale_monitor, symbol_ctxs
 
     config = load_config()
     logging.getLogger().setLevel(config.log_level)
@@ -1708,15 +1708,19 @@ async def main() -> None:
             funding_monitor.mode, config.strategy.funding_extreme * 100,
         )
 
-    # Order-flow collector also tracks only the primary symbol (one watchTrades
-    # feed). Default OFF; started below after the data feeds are up.
-    orderflow_monitor = OrderFlowMonitor(
-        exchange,
-        config.exchange.symbol,
-        enabled=config.strategy.orderflow_enabled,
-        mode=config.strategy.orderflow_mode,
-        window_minutes=config.strategy.orderflow_window_min,
-    )
+    # Order-flow collectors: one per traded symbol (each keeps its own
+    # watchTrades feed — a handful of public streams, negligible load). Default
+    # OFF; started below after the data feeds are up. Monitor-only: the flow
+    # snapshot is LOGGED next to each BB signal (orderflow_log.csv) so the
+    # forward dataset grows across all coins; it never affects trading.
+    for _sym in config.exchange.symbols:
+        orderflow_monitors[_sym] = OrderFlowMonitor(
+            exchange,
+            _sym,
+            enabled=config.strategy.orderflow_enabled,
+            mode=config.strategy.orderflow_mode,
+            window_minutes=config.strategy.orderflow_window_min,
+        )
 
     # Whale-flow aggregator: one watchTrades feed on the primary (BTC) symbol,
     # buckets trades hourly to derive avg trade size live. Default OFF; monitor
@@ -1788,8 +1792,9 @@ async def main() -> None:
     for ctx in symbol_ctxs.values():
         await ctx.data_mgr.start_feeds()
 
-    # Start the order-flow feed (no-op if disabled).
-    await orderflow_monitor.start()
+    # Start the order-flow feeds (no-ops if disabled).
+    for _om in orderflow_monitors.values():
+        await _om.start()
     # Start the whale-flow aggregator (no-op if disabled).
     await whale_monitor.start()
 
@@ -1836,8 +1841,8 @@ async def main() -> None:
             await t
         except (asyncio.CancelledError, Exception):
             pass
-    if orderflow_monitor is not None:
-        await orderflow_monitor.stop()
+    for _om in orderflow_monitors.values():
+        await _om.stop()
     if whale_monitor is not None:
         await whale_monitor.stop()
     for ctx in symbol_ctxs.values():
