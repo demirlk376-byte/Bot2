@@ -9,3 +9,8 @@ smoke.db
 *.db
 BTCUSDT-1m-*.csv
 scratch_*.py
+nw_kama_status.txt
+nw_kama_trades.csv
+funding_log.csv
+orderflow_log.csv
+whale_log.csv
