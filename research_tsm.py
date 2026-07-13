@@ -18,9 +18,19 @@ MEKANİK (ön-kayıtlı):
   >= 3 KOMŞU hücrede; VE o hücrelerin en az yarısı ETH'de de iki dönemde
   PF >= 1.0. Geçerse paper-forward; geçmezse AİLE MÜHÜRLENİR.
 
-Kullanım (VPS):  venv/bin/python research_tsm.py
+Kullanım (VPS):  venv/bin/python research_tsm.py            # aile #2 (3-14g)
+                 venv/bin/python research_tsm.py --monthly  # aile #2b (21-60g)
+
+#2b BEYANI (2026-07-13): #2 taraması 1/12 verdi ve mühürlendi; ama en güçlü
+hücre grid'in KENARINDAKİ LB=14 idi ve güç lookback ile artıyordu. #2b bu
+gözlemden doğdu — yani veriye bakılDIKTAN sonra kuruldu (çoklu-test borcu).
+Bedeli, çıtanın yükseltilmesi: #2b ancak BTC VE ETH VE SOL ÜÇÜNDE BİRDEN
+(her coin: TRAIN PF>=1.2 ve TEST PF>=1.2 ve n>=30) >=2 komşu hücrede geçerse
+yaşar. Tek coin geçerse bile MÜHÜR.
 """
 from __future__ import annotations
+
+import sys
 
 import numpy as np
 import pandas as pd
@@ -31,7 +41,8 @@ YEARS = [2023, 2024, 2025, 2026]
 SPLIT = pd.Timestamp("2025-01-01", tz="UTC")
 FEE_LEG = 0.0001            # taker per leg; flip = çıkış+giriş = 2 bacak
 
-GRID_LB = [3, 5, 7, 14]     # momentum penceresi (gün)
+MONTHLY = "--monthly" in sys.argv
+GRID_LB = [21, 30, 45, 60] if MONTHLY else [3, 5, 7, 14]
 GRID_T  = [0.0, 0.5, 1.0]   # eşik: günlük vol'ün katı (0 = saf işaret)
 
 
@@ -77,35 +88,45 @@ def stats(tr: list[dict]) -> dict:
 
 
 def main() -> None:
-    print("BTC + ETH günlük veri (2023-2026)...")
-    b = daily("BTCUSDT")
-    e = daily("ETHUSDT")
-    print(f"BTC {len(b)}g, ETH {len(e)}g")
+    coins = ["BTCUSDT", "ETHUSDT", "SOLUSDT"] if MONTHLY else ["BTCUSDT", "ETHUSDT"]
+    print(f"Günlük veri (2023-2026): {', '.join(coins)} ...")
+    data = {c: daily(c) for c in coins}
+    print("  " + "  ".join(f"{c}:{len(d)}g" for c, d in data.items()))
 
-    print("\n" + "=" * 88)
-    print("  GÜNLÜK TSM — BTC karar / ETH doğrulama  (pnl: notional %, flip fee dahil)")
-    print("=" * 88)
-    print(f"  {'LB':>3} {'T':>4} | {'BTC-TR n':>8} {'PF':>5} {'tot%':>7} | "
-          f"{'BTC-TE n':>8} {'PF':>5} {'tot%':>7} | {'ETH TR/TE PF':>13} | karar")
-    print("  " + "-" * 84)
+    label = "AYLIK-ÖLÇEK TSM (#2b, 3-coin şart)" if MONTHLY else "GÜNLÜK TSM (#2)"
+    print("\n" + "=" * 96)
+    print(f"  {label}  (pnl: notional %, flip fee dahil)")
+    print("=" * 96)
+    hdr = " | ".join(f"{c[:3]} TR-PF/TE-PF (n)" for c in coins)
+    print(f"  {'LB':>3} {'T':>4} | {hdr} | karar")
+    print("  " + "-" * 92)
     passed = 0
     for lb in GRID_LB:
         for t in GRID_T:
-            trb = run(b, lb, t)
-            a = stats([x for x in trb if x["ts"] < SPLIT])
-            z = stats([x for x in trb if x["ts"] >= SPLIT])
-            tre = run(e, lb, t)
-            ea = stats([x for x in tre if x["ts"] < SPLIT])
-            ez = stats([x for x in tre if x["ts"] >= SPLIT])
-            ok = (a["pf"] >= 1.2 and z["pf"] >= 1.2 and (a["n"] + z["n"]) >= 50)
-            passed += ok
-            print(f"  {lb:>3} {t:>4.1f} | {a['n']:>8} {a['pf']:>5.2f} {a['tot']*100:>+6.1f}% | "
-                  f"{z['n']:>8} {z['pf']:>5.2f} {z['tot']*100:>+6.1f}% | "
-                  f"{ea['pf']:>5.2f}/{ez['pf']:<5.2f} | {'PASS' if ok else 'no'}")
+            cells = []
+            ok_all = True
+            for c in coins:
+                tr = run(data[c], lb, t)
+                a = stats([x for x in tr if x["ts"] < SPLIT])
+                z = stats([x for x in tr if x["ts"] >= SPLIT])
+                min_n = 30 if MONTHLY else 50
+                cok = a["pf"] >= 1.2 and z["pf"] >= 1.2 and (a["n"] + z["n"]) >= min_n
+                if MONTHLY:
+                    ok_all = ok_all and cok
+                elif c == "BTCUSDT":
+                    ok_all = cok
+                cells.append(f"{a['pf']:5.2f}/{z['pf']:<5.2f} ({a['n']+z['n']:>3d})")
+            passed += ok_all
+            print(f"  {lb:>3} {t:>4.1f} | " + " | ".join(cells) +
+                  f" | {'PASS' if ok_all else 'no'}")
 
-    print("\n  ÖN-KAYITLI KARAR: BTC'de >=3 KOMŞU PASS + o hücrelerin yarısı ETH'de")
-    print("  iki dönemde PF>=1.0 → paper-forward. Aksi halde AİLE MÜHÜRLENİR.")
-    print(f"  Sonuç: {passed}/12 BTC-PASS")
+    if MONTHLY:
+        print("\n  ÖN-KAYITLI KARAR (#2b, yükseltilmiş çıta): ÜÇ coin birden geçen")
+        print("  >=2 KOMŞU hücre → paper-forward. Aksi halde MÜHÜR (tek coin yetmez).")
+    else:
+        print("\n  ÖN-KAYITLI KARAR: BTC'de >=3 KOMŞU PASS + o hücrelerin yarısı ETH'de")
+        print("  iki dönemde PF>=1.0 → paper-forward. Aksi halde AİLE MÜHÜRLENİR.")
+    print(f"  Sonuç: {passed}/{len(GRID_LB)*len(GRID_T)} PASS")
 
 
 if __name__ == "__main__":
