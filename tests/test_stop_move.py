@@ -92,16 +92,18 @@ async def run():
         f"ifvg short BE olmadı: sl={p.sl_price}"
     print("✓ PAPER ifvg short: +1R'de BE (104→100)")
 
-    # 3) PAPER mean_rev + fvg: hiçbir koşulda dokunulmaz.
+    # 3) PAPER mean_rev + fvg + sr_breakout: hiçbir koşulda dokunulmaz.
+    #    (sr_breakout 2026-07-13 denetimiyle çıkarıldı: doğrulanan modeli sabit
+    #    SL/TP — 1m intrabar test: fixed PF 1.80/+23.4R vs trail PF 1.39/+7.1R.)
     _setup(paper=True)
-    for tag in ("mean_rev", "fvg", "squeeze", "asia_bo"):
+    for tag in ("mean_rev", "fvg", "squeeze", "asia_bo", "sr_breakout"):
         p = _pos(tag, 1, entry=100.0, sl=95.0)
         main.portfolio.add_position(p)
     await main._update_trailing_stops(S, 150.0, 2.0)
     for p in main.portfolio.get_open_positions():
         assert p.sl_price == 95.0 and not p.breakeven_moved, \
             f"{p.strategy_scores['strategy']} sleeve'ine dokunuldu!"
-    print("✓ PAPER mean_rev/fvg/squeeze/asia_bo: stop-move YOK (korunuyor)")
+    print("✓ PAPER mean_rev/fvg/squeeze/asia_bo/sr_breakout: stop-move YOK")
 
     # 4) LIVE, STOP_MOVE_ENABLED=false: bastırılır, exchange'e istek yok.
     ex = _setup(paper=False, stop_move=False)
@@ -126,14 +128,14 @@ async def run():
     assert p.sl_price == 100.0 and p.breakeven_moved, "başarılı taşıma commit edilmedi"
     print("✓ LIVE açık: fail→state değişmez+retry, success→commit")
 
-    # 6) LIVE sr_breakout trailing de aynı kapıdan geçer (BE 1.0×ATR@atr=2 → 102'de).
+    # 6) LIVE sr_breakout: stop-move kapısı açıkken bile DOKUNULMAZ (sabit model).
     ex = _setup(paper=False, stop_move=True, live_results=[True])
     p = _pos("sr_breakout", 1, entry=100.0, sl=95.0)
     main.portfolio.add_position(p)
-    be_at = 100.0 + main.config.risk.breakeven_atr_mult * 2.0
-    await main._update_trailing_stops(S, be_at, 2.0)
-    assert len(ex.calls) == 1 and p.breakeven_moved, "sr_breakout canlı BE çalışmadı"
-    print(f"✓ LIVE sr_breakout: BE @{be_at:.1f} move_stop_loss üzerinden gitti")
+    await main._update_trailing_stops(S, 150.0, 2.0)
+    assert ex.calls == [] and p.sl_price == 95.0 and not p.breakeven_moved, \
+        "sr_breakout'a canlıda dokunuldu — sabit SL/TP modeli ihlal!"
+    print("✓ LIVE sr_breakout: kapı açıkken bile sabit SL/TP (dokunulmadı)")
 
     print("\n" + "=" * 64)
     print("✓ STOP-MOVE DOĞRU — BE@1R yalnız orb/ifvg, canlı kapı fail-safe")

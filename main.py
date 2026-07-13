@@ -347,13 +347,14 @@ def make_on_candle_close(ctx: "SymbolContext"):
                 web_dashboard.add_signal(ctx.symbol, "BB", 0, mr_sig.reason)
 
             # ── ORB — independent slot, NY open range breakout ────────────────
-            # Two entry modes:
-            #   stop-entry (default): arm a tick-watcher that fires a MARKET order
-            #     the instant price touches the range boundary intra-candle. Live
-            #     30-day backtest: PF 1.65 / +12.95$ (false pokes included) vs
-            #     limit-retrace PF 1.41 / +6.43$. No regime gate — matches the
-            #     validated model. Entries fire in make_on_orb_tick(), not here.
-            #   limit-retrace (legacy, ORB_STOP_ENTRY=false): candle-close entry.
+            # Two entry modes (default: limit-retrace, ORB_STOP_ENTRY=false):
+            #   stop-entry: tick-watcher fires a MARKET order the instant price
+            #     touches the range boundary. Won its first 30-day window
+            #     (PF 1.65 vs 1.41) but REVERSED the next period (PF 0.87 vs
+            #     1.42) — regime-sensitive, so it is opt-in, not default.
+            #     Entries fire in make_on_orb_tick(), not here.
+            #   limit-retrace (default): candle-close entry — the more robust
+            #     two-period performer.
             if ctx.orb_strategy is not None and config.strategy.orb_stop_entry:
                 await _maybe_arm_orb(ctx, df, atr_val)
                 armed = ctx.orb_armed is not None
@@ -956,13 +957,16 @@ def _get_regime(adx_val: float) -> str:
 
 async def _update_trailing_stops(symbol: str, current_price: float, atr_val: float) -> None:
     """Each candle: update the SL of positions whose sleeve has a VALIDATED
-    stop-move edge. Two models:
-      • sr_breakout: BE after be_mult×ATR profit, then trail at trail_mult×ATR
-        below the peak (the sleeve was validated with this exit).
+    stop-move edge. ONE model survives validation:
       • orb / ifvg: BE-ONLY at +1R (R = entry→initial-SL distance). No trailing,
         no partial TP — exactly the model the exit research validated.
     BB mean-reversion and FVG are excluded — the retracement that would move SL
     to breakeven is part of their normal path to TP (BE measurably hurts them).
+    sr_breakout is ALSO excluded (2026-07-13 conformance audit): its validated
+    +22.4%/PF 1.72 was FIXED SL=3×ATR/TP=3R — the BE@1ATR+2ATR-trail it used to
+    get live was never backtested, and a 12-month 1m-intrabar test with the
+    production signal class showed trailing guts it: fixed PF 1.80 / +23.4R vs
+    trailed PF 1.39 / +7.1R (DD worse too). Fixed stops let the 3R winner run.
 
     EXIT-MODEL EVIDENCE (scratch_exits test, BTC 1m intrabar, 2025-05..2026-04):
     vs fixed SL/TP — BE@1R: ORB +5.5R / IFVG +3.0R (DD down), FVG -3.1R;
@@ -981,8 +985,6 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
     if not getattr(config.risk, "trailing_stop_enabled", True):
         return
 
-    be_mult = config.risk.breakeven_atr_mult
-    trail_mult = config.risk.trailing_atr_mult
     live_moves_ok = config.exchange.stop_move_enabled
 
     for pos in portfolio.get_open_positions():
@@ -991,48 +993,27 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
 
         # Sleeves NOT listed here were validated with fixed SL/TP + max-hold;
         # moving their stops would diverge live behaviour from the backtest.
+        # (sr_breakout deliberately absent — see docstring.)
         strategy_tag = pos.strategy_scores.get("strategy", "mean_rev")
-        if strategy_tag not in ("sr_breakout", "orb", "ifvg"):
+        if strategy_tag not in ("orb", "ifvg"):
             continue
 
         old_sl = pos.sl_price
         new_sl = old_sl
         be_now = False   # committed to pos.breakeven_moved only after a real move
 
-        if strategy_tag == "sr_breakout":
-            entry_atr = pos.strategy_scores.get("atr", atr_val)
-            if pos.direction == 1:  # long
-                if pos.peak_price == 0.0 or current_price > pos.peak_price:
-                    pos.peak_price = current_price
-                if not pos.breakeven_moved and current_price >= pos.entry_price + be_mult * entry_atr:
-                    new_sl = max(new_sl, pos.entry_price)
-                    be_now = True
-                # Trail ONLY after breakeven — prevents immediate SL tightening
-                if pos.breakeven_moved or be_now:
-                    trail_sl = pos.peak_price - trail_mult * entry_atr
-                    new_sl = max(new_sl, trail_sl)
-            else:  # short
-                if pos.peak_price == 0.0 or current_price < pos.peak_price:
-                    pos.peak_price = current_price
-                if not pos.breakeven_moved and current_price <= pos.entry_price - be_mult * entry_atr:
-                    new_sl = min(new_sl, pos.entry_price)
-                    be_now = True
-                if pos.breakeven_moved or be_now:
-                    trail_sl = pos.peak_price + trail_mult * entry_atr
-                    new_sl = min(new_sl, trail_sl)
-        else:
-            # orb / ifvg: BE-only at +1R. After BE there is nothing further to do.
-            if pos.breakeven_moved:
-                continue
-            r_dist = abs(pos.entry_price - pos.sl_price)  # pre-BE ⇒ initial R
-            if r_dist <= 0:
-                continue
-            if pos.direction == 1 and current_price >= pos.entry_price + r_dist:
-                new_sl = max(new_sl, pos.entry_price)
-                be_now = True
-            elif pos.direction == -1 and current_price <= pos.entry_price - r_dist:
-                new_sl = min(new_sl, pos.entry_price)
-                be_now = True
+        # orb / ifvg: BE-only at +1R. After BE there is nothing further to do.
+        if pos.breakeven_moved:
+            continue
+        r_dist = abs(pos.entry_price - pos.sl_price)  # pre-BE ⇒ initial R
+        if r_dist <= 0:
+            continue
+        if pos.direction == 1 and current_price >= pos.entry_price + r_dist:
+            new_sl = max(new_sl, pos.entry_price)
+            be_now = True
+        elif pos.direction == -1 and current_price <= pos.entry_price - r_dist:
+            new_sl = min(new_sl, pos.entry_price)
+            be_now = True
 
         if new_sl != old_sl:
             if isinstance(exchange, PaperExchange):
