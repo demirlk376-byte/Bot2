@@ -70,3 +70,5 @@ ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
 2026-07-14T15:00:00+00:00,SOL,SHORT,77.35,0.6714,22,6.5e-05,False,çelişki: F&G=22 (korku ortamında short riskli)
 2026-07-14T15:00:00+00:00,BNB,SHORT,583.5,592.8041,567.9932,3.1014,22,0.000105,True,karma: funding=+0.0105% (long ağırlıklı→short uygun) | F&G=22 (korku ortamında short riskli)
 2026-07-14T15:00:00+00:00,XRP,SHORT,1.1042,0.008,22,6.6e-05,False,çelişki: F&G=22 (korku ortamında short riskli)
+2026-07-15T13:00:00+00:00,ETH,SHORT,1925.0,16.5125,25,7.8e-05,False,çelişki: F&G=25 (korku ortamında short riskli)
+2026-07-15T13:00:00+00:00,XRP,SHORT,1.1213,0.0074,25,4.6e-05,False,çelişki: F&G=25 (korku ortamında short riskli)
