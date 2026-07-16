@@ -410,6 +410,16 @@ class ExecutionEngine:
             # rather than evaluating the daily-loss limit on a bogus figure —
             # never halt / emergency-close off a failed balance read.
             return ExecutionResult(False, error="Equity unreadable — entry skipped")
+        # SIZING BASIS = EQUITY, not free balance (conformance, audit 2026-07-16).
+        # The validated portfolio model (research_sim_100 et al.) sizes every
+        # trade off TOTAL equity — locked margin and unrealized PnL included —
+        # and uses free margin only as a feasibility gate. Sizing off the free
+        # balance made each ADDITIONAL concurrent position 10-40% smaller than
+        # the model (margin locked by open sleeves shrank the base), structurally
+        # dragging live returns below the very model we are forward-testing.
+        # The pre-flight margin check below still guards feasibility on the
+        # FREE balance, exactly like the sim's `margin > free_equity` skip.
+        sizing_balance = equity if equity > 0 else balance
         entry_baseline = (self._daily_starting_balance
                           + await self._deposit_flow_since_baseline())
         if not self._risk.check_daily_loss_limit(
@@ -470,7 +480,7 @@ class ExecutionEngine:
                 entry_price=signal.entry_price,
                 sl_price=signal.sl_price,
                 tp_price=signal.tp_price,
-                balance=balance,
+                balance=sizing_balance,
                 leverage=self._config.exchange.leverage,
                 symbol=symbol,
                 risk_pct_override=risk_override,
@@ -480,7 +490,7 @@ class ExecutionEngine:
                 direction=signal.direction,
                 entry_price=signal.entry_price,
                 atr=atr,
-                balance=balance,
+                balance=sizing_balance,
                 leverage=self._config.exchange.leverage,
                 symbol=symbol,
                 size_mult=size_mult,
