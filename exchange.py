@@ -144,9 +144,12 @@ class PaperExchange:
     ) -> OrderResult:
         direction = 1 if side == "buy" else -1
         fill_price = self._price_for(symbol) * (1 + direction * self.SLIPPAGE)
-        fee = fill_price * amount * self.FEE_RATE
         margin = (fill_price * amount) / self._leverage
-        self._balance -= margin + fee
+        # Deduct ONLY margin here. Fees (entry via pos.fee_rate + exit taker)
+        # are charged once, inside net_pnl at close — deducting the entry fee
+        # here too double-charged every taker entry (audit fix): the paper
+        # balance drifted below initial + SUM(pnl_usdt) from the trades table.
+        self._balance -= margin
 
         pos_id = str(uuid.uuid4())
         pos = _PaperPosition(
@@ -186,9 +189,10 @@ class PaperExchange:
         fee (0% on MEXC futures). In paper mode we assume the resting limit at
         the just-closed price fills, which mirrors the backtest's maker model."""
         fill_price = limit_price
-        fee = fill_price * amount * self.FEE_MAKER
         margin = (fill_price * amount) / self._leverage
-        self._balance -= margin + fee
+        # Only margin — all fees are charged once at close via pos.fee_rate
+        # (0 for this maker path). See place_market_order (audit fix).
+        self._balance -= margin
 
         pos_id = str(uuid.uuid4())
         pos = _PaperPosition(
@@ -221,12 +225,20 @@ class PaperExchange:
     async def close_position(
         self, symbol: str, side: str, amount: float, reason: str = "manual"
     ) -> Optional[OrderResult]:
-        for pos in self.get_open_positions():
-            if pos.symbol == symbol:
-                return await self._close_paper_position(
-                    pos, self._price_for(symbol), reason
-                )
-        return None
+        # Paper allows multiple sleeves per symbol; matching on symbol alone
+        # closed whichever position iterated first (e.g. an ORB max-hold could
+        # close the BB swing 36h early and corrupt both sleeves' paper stats —
+        # audit fix). Match side too and pick the closest-quantity position.
+        cands = [p for p in self.get_open_positions()
+                 if p.symbol == symbol and p.side == side]
+        if not cands:  # fall back: symbol-only (legacy callers / side unknown)
+            cands = [p for p in self.get_open_positions() if p.symbol == symbol]
+        if not cands:
+            return None
+        pos = min(cands, key=lambda p: abs(p.quantity - amount))
+        return await self._close_paper_position(
+            pos, self._price_for(symbol), reason
+        )
 
     async def check_sl_tp(
         self, candle_high: float, candle_low: float, symbol: str | None = None
@@ -806,7 +818,13 @@ class LiveExchange:
     ) -> OrderResult:
         close_side = "sell" if side == "long" else "buy"
         # `amount` is base-currency; convert to MEXC contract count for ccxt.
-        contracts = self._to_contracts(symbol, amount)
+        # round_up: the base qty came from _to_base (contracts x contractSize)
+        # and the float round trip often lands one ulp BELOW the integer count
+        # (e.g. 0.0049/0.0001 -> 48.999...). Truncating would close 48 of 49
+        # contracts, book a FULL close in the DB, and leave dust riding on MEXC
+        # with its stops stripped by the resync. reduceOnly caps any overshoot
+        # at the real position size, so rounding up is always safe (audit fix).
+        contracts = self._to_contracts(symbol, amount, round_up=True)
         # Isolated margin (openType=1) requires the leverage param on EVERY order,
         # including reduce-only closes — MEXC rejects it otherwise. Without this a
         # close (max-hold / emergency / reconciliation) silently failed, leaving

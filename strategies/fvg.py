@@ -87,6 +87,18 @@ class FvgStrategy:
         # within the same bar by other code paths).
         new_bar = self._last_ts != last_ts
         if new_bar:
+            # Outage/backfill guard (audit fix): the feed backfills ALL missed
+            # closed candles after a gap but fires the close callback only for
+            # the newest one. Zone state mutated once per callback would then
+            # be stale — ages advance 1 instead of N and, worse, a zone break
+            # that happened on an INTERMEDIATE bar is never seen, leaving a
+            # flipped level tradeable in the wrong direction. If the previous
+            # processed bar is not this bar's immediate predecessor, reset all
+            # zone state — conservatively missing a few post-outage trades
+            # instead of ever trading a corrupted zone map.
+            if (self._last_ts is not None and len(df.index) >= 2
+                    and df.index[-2] != self._last_ts):
+                self._active.clear()
             # Age existing zones, then drop expired ones.
             for z in self._active:
                 z["age"] += 1

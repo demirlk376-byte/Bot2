@@ -52,5 +52,27 @@ Kurallar (her test için değişmez):
 - Vadeli-spot baz (basis) aşırılıkları
 - Kullanıcıdan gelen her fikir → önce burada kaydedilir, sonra ön-kayıtlı harness
 
+## 🔍 DERİN DENETİM (2026-07-14, çok-ajanlı tarama + elle doğrulama)
+
+Düzeltilen (hepsi kodda doğrulandı, testler yeşil):
+
+| Bulgu | Dosya | Kanıt / Etki |
+|---|---|---|
+| Squeeze eşiği off-by-one (min_sq+1) | strategies/squeeze.py | Ampirik: research 141 sinyal, canlı 127 — 5-barlık koillerin tamamı (%10) yutuluyordu. Düzeltilmiş = research 141/141. (2026-06-19 "düzeltmesi" hatanın kendisiymiş.) |
+| Donchian bayat 4h buffer yarışı | main.py | 1h/4h poller fazları bağımsız → sınırda ~%50 bayat analiz; taze kırılımlar sessizce kaçıyordu. Fix: beklenen 4h açılış ts doğrulanır, gerekirse zorla poll, bayatsa atla + tekrar-analiz koruması. |
+| Canlı close kontrat kesme (dust) | exchange.py | base→contract float dönüşü 1 ulp altta kalınca 49'un 48'i kapanıyor, DB tam kapanış yazıyor, dust stopsuz kalıyordu. Fix: round_up (reduceOnly overshoot'u sınırlar). |
+| Paper giriş fee çifte kesim | exchange.py | Taker girişte fee hem girişte hem kapanış net_pnl'inde düşülüyordu → paper bakiye trades toplamından sapıyordu. Fix: fee yalnız kapanışta. |
+| Paper close yanlış sleeve | exchange.py | Sadece sembole bakıp İLK pozisyonu kapatıyordu — ORB max-hold BB swing'i kapatabiliyordu. Fix: yön + en yakın miktar eşleşmesi. |
+| Çekim → sahte kill-switch | execution.py | Gün içi para çekimi ham equity kıyasında %35 "zarar" gibi görünüp emergency-close tetikleyebilirdi. Fix: baseline, deposit.py meta akışıyla düzeltilir. |
+| Korumasız-giriş kapanışı defter dışı | execution.py | no_stop_safety round-trip'i hiçbir kayda girmiyordu (görünmez para kaybı). Fix: trade open+close satırı yazılır. |
+| FVG/IFVG kesinti sonrası bozuk zone | strategies/fvg.py, ifvg.py | Backfill'de ara barlar işlenmediği için kırılan zone haritada "aktif" kalıp ters yönde trade edilebilirdi. Fix: bar sürekliliği kopuksa zone state sıfırlanır. |
+
+Bilinçli ERTELENEN (kayıtlı, mühürlü değil):
+- Kısmi harici kapanışta PnL defterlenmiyor (main.py reconciliation) — çıkış
+  fiyatı bilinmediği için tasarım kararı gerekir; günlük defter-banka kontrolü
+  farkı yakalıyor. Ertelendi: 8 Ağustos oturumu.
+- Paper tick-girişli pozisyona tam-mum SL kontrolü (ORB_STOP_ENTRY=false iken etkisiz).
+- initialize() tek-kline forming bar kabulü (sadece yeni listelenen coin senaryosu).
+
 > Not: Mühür "fikir aptalcaydı" demek değil, "bu veri bu çıtayı geçemedi" demek.
 > Canlıdaki 7 sleeve de aynı makineden sağ çıkanlardır — makine böyle çalışır.

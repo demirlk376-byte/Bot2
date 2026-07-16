@@ -149,6 +149,9 @@ class SymbolContext:
     # consumed by the tick-watcher. None = not armed.
     orb_armed: "OrbArmed | None" = None
     _orb_firing: bool = False   # re-entrancy guard while a fire is in flight
+    # Open-timestamp of the last 4h bar the Donchian sleeve analyzed — prevents
+    # re-analyzing (and re-firing a market order on) the same/stale 4h bar.
+    donchian_last_4h: object = None
 
 
 def active_sleeves_for(ctx: "SymbolContext", cfg) -> list[str]:
@@ -631,9 +634,37 @@ def make_on_candle_close(ctx: "SymbolContext"):
             # exactly the close-confirmed entry that was validated.
             if ctx.donchian_strategy is not None and (df.index[-1].hour % 4 == 3):
                 df_4h = await ctx.data_mgr.get_candles(config.strategy.confirm_tf, 260)
+                # FRESHNESS (audit fix): the 4h buffer is filled by an
+                # INDEPENDENT 30s REST poll task with its own phase — at the
+                # boundary there is roughly a coin-flip chance it has not yet
+                # fetched the just-closed 4h bar. Analyzing the stale buffer
+                # silently drops fresh breakouts (and can re-fire a 4h-old
+                # one). The just-closed 1h bar opens at hour%4==3, so the
+                # just-closed 4h bar's open is exactly 3h earlier. If the
+                # buffer is behind, force one synchronous poll; if it is
+                # STILL behind (fetch failed), skip — never analyze stale.
+                expected_4h_open = df.index[-1] - pd.Timedelta(hours=3)
+                if df_4h is None or not len(df_4h) or df_4h.index[-1] != expected_4h_open:
+                    try:
+                        await ctx.data_mgr._poll_once(config.strategy.confirm_tf)
+                    except Exception as e:
+                        logger.warning("[%s] donchian 4h force-poll failed: %s",
+                                       ctx.symbol, e)
+                    df_4h = await ctx.data_mgr.get_candles(config.strategy.confirm_tf, 260)
                 dch_min = max(config.strategy.donchian_channel + 2,
                               config.strategy.donchian_ema_trend)
-                if df_4h is not None and len(df_4h) >= dch_min:
+                if (df_4h is None or not len(df_4h)
+                        or df_4h.index[-1] != expected_4h_open):
+                    logger.warning(
+                        "[%s] donchian skipped: 4h buffer stale (have %s, want %s)",
+                        ctx.symbol,
+                        None if df_4h is None or not len(df_4h) else df_4h.index[-1],
+                        expected_4h_open)
+                elif df_4h.index[-1] == ctx.donchian_last_4h:
+                    logger.debug("[%s] donchian: 4h bar %s already analyzed",
+                                 ctx.symbol, ctx.donchian_last_4h)
+                elif len(df_4h) >= dch_min:
+                    ctx.donchian_last_4h = df_4h.index[-1]
                     atr_4h = atr(df_4h["high"], df_4h["low"], df_4h["close"],
                                  config.strategy.atr_period).iloc[-1]
                     if not (pd.isna(atr_4h) or atr_4h <= 0):

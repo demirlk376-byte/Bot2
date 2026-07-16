@@ -62,6 +62,13 @@ class ExecutionEngine:
         # pauses only THAT sleeve, not every coin — the edges are validated
         # independently, so an ETH-BB streak shouldn't suppress BTC-ORB.
         self._cooldown_until: dict[str, datetime] = {}
+        # total_deposits meta snapshot taken when the daily baseline is set.
+        # A mid-day deposit/withdrawal moves exchange equity without being a
+        # trading result — comparing raw equity to the morning baseline made a
+        # >35% withdrawal look like a catastrophic loss and could trigger the
+        # kill switch + emergency close (audit fix). None = lazily captured on
+        # the first check after a baseline (re)set.
+        self._deposits_at_baseline: Optional[float] = None
         # Strong refs to fire-and-forget alert tasks so they aren't GC'd mid-send
         # and their exceptions are retrieved (not silently dropped).
         self._bg_tasks: set = set()
@@ -130,6 +137,7 @@ class ExecutionEngine:
 
     def set_daily_starting_balance(self, balance: float) -> None:
         self._daily_starting_balance = balance
+        self._deposits_at_baseline = None   # lazily re-captured on next check
 
     def get_daily_starting_balance(self) -> float:
         return self._daily_starting_balance
@@ -183,12 +191,28 @@ class ExecutionEngine:
         eq = await self.current_equity()
         if eq is not None and eq > 0:
             self._daily_starting_balance = eq
+            self._deposits_at_baseline = None   # re-captured on next check
         else:
             logger.warning(
                 "capture_daily_start: equity unreadable — keeping prior baseline "
                 "%.2f (daily-loss switch unchanged)",
                 self._daily_starting_balance or 0.0,
             )
+
+    async def _deposit_flow_since_baseline(self) -> float:
+        """Net deposits (+) / withdrawals (−) recorded via deposit.py since the
+        daily baseline was set. Added to the baseline before the daily-loss
+        comparison so bookkeeping cash flows are never read as trading PnL.
+        Returns 0.0 whenever the meta is unreadable — the check then behaves
+        exactly as before (never blocks on a DB hiccup)."""
+        try:
+            cur = await self._db.get_meta_float("total_deposits", 0.0)
+        except Exception:
+            return 0.0
+        if self._deposits_at_baseline is None:
+            self._deposits_at_baseline = cur
+            return 0.0
+        return cur - self._deposits_at_baseline
 
     def reset_daily(self) -> None:
         self._trading_halted.clear()
@@ -204,14 +228,13 @@ class ExecutionEngine:
         equity = await self.current_equity()
         if equity is None:
             return
-        if not self._risk.check_daily_loss_limit(
-            self._daily_starting_balance, equity, 0.0
-        ):
+        baseline = self._daily_starting_balance + await self._deposit_flow_since_baseline()
+        if baseline <= 0:
+            return
+        if not self._risk.check_daily_loss_limit(baseline, equity, 0.0):
             self.halt_trading("Daily loss limit reached (periodic check)")
             await self.emergency_close_all("daily_loss_limit")
-            loss_pct = (
-                (self._daily_starting_balance - equity) / self._daily_starting_balance
-            )
+            loss_pct = (baseline - equity) / baseline
             await self._alert(
                 f"GÜNLÜK ZARAR LİMİTİ (-{loss_pct*100:.1f}%) — periyodik kontrol "
                 "yakaladı. Pozisyonlar kapatıldı, bugünlük trade durdu.",
@@ -387,15 +410,17 @@ class ExecutionEngine:
             # rather than evaluating the daily-loss limit on a bogus figure —
             # never halt / emergency-close off a failed balance read.
             return ExecutionResult(False, error="Equity unreadable — entry skipped")
+        entry_baseline = (self._daily_starting_balance
+                          + await self._deposit_flow_since_baseline())
         if not self._risk.check_daily_loss_limit(
-            self._daily_starting_balance,
+            entry_baseline,
             equity,
             0.0,
         ):
             self.halt_trading("Daily loss limit reached")
             await self.emergency_close_all("daily_loss_limit")
             loss_pct = (
-                (self._daily_starting_balance - equity) / self._daily_starting_balance
+                (entry_baseline - equity) / entry_baseline
                 if self._daily_starting_balance > 0 else 0.0
             )
             await self._alert(
@@ -562,12 +587,44 @@ class ExecutionEngine:
                     logger.error(
                         "SL/TP NOT attached for %s — closing position for safety",
                         setup.symbol)
+                    close_res = None
                     try:
-                        await self._exchange.close_position(
+                        close_res = await self._exchange.close_position(
                             setup.symbol, pos_side, order.quantity, "no_stop_safety"
                         )
                     except Exception as ce:
                         logger.critical("EMERGENCY: could not close unprotected position: %s", ce)
+                    # Book the round trip (audit fix): a real entry + safety
+                    # close happened — two taker fees plus any move during the
+                    # verification window. Without a trade row that money left
+                    # the account invisibly and surfaced only as an unexplained
+                    # books-vs-bank residual.
+                    if close_res is not None:
+                        try:
+                            now_iso = datetime.now(timezone.utc).isoformat()
+                            rec = TradeRecord(
+                                symbol=setup.symbol, side=pos_side,
+                                entry_price=order.filled_price,
+                                quantity=order.quantity,
+                                sl_price=setup.sl_price, tp_price=setup.tp_price,
+                                entry_time=now_iso, is_paper=False,
+                                strategy_scores={"strategy": signal.dominant_strategy,
+                                                 "note": "no_stop_safety"},
+                            )
+                            await self._db.log_trade_open(rec)
+                            d = 1 if pos_side == "long" else -1
+                            entry_fee = 0.0 if order.was_maker else 0.0001
+                            fees = (order.filled_price * entry_fee
+                                    + close_res.filled_price * 0.0001) * order.quantity
+                            pnl = (d * (close_res.filled_price - order.filled_price)
+                                   * order.quantity) - fees
+                            denom = order.filled_price * order.quantity
+                            await self._db.log_trade_close(
+                                rec.id, close_res.filled_price, now_iso, pnl,
+                                (pnl / denom * 100) if denom else 0.0,
+                                "no_stop_safety", fees)
+                        except Exception as le:
+                            logger.error("no_stop_safety trade logging failed: %s", le)
                     return ExecutionResult(False, error="SL/TP not attached; position closed")
                 else:
                     logger.error(

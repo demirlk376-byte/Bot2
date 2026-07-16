@@ -123,14 +123,18 @@ class SqueezeStrategy:
             else:
                 break
 
-        # Require min_sq + 1 bars: the backtest processes the release candle as
-        # iloc[-1] while still holding min_sq prior squeeze bars in the window,
-        # making the effective threshold min_sq+1. Without the +1 the live code
-        # fires a bar earlier than the validated backtest edge.
-        if count < self._min_sq + 1:
+        # Threshold = min_sq, NOT min_sq+1. Both the research and this loop count
+        # the same quantity — consecutive squeeze bars ending at the bar BEFORE
+        # the release candle (research: sq_count.shift(1) on the release bar).
+        # A 2026-06-19 audit "fix" added +1 believing live fired a bar early;
+        # the 2026-07-14 audit re-derived both counters and settled it
+        # EMPIRICALLY on 12mo of 1h BTC: research k>=5 fires 141 signals, the
+        # +1 version fires 127 (every exactly-5-bar coil silently dropped, ~10%
+        # of the validated signal class); k>=min_sq matches research 141/141.
+        if count < self._min_sq:
             return SqueezeSignal(
                 0, 0.0,
-                f"squeeze too short ({count} < {self._min_sq + 1} bars)"
+                f"squeeze too short ({count} < {self._min_sq} bars)"
             )
 
         # Direction: 1h close vs KC midline
