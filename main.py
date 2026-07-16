@@ -470,6 +470,14 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         tp_price=sr_sig.tp_price,
                         symbol=ctx.symbol,
                         position_slot=ctx.symbol,
+                        # Conformance (audit 2026-07-16): research_sr fills AT
+                        # THE BREAKOUT CLOSE (entry=cur, taker both legs) and
+                        # anchors SL/TP to that close via ATR — NOT to the
+                        # pivot level. A market fill therefore keeps R/R; the
+                        # former limit+no-fallback path skipped every breakout
+                        # that didn't retrace (adverse selection on a momentum
+                        # sleeve). Same treatment as Donchian/Squeeze.
+                        force_market=True,
                     )
                     result = await executor.execute_signal(sr_combined, atr_val)
                     if result.success and result.position:
@@ -598,6 +606,15 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         tp_price=sq_sig.tp_price,
                         symbol=ctx.symbol,
                         position_slot=f"{ctx.symbol}:squeeze",
+                        # Conformance (audit 2026-07-16): the validated model
+                        # (research_squeeze) fills AT THE RELEASE CLOSE with
+                        # taker fees on both legs — a guaranteed fill. SL/TP are
+                        # ATR-anchored to that close (not to a structure level),
+                        # so a market fill keeps R/R intact. The former
+                        # limit+no-fallback path adversely selected: runaway
+                        # (strongest) releases never retraced and were skipped,
+                        # fading ones filled. Same treatment as Donchian.
+                        force_market=True,
                     )
                     result = await executor.execute_signal(sq_combined, atr_val)
                     if result.success and result.position:

@@ -530,12 +530,15 @@ class ExecutionEngine:
             # order; a maker limit would wait for a retrace and miss the breakout.
             and not getattr(signal, "force_market", False)
         )
-        # Structure-based strategies (ORB, Asia BO, FVG, IFVG, S/R breakout) anchor
-        # SL/TP to the breakout level, NOT the fill price. A market fallback would
-        # fill far from the level and collapse R/R to <1 (e.g. R/R=0.33 for BNB).
-        # For these: no fallback — if limit doesn't fill at the level, skip the trade.
-        # ATR-based strategies (trend/MR/breakout) compute SL/TP from entry_price so
-        # a market fallback keeps R/R intact → fallback_market=True for those.
+        # Structure-based strategies (ORB limit-retrace, Asia BO, FVG, IFVG)
+        # anchor SL/TP to the breakout/zone LEVEL, not the fill price. A market
+        # fallback would fill far from the level and collapse R/R to <1.
+        # For these: no fallback — if the limit doesn't fill at the level, skip.
+        # ATR-anchored strategies (BB/MR) keep the maker limit + market fallback.
+        # Squeeze, S/R and Donchian anchor SL/TP to the signal CLOSE and their
+        # research assumes a guaranteed taker fill at that close → they arrive
+        # here with force_market=True (audit 2026-07-16) and never take the
+        # limit path at all.
         is_structure_based = getattr(signal, "sl_price", 0.0) > 0
         # Acquire per-symbol lock before touching the exchange so no concurrent
         # resync can cancel a stop we just placed before the position is in the
