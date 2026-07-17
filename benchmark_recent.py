@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, ".")
-from indicators import atr as atr_fn
+from indicators import atr as atr_fn, adx as adx_fn
 from strategies.mean_reversion import MeanReversionStrategy
 from config import StrategyConfig
 
@@ -56,9 +56,12 @@ def fetch_1h(symbol: str, days: int = 40) -> pd.DataFrame:
 
 
 def run_bb(df: pd.DataFrame) -> list[float]:
-    """Üretim BB sınıfı + parite fill mantığı. R-listesi döner (epoch sonrası)."""
+    """Üretim BB sınıfı + parite fill mantığı + CANLI REJİM KAPISI (ADX<28).
+    Canlı bot trend rejiminde (ADX>=28) BB girişini bloklar — adil kıyas için
+    benchmark da bloklar. R-listesi döner (epoch sonrası girişler)."""
     strat = MeanReversionStrategy(StrategyConfig())
     atr_s = atr_fn(df["high"], df["low"], df["close"], 14)
+    adx_s = adx_fn(df["high"], df["low"], df["close"], 14)
     h = df["high"].values; lo = df["low"].values; c = df["close"].values
     idx = df.index
     n = len(df)
@@ -82,6 +85,10 @@ def run_bb(df: pd.DataFrame) -> list[float]:
             if ep is not None:
                 rs.append(d * (ep - e) / abs(e - sl))
                 ot = None
+            continue
+        adx_v = adx_s.iloc[i]
+        adx_v = float(adx_v) if np.isfinite(adx_v) else 20.0
+        if adx_v >= 28.0:          # canlı regime_filter: trendde BB bloklu
             continue
         sig = strat.analyze(df.iloc[: i + 1])
         if sig.direction != 0 and idx[i] >= EPOCH:
@@ -155,7 +162,10 @@ def main() -> None:
             total += summarize(sym.split("/")[0], run_bb(df))
         except Exception as e:
             print(f"  {sym}: veri hatası: {e}")
-    print("\n  [ORB — doğrulanmış model, 5 coin]")
+    bb_total = total
+    print("\n  [ORB — NAİF seviye-dolum modeli: ŞİŞKİN, sadece yön göstergesi]")
+    print("  (cross-coin taraması bu varyantın PF'i 2-3x abarttığını kanıtladı;")
+    print("   canlı limit-retrace ile kıyaslanamaz — karar satırına DAHİL DEĞİL)")
     for sym in ORB_COINS:
         try:
             df = fetch_1h(sym)
@@ -163,10 +173,11 @@ def main() -> None:
         except Exception as e:
             print(f"  {sym}: veri hatası: {e}")
     print("\n" + "-" * 70)
-    print(f"  MODELİN BU PENCEREDEKİ TOPLAMI: ≈ ${total:+.2f}")
-    print("  Kıyas: canlının aynı penceredeki gerçekleşen net PnL'i (live_report).")
-    print("  Model de eksideyse → rejim; model artıdaysa → fark bizdeydi")
-    print("  (varyans + bu hafta düzeltilen 20 hata).")
+    print(f"  KARAR SATIRI — BB (adil, ADX kapılı, üretim sınıfı): ≈ ${bb_total:+.2f}")
+    print(f"  Bilgi amaçlı ORB dahil ham toplam (şişkin):            ≈ ${total:+.2f}")
+    print("  Kıyas: canlı mean_rev'in aynı penceredeki net PnL'i (live_report).")
+    print("  BB-model eksideyse → rejim; artıdaysa → fark varyans + düzeltilen")
+    print("  hatalar + canlının kaçırdığı/atladığı girişlerdedir.")
     print("-" * 70)
 
 
