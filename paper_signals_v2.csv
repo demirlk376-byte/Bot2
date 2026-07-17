@@ -78,3 +78,6 @@ ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
 2026-07-16T07:00:00+00:00,SOL,LONG,76.38,74.5171,79.4848,0.621,25,-4.4e-05,True,F&G=25 (korku→long uygun)
 2026-07-16T18:00:00+00:00,XRP,LONG,1.0926,1.067,1.1352,0.0085,25,4e-06,True,F&G=25 (korku→long uygun)
 2026-07-17T02:00:00+00:00,ETH,LONG,1847.31,1804.0385,1919.4291,14.4238,27,4e-05,True,F&G=27 (korku→long uygun)
+2026-07-17T05:00:00+00:00,BTC,LONG,62808.1,61750.5555,64570.6742,352.5148,27,5.2e-05,True,F&G=27 (korku→long uygun)
+2026-07-17T05:00:00+00:00,SOL,LONG,74.35,72.5394,77.3677,0.6035,27,-1.3e-05,True,F&G=27 (korku→long uygun)
+2026-07-17T05:00:00+00:00,BNB,LONG,569.7,561.1402,583.9663,2.8533,27,5.9e-05,True,F&G=27 (korku→long uygun)
