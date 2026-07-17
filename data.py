@@ -104,6 +104,7 @@ class DataManager:
         # rather than waiting for the 1h candle to close.
         self._tick_callbacks: list[Callable[[str, float], Awaitable[None]]] = []
         self._current_price: float = 0.0
+        self._last_price_ts: float = 0.0   # monotonic; freshness of _current_price
         self._stop_event = asyncio.Event()
         self._tasks: list[asyncio.Task] = []
         self._last_closed_ts: dict[str, int] = {}
@@ -113,9 +114,25 @@ class DataManager:
         # callbacks fire exactly once per close (never on the forming candle).
         for tf, buf in self._buffers.items():
             try:
-                raw = await self._exchange.fetch_ohlcv(
-                    self._symbol, tf, since=None, limit=260
-                )
+                # Retry the initial history fetch (audit v3 #7): a single
+                # transient failure used to leave the buffer EMPTY, silently
+                # disabling that sleeve until the 50-bar poll slowly backfilled
+                # it (and squeeze's 4h MTF stayed off, Donchian/FVG dead for
+                # hours). 3 attempts with backoff before giving up.
+                raw = None
+                for _att in range(3):
+                    try:
+                        raw = await self._exchange.fetch_ohlcv(
+                            self._symbol, tf, since=None, limit=260
+                        )
+                        if raw:
+                            break
+                    except Exception as _fe:
+                        logger.warning("initial fetch %s %s attempt %d failed: %s",
+                                       self._symbol, tf, _att + 1, _fe)
+                    await asyncio.sleep(1.5 * (2 ** _att))
+                if not raw:
+                    raise RuntimeError(f"initial fetch failed after retries: {self._symbol} {tf}")
                 # ccxt returns the still-forming candle as the LAST element.
                 # Exclude it so the analysis buffer holds only CLOSED candles.
                 closed_rows = raw[:-1] if len(raw) > 1 else raw
@@ -175,6 +192,8 @@ class DataManager:
                 price = float(ticker.get("last") or ticker.get("close") or 0)
                 if price > 0:
                     self._current_price = price
+                    import time as _t
+                    self._last_price_ts = _t.monotonic()
                     if hasattr(self._exchange, "update_price"):
                         # Pass the symbol so a shared PaperExchange keeps a
                         # separate price per coin (multi-coin correctness).
@@ -267,6 +286,17 @@ class DataManager:
 
     async def get_current_price(self) -> float:
         return self._current_price
+
+    def price_age_seconds(self) -> float:
+        """Seconds since the live ticker last delivered a price. A silently
+        stalled websocket freezes _current_price while the CANDLE staleness
+        guard (REST-poll based) can stay green — the entry path ORs this in so
+        it never opens on a frozen tick price (audit v3 #10). 0 until the first
+        tick arrives (startup); large and growing if the ticker feed dies."""
+        import time as _t
+        if self._last_price_ts <= 0:
+            return 0.0
+        return max(0.0, _t.monotonic() - self._last_price_ts)
 
     def staleness_seconds(self) -> float:
         """Seconds elapsed since the last CLOSED primary-tf candle was recorded,

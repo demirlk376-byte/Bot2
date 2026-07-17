@@ -190,6 +190,11 @@ def make_on_candle_close(ctx: "SymbolContext"):
 
             current_price = await ctx.data_mgr.get_current_price()
             # Per-coin price: a shared single price would be wrong across coins.
+            # Push THIS coin's fresh price into the (shared) exchange before any
+            # fill so a paper order can never fill at another coin's last price
+            # via the _current_price fallback (audit v3 #9).
+            if hasattr(exchange, "update_price"):
+                await exchange.update_price(current_price, ctx.symbol)
             portfolio.update_unrealized_pnl_for(ctx.symbol, current_price)
             dashboard.update_price(current_price, ctx.symbol)
 
@@ -227,7 +232,8 @@ def make_on_candle_close(ctx: "SymbolContext"):
             # triggering candle is fresh (~0 staleness); this catches a replayed or
             # clock-skewed candle after an outage so we never enter on old data.
             tf_secs = TIMEFRAME_SECONDS.get(config.strategy.primary_tf, 3600)
-            if ctx.data_mgr.staleness_seconds() > tf_secs * 2:
+            if (ctx.data_mgr.staleness_seconds() > tf_secs * 2
+                    or ctx.data_mgr.price_age_seconds() > tf_secs * 2):
                 logger.warning(
                     "[%s] Feed stale (%.0fs) — skipping new entries this candle",
                     ctx.symbol, ctx.data_mgr.staleness_seconds())
@@ -260,522 +266,549 @@ def make_on_candle_close(ctx: "SymbolContext"):
             if bb_coin_allowed is not None and ctx.symbol not in bb_coin_allowed:
                 bb_allowed = False
 
-            # ── BB mean-reversion ─────────────────────────────────────────────
-            mr_sig = ctx.strategy.analyze(df)
-            bb_combined = CombinedSignal(
-                direction=mr_sig.direction,
-                confidence=mr_sig.strength,
-                trend_score=0.0,
-                mean_rev_score=mr_sig.direction * mr_sig.strength,
-                breakout_score=0.0,
-                dominant_strategy="mean_rev",
-                reasons=[mr_sig.reason],
-                entry_price=current_price,
-                symbol=ctx.symbol,
-                position_slot=ctx.symbol,
-            )
-            dashboard.update_signal(bb_combined)
-            dashboard.log_message(
-                f"[{ctx.symbol}] BB: dir={bb_combined.direction} "
-                f"conf={bb_combined.confidence:.2f} ({mr_sig.reason})"
-            )
-
-            # Funding rate / order-flow checks apply to the BB signal only
-            # (they're not meaningful for intraday range-breakout strategies).
-            # Per-symbol monitor: each coin's OWN funding gates/annotates its
-            # signal — BTC funding must never speak for SOL.
-            _fund_mon = funding_monitors.get(ctx.symbol)
-            if (
-                bb_combined.direction != 0
-                and _fund_mon is not None
-                and _fund_mon.enabled
-            ):
-                snap = await _fund_mon.fetch()
-                assess = _fund_mon.evaluate(bb_combined.direction, snap)
-                logger.info("Funding read: %s -> bias=%.2f", assess.reason, assess.bias)
-                dashboard.log_message(f"Funding: {assess.reason}")
-                _log_funding_csv(ctx.symbol, bb_combined, mr_sig, snap, assess)
-                if _fund_mon.mode == "filter" and assess.should_skip:
-                    dashboard.log_message(
-                        f"BB signal SKIPPED by funding filter ({assess.reason})"
-                    )
-                    logger.info("BB skipped: funding contrary+extreme (%s)", assess.reason)
-                    bb_combined.direction = 0
-                elif _fund_mon.mode == "boost":
-                    bb_combined.confidence = min(bb_combined.confidence * assess.bias, 1.0)
-
-            _of_mon = orderflow_monitors.get(ctx.symbol)
-            if (
-                bb_combined.direction != 0
-                and _of_mon is not None
-                and _of_mon.enabled
-            ):
-                try:
-                    of_snap = await _of_mon.snapshot()
-                    of_assess = _of_mon.evaluate(bb_combined.direction, of_snap)
-                    logger.info("OrderFlow: %s", of_assess.reason)
-                    dashboard.log_message(f"OrderFlow: {of_assess.reason}")
-                    _log_orderflow_csv(ctx.symbol, bb_combined, mr_sig, of_snap, of_assess)
-                except Exception as e:
-                    logger.debug("OrderFlow snapshot failed: %s", e)
-
-            if bb_combined.direction != 0 and not bb_allowed:
-                logger.warning(
-                    "[%s] BB skipped: regime=%s is_weekend=%s", ctx.symbol, regime, is_weekend
+            try:
+                # ── BB mean-reversion ─────────────────────────────────────────────
+                mr_sig = ctx.strategy.analyze(df)
+                bb_combined = CombinedSignal(
+                    direction=mr_sig.direction,
+                    confidence=mr_sig.strength,
+                    trend_score=0.0,
+                    mean_rev_score=mr_sig.direction * mr_sig.strength,
+                    breakout_score=0.0,
+                    dominant_strategy="mean_rev",
+                    reasons=[mr_sig.reason],
+                    entry_price=current_price,
+                    symbol=ctx.symbol,
+                    position_slot=ctx.symbol,
                 )
-                web_dashboard.add_signal(ctx.symbol, "BB", bb_combined.direction,
-                                         mr_sig.reason, f"block:rejim={regime}")
-            elif bb_combined.direction != 0:
-                result = await executor.execute_signal(bb_combined, atr_val)
-                if result.success and result.position:
-                    logger.info(
-                        "BB trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
-                        result.position.side.upper(), ctx.symbol,
-                        result.position.entry_price,
-                        result.position.sl_price,
-                        result.position.tp_price,
-                    )
-                    web_dashboard.add_signal(ctx.symbol, "BB", bb_combined.direction,
-                                             mr_sig.reason, "exec")
-                    if telegram:
-                        await telegram.send_trade_opened(result.trade_setup, bb_combined)
-                    if ntfy:
-                        await ntfy.send_trade_opened(result.trade_setup, bb_combined)
-                elif result.error:
-                    logger.warning("[%s] BB skipped: %s", ctx.symbol, result.error)
-                    web_dashboard.add_signal(ctx.symbol, "BB", bb_combined.direction,
-                                             mr_sig.reason, f"block:{result.error}")
-            else:
-                # direction=0: strategy didn't generate a signal
-                web_dashboard.add_signal(ctx.symbol, "BB", 0, mr_sig.reason)
-
-            # ── ORB — independent slot, NY open range breakout ────────────────
-            # Two entry modes (default: limit-retrace, ORB_STOP_ENTRY=false):
-            #   stop-entry: tick-watcher fires a MARKET order the instant price
-            #     touches the range boundary. Won its first 30-day window
-            #     (PF 1.65 vs 1.41) but REVERSED the next period (PF 0.87 vs
-            #     1.42) — regime-sensitive, so it is opt-in, not default.
-            #     Entries fire in make_on_orb_tick(), not here.
-            #   limit-retrace (default): candle-close entry — the more robust
-            #     two-period performer.
-            if ctx.orb_strategy is not None and config.strategy.orb_stop_entry:
-                await _maybe_arm_orb(ctx, df, atr_val)
-                armed = ctx.orb_armed is not None
-                web_dashboard.add_signal(
-                    ctx.symbol, "ORB", 0,
-                    "stop-entry armed (tick-watch)" if armed else "ORB range not set",
+                dashboard.update_signal(bb_combined)
+                dashboard.log_message(
+                    f"[{ctx.symbol}] BB: dir={bb_combined.direction} "
+                    f"conf={bb_combined.confidence:.2f} ({mr_sig.reason})"
                 )
-            elif ctx.orb_strategy is not None and bo_allowed:
-                orb_sig = ctx.orb_strategy.analyze(df)
-                if orb_sig.direction != 0:
-                    trigger = orb_sig.orb_high if orb_sig.direction == 1 else orb_sig.orb_low
-                    orb_combined = CombinedSignal(
-                        direction=orb_sig.direction,
-                        confidence=orb_sig.strength,
-                        trend_score=0.0,
-                        mean_rev_score=0.0,
-                        breakout_score=orb_sig.direction * orb_sig.strength,
-                        dominant_strategy="orb",
-                        reasons=[orb_sig.reason],
-                        entry_price=trigger,
-                        sl_price=orb_sig.sl_price,
-                        tp_price=orb_sig.tp_price,
-                        symbol=ctx.symbol,
-                        position_slot=f"{ctx.symbol}:orb",
-                    )
-                    result = await executor.execute_signal(orb_combined, atr_val)
-                    if result.success and result.position:
-                        logger.info(
-                            "ORB trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
-                            result.position.side.upper(), ctx.symbol,
-                            result.position.entry_price,
-                            result.position.sl_price,
-                            result.position.tp_price,
-                        )
-                        web_dashboard.add_signal(ctx.symbol, "ORB", orb_sig.direction,
-                                                 orb_sig.reason, "exec")
-                        if telegram:
-                            await telegram.send_trade_opened(result.trade_setup, orb_combined)
-                        if ntfy:
-                            await ntfy.send_trade_opened(result.trade_setup, orb_combined)
-                    elif result.error:
-                        logger.warning("[%s] ORB skipped: %s", ctx.symbol, result.error)
-                        web_dashboard.add_signal(ctx.symbol, "ORB", orb_sig.direction,
-                                                 orb_sig.reason, f"block:{result.error}")
-                else:
-                    web_dashboard.add_signal(ctx.symbol, "ORB", 0, orb_sig.reason)
-            elif ctx.orb_strategy is not None:
-                web_dashboard.add_signal(ctx.symbol, "ORB", 0, f"block:rejim={regime}")
 
-            # ── Asia BO — independent slot, limit entry at London open range ──
-            # Fill at asia_high/asia_low when 08:00 UTC bar first closes above/below.
-            if ctx.asia_bo_strategy is not None and bo_allowed:
-                asia_sig = ctx.asia_bo_strategy.analyze(df, atr_val)
-                if asia_sig.direction != 0:
-                    trigger = asia_sig.asia_high if asia_sig.direction == 1 else asia_sig.asia_low
-                    asia_combined = CombinedSignal(
-                        direction=asia_sig.direction,
-                        confidence=asia_sig.strength,
-                        trend_score=0.0,
-                        mean_rev_score=0.0,
-                        breakout_score=asia_sig.direction * asia_sig.strength,
-                        dominant_strategy="asia_bo",
-                        reasons=[asia_sig.reason],
-                        entry_price=trigger,
-                        sl_price=asia_sig.sl_price,
-                        tp_price=asia_sig.tp_price,
-                        symbol=ctx.symbol,
-                        position_slot=f"{ctx.symbol}:asia_bo",
-                    )
-                    result = await executor.execute_signal(asia_combined, atr_val)
-                    if result.success and result.position:
-                        logger.info(
-                            "Asia BO trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
-                            result.position.side.upper(), ctx.symbol,
-                            result.position.entry_price,
-                            result.position.sl_price,
-                            result.position.tp_price,
+                # Funding rate / order-flow checks apply to the BB signal only
+                # (they're not meaningful for intraday range-breakout strategies).
+                # Per-symbol monitor: each coin's OWN funding gates/annotates its
+                # signal — BTC funding must never speak for SOL.
+                _fund_mon = funding_monitors.get(ctx.symbol)
+                if (
+                    bb_combined.direction != 0
+                    and _fund_mon is not None
+                    and _fund_mon.enabled
+                ):
+                    snap = await _fund_mon.fetch()
+                    assess = _fund_mon.evaluate(bb_combined.direction, snap)
+                    logger.info("Funding read: %s -> bias=%.2f", assess.reason, assess.bias)
+                    dashboard.log_message(f"Funding: {assess.reason}")
+                    _log_funding_csv(ctx.symbol, bb_combined, mr_sig, snap, assess)
+                    if _fund_mon.mode == "filter" and assess.should_skip:
+                        dashboard.log_message(
+                            f"BB signal SKIPPED by funding filter ({assess.reason})"
                         )
-                        web_dashboard.add_signal(ctx.symbol, "Asia", asia_sig.direction,
-                                                 asia_sig.reason, "exec")
-                        if telegram:
-                            await telegram.send_trade_opened(result.trade_setup, asia_combined)
-                        if ntfy:
-                            await ntfy.send_trade_opened(result.trade_setup, asia_combined)
-                    elif result.error:
-                        logger.warning("[%s] Asia BO skipped: %s", ctx.symbol, result.error)
-                        web_dashboard.add_signal(ctx.symbol, "Asia", asia_sig.direction,
-                                                 asia_sig.reason, f"block:{result.error}")
-                else:
-                    web_dashboard.add_signal(ctx.symbol, "Asia", 0, asia_sig.reason)
-            elif ctx.asia_bo_strategy is not None:
-                web_dashboard.add_signal(ctx.symbol, "Asia", 0, f"block:rejim={regime}")
+                        logger.info("BB skipped: funding contrary+extreme (%s)", assess.reason)
+                        bb_combined.direction = 0
+                    elif _fund_mon.mode == "boost":
+                        bb_combined.confidence = min(bb_combined.confidence * assess.bias, 1.0)
 
-            # ── S/R breakout — shares BB slot (swing, 48h hold) ──────────────
-            # Only fires when the BB slot is empty. Uses max_positions cap as the
-            # ultimate gate: when BB + ORB + Asia are all open, S/R is blocked.
-            if ctx.sr_breakout_strategy is not None and bo_allowed:
-                sr_sig = ctx.sr_breakout_strategy.analyze(df, atr_val)
-                if sr_sig.direction != 0:
-                    sr_combined = CombinedSignal(
-                        direction=sr_sig.direction,
-                        confidence=sr_sig.strength,
-                        trend_score=0.0,
-                        mean_rev_score=0.0,
-                        breakout_score=sr_sig.direction * sr_sig.strength,
-                        dominant_strategy="sr_breakout",
-                        reasons=[sr_sig.reason],
-                        entry_price=current_price,
-                        sl_price=sr_sig.sl_price,
-                        tp_price=sr_sig.tp_price,
-                        symbol=ctx.symbol,
-                        position_slot=ctx.symbol,
-                        # Conformance (audit 2026-07-16): research_sr fills AT
-                        # THE BREAKOUT CLOSE (entry=cur, taker both legs) and
-                        # anchors SL/TP to that close via ATR — NOT to the
-                        # pivot level. A market fill therefore keeps R/R; the
-                        # former limit+no-fallback path skipped every breakout
-                        # that didn't retrace (adverse selection on a momentum
-                        # sleeve). Same treatment as Donchian/Squeeze.
-                        force_market=True,
-                    )
-                    result = await executor.execute_signal(sr_combined, atr_val)
-                    if result.success and result.position:
-                        logger.info(
-                            "S/R trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
-                            result.position.side.upper(), ctx.symbol,
-                            result.position.entry_price,
-                            result.position.sl_price,
-                            result.position.tp_price,
-                        )
-                        web_dashboard.add_signal(ctx.symbol, "S/R", sr_sig.direction,
-                                                 sr_sig.reason, "exec")
-                        if telegram:
-                            await telegram.send_trade_opened(result.trade_setup, sr_combined)
-                        if ntfy:
-                            await ntfy.send_trade_opened(result.trade_setup, sr_combined)
-                    elif result.error:
-                        logger.warning("[%s] S/R skipped: %s", ctx.symbol, result.error)
-                        web_dashboard.add_signal(ctx.symbol, "S/R", sr_sig.direction,
-                                                 sr_sig.reason, f"block:{result.error}")
-
-            # ── FVG (Fair Value Gap) — independent slot, limit retest entry ───
-            # Price-action sleeve (PF 1.37, positive every year). NOT gated by the
-            # breakout regime filter — it's a gap-fill retest, not a breakout. Needs
-            # a longer buffer (EMA200 trend filter) so it fetches 250 candles.
-            df_long = None
-            if ctx.fvg_strategy is not None or ctx.ifvg_strategy is not None:
-                df_long = await ctx.data_mgr.get_candles(config.strategy.primary_tf, 250)
-            if ctx.fvg_strategy is not None:
-                df_fvg = df_long
-                fvg_sig = ctx.fvg_strategy.analyze(df_fvg, atr_val)
-                if fvg_sig.direction != 0:
-                    fvg_combined = CombinedSignal(
-                        direction=fvg_sig.direction,
-                        confidence=fvg_sig.strength,
-                        trend_score=0.0,
-                        mean_rev_score=0.0,
-                        breakout_score=fvg_sig.direction * fvg_sig.strength,
-                        dominant_strategy="fvg",
-                        reasons=[fvg_sig.reason],
-                        entry_price=fvg_sig.entry_price,
-                        sl_price=fvg_sig.sl_price,
-                        tp_price=fvg_sig.tp_price,
-                        symbol=ctx.symbol,
-                        position_slot=f"{ctx.symbol}:fvg",
-                    )
-                    result = await executor.execute_signal(fvg_combined, atr_val)
-                    if result.success and result.position:
-                        logger.info(
-                            "FVG trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
-                            result.position.side.upper(), ctx.symbol,
-                            result.position.entry_price,
-                            result.position.sl_price,
-                            result.position.tp_price,
-                        )
-                        web_dashboard.add_signal(ctx.symbol, "FVG", fvg_sig.direction,
-                                                 fvg_sig.reason, "exec")
-                        if telegram:
-                            await telegram.send_trade_opened(result.trade_setup, fvg_combined)
-                        if ntfy:
-                            await ntfy.send_trade_opened(result.trade_setup, fvg_combined)
-                    elif result.error:
-                        logger.warning("[%s] FVG skipped: %s", ctx.symbol, result.error)
-                        web_dashboard.add_signal(ctx.symbol, "FVG", fvg_sig.direction,
-                                                 fvg_sig.reason, f"block:{result.error}")
-                else:
-                    web_dashboard.add_signal(ctx.symbol, "FVG", 0, fvg_sig.reason)
-
-            # ── IFVG (Inverse FVG) — independent slot, broken-gap reversal retest ─
-            # Same 250-candle buffer (EMA200 trend). Not gated by breakout regime.
-            if ctx.ifvg_strategy is not None:
-                df_ifvg = df_long if df_long is not None else \
-                    await ctx.data_mgr.get_candles(config.strategy.primary_tf, 250)
-                ifvg_sig = ctx.ifvg_strategy.analyze(df_ifvg, atr_val)
-                if ifvg_sig.direction != 0:
-                    ifvg_combined = CombinedSignal(
-                        direction=ifvg_sig.direction,
-                        confidence=ifvg_sig.strength,
-                        trend_score=0.0,
-                        mean_rev_score=0.0,
-                        breakout_score=ifvg_sig.direction * ifvg_sig.strength,
-                        dominant_strategy="ifvg",
-                        reasons=[ifvg_sig.reason],
-                        entry_price=ifvg_sig.entry_price,
-                        sl_price=ifvg_sig.sl_price,
-                        tp_price=ifvg_sig.tp_price,
-                        symbol=ctx.symbol,
-                        position_slot=f"{ctx.symbol}:ifvg",
-                    )
-                    result = await executor.execute_signal(ifvg_combined, atr_val)
-                    if result.success and result.position:
-                        logger.info(
-                            "IFVG trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
-                            result.position.side.upper(), ctx.symbol,
-                            result.position.entry_price,
-                            result.position.sl_price,
-                            result.position.tp_price,
-                        )
-                        web_dashboard.add_signal(ctx.symbol, "IFVG", ifvg_sig.direction,
-                                                 ifvg_sig.reason, "exec")
-                        if telegram:
-                            await telegram.send_trade_opened(result.trade_setup, ifvg_combined)
-                        if ntfy:
-                            await ntfy.send_trade_opened(result.trade_setup, ifvg_combined)
-                    elif result.error:
-                        logger.warning("[%s] IFVG skipped: %s", ctx.symbol, result.error)
-                        web_dashboard.add_signal(ctx.symbol, "IFVG", ifvg_sig.direction,
-                                                 ifvg_sig.reason, f"block:{result.error}")
-
-            # ── Squeeze — BB+KC volatility coil → momentum breakout ─────────
-            # Independent slot (symbol:squeeze), uses bo_allowed gate (trending
-            # markets are fine for momentum — ranging markets suppress breakouts).
-            if ctx.squeeze_strategy is not None and bo_allowed:
-                sq_sig = ctx.squeeze_strategy.analyze(df, atr_val)
-                if sq_sig.direction != 0:
-                    sq_combined = CombinedSignal(
-                        direction=sq_sig.direction,
-                        confidence=sq_sig.strength,
-                        trend_score=0.0,
-                        mean_rev_score=0.0,
-                        breakout_score=sq_sig.direction * sq_sig.strength,
-                        dominant_strategy="squeeze",
-                        reasons=[sq_sig.reason],
-                        entry_price=sq_sig.entry_price,
-                        sl_price=sq_sig.sl_price,
-                        tp_price=sq_sig.tp_price,
-                        symbol=ctx.symbol,
-                        position_slot=f"{ctx.symbol}:squeeze",
-                        # Conformance (audit 2026-07-16): the validated model
-                        # (research_squeeze) fills AT THE RELEASE CLOSE with
-                        # taker fees on both legs — a guaranteed fill. SL/TP are
-                        # ATR-anchored to that close (not to a structure level),
-                        # so a market fill keeps R/R intact. The former
-                        # limit+no-fallback path adversely selected: runaway
-                        # (strongest) releases never retraced and were skipped,
-                        # fading ones filled. Same treatment as Donchian.
-                        force_market=True,
-                    )
-                    result = await executor.execute_signal(sq_combined, atr_val)
-                    if result.success and result.position:
-                        logger.info(
-                            "SQUEEZE trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f"
-                            " (coil=%db)",
-                            result.position.side.upper(), ctx.symbol,
-                            result.position.entry_price,
-                            result.position.sl_price,
-                            result.position.tp_price,
-                            sq_sig.squeeze_bars,
-                        )
-                        web_dashboard.add_signal(ctx.symbol, "Squeeze", sq_sig.direction,
-                                                 sq_sig.reason, "exec")
-                        if telegram:
-                            await telegram.send_trade_opened(result.trade_setup, sq_combined)
-                        if ntfy:
-                            await ntfy.send_trade_opened(result.trade_setup, sq_combined)
-                    elif result.error:
-                        logger.warning("[%s] Squeeze skipped: %s", ctx.symbol, result.error)
-                        web_dashboard.add_signal(ctx.symbol, "Squeeze", sq_sig.direction,
-                                                 sq_sig.reason, f"block:{result.error}")
-                else:
-                    logger.debug("[%s] squeeze: %s", ctx.symbol, sq_sig.reason)
-                    web_dashboard.add_signal(ctx.symbol, "Squeeze", 0, sq_sig.reason)
-            elif ctx.squeeze_strategy is not None:
-                web_dashboard.add_signal(ctx.symbol, "Squeeze", 0, f"block:rejim={regime}")
-
-            # ── Donchian — 4h channel swing breakout (HTF, 1-5 day holds) ─────
-            # Runs on the 4h buffer, only when a 4h candle just closed (the
-            # just-closed 1h candle is the last hour of a 4h period: UTC hour%4==3).
-            # NOT regime-gated — its own EMA200 trend filter is the regime filter
-            # (matches the validated backtest). force_market: taker fill ~close,
-            # exactly the close-confirmed entry that was validated.
-            if ctx.donchian_strategy is not None and (df.index[-1].hour % 4 == 3):
-                df_4h = await ctx.data_mgr.get_candles(config.strategy.confirm_tf, 260)
-                # FRESHNESS (audit fix): the 4h buffer is filled by an
-                # INDEPENDENT 30s REST poll task with its own phase — at the
-                # boundary there is roughly a coin-flip chance it has not yet
-                # fetched the just-closed 4h bar. Analyzing the stale buffer
-                # silently drops fresh breakouts (and can re-fire a 4h-old
-                # one). The just-closed 1h bar opens at hour%4==3, so the
-                # just-closed 4h bar's open is exactly 3h earlier. If the
-                # buffer is behind, force one synchronous poll; if it is
-                # STILL behind (fetch failed), skip — never analyze stale.
-                expected_4h_open = df.index[-1] - pd.Timedelta(hours=3)
-                if df_4h is None or not len(df_4h) or df_4h.index[-1] != expected_4h_open:
+                _of_mon = orderflow_monitors.get(ctx.symbol)
+                if (
+                    bb_combined.direction != 0
+                    and _of_mon is not None
+                    and _of_mon.enabled
+                ):
                     try:
-                        await ctx.data_mgr._poll_once(config.strategy.confirm_tf)
+                        of_snap = await _of_mon.snapshot()
+                        of_assess = _of_mon.evaluate(bb_combined.direction, of_snap)
+                        logger.info("OrderFlow: %s", of_assess.reason)
+                        dashboard.log_message(f"OrderFlow: {of_assess.reason}")
+                        _log_orderflow_csv(ctx.symbol, bb_combined, mr_sig, of_snap, of_assess)
                     except Exception as e:
-                        logger.warning("[%s] donchian 4h force-poll failed: %s",
-                                       ctx.symbol, e)
-                    df_4h = await ctx.data_mgr.get_candles(config.strategy.confirm_tf, 260)
-                dch_min = max(config.strategy.donchian_channel + 2,
-                              config.strategy.donchian_ema_trend)
-                if (df_4h is None or not len(df_4h)
-                        or df_4h.index[-1] != expected_4h_open):
-                    logger.warning(
-                        "[%s] donchian skipped: 4h buffer stale (have %s, want %s)",
-                        ctx.symbol,
-                        None if df_4h is None or not len(df_4h) else df_4h.index[-1],
-                        expected_4h_open)
-                elif df_4h.index[-1] == ctx.donchian_last_4h:
-                    logger.debug("[%s] donchian: 4h bar %s already analyzed",
-                                 ctx.symbol, ctx.donchian_last_4h)
-                elif len(df_4h) >= dch_min:
-                    ctx.donchian_last_4h = df_4h.index[-1]
-                    atr_4h = atr(df_4h["high"], df_4h["low"], df_4h["close"],
-                                 config.strategy.atr_period).iloc[-1]
-                    if not (pd.isna(atr_4h) or atr_4h <= 0):
-                        dch_sig = ctx.donchian_strategy.analyze(df_4h, float(atr_4h))
-                        if dch_sig.direction != 0:
-                            dch_combined = CombinedSignal(
-                                direction=dch_sig.direction,
-                                confidence=dch_sig.strength,
-                                trend_score=0.0,
-                                mean_rev_score=0.0,
-                                breakout_score=dch_sig.direction * dch_sig.strength,
-                                dominant_strategy="donchian",
-                                reasons=[dch_sig.reason],
-                                entry_price=dch_sig.entry_price,
-                                sl_price=dch_sig.sl_price,
-                                tp_price=dch_sig.tp_price,
-                                symbol=ctx.symbol,
-                                position_slot=f"{ctx.symbol}:donchian",
-                                force_market=True,
-                            )
-                            result = await executor.execute_signal(dch_combined, float(atr_4h))
-                            if result.success and result.position:
-                                logger.info(
-                                    "DONCHIAN trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
-                                    result.position.side.upper(), ctx.symbol,
-                                    result.position.entry_price,
-                                    result.position.sl_price,
-                                    result.position.tp_price,
-                                )
-                                web_dashboard.add_signal(ctx.symbol, "Donch", dch_sig.direction,
-                                                         dch_sig.reason, "exec")
-                                if telegram:
-                                    await telegram.send_trade_opened(result.trade_setup, dch_combined)
-                                if ntfy:
-                                    await ntfy.send_trade_opened(result.trade_setup, dch_combined)
-                            elif result.error:
-                                logger.warning("[%s] Donchian skipped: %s", ctx.symbol, result.error)
-                                web_dashboard.add_signal(ctx.symbol, "Donch", dch_sig.direction,
-                                                         dch_sig.reason, f"block:{result.error}")
-                        else:
-                            web_dashboard.add_signal(ctx.symbol, "Donch", 0, dch_sig.reason)
+                        logger.debug("OrderFlow snapshot failed: %s", e)
 
-            # ── Whale-flow sleeve — avg-trade-size z-spike, follow the candle ──
-            # Monitor-first: avg_size needs live trade count (not in MEXC klines),
-            # supplied by whale_monitor from watchTrades. Needs ~1 week warmup.
-            # In "monitor" mode we LOG would-be signals without trading; in
-            # "trade" mode it executes like the other sleeves. BTC-only.
-            if ctx.whale_strategy is not None and whale_monitor is not None \
-                    and whale_monitor.enabled:
-                z = whale_monitor.bar_zscore(candle.timestamp)
-                whale_sig = ctx.whale_strategy.analyze(
-                    candle.open, candle.close, z, atr_val
-                )
-                if whale_sig.direction != 0:
-                    whale_mode = getattr(config.strategy, "whale_mode", "monitor")
-                    if whale_mode != "trade":
+                if bb_combined.direction != 0 and not bb_allowed:
+                    logger.warning(
+                        "[%s] BB skipped: regime=%s is_weekend=%s", ctx.symbol, regime, is_weekend
+                    )
+                    web_dashboard.add_signal(ctx.symbol, "BB", bb_combined.direction,
+                                             mr_sig.reason, f"block:rejim={regime}")
+                elif bb_combined.direction != 0:
+                    result = await executor.execute_signal(bb_combined, atr_val)
+                    if result.success and result.position:
                         logger.info(
-                            "[%s] WHALE signal (MONITOR, no trade): %s z=%.2f "
-                            "entry=%.4f sl=%.4f tp=%.4f",
-                            ctx.symbol, "LONG" if whale_sig.direction == 1 else "SHORT",
-                            whale_sig.z, whale_sig.entry_price,
-                            whale_sig.sl_price, whale_sig.tp_price,
+                            "BB trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                            result.position.side.upper(), ctx.symbol,
+                            result.position.entry_price,
+                            result.position.sl_price,
+                            result.position.tp_price,
                         )
-                        _log_whale_csv(ctx.symbol, whale_sig, current_price)
-                    else:
-                        whale_combined = CombinedSignal(
-                            direction=whale_sig.direction,
-                            confidence=whale_sig.strength,
-                            trend_score=0.0, mean_rev_score=0.0,
-                            breakout_score=whale_sig.direction * whale_sig.strength,
-                            dominant_strategy="whale",
-                            reasons=[whale_sig.reason],
-                            entry_price=whale_sig.entry_price,
-                            sl_price=whale_sig.sl_price,
-                            tp_price=whale_sig.tp_price,
+                        web_dashboard.add_signal(ctx.symbol, "BB", bb_combined.direction,
+                                                 mr_sig.reason, "exec")
+                        if telegram:
+                            await telegram.send_trade_opened(result.trade_setup, bb_combined)
+                        if ntfy:
+                            await ntfy.send_trade_opened(result.trade_setup, bb_combined)
+                    elif result.error:
+                        logger.warning("[%s] BB skipped: %s", ctx.symbol, result.error)
+                        web_dashboard.add_signal(ctx.symbol, "BB", bb_combined.direction,
+                                                 mr_sig.reason, f"block:{result.error}")
+                else:
+                    # direction=0: strategy didn't generate a signal
+                    web_dashboard.add_signal(ctx.symbol, "BB", 0, mr_sig.reason)
+            except Exception as _se:
+                logger.error("[%s] BB sleeve error: %s", ctx.symbol, _se)
+
+            try:
+                # ── ORB — independent slot, NY open range breakout ────────────────
+                # Two entry modes (default: limit-retrace, ORB_STOP_ENTRY=false):
+                #   stop-entry: tick-watcher fires a MARKET order the instant price
+                #     touches the range boundary. Won its first 30-day window
+                #     (PF 1.65 vs 1.41) but REVERSED the next period (PF 0.87 vs
+                #     1.42) — regime-sensitive, so it is opt-in, not default.
+                #     Entries fire in make_on_orb_tick(), not here.
+                #   limit-retrace (default): candle-close entry — the more robust
+                #     two-period performer.
+                if ctx.orb_strategy is not None and config.strategy.orb_stop_entry:
+                    await _maybe_arm_orb(ctx, df, atr_val)
+                    armed = ctx.orb_armed is not None
+                    web_dashboard.add_signal(
+                        ctx.symbol, "ORB", 0,
+                        "stop-entry armed (tick-watch)" if armed else "ORB range not set",
+                    )
+                elif ctx.orb_strategy is not None and bo_allowed:
+                    orb_sig = ctx.orb_strategy.analyze(df)
+                    if orb_sig.direction != 0:
+                        trigger = orb_sig.orb_high if orb_sig.direction == 1 else orb_sig.orb_low
+                        orb_combined = CombinedSignal(
+                            direction=orb_sig.direction,
+                            confidence=orb_sig.strength,
+                            trend_score=0.0,
+                            mean_rev_score=0.0,
+                            breakout_score=orb_sig.direction * orb_sig.strength,
+                            dominant_strategy="orb",
+                            reasons=[orb_sig.reason],
+                            entry_price=trigger,
+                            sl_price=orb_sig.sl_price,
+                            tp_price=orb_sig.tp_price,
                             symbol=ctx.symbol,
-                            position_slot=f"{ctx.symbol}:whale",
+                            position_slot=f"{ctx.symbol}:orb",
                         )
-                        result = await executor.execute_signal(whale_combined, atr_val)
+                        result = await executor.execute_signal(orb_combined, atr_val)
                         if result.success and result.position:
                             logger.info(
-                                "WHALE trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                                "ORB trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
                                 result.position.side.upper(), ctx.symbol,
                                 result.position.entry_price,
-                                result.position.sl_price, result.position.tp_price,
+                                result.position.sl_price,
+                                result.position.tp_price,
                             )
+                            web_dashboard.add_signal(ctx.symbol, "ORB", orb_sig.direction,
+                                                     orb_sig.reason, "exec")
                             if telegram:
-                                await telegram.send_trade_opened(result.trade_setup, whale_combined)
+                                await telegram.send_trade_opened(result.trade_setup, orb_combined)
                             if ntfy:
-                                await ntfy.send_trade_opened(result.trade_setup, whale_combined)
+                                await ntfy.send_trade_opened(result.trade_setup, orb_combined)
                         elif result.error:
-                            logger.warning("[%s] WHALE skipped: %s", ctx.symbol, result.error)
-                elif z is not None:
-                    logger.debug("[%s] whale z=%.2f (no fire)", ctx.symbol, z)
+                            logger.warning("[%s] ORB skipped: %s", ctx.symbol, result.error)
+                            web_dashboard.add_signal(ctx.symbol, "ORB", orb_sig.direction,
+                                                     orb_sig.reason, f"block:{result.error}")
+                    else:
+                        web_dashboard.add_signal(ctx.symbol, "ORB", 0, orb_sig.reason)
+                elif ctx.orb_strategy is not None:
+                    web_dashboard.add_signal(ctx.symbol, "ORB", 0, f"block:rejim={regime}")
+            except Exception as _se:
+                logger.error("[%s] ORB sleeve error: %s", ctx.symbol, _se)
+
+            try:
+                # ── Asia BO — independent slot, limit entry at London open range ──
+                # Fill at asia_high/asia_low when 08:00 UTC bar first closes above/below.
+                if ctx.asia_bo_strategy is not None and bo_allowed:
+                    asia_sig = ctx.asia_bo_strategy.analyze(df, atr_val)
+                    if asia_sig.direction != 0:
+                        trigger = asia_sig.asia_high if asia_sig.direction == 1 else asia_sig.asia_low
+                        asia_combined = CombinedSignal(
+                            direction=asia_sig.direction,
+                            confidence=asia_sig.strength,
+                            trend_score=0.0,
+                            mean_rev_score=0.0,
+                            breakout_score=asia_sig.direction * asia_sig.strength,
+                            dominant_strategy="asia_bo",
+                            reasons=[asia_sig.reason],
+                            entry_price=trigger,
+                            sl_price=asia_sig.sl_price,
+                            tp_price=asia_sig.tp_price,
+                            symbol=ctx.symbol,
+                            position_slot=f"{ctx.symbol}:asia_bo",
+                        )
+                        result = await executor.execute_signal(asia_combined, atr_val)
+                        if result.success and result.position:
+                            logger.info(
+                                "Asia BO trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                                result.position.side.upper(), ctx.symbol,
+                                result.position.entry_price,
+                                result.position.sl_price,
+                                result.position.tp_price,
+                            )
+                            web_dashboard.add_signal(ctx.symbol, "Asia", asia_sig.direction,
+                                                     asia_sig.reason, "exec")
+                            if telegram:
+                                await telegram.send_trade_opened(result.trade_setup, asia_combined)
+                            if ntfy:
+                                await ntfy.send_trade_opened(result.trade_setup, asia_combined)
+                        elif result.error:
+                            logger.warning("[%s] Asia BO skipped: %s", ctx.symbol, result.error)
+                            web_dashboard.add_signal(ctx.symbol, "Asia", asia_sig.direction,
+                                                     asia_sig.reason, f"block:{result.error}")
+                    else:
+                        web_dashboard.add_signal(ctx.symbol, "Asia", 0, asia_sig.reason)
+                elif ctx.asia_bo_strategy is not None:
+                    web_dashboard.add_signal(ctx.symbol, "Asia", 0, f"block:rejim={regime}")
+            except Exception as _se:
+                logger.error("[%s] Asia sleeve error: %s", ctx.symbol, _se)
+
+            try:
+                # ── S/R breakout — shares BB slot (swing, 48h hold) ──────────────
+                # Only fires when the BB slot is empty. Uses max_positions cap as the
+                # ultimate gate: when BB + ORB + Asia are all open, S/R is blocked.
+                if ctx.sr_breakout_strategy is not None and bo_allowed:
+                    sr_sig = ctx.sr_breakout_strategy.analyze(df, atr_val)
+                    if sr_sig.direction != 0:
+                        sr_combined = CombinedSignal(
+                            direction=sr_sig.direction,
+                            confidence=sr_sig.strength,
+                            trend_score=0.0,
+                            mean_rev_score=0.0,
+                            breakout_score=sr_sig.direction * sr_sig.strength,
+                            dominant_strategy="sr_breakout",
+                            reasons=[sr_sig.reason],
+                            entry_price=current_price,
+                            sl_price=sr_sig.sl_price,
+                            tp_price=sr_sig.tp_price,
+                            symbol=ctx.symbol,
+                            position_slot=ctx.symbol,
+                            # Conformance (audit 2026-07-16): research_sr fills AT
+                            # THE BREAKOUT CLOSE (entry=cur, taker both legs) and
+                            # anchors SL/TP to that close via ATR — NOT to the
+                            # pivot level. A market fill therefore keeps R/R; the
+                            # former limit+no-fallback path skipped every breakout
+                            # that didn't retrace (adverse selection on a momentum
+                            # sleeve). Same treatment as Donchian/Squeeze.
+                            force_market=True,
+                        )
+                        result = await executor.execute_signal(sr_combined, atr_val)
+                        if result.success and result.position:
+                            logger.info(
+                                "S/R trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                                result.position.side.upper(), ctx.symbol,
+                                result.position.entry_price,
+                                result.position.sl_price,
+                                result.position.tp_price,
+                            )
+                            web_dashboard.add_signal(ctx.symbol, "S/R", sr_sig.direction,
+                                                     sr_sig.reason, "exec")
+                            if telegram:
+                                await telegram.send_trade_opened(result.trade_setup, sr_combined)
+                            if ntfy:
+                                await ntfy.send_trade_opened(result.trade_setup, sr_combined)
+                        elif result.error:
+                            logger.warning("[%s] S/R skipped: %s", ctx.symbol, result.error)
+                            web_dashboard.add_signal(ctx.symbol, "S/R", sr_sig.direction,
+                                                     sr_sig.reason, f"block:{result.error}")
+            except Exception as _se:
+                logger.error("[%s] S/R sleeve error: %s", ctx.symbol, _se)
+
+            try:
+                # ── FVG (Fair Value Gap) — independent slot, limit retest entry ───
+                # Price-action sleeve (PF 1.37, positive every year). NOT gated by the
+                # breakout regime filter — it's a gap-fill retest, not a breakout. Needs
+                # a longer buffer (EMA200 trend filter) so it fetches 250 candles.
+                df_long = None
+                if ctx.fvg_strategy is not None or ctx.ifvg_strategy is not None:
+                    df_long = await ctx.data_mgr.get_candles(config.strategy.primary_tf, 250)
+                if ctx.fvg_strategy is not None:
+                    df_fvg = df_long
+                    fvg_sig = ctx.fvg_strategy.analyze(df_fvg, atr_val)
+                    if fvg_sig.direction != 0:
+                        fvg_combined = CombinedSignal(
+                            direction=fvg_sig.direction,
+                            confidence=fvg_sig.strength,
+                            trend_score=0.0,
+                            mean_rev_score=0.0,
+                            breakout_score=fvg_sig.direction * fvg_sig.strength,
+                            dominant_strategy="fvg",
+                            reasons=[fvg_sig.reason],
+                            entry_price=fvg_sig.entry_price,
+                            sl_price=fvg_sig.sl_price,
+                            tp_price=fvg_sig.tp_price,
+                            symbol=ctx.symbol,
+                            position_slot=f"{ctx.symbol}:fvg",
+                        )
+                        result = await executor.execute_signal(fvg_combined, atr_val)
+                        if result.success and result.position:
+                            logger.info(
+                                "FVG trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                                result.position.side.upper(), ctx.symbol,
+                                result.position.entry_price,
+                                result.position.sl_price,
+                                result.position.tp_price,
+                            )
+                            web_dashboard.add_signal(ctx.symbol, "FVG", fvg_sig.direction,
+                                                     fvg_sig.reason, "exec")
+                            if telegram:
+                                await telegram.send_trade_opened(result.trade_setup, fvg_combined)
+                            if ntfy:
+                                await ntfy.send_trade_opened(result.trade_setup, fvg_combined)
+                        elif result.error:
+                            logger.warning("[%s] FVG skipped: %s", ctx.symbol, result.error)
+                            web_dashboard.add_signal(ctx.symbol, "FVG", fvg_sig.direction,
+                                                     fvg_sig.reason, f"block:{result.error}")
+                    else:
+                        web_dashboard.add_signal(ctx.symbol, "FVG", 0, fvg_sig.reason)
+            except Exception as _se:
+                logger.error("[%s] FVG sleeve error: %s", ctx.symbol, _se)
+
+            try:
+                # ── IFVG (Inverse FVG) — independent slot, broken-gap reversal retest ─
+                # Same 250-candle buffer (EMA200 trend). Not gated by breakout regime.
+                if ctx.ifvg_strategy is not None:
+                    df_ifvg = df_long if df_long is not None else \
+                        await ctx.data_mgr.get_candles(config.strategy.primary_tf, 250)
+                    ifvg_sig = ctx.ifvg_strategy.analyze(df_ifvg, atr_val)
+                    if ifvg_sig.direction != 0:
+                        ifvg_combined = CombinedSignal(
+                            direction=ifvg_sig.direction,
+                            confidence=ifvg_sig.strength,
+                            trend_score=0.0,
+                            mean_rev_score=0.0,
+                            breakout_score=ifvg_sig.direction * ifvg_sig.strength,
+                            dominant_strategy="ifvg",
+                            reasons=[ifvg_sig.reason],
+                            entry_price=ifvg_sig.entry_price,
+                            sl_price=ifvg_sig.sl_price,
+                            tp_price=ifvg_sig.tp_price,
+                            symbol=ctx.symbol,
+                            position_slot=f"{ctx.symbol}:ifvg",
+                        )
+                        result = await executor.execute_signal(ifvg_combined, atr_val)
+                        if result.success and result.position:
+                            logger.info(
+                                "IFVG trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                                result.position.side.upper(), ctx.symbol,
+                                result.position.entry_price,
+                                result.position.sl_price,
+                                result.position.tp_price,
+                            )
+                            web_dashboard.add_signal(ctx.symbol, "IFVG", ifvg_sig.direction,
+                                                     ifvg_sig.reason, "exec")
+                            if telegram:
+                                await telegram.send_trade_opened(result.trade_setup, ifvg_combined)
+                            if ntfy:
+                                await ntfy.send_trade_opened(result.trade_setup, ifvg_combined)
+                        elif result.error:
+                            logger.warning("[%s] IFVG skipped: %s", ctx.symbol, result.error)
+                            web_dashboard.add_signal(ctx.symbol, "IFVG", ifvg_sig.direction,
+                                                     ifvg_sig.reason, f"block:{result.error}")
+            except Exception as _se:
+                logger.error("[%s] IFVG sleeve error: %s", ctx.symbol, _se)
+
+            try:
+                # ── Squeeze — BB+KC volatility coil → momentum breakout ─────────
+                # Independent slot (symbol:squeeze), uses bo_allowed gate (trending
+                # markets are fine for momentum — ranging markets suppress breakouts).
+                if ctx.squeeze_strategy is not None and bo_allowed:
+                    sq_sig = ctx.squeeze_strategy.analyze(df, atr_val)
+                    if sq_sig.direction != 0:
+                        sq_combined = CombinedSignal(
+                            direction=sq_sig.direction,
+                            confidence=sq_sig.strength,
+                            trend_score=0.0,
+                            mean_rev_score=0.0,
+                            breakout_score=sq_sig.direction * sq_sig.strength,
+                            dominant_strategy="squeeze",
+                            reasons=[sq_sig.reason],
+                            entry_price=sq_sig.entry_price,
+                            sl_price=sq_sig.sl_price,
+                            tp_price=sq_sig.tp_price,
+                            symbol=ctx.symbol,
+                            position_slot=f"{ctx.symbol}:squeeze",
+                            # Conformance (audit 2026-07-16): the validated model
+                            # (research_squeeze) fills AT THE RELEASE CLOSE with
+                            # taker fees on both legs — a guaranteed fill. SL/TP are
+                            # ATR-anchored to that close (not to a structure level),
+                            # so a market fill keeps R/R intact. The former
+                            # limit+no-fallback path adversely selected: runaway
+                            # (strongest) releases never retraced and were skipped,
+                            # fading ones filled. Same treatment as Donchian.
+                            force_market=True,
+                        )
+                        result = await executor.execute_signal(sq_combined, atr_val)
+                        if result.success and result.position:
+                            logger.info(
+                                "SQUEEZE trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f"
+                                " (coil=%db)",
+                                result.position.side.upper(), ctx.symbol,
+                                result.position.entry_price,
+                                result.position.sl_price,
+                                result.position.tp_price,
+                                sq_sig.squeeze_bars,
+                            )
+                            web_dashboard.add_signal(ctx.symbol, "Squeeze", sq_sig.direction,
+                                                     sq_sig.reason, "exec")
+                            if telegram:
+                                await telegram.send_trade_opened(result.trade_setup, sq_combined)
+                            if ntfy:
+                                await ntfy.send_trade_opened(result.trade_setup, sq_combined)
+                        elif result.error:
+                            logger.warning("[%s] Squeeze skipped: %s", ctx.symbol, result.error)
+                            web_dashboard.add_signal(ctx.symbol, "Squeeze", sq_sig.direction,
+                                                     sq_sig.reason, f"block:{result.error}")
+                    else:
+                        logger.debug("[%s] squeeze: %s", ctx.symbol, sq_sig.reason)
+                        web_dashboard.add_signal(ctx.symbol, "Squeeze", 0, sq_sig.reason)
+                elif ctx.squeeze_strategy is not None:
+                    web_dashboard.add_signal(ctx.symbol, "Squeeze", 0, f"block:rejim={regime}")
+            except Exception as _se:
+                logger.error("[%s] Squeeze sleeve error: %s", ctx.symbol, _se)
+
+            try:
+                # ── Donchian — 4h channel swing breakout (HTF, 1-5 day holds) ─────
+                # Runs on the 4h buffer, only when a 4h candle just closed (the
+                # just-closed 1h candle is the last hour of a 4h period: UTC hour%4==3).
+                # NOT regime-gated — its own EMA200 trend filter is the regime filter
+                # (matches the validated backtest). force_market: taker fill ~close,
+                # exactly the close-confirmed entry that was validated.
+                if ctx.donchian_strategy is not None and (df.index[-1].hour % 4 == 3):
+                    df_4h = await ctx.data_mgr.get_candles(config.strategy.confirm_tf, 260)
+                    # FRESHNESS (audit fix): the 4h buffer is filled by an
+                    # INDEPENDENT 30s REST poll task with its own phase — at the
+                    # boundary there is roughly a coin-flip chance it has not yet
+                    # fetched the just-closed 4h bar. Analyzing the stale buffer
+                    # silently drops fresh breakouts (and can re-fire a 4h-old
+                    # one). The just-closed 1h bar opens at hour%4==3, so the
+                    # just-closed 4h bar's open is exactly 3h earlier. If the
+                    # buffer is behind, force one synchronous poll; if it is
+                    # STILL behind (fetch failed), skip — never analyze stale.
+                    expected_4h_open = df.index[-1] - pd.Timedelta(hours=3)
+                    if df_4h is None or not len(df_4h) or df_4h.index[-1] != expected_4h_open:
+                        try:
+                            await ctx.data_mgr._poll_once(config.strategy.confirm_tf)
+                        except Exception as e:
+                            logger.warning("[%s] donchian 4h force-poll failed: %s",
+                                           ctx.symbol, e)
+                        df_4h = await ctx.data_mgr.get_candles(config.strategy.confirm_tf, 260)
+                    dch_min = max(config.strategy.donchian_channel + 2,
+                                  config.strategy.donchian_ema_trend)
+                    if (df_4h is None or not len(df_4h)
+                            or df_4h.index[-1] != expected_4h_open):
+                        logger.warning(
+                            "[%s] donchian skipped: 4h buffer stale (have %s, want %s)",
+                            ctx.symbol,
+                            None if df_4h is None or not len(df_4h) else df_4h.index[-1],
+                            expected_4h_open)
+                    elif df_4h.index[-1] == ctx.donchian_last_4h:
+                        logger.debug("[%s] donchian: 4h bar %s already analyzed",
+                                     ctx.symbol, ctx.donchian_last_4h)
+                    elif len(df_4h) >= dch_min:
+                        ctx.donchian_last_4h = df_4h.index[-1]
+                        atr_4h = atr(df_4h["high"], df_4h["low"], df_4h["close"],
+                                     config.strategy.atr_period).iloc[-1]
+                        if not (pd.isna(atr_4h) or atr_4h <= 0):
+                            dch_sig = ctx.donchian_strategy.analyze(df_4h, float(atr_4h))
+                            if dch_sig.direction != 0:
+                                dch_combined = CombinedSignal(
+                                    direction=dch_sig.direction,
+                                    confidence=dch_sig.strength,
+                                    trend_score=0.0,
+                                    mean_rev_score=0.0,
+                                    breakout_score=dch_sig.direction * dch_sig.strength,
+                                    dominant_strategy="donchian",
+                                    reasons=[dch_sig.reason],
+                                    entry_price=dch_sig.entry_price,
+                                    sl_price=dch_sig.sl_price,
+                                    tp_price=dch_sig.tp_price,
+                                    symbol=ctx.symbol,
+                                    position_slot=f"{ctx.symbol}:donchian",
+                                    force_market=True,
+                                )
+                                result = await executor.execute_signal(dch_combined, float(atr_4h))
+                                if result.success and result.position:
+                                    logger.info(
+                                        "DONCHIAN trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                                        result.position.side.upper(), ctx.symbol,
+                                        result.position.entry_price,
+                                        result.position.sl_price,
+                                        result.position.tp_price,
+                                    )
+                                    web_dashboard.add_signal(ctx.symbol, "Donch", dch_sig.direction,
+                                                             dch_sig.reason, "exec")
+                                    if telegram:
+                                        await telegram.send_trade_opened(result.trade_setup, dch_combined)
+                                    if ntfy:
+                                        await ntfy.send_trade_opened(result.trade_setup, dch_combined)
+                                elif result.error:
+                                    logger.warning("[%s] Donchian skipped: %s", ctx.symbol, result.error)
+                                    web_dashboard.add_signal(ctx.symbol, "Donch", dch_sig.direction,
+                                                             dch_sig.reason, f"block:{result.error}")
+                            else:
+                                web_dashboard.add_signal(ctx.symbol, "Donch", 0, dch_sig.reason)
+            except Exception as _se:
+                logger.error("[%s] Donchian sleeve error: %s", ctx.symbol, _se)
+
+            try:
+                # ── Whale-flow sleeve — avg-trade-size z-spike, follow the candle ──
+                # Monitor-first: avg_size needs live trade count (not in MEXC klines),
+                # supplied by whale_monitor from watchTrades. Needs ~1 week warmup.
+                # In "monitor" mode we LOG would-be signals without trading; in
+                # "trade" mode it executes like the other sleeves. BTC-only.
+                if ctx.whale_strategy is not None and whale_monitor is not None \
+                        and whale_monitor.enabled:
+                    z = whale_monitor.bar_zscore(candle.timestamp)
+                    whale_sig = ctx.whale_strategy.analyze(
+                        candle.open, candle.close, z, atr_val
+                    )
+                    if whale_sig.direction != 0:
+                        whale_mode = getattr(config.strategy, "whale_mode", "monitor")
+                        if whale_mode != "trade":
+                            logger.info(
+                                "[%s] WHALE signal (MONITOR, no trade): %s z=%.2f "
+                                "entry=%.4f sl=%.4f tp=%.4f",
+                                ctx.symbol, "LONG" if whale_sig.direction == 1 else "SHORT",
+                                whale_sig.z, whale_sig.entry_price,
+                                whale_sig.sl_price, whale_sig.tp_price,
+                            )
+                            _log_whale_csv(ctx.symbol, whale_sig, current_price)
+                        else:
+                            whale_combined = CombinedSignal(
+                                direction=whale_sig.direction,
+                                confidence=whale_sig.strength,
+                                trend_score=0.0, mean_rev_score=0.0,
+                                breakout_score=whale_sig.direction * whale_sig.strength,
+                                dominant_strategy="whale",
+                                reasons=[whale_sig.reason],
+                                entry_price=whale_sig.entry_price,
+                                sl_price=whale_sig.sl_price,
+                                tp_price=whale_sig.tp_price,
+                                symbol=ctx.symbol,
+                                position_slot=f"{ctx.symbol}:whale",
+                            )
+                            result = await executor.execute_signal(whale_combined, atr_val)
+                            if result.success and result.position:
+                                logger.info(
+                                    "WHALE trade opened: %s %s entry=%.4f sl=%.4f tp=%.4f",
+                                    result.position.side.upper(), ctx.symbol,
+                                    result.position.entry_price,
+                                    result.position.sl_price, result.position.tp_price,
+                                )
+                                if telegram:
+                                    await telegram.send_trade_opened(result.trade_setup, whale_combined)
+                                if ntfy:
+                                    await ntfy.send_trade_opened(result.trade_setup, whale_combined)
+                            elif result.error:
+                                logger.warning("[%s] WHALE skipped: %s", ctx.symbol, result.error)
+                    elif z is not None:
+                        logger.debug("[%s] whale z=%.2f (no fire)", ctx.symbol, z)
+            except Exception as _se:
+                logger.error("[%s] Whale sleeve error: %s", ctx.symbol, _se)
 
             balance = await exchange.get_balance()
             dashboard.update_balance(balance)

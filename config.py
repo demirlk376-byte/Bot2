@@ -108,6 +108,7 @@ class RiskConfig:
     fvg_risk_pct: float = 0.02        # FVG risk per trade (% of free balance)
     ifvg_risk_pct: float = 0.02       # IFVG risk per trade (% of free balance)
     donchian_risk_pct: float = 0.02   # Donchian 4h swing risk per trade (% of free balance)
+    squeeze_risk_pct: float = 0.02    # Squeeze validated at 2% (NOT the 8% MAX_RISK_PCT default)
     # Global risk multiplier applied to EVERY per-trade risk % at load time
     # (max_risk_per_trade + all per-sleeve pcts). 1.0 = validated baseline.
     # Multi-coin backtest: 1.25 lifts monthly return ~25% with DD 26%→34%.
@@ -389,6 +390,7 @@ def load_config() -> AppConfig:
         fvg_risk_pct=_getfloat("FVG_RISK_PCT", 0.02) * risk_scale,
         ifvg_risk_pct=_getfloat("IFVG_RISK_PCT", 0.02) * risk_scale,
         donchian_risk_pct=_getfloat("DONCHIAN_RISK_PCT", 0.02) * risk_scale,
+        squeeze_risk_pct=_getfloat("SQUEEZE_RISK_PCT", 0.02) * risk_scale,
         risk_scale=risk_scale,
         day_max_hold_candles=_getint("DAY_MAX_HOLD_CANDLES", 6),
         trailing_stop_enabled=_getbool("TRAILING_STOP_ENABLED", True),

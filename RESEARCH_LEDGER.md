@@ -77,3 +77,26 @@ Bilinçli ERTELENEN (kayıtlı, mühürlü değil):
 
 > Not: Mühür "fikir aptalcaydı" demek değil, "bu veri bu çıtayı geçemedi" demek.
 > Canlıdaki 7 sleeve de aynı makineden sağ çıkanlardır — makine böyle çalışır.
+
+## 🔍 DERİN DENETİM v3 (2026-07-18, son 3 boyut + elle doğrulama)
+
+Düzeltilen (kodda doğrulandı, 7 test yeşil):
+
+| Bulgu | Dosya | Etki / Fix |
+|---|---|---|
+| **Sleeve exception izolasyonu** (kimse kimseyi bloklamasın) | main.py | Tüm strateji bloğu TEK try/except'teydi — bir sleeve exception atınca o mumdaki SONRAKİ tüm sleeve'ler atlanıyordu. Fix: 9 sleeve'in her biri kendi try/except'inde; biri düşse diğerleri koşar. |
+| Squeeze %8 risk mirası | config.py, execution.py | Squeeze else-branch'e düşüp max_risk_per_trade (canlı .env'de MAX_RISK_PCT=%8) miras alıyordu; doğrulaması %2'ydi. Cap çoğu zaman maskeliyordu ama sıkı SL'de ~4x aşırı boyut riski. Fix: squeeze_risk_pct=%2 eklendi. |
+| Startup fetch retry yok | data.py | Tek geçici fetch hatası buffer'ı BOŞ bırakıp sleeve'i sessizce öldürüyordu (squeeze 4h MTF kapalı, Donchian/FVG saatlerce ölü). Fix: 3 deneme + backoff. |
+| Paper yanlış-coin fiyatı | main.py | _current_price fallback'i bir coin'in emrini başka coin'in fiyatıyla doldurabiliyordu. Fix: candle handler her mumda per-coin taze fiyatı exchange'e push ediyor. |
+| Fiyat-yaşı guard'ı yok | data.py, main.py | Sessizce donmuş websocket ticker _current_price'ı donduruyor, mum-staleness yeşil kalıyordu → canlı BE hiç kurulmuyordu. Fix: price_age_seconds() + entry-skip guard'ına OR'landı. |
+| .env.example ORB_ENABLED=true | .env.example | ORB 2026-07-17'de canlıdan çıkarıldı; örnek dosya güncellendi. |
+
+Bilinçli ERTELENEN (8 Ağustos — backtest kararı gerekir, kör düzeltme yok):
+- FVG per-coin allowlist yok (#2): coin listesi zaten SYMBOLS ile sınırlı; FVG'nin
+  hangi coinlerde doğrulandığı netleşince allowlist eklenir.
+- Squeeze ADX-ranging gate (#3): canlı squeeze'i ranging'de blokluyor; research bunu
+  gate'ledi mi doğrulanmalı (squeeze off-by-one gibi olabilir).
+- BE@1R mum-kapanışta vs intrabar (#4): canlı BE, backtest'in intrabar 1R dokunuşundan
+  daha geç kuruluyor; tick-path'e taşımak ayrı bir değişiklik.
+- Squeeze MTF 4h yalnız 120 1h bar'dan (#8): EMA20 seed'i ~%5.5 ağırlık taşıyor,
+  midline yakınında filtreyi çevirebilir; buffer büyütme minör iyileştirme.

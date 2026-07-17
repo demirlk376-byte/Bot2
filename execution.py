@@ -508,6 +508,15 @@ class ExecutionEngine:
             elif signal.dominant_strategy == "donchian":
                 risk_override = getattr(self._config.risk, "donchian_risk_pct",
                                         getattr(self._config.risk, "day_risk_pct", 0.0))
+            elif signal.dominant_strategy == "squeeze":
+                # Squeeze validated at 2% (audit v3 #1). Without this it fell to
+                # the else-branch and inherited max_risk_per_trade (MAX_RISK_PCT,
+                # 8% in the live .env — meant for cap-bound BB/S-R). The cap
+                # usually masked it, but a tight SL could have sized it ~4x the
+                # validated risk. mean_rev/sr_breakout intentionally keep the 8%
+                # cap-bound risk; only squeeze was the unintended inheritor.
+                risk_override = getattr(self._config.risk, "squeeze_risk_pct",
+                                        self._config.risk.max_risk_per_trade)
             else:
                 risk_override = 0.0
             setup = self._risk.build_trade_setup_from_levels(
