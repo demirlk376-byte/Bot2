@@ -14,3 +14,4 @@ nw_kama_trades.csv
 funding_log.csv
 orderflow_log.csv
 whale_log.csv
+signals_log.csv

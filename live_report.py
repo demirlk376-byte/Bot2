@@ -252,6 +252,36 @@ def main():
         print(f"  {c:9s} {len(rs):>3d}  {w/len(rs):>3.0%}  {_fmt_pf(_pf(p)):>5s}  "
               f"{sum(p):>+9.2f}   {sl_s}")
 
+    # ── signal capture (sansür ölçümü) ───────────────────────────────────────
+    # Bir sleeve'in canlı WR/PF'i ancak sinyallerinin çoğunu ALABİLDİYSE onun
+    # ölçümüdür; one-per-symbol/slot blokları örneklemi sansürler. Bu tablo
+    # sleeve başına "üretilen vs alınan" oranını ve blok sebeplerini gösterir.
+    import csv as _csv
+    from pathlib import Path as _Path
+    sig_f = _Path("signals_log.csv")
+    if sig_f.exists():
+        caps = defaultdict(lambda: {"n": 0, "ok": 0, "reasons": defaultdict(int)})
+        with open(sig_f) as fh:
+            for srow in _csv.DictReader(fh):
+                st = _parse_time(srow.get("ts", ""))
+                if epoch_cut is not None and (st is None or st < epoch_cut):
+                    continue
+                c = caps[srow.get("strategy", "?")]
+                c["n"] += 1
+                if srow.get("executed") == "1":
+                    c["ok"] += 1
+                else:
+                    c["reasons"][(srow.get("reason") or "?")[:36]] += 1
+        if caps:
+            print("\n  SİNYAL YAKALAMA (sleeve: alınan/üretilen — blok sebepleri)")
+            print("  " + "-" * 70)
+            for st in sorted(caps, key=lambda k: -caps[k]["n"]):
+                c = caps[st]
+                rate = c["ok"] / c["n"] if c["n"] else 0.0
+                top = sorted(c["reasons"].items(), key=lambda kv: -kv[1])[:2]
+                top_s = "  ".join(f"[{k}]x{v}" for k, v in top)
+                print(f"  {st:9s} {c['ok']:>3d}/{c['n']:<3d} ({rate:4.0%})  {top_s}")
+
     # ── weekly PnL ────────────────────────────────────────────────────────────
     byw = defaultdict(list)
     for r in rows:

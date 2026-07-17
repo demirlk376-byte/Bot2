@@ -282,6 +282,41 @@ class ExecutionEngine:
     async def execute_signal(
         self, signal: CombinedSignal, atr: float
     ) -> ExecutionResult:
+        """Public entry — delegates to the guarded path and logs EVERY outcome
+        (taken or blocked, with the block reason) to signals_log.csv. The
+        censored-sample problem (audit 2026-07-17, user insight): one-per-symbol
+        and slot guards silently drop a sleeve's signals, so its live WR/PF no
+        longer measures the validated strategy. This log makes the censoring
+        measurable — live_report reports per-sleeve capture rates from it."""
+        result = await self._execute_signal_guarded(signal, atr)
+        try:
+            self._log_signal_outcome(signal, result)
+        except Exception as e:
+            logger.debug("signal log failed: %s", e)
+        return result
+
+    def _log_signal_outcome(self, signal: CombinedSignal, result: "ExecutionResult") -> None:
+        import csv
+        from pathlib import Path
+        f = Path("signals_log.csv")
+        header = ["ts", "symbol", "strategy", "direction", "executed", "reason"]
+        row = [
+            datetime.now(timezone.utc).isoformat(),
+            signal.symbol or self._config.exchange.symbol,
+            signal.dominant_strategy, signal.direction,
+            int(bool(result.success)),
+            "" if result.success else (result.error or "")[:80],
+        ]
+        exists = f.exists()
+        with open(f, "a", newline="") as fh:
+            w = csv.writer(fh)
+            if not exists:
+                w.writerow(header)
+            w.writerow(row)
+
+    async def _execute_signal_guarded(
+        self, signal: CombinedSignal, atr: float
+    ) -> ExecutionResult:
         if signal.direction == 0:
             return ExecutionResult(False, error="No signal")
 
