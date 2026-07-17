@@ -577,6 +577,48 @@ class ExecutionEngine:
                 logger.error("Order placement failed: %s", e)
                 return ExecutionResult(False, error=str(e))
 
+            # HALT re-check AFTER the fill (audit v2): a structure-based limit
+            # can rest up to 600s; the daily-loss kill switch may fire (and
+            # emergency-close everything) while it waits. A fill landing after
+            # the halt would open a fresh leveraged position on a halted
+            # account with nothing left to close it. Close it immediately and
+            # book the round trip.
+            if order is not None and self.is_halted():
+                logger.critical(
+                    "Entry for %s filled AFTER trading halt — closing immediately",
+                    setup.symbol)
+                pos_side_h = "long" if signal.direction == 1 else "short"
+                close_res_h = None
+                try:
+                    close_res_h = await self._exchange.close_position(
+                        setup.symbol, pos_side_h, order.quantity, "halted_entry")
+                except Exception as ce:
+                    logger.critical("Could not close post-halt entry: %s", ce)
+                if close_res_h is not None:
+                    try:
+                        now_iso = datetime.now(timezone.utc).isoformat()
+                        rec = TradeRecord(
+                            symbol=setup.symbol, side=pos_side_h,
+                            entry_price=order.filled_price, quantity=order.quantity,
+                            sl_price=setup.sl_price, tp_price=setup.tp_price,
+                            entry_time=now_iso, is_paper=order.is_paper,
+                            strategy_scores={"strategy": signal.dominant_strategy,
+                                             "note": "halted_entry"})
+                        await self._db.log_trade_open(rec)
+                        d_h = 1 if signal.direction == 1 else -1
+                        fees_h = (order.filled_price * (0.0 if order.was_maker else 0.0001)
+                                  + close_res_h.filled_price * 0.0001) * order.quantity
+                        pnl_h = (d_h * (close_res_h.filled_price - order.filled_price)
+                                 * order.quantity) - fees_h
+                        denom_h = order.filled_price * order.quantity
+                        await self._db.log_trade_close(
+                            rec.id, close_res_h.filled_price, now_iso, pnl_h,
+                            (pnl_h / denom_h * 100) if denom_h else 0.0,
+                            "halted_entry", fees_h)
+                    except Exception as le:
+                        logger.error("halted_entry trade logging failed: %s", le)
+                return ExecutionResult(False, error="Filled after halt; closed immediately")
+
             # Live mode: SL/TP rode on the entry order (params above). VERIFY it
             # actually rests on MEXC before trusting the position is protected; a
             # live position must never sit without a stop. If confirmed missing,
@@ -923,15 +965,28 @@ class ExecutionEngine:
     async def emergency_close_all(self, reason: str) -> None:
         for pos in list(self._portfolio.get_open_positions()):
             try:
-                # For live mode: cancel SL/TP orders first, then send a market
-                # close — this is the only path that actually closes on the exchange.
+                # ORDER MATTERS (audit v2): close FIRST, clean stops AFTER a
+                # confirmed close. The old sequence cancelled every stop and
+                # THEN sent the market close — one failed close (e.g. a 510
+                # rate-limit during the burst) left the position open AND
+                # naked on a halted account overnight. Now a failed close
+                # keeps its stops resting; leftover reduce-only stops after a
+                # successful close are harmless and swept by reconciliation.
+                current_price = await self._exchange.get_current_price(pos.symbol)
+                closed = await self.close_position(pos, reason, current_price)
+                if not closed:
+                    logger.critical(
+                        "EMERGENCY CLOSE FAILED for %s %s — position remains open; "
+                        "its stops were NOT cancelled and still protect it.",
+                        pos.symbol, pos.id,
+                    )
+                    continue
                 if not self._config.exchange.paper_mode and hasattr(self._exchange, "_exchange"):
                     inner = self._exchange._exchange
                     try:
                         await inner.cancel_all_orders(pos.symbol)
                     except Exception as ce:
                         logger.error("Could not cancel orders for %s: %s", pos.symbol, ce)
-                    # Also cancel MEXC plan orders (SL/TP are placed as plan orders).
                     if hasattr(inner, "contractPrivatePostPlanorderCancelAll"):
                         try:
                             mexc_sym = pos.symbol.split(":")[0].replace("/", "_")
@@ -940,14 +995,6 @@ class ExecutionEngine:
                             )
                         except Exception as ce:
                             logger.debug("Could not cancel plan orders for %s: %s", pos.symbol, ce)
-                # Use the public close_position which sends the exchange order.
-                current_price = await self._exchange.get_current_price(pos.symbol)
-                closed = await self.close_position(pos, reason, current_price)
-                if not closed:
-                    logger.critical(
-                        "EMERGENCY CLOSE FAILED for %s %s — position may remain open on exchange!",
-                        pos.symbol, pos.id,
-                    )
             except Exception as e:
                 logger.error("Emergency close failed for %s: %s", pos.id, e)
 

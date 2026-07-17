@@ -34,6 +34,20 @@ class _FakeDash:
     def log_message(self, *a, **k): pass
 
 
+class _FakeDb:
+    def __init__(self): self.sl_updates = []
+    async def update_trade_sl(self, tid, sl): self.sl_updates.append((tid, sl))
+
+
+class _FakeExecutor:
+    """main._update_trailing_stops canlı taşımayı executor._symbol_lock içinde
+    yapar (audit v2) — testte gerçek kilit semantiği yeterli."""
+    def __init__(self): self._locks = {}
+    def _symbol_lock(self, symbol):
+        import asyncio
+        return self._locks.setdefault(symbol, asyncio.Lock())
+
+
 class _FakeLive:
     """LiveExchange yerine geçer (isinstance(PaperExchange) → False).
     move_stop_loss çağrılarını kaydeder, scripted sonuç döner."""
@@ -61,6 +75,8 @@ def _setup(paper=True, stop_move=False, live_results=()):
     main.config = cfg
     main.portfolio = Portfolio(is_paper=paper)
     main.dashboard = _FakeDash()
+    main.db = _FakeDb()
+    main.executor = _FakeExecutor()
     main.exchange = PaperExchange(10_000.0, 10) if paper else _FakeLive(live_results)
     return main.exchange
 

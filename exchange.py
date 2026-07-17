@@ -87,7 +87,13 @@ class PaperExchange:
         self._prices: dict[str, float] = {}        # per-symbol prices (multi-coin)
         self._price_lock = asyncio.Lock()
         self._close_callbacks: list = []
+        self._cb_tasks: set = set()   # strong refs; see _close_paper_position
         self._rest_exchange = None  # set by DataManager for OHLCV
+
+    def _on_cb_done(self, t) -> None:
+        self._cb_tasks.discard(t)
+        if not t.cancelled() and t.exception() is not None:
+            logger.error("paper close callback failed: %s", t.exception())
 
     def set_rest_exchange(self, exchange) -> None:
         self._rest_exchange = exchange
@@ -322,7 +328,12 @@ class PaperExchange:
         )
 
         for cb in self._close_callbacks:
-            asyncio.create_task(cb(pos, exit_price, net_pnl, fees, reason))
+            # Strong ref + exception retrieval (audit v2): a bare create_task
+            # can be GC'd mid-flight and silently drop the DB close + portfolio
+            # removal — the slot then stays occupied for the whole run.
+            t = asyncio.create_task(cb(pos, exit_price, net_pnl, fees, reason))
+            self._cb_tasks.add(t)
+            t.add_done_callback(self._on_cb_done)
 
         return OrderResult(
             order_id=pos.id,
@@ -560,10 +571,19 @@ class LiveExchange:
             if not hasattr(inner, method):
                 continue
             try:
-                resp = await getattr(inner, method)({"symbol": mexc_sym})
+                # states=1: LIST endpoints return history too — yesterday's
+                # cancelled/triggered stop must not count as live protection
+                # (audit v2: a stale record made a naked position look
+                # protected and the safety close never fired).
+                resp = await getattr(inner, method)(
+                    {"symbol": mexc_sym, "states": "1"})
                 determined = True
                 data = resp.get("data") if isinstance(resp, dict) else resp
-                if data:
+                if isinstance(data, dict):
+                    data = data.get("resultList") or data.get("list") or []
+                live = [o for o in (data or [])
+                        if str(o.get("state", "1")) in ("1", "active", "")]
+                if live:
                     return True
             except Exception as e:
                 logger.debug("has_sltp_orders %s failed: %s", method, e)
@@ -629,12 +649,19 @@ class LiveExchange:
                        "contractPrivateGetStoporderListStopOrders"):
             if hasattr(inner, method):
                 try:
-                    resp = await getattr(inner, method)({"symbol": mexc_sym})
+                    resp = await getattr(inner, method)(
+                        {"symbol": mexc_sym, "states": "1"})
                     data = resp.get("data") if isinstance(resp, dict) else resp
-                    if data:
-                        n = len(data) if isinstance(data, list) else 1
-                        logger.info("protection check %s: %s → %d stop order(s)",
-                                    symbol, method, n)
+                    if isinstance(data, dict):
+                        data = data.get("resultList") or data.get("list") or []
+                    # Only state=1 (untriggered/active) rows are protection —
+                    # a FINISHED stop from a previous trade must not make a
+                    # restored naked position look covered (audit v2).
+                    live = [o for o in (data or [])
+                            if str(o.get("state", "1")) in ("1", "active", "")]
+                    if live:
+                        logger.info("protection check %s: %s → %d LIVE stop order(s)",
+                                    symbol, method, len(live))
                         return True
                 except Exception:
                     continue
@@ -777,40 +804,85 @@ class LiveExchange:
             if status == "canceled":
                 break
 
-        # Unfilled — cancel and decide fallback. We only fall back to a MARKET
-        # order if the cancel is CONFIRMED (order definitely did not fill).
-        # Otherwise a market fallback on top of a silently-filled limit would
-        # DOUBLE the position (and the extra leg has no SL/TP).
-        cancelled = False
-        try:
-            await self._exchange.cancel_order(order_id, symbol)
-            cancelled = True
-        except Exception as e:
-            logger.debug("cancel_order failed (may be filled): %s", e)
-            # Re-check: it might have filled between poll and cancel.
+        # Timeout — cancel and decide what happened. Three hazards guarded here
+        # (audit v2):
+        #   1. PARTIAL fill: cancelling and returning None would leave the
+        #      filled fraction riding on MEXC with no portfolio/DB row, no
+        #      stops, no max-hold — invisible to every safety net. And a market
+        #      fallback for the FULL size on top would double the exposure.
+        #      → report the actual filled base qty so the caller books and
+        #        protects a right-sized position; never market-fallback on top.
+        #   2. Cancel failing transiently (rate-limit burst): booking 'skipped'
+        #      while a live GTC limit still rests could open an untracked
+        #      full-size position hours later. → retry the cancel 3x.
+        #   3. Fill racing the cancel: only fall back to MARKET when the cancel
+        #      is CONFIRMED and fill is confirmed ZERO.
+        def _filled_contracts(fo) -> float:
             try:
-                fetched = await self._exchange.fetch_order(order_id, symbol)
-                status = fetched.get("status")
-                if status == "closed":
-                    fp = float(fetched.get("average") or limit_price)
-                    return OrderResult(order_id, symbol, side, fp,
-                                       self._to_base(symbol, contracts),
-                                       int(time.time() * 1000), False,
-                                       was_maker=True)
-                if status == "canceled":
-                    cancelled = True
-            except Exception:
-                # Could neither confirm cancel NOR confirm fill. Firing a market
-                # order now risks a double entry, so skip rather than gamble.
-                logger.warning(
-                    "Limit %s state unknown after cancel failure — skipping market "
-                    "fallback to avoid double entry", order_id)
-                return None
+                return float(fo.get("filled") or 0.0)
+            except (TypeError, ValueError):
+                return 0.0
 
-        if cancelled and fallback_market:
+        cancelled = False
+        fetched = None
+        for attempt in range(3):
+            try:
+                await self._exchange.cancel_order(order_id, symbol)
+                cancelled = True
+                break
+            except Exception as e:
+                logger.debug("cancel_order attempt %d failed (may be filled): %s",
+                             attempt + 1, e)
+                try:
+                    fetched = await self._exchange.fetch_order(order_id, symbol)
+                    st = fetched.get("status")
+                    if st in ("closed", "canceled"):
+                        cancelled = st == "canceled"
+                        break
+                except Exception:
+                    pass
+                await asyncio.sleep(1.0 * (attempt + 1))
+
+        # Authoritative post-cancel read: how much ACTUALLY filled?
+        try:
+            fetched = await self._exchange.fetch_order(order_id, symbol)
+        except Exception:
+            fetched = fetched or {}
+        status = (fetched or {}).get("status")
+        filled = _filled_contracts(fetched or {})
+
+        if status == "closed" or (filled > 0 and filled >= contracts * 0.999):
+            fp = float((fetched or {}).get("average") or limit_price)
+            logger.info("Maker limit filled during cancel window: %s @ %.6f", symbol, fp)
+            return OrderResult(order_id, symbol, side, fp,
+                               self._to_base(symbol, contracts),
+                               int(time.time() * 1000), False, was_maker=True)
+        if filled > 0:
+            # Partial fill: the filled fraction is a REAL position. Book exactly
+            # that size (caller sizes SL/TP to it); never fire a market fallback.
+            fp = float((fetched or {}).get("average") or limit_price)
+            base_filled = self._to_base(symbol, filled)
+            logger.warning(
+                "Maker limit PARTIAL fill: %s %.8f of %.8f contracts @ %.6f — "
+                "booking the filled fraction, no market fallback",
+                symbol, filled, contracts, fp)
+            return OrderResult(order_id, symbol, side, fp, base_filled,
+                               int(time.time() * 1000), False, was_maker=True)
+
+        if not cancelled:
+            # Zero fill but the order may STILL be resting (cancel unconfirmed).
+            # A stale GTC limit could fill hours later into an untracked
+            # position — scream loudly; the startup order sweep also clears it.
+            logger.critical(
+                "Limit %s on %s: cancel UNCONFIRMED after retries and fill=0 — "
+                "order may still rest on MEXC. Skipping trade; check exchange.",
+                order_id, symbol)
+            return None
+
+        if fallback_market:
             logger.info("Limit unfilled after %.0fs; falling back to market", timeout)
             return await self.place_market_order(symbol, side, amount, params)
-        logger.info("Limit unfilled/uncancelled after %.0fs; skipping trade", timeout)
+        logger.info("Limit unfilled after %.0fs; skipping trade", timeout)
         return None
 
     async def close_position(

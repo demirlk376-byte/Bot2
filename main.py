@@ -1070,6 +1070,11 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
                     pos.breakeven_moved = True
                 if hasattr(exchange, "update_position_sl"):
                     exchange.update_position_sl(pos.id, new_sl)
+                # Persist so a restart re-arms at the MOVED stop (audit v2).
+                try:
+                    await db.update_trade_sl(pos.id, new_sl)
+                except Exception as pe:
+                    logger.debug("BE persist failed for %s: %s", pos.id[:8], pe)
             elif not live_moves_ok:
                 # Live with stop-move disabled: keep the original exchange-side
                 # SL/TP (still protective, matches the fixed-stop backtest) and
@@ -1082,8 +1087,14 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
             else:
                 pos_side = "long" if pos.direction == 1 else "short"
                 try:
-                    moved = await exchange.move_stop_loss(
-                        pos.symbol, pos_side, new_sl, pos.quantity)
+                    # Per-symbol lock (audit v2): without it the BE move can
+                    # interleave with reconciliation booking an external close
+                    # on the same symbol — the fallback path would then place a
+                    # stray reduce-only trigger for a position that no longer
+                    # exists. The executor's lock serializes all of these.
+                    async with executor._symbol_lock(pos.symbol):
+                        moved = await exchange.move_stop_loss(
+                            pos.symbol, pos_side, new_sl, pos.quantity)
                 except Exception as e:
                     logger.warning("[%s] move_stop_loss error: %s", symbol, e)
                     moved = False
@@ -1094,6 +1105,12 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
                 pos.sl_price = new_sl
                 if be_now:
                     pos.breakeven_moved = True
+                # Persist so a restart's restore+resync re-arms the exchange
+                # stop at the BE price instead of the stale entry SL (audit v2).
+                try:
+                    await db.update_trade_sl(pos.id, new_sl)
+                except Exception as pe:
+                    logger.debug("BE persist failed for %s: %s", pos.id[:8], pe)
             action = "BE" if be_now and new_sl == pos.entry_price else "Trail"
             dashboard.log_message(
                 f"[{symbol}] SL {action}: {old_sl:,.2f} → {new_sl:,.2f}"

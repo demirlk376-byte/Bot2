@@ -209,6 +209,17 @@ class Database:
             )
             await self._db.commit()
 
+    async def update_trade_sl(self, trade_id: str, new_sl: float) -> None:
+        """Persist a stop move (BE) on the OPEN trade row so a restart's
+        restore_state + resync re-arms the exchange stop at the MOVED price
+        instead of regressing it to the stale entry-time SL (audit v2)."""
+        async with self._wlock:
+            await self._db.execute(
+                "UPDATE trades SET sl_price=? WHERE id=? AND exit_time IS NULL",
+                (new_sl, trade_id),
+            )
+            await self._db.commit()
+
     async def log_trade_close(
         self,
         trade_id: str,
