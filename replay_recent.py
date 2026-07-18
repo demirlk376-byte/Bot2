@@ -50,6 +50,9 @@ from strategies.orb import OrbStrategy
 DAYS = int([a for a in sys.argv[1:] if a.isdigit()][0]) if any(a.isdigit() for a in sys.argv[1:]) else 21
 WITH_ORB = "--orb" in sys.argv
 LANES = "--lanes" in sys.argv
+# --only squeeze,donchian : sadece verilen sleeve'leri aktif et (kazanan-only test)
+_only = next((a for a in sys.argv if a.startswith("--only=")), None)
+ONLY = set(_only.split("=",1)[1].split(",")) if _only else None
 # Uzun pencerede (>=180g) TÜM veriyi trade et (yıl-yıl edge testi); kısa
 # pencerede canlı temiz-epoch'a kilitle (son-dönem kıyası).
 EPOCH = pd.Timestamp("2000-01-01", tz="UTC") if DAYS >= 180 else pd.Timestamp("2026-06-29", tz="UTC")
@@ -226,6 +229,8 @@ class Sim:
 
 def mk(cfg):
     s = cfg.strategy
+    def gate(name, obj):
+        return obj if (ONLY is None or name in ONLY) else None
     d = dict(
         mean_rev=MeanReversionStrategy(s),
         fvg=FvgStrategy(min_gap_atr=s.fvg_min_gap_atr, rr=s.fvg_rr) if s.fvg_enabled else None,
@@ -237,6 +242,8 @@ def mk(cfg):
         sr_breakout=SrBreakoutStrategy() if s.sr_breakout_enabled else None,
         orb=OrbStrategy() if WITH_ORB else None,
     )
+    if ONLY is not None:
+        d = {k: (v if k in ONLY else None) for k, v in d.items()}
     return d
 
 
