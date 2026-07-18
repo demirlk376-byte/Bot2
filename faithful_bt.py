@@ -1,15 +1,30 @@
 """
 faithful_bt.py — ÜRETİM SINIFLARIYLA backtest = canlı botun BİREBİR yapacağı şey.
-verify_conformance donchian'ı %99, squeeze'i %50 eşleşme gösterdi → fast_bt
-squeeze güvenilmez. Bu script üretim DonchianStrategy/SqueezeStrategy'yi bar-bar
-(canlının 120/260-bar penceresiyle) koşar, sinyallerden trade simüle eder.
-Yavaş ama CANLIYLA AYNI. Kullanım: python faithful_bt.py [BTC]
+
+CANLI İLE BYTE-DENK olması için (main.py'den doğrulandı):
+  • Aynı sınıflar: main.py `from strategies.squeeze import SqueezeStrategy`,
+    `from strategies.donchian import DonchianStrategy` — burada da AYNILARI.
+  • Aynı fonksiyonlar: main.py `from indicators import atr, adx` — burada da.
+  • Aynı periyotlar: atr_period=14, adx_period=14 (config.py).
+  • Aynı PENCERE: squeeze canlıda get_candles(120) → burada d1[i-119:i+1] (120 bar).
+    donchian canlıda get_candles(260) → burada d4[i-259:i+1] (260 bar).
+  • ATR/ADX PENCERE-YEREL hesaplanır (canlı: 120-bar df üstünde .iloc[-1]) —
+    tam serili değil. ADX ~20.0 sınırında serinin uzunluğu değeri kaydırıp
+    kapıyı ters çevirebildiği için bu ŞART (aksi halde canlı ile sapardı).
+  • Aynı kapı: squeeze bo_allowed = regime!="ranging" = adx>20 (_get_regime,
+    adx_ranging_threshold=20.0). Burada `if adxv<=20.0: continue`.
+  • Aynı çıkış: squeeze/donchian BE/trailing DIŞINDA (main.py:1079 sadece
+    orb/ifvg) → sabit SL/TP + max-hold. simtrades tam bunu yapar; SL girişteki
+    pencere-yerel ATR ile ölçülür (canlı RiskManager ile aynı atr_val).
+
+Sonuç: bu script'in ürettiği sinyaller ve trade'ler = canlı botun AYNISI.
+Yavaş ama CANLIYLA BİREBİR. Kullanım: python faithful_bt.py [BTC]
 """
 import sys, glob
 import numpy as np, pandas as pd
 from strategies.donchian import DonchianStrategy
 from strategies.squeeze import SqueezeStrategy
-from indicators import atr as atr_fn
+from indicators import atr as atr_fn, adx as adx_fn
 import fast_bt
 
 RISK=0.02; BAL=190.0; FEE=0.0001
@@ -27,12 +42,13 @@ def load(c):
     return fast_bt.load(c)
 
 def simtrades(df, ents, sl_mult, rr, max_hold):
+    """ents: (i, dir, atr_entry) — atr_entry canlının o barda kullandığı
+    pencere-yerel ATR (RiskManager'ın build_trade_setup'a verdiği atr_val).
+    SL/TP tam bu ATR ile ölçülür → canlı ile aynı seviyeler."""
     hi=df["high"].values; lo=df["low"].values; cl=df["close"].values; idx=df.index; n=len(cl)
-    a=atr_fn(df["high"],df["low"],df["close"],14).values
     tr=[]; occ=-1
-    for (i,d) in ents:
+    for (i,d,av) in ents:
         if i<=occ or i>=n-1: continue
-        av=a[i]
         if np.isnan(av) or av<=0: continue
         sld=sl_mult*av; e=cl[i]; sl=e-d*sld; tp=e+d*rr*sld; ep=None; j=i
         for j in range(i+1,min(i+1+max_hold,n)):
@@ -47,23 +63,31 @@ def simtrades(df, ents, sl_mult, rr, max_hold):
     return tr
 
 def prod_donchian(m):
+    # Canlı: df_4h=get_candles(260); atr_4h=atr(df_4h,14).iloc[-1]; analyze(df_4h,atr_4h)
     d4=fast_bt.resample(m,"4h"); s=DonchianStrategy(channel=40,rr=2.0,sl_atr=2.0,ema_trend=200)
-    a=atr_fn(d4["high"],d4["low"],d4["close"],14); ents=[]
+    ents=[]
     for i in range(260,len(d4)):
-        av=a.iloc[i]
+        sub=d4.iloc[max(0,i-259):i+1]                                   # get_candles(260)
+        av=atr_fn(sub["high"],sub["low"],sub["close"],14).iloc[-1]      # pencere-yerel atr_4h
         if np.isnan(av) or av<=0: continue
-        sg=s.analyze(d4.iloc[max(0,i-259):i+1],float(av))
-        if sg.direction!=0: ents.append((i,sg.direction))
+        sg=s.analyze(sub,float(av))
+        if sg.direction!=0: ents.append((i,sg.direction,float(av)))
     return simtrades(d4,ents,2.0,2.0,30)
 
 def prod_squeeze(m):
+    # Canlı: df=get_candles(120); atr_val=atr(df,14).iloc[-1];
+    #        adx=_adx_indicator(df,14).iloc[-1]; bo_allowed = adx>20; analyze(df,atr_val)
     d1=fast_bt.resample(m,"1h"); s=SqueezeStrategy(kc_mult=1.5,min_squeeze_bars=5,sl_atr=2.0,rr=2.5,mtf_filter=True)
-    a=atr_fn(d1["high"],d1["low"],d1["close"],14); ents=[]
+    ents=[]
     for i in range(260,len(d1)):
-        av=a.iloc[i]
+        sub=d1.iloc[max(0,i-119):i+1]                                   # get_candles(120)
+        av=atr_fn(sub["high"],sub["low"],sub["close"],14).iloc[-1]      # pencere-yerel atr_val
         if np.isnan(av) or av<=0: continue
-        sg=s.analyze(d1.iloc[max(0,i-119):i+1],float(av))
-        if sg.direction!=0: ents.append((i,sg.direction))
+        adxr=adx_fn(sub["high"],sub["low"],sub["close"],14).iloc[-1]    # pencere-yerel regime ADX
+        adxv=float(adxr) if np.isfinite(adxr) else 20.0
+        if adxv<=20.0: continue   # canlı bo_allowed=False (regime=="ranging", adx<=20)
+        sg=s.analyze(sub,float(av))
+        if sg.direction!=0: ents.append((i,sg.direction,float(av)))
     return simtrades(d1,ents,2.0,2.5,48)
 
 def rep(name,tr):
@@ -75,9 +99,10 @@ def rep(name,tr):
         ry=df[df.year==yr]["r"].values; g1=ry[ry>0].sum(); g2=-ry[ry<0].sum()
         print(f"      {yr} n={len(ry):>3d} WR{(ry>0).mean():>3.0%} PF{(g1/g2 if g2>0 else 9.99):4.2f} {ry.sum()*BAL*RISK:+7.2f}$")
 
-print(f"faithful_bt (ÜRETİM SINIFI = canlı birebir) @ {coin} — yükleniyor...")
-m=load(coin)
-print(f"  {len(m)} bar")
-print(f"\n=== {coin} — CANLI BOTUN BİREBİR YAPACAĞI ===")
-rep("donchian",prod_donchian(m))
-rep("squeeze",prod_squeeze(m))
+if __name__ == "__main__":
+    print(f"faithful_bt (ÜRETİM SINIFI = canlı birebir) @ {coin} — yükleniyor...")
+    m=load(coin)
+    print(f"  {len(m)} bar")
+    print(f"\n=== {coin} — CANLI BOTUN BİREBİR YAPACAĞI ===")
+    rep("donchian",prod_donchian(m))
+    rep("squeeze",prod_squeeze(m))

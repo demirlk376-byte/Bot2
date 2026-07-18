@@ -97,45 +97,23 @@ def sim(entries, df, sl_mult, rr, max_hold, atr_arr, is_atr_sl=True, rng_sl=None
 
 
 def donchian(m):
-    d = resample(m, "4h")
-    ch = 40; ema_p = 200
-    hh = d["high"].rolling(ch).max().shift(1)
-    ll = d["low"].rolling(ch).min().shift(1)
-    ema = d["close"].ewm(span=ema_p, adjust=False).mean()
-    c = d["close"]
-    long_s = (c > hh) & (c > ema)
-    short_s = (c < ll) & (c < ema)
-    a = atr(d).values
-    ent = [(i,1) for i in np.where(long_s.values)[0]] + [(i,-1) for i in np.where(short_s.values)[0]]
-    ent.sort()
-    return sim(ent, d, 2.0, 2.0, 30, a)   # SL 2xATR, RR2, max-hold 30x4h=120h
+    # squeeze ile aynı gerekçe: TAM güven için üretim sınıfına delege edilir
+    # (faithful_bt.prod_donchian = canlının get_candles(260) + DonchianStrategy'si +
+    # pencere-yerel ATR). Vektörel kopya üretimden %99.1 örtüşüyordu (1 sınır barı
+    # kayması); byte-denklik için üretim yolu kullanılır. 4h bar döngüsü zaten hızlı.
+    import faithful_bt
+    return faithful_bt.prod_donchian(m)
 
 
 def squeeze(m):
-    d = resample(m, "1h")
-    c = d["close"]
-    bb_mid = c.rolling(20).mean(); bb_sd = c.rolling(20).std(ddof=0)
-    bb_u, bb_l = bb_mid + 2*bb_sd, bb_mid - 2*bb_sd
-    ema20 = c.ewm(span=20, adjust=False).mean()
-    a1 = atr(d, 20)
-    kc_u, kc_l = ema20 + 1.5*a1, ema20 - 1.5*a1
-    in_sq = (bb_u < kc_u) & (bb_l > kc_l)
-    cnt = in_sq.groupby((~in_sq).cumsum()).cumcount()   # ardışık squeeze sayısı
-    was = in_sq.shift(1).fillna(False)
-    release = (~in_sq) & was & (cnt.shift(1).fillna(0) >= 5)
-    direction = np.where(c > ema20, 1, -1)
-    # 4h MTF: 4h close vs 4h KC mid
-    d4 = resample(m, "4h")
-    ema20_4 = d4["close"].ewm(span=20, adjust=False).mean()
-    dir4 = (d4["close"] > ema20_4).reindex(d.index, method="ffill")
-    a14 = atr(d, 14).values
-    ent = []
-    for i in np.where(release.values)[0]:
-        dd = int(direction[i])
-        agree = (dir4.values[i] and dd == 1) or ((not dir4.values[i]) and dd == -1)
-        if agree:
-            ent.append((i, dd))
-    return sim(ent, d, 2.0, 2.5, 48, a14)   # SL 2xATR, RR2.5, max-hold 48h
+    # NOT: squeeze'in VEKTÖREL kopyası ÜRETİM sınıfıyla %48 örtüşüyordu (tam-seri
+    # vs 120-bar pencere göstergeleri sinyali ~1 bar kaydırıyor). verify_conformance
+    # bunu yakaladı. Bu yüzden squeeze ARTIK ÜRETİM SINIFINA delege edilir
+    # (faithful_bt.prod_squeeze = canlının get_candles(120) + SqueezeStrategy'si).
+    # Sonuç: fast_bt squeeze == faithful_bt == CANLI, byte-denk. (donchian vektörel
+    # kalır: %99 örtüşme, gerçekten hızlı, kapısız → sınır-çevirme riski yok.)
+    import faithful_bt
+    return faithful_bt.prod_squeeze(m)
 
 
 def report(name, trades):

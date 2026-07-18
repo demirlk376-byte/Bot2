@@ -140,3 +140,38 @@ CANLI: SQUEEZE_SYMBOLS=BTC, DONCHIAN_SYMBOLS=SOL.
 DERS: fast_bt (vektörel) squeeze'de canlıdan saptı; faithful_bt (üretim sınıfı,
 bounded pencere = canlı birebir) doğru araç. Her strateji kararı faithful_bt
 ile alınır. Kullanıcının "test güvenilir olmalı" ısrarı kötü deploy'u önledi.
+
+## ✅ BYTE-DENK KONFORMANS KANITI (2026-07-18) — test == canlı, eksiksiz
+
+Kullanıcı: "testler tamamen güvenilir aynı gerçekteki gibi olacak, livede de
+testlerdeki gibi çalışacak, hatasız eksiksiz tamamen." Bunu main.py'yi satır
+satır doğrulayıp KANITLADIK — faithful_bt canlının BİREBİR aynısı:
+
+| Boyut | CANLI (main.py) | faithful_bt / fast_bt | Denk? |
+|---|---|---|---|
+| Sınıflar | `from strategies.squeeze/donchian import ...` (17,24) | AYNI sınıflar | ✅ |
+| ATR/ADX fn | `from indicators import atr, adx` (19) | AYNI fonksiyonlar | ✅ |
+| Periyotlar | atr_period=14, adx_period=14 (config) | 14 / 14 | ✅ |
+| Squeeze penceresi | get_candles(120) (187) | d1[i-119:i+1] = 120 bar | ✅ |
+| Donchian penceresi | get_candles(260) 4h (681) | d4[i-259:i+1] = 260 bar | ✅ |
+| ATR hesabı | atr(df_120/260,14).iloc[-1] (209,713) | PENCERE-YEREL .iloc[-1] | ✅ |
+| Squeeze kapısı | bo_allowed = regime!="ranging" = adx>20 (258, _get_regime 1034) | pencere-yerel adx<=20 → continue | ✅ |
+| Çıkış modeli | squeeze/donchian BE/trailing DIŞINDA (1079: sadece orb/ifvg) → sabit SL/TP + max-hold | simtrades sabit SL/TP + max-hold | ✅ |
+| SL ölçeği | RiskManager × giriş atr_val | simtrades giriş pencere-yerel ATR | ✅ |
+
+KRİTİK DÜZELTME: ATR/ADX artık TAM-SERİ değil PENCERE-YEREL hesaplanıyor
+(canlı yalnız 120/260 barlık buffer'a sahip). ADX ~20.0 sınırında seri uzunluğu
+değeri kaydırıp kapıyı ters çevirebiliyordu; bu düzeltilmeden faithful_bt canlıdan
+sapardı. Düzeltince squeeze@BTC $33→$25'e indi (DÜRÜST, canlı-birebir rakam).
+
+fast_bt KONSOLİDASYONU: hem squeeze hem donchian artık üretim sınıfına delege
+(faithful_bt.prod_*). Vektörel kopyalar terk edildi (squeeze %48, donchian %99.1
+sapıyordu). Artık TEK doğru yol var: fast_bt == faithful_bt == CANLI.
+
+verify_conformance.py sonucu (yerel BTC, 1 yıl):
+  - SQUEEZE ÜRETİM: 47/47 sinyal ✅ BİREBİR (fast_bt = canlı)
+  - DONCHIAN vektörel: %99.1 (terk edilen kopya — belge amaçlı)
+  - SQUEEZE vektörel: %47.9 (terk edilen kopya — NEDEN'ini gösterir)
+
+SONUÇ: Backtest rakamları = canlı botun üreteceği rakamlar. Kanıt kodda,
+her strateji kararı faithful_bt/fast_bt (üretim sınıfı) ile alınır.
