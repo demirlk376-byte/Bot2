@@ -13,6 +13,8 @@ Kullanım:
 """
 from __future__ import annotations
 import sys, glob
+from datetime import datetime, timezone
+def datetimeutc(): return datetime.now(timezone.utc).timestamp()
 import numpy as np, pandas as pd
 
 RISK = 0.02          # sleeve başına per-trade risk (R ölçeği)
@@ -33,17 +35,19 @@ def load(coin: str) -> pd.DataFrame:
         return m.drop(columns=["ts"])
     import ccxt
     ex = ccxt.mexc()
-    since = int((pd.Timestamp.utcnow().timestamp() - 1200*86400)*1000)
+    since = int((datetimeutc() - 1200*86400)*1000)
     rows = []
     while True:
-        b = ex.fetch_ohlcv(f"{coin}/USDT", "1m", since=since, limit=1000)
+        b = ex.fetch_ohlcv(f"{coin}/USDT", "1h", since=since, limit=500)
         if not b: break
         rows += b
-        if len(b) < 1000: break
+        if len(b) < 500: break
         since = b[-1][0] + 1
+    if not rows:
+        raise SystemExit(f"{coin}: MEXC 1h verisi çekilemedi")
     m = pd.DataFrame(rows, columns=["ts","open","high","low","close","volume"])
     m.index = pd.to_datetime(m["ts"], unit="ms", utc=True)
-    return m.drop(columns=["ts"]).astype(float)
+    return m.drop(columns=["ts"]).astype(float).iloc[:-1]   # 1h; sleeve'ler 4h'a resample eder
 
 
 def resample(m, tf):
