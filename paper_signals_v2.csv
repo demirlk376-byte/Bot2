@@ -84,3 +84,4 @@ ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
 2026-07-18T18:00:00+00:00,BTC,SHORT,64477.3,187.9502,25,2.3e-05,False,çelişki: F&G=25 (korku ortamında short riskli)
 2026-07-18T19:00:00+00:00,XRP,SHORT,1.0928,0.0047,25,-2.5e-05,False,çelişki: F&G=25 (korku ortamında short riskli)
 2026-07-18T20:00:00+00:00,BTC,SHORT,64665.5,187.2673,25,2e-06,False,çelişki: F&G=25 (korku ortamında short riskli)
+2026-07-18T21:00:00+00:00,BTC,SHORT,64697.6,190.3625,25,1e-06,False,çelişki: F&G=25 (korku ortamında short riskli)
