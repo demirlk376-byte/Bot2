@@ -47,7 +47,9 @@ from strategies.orb import OrbStrategy
 DAYS = int([a for a in sys.argv[1:] if a.isdigit()][0]) if any(a.isdigit() for a in sys.argv[1:]) else 21
 WITH_ORB = "--orb" in sys.argv
 LANES = "--lanes" in sys.argv
-EPOCH = pd.Timestamp("2026-06-29", tz="UTC")
+# Uzun pencerede (>=180g) TÜM veriyi trade et (yıl-yıl edge testi); kısa
+# pencerede canlı temiz-epoch'a kilitle (son-dönem kıyası).
+EPOCH = pd.Timestamp("2000-01-01", tz="UTC") if DAYS >= 180 else pd.Timestamp("2026-06-29", tz="UTC")
 FEE_TAKER = 0.0001
 FILL_WINDOW = 2          # limit-retest sleeve'leri kaç bar içinde dolmalı
 MARKET = {"mean_rev", "squeeze", "sr_breakout", "donchian"}   # kapanışta dolar
@@ -191,7 +193,7 @@ class Sim:
             self.equity += pnl
             r0 = p["risk0"] if p["risk0"] > 0 else 1.0
             self.trades.append(dict(symbol=p["symbol"], sleeve=p["sleeve"], pnl=pnl,
-                                    r=d * (ep - p["entry"]) / r0))
+                                    year=ts.year, r=d * (ep - p["entry"]) / r0))
             del self.positions[slot]
 
 
@@ -298,8 +300,10 @@ def main():
         print("  Kapanan trade yok.")
         return
     by = defaultdict(list)
+    byyear = defaultdict(list)
     for t in tr:
         by[t["sleeve"]].append(t["pnl"])
+        byyear[t.get("year", "?")].append(t["pnl"])
     tot = sum(t["pnl"] for t in tr)
     wr = sum(1 for t in tr if t["pnl"] > 0) / len(tr)
     gp = sum(t["pnl"] for t in tr if t["pnl"] > 0); gl = -sum(t["pnl"] for t in tr if t["pnl"] < 0)
@@ -314,6 +318,13 @@ def main():
         blk = sim.blocked.get(s, 0)
         print(f"  {s:12s} {len(p):>3d}t WR{w/len(p):>3.0%} PF{spf:4.2f} ${sum(p):+7.2f}"
               f"   (çakışma-blok: {blk})")
+    print("  " + "-" * 64)
+    print("  YIL-YIL (botun sıra sıra kendini test etmesi):")
+    for yr in sorted(byyear):
+        p = byyear[yr]; w = sum(1 for x in p if x > 0)
+        ygp = sum(x for x in p if x > 0); ygl = -sum(x for x in p if x < 0)
+        ypf = ygp / ygl if ygl > 0 else 9.99
+        print(f"    {yr}  {len(p):>3d}t WR{w/len(p):>3.0%} PF{ypf:4.2f} ${sum(p):+8.2f}")
     print("  " + "-" * 64)
     bycoin = defaultdict(list)
     for t in tr:
