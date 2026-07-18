@@ -175,3 +175,44 @@ verify_conformance.py sonucu (yerel BTC, 1 yıl):
 
 SONUÇ: Backtest rakamları = canlı botun üreteceği rakamlar. Kanıt kodda,
 her strateji kararı faithful_bt/fast_bt (üretim sınıfı) ile alınır.
+
+## 🔴 KRİTİK VERİ HATASI + DÜZELTME (2026-07-18) — spot değil MEXC VADELİ
+
+Kullanıcı sezgisi yakaladı: "belki sol squeeze'de hata yaptık, testte ya da live'de."
+DOĞRUYDU. fast_bt.load spot/Binance çekiyordu; canlı MEXC VADELİ (perp) işlem görüyor:
+  - non-BTC: `ccxt.mexc()` + `COIN/USDT` = MEXC SPOT (canlı = COIN/USDT:USDT VADELİ)
+  - BTC: yerel `BTCUSDT-1m.csv` = BINANCE (canlı = MEXC vadeli)
+Spot/Binance ≠ MEXC perp (funding/basis, farklı wick'ler). Sinyal MANTIĞI byte-birebir
+ama YANLIŞ MUMLARLA besleniyordu. Düzeltme: load() artık MEXC VADELİ (defaultType=swap,
+COIN/USDT:USDT) = canlının işlem gördüğü enstrümanın AYNISI.
+
+En çarpıcı: squeeze@SOL 2026 SPOT'ta −$21.59 (PF0.57 "çürük") görünüyordu →
+VADELİ'de +$51.81 (PF2.12, EN İYİ yıl). Çürüme YOKTU, spot artefaktıydı. Yanlış
+veri neredeyse iyi bir sleeve'i kestiriyordu.
+
+DÜZELTİLMİŞ RAKAMLAR (MEXC VADELİ, canlı-birebir, 3.3 yıl, faithful_bt):
+| Sleeve @ coin | Toplam | 2023 | 2024 | 2025 | 2026 |
+|---|---|---|---|---|---|
+| donchian @ SOL | +$135 | +70 | +4 | +50 | +10 |  (4/4 yıl +)
+| squeeze  @ SOL | +$103 | +33 | +10 | +8 | +52 |  (4/4 yıl +)
+| squeeze  @ BTC | +$84 | +15 | +52 | +18 | −2 |  (2026 SÖNÜK)
+| donchian @ BTC | +$60 | +2 | +33 | +6 | +19 |  (4/4 yıl +)
+
+GÖZLEM: donchian = istikrarlı (her iki coinde 4/4 yıl +). squeeze = streaky,
+"hangi coin" oynak (2024 BTC yıldız, 2026 SOL yıldız / BTC sönük).
+
+## ✅ NİHAİ CANLI CONFIG (2026-07-18) — güvenilirlik önceliği
+
+Karar: **donchian @ BTC + donchian @ SOL** (squeeze KAPALI). Gerekçe: donchian tek
+eksi-yılı olmayan sleeve (ikisi de 4/4 +); sönen squeeze@BTC yerine aynı coinde
+istikrarlı donchian. squeeze'in "hangi coin" kumarı oynanmaz. Toplam ~$195, her yıl +.
+Farklı coinler → sıfır çakışma. Tek strateji riski kabul edildi (donchian robust trend
+edge, iki coinde kısmi decorrelation).
+
+CANLI .env (/opt/bot2, btc-bot.service): SYMBOLS=BTC,SOL; DONCHIAN_SYMBOLS=BTC,SOL;
+SQUEEZE_ENABLED=false; MAX_POSITIONS=2; RISK_SCALE=1.0 (=%2/işlem, backtest ile birebir);
+FIXED_MARGIN_USDT=0 (risk-bazlı boyutlama aktif). Servis restart edildi, active.
+
+DERS: sinyal mantığı byte-birebir olsa bile YANLIŞ VERİ KAYNAĞI testi yalancı yapar.
+Her backtest canlının işlem gördüğü borsa+enstrümandan (MEXC vadeli) beslenmeli.
+Kullanıcının "testte hata olabilir" ısrarı ikinci kez kötü kararı önledi.
