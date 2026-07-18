@@ -100,3 +100,22 @@ Bilinçli ERTELENEN (8 Ağustos — backtest kararı gerekir, kör düzeltme yok
   daha geç kuruluyor; tick-path'e taşımak ayrı bir değişiklik.
 - Squeeze MTF 4h yalnız 120 1h bar'dan (#8): EMA20 seed'i ~%5.5 ağırlık taşıyor,
   midline yakınında filtreyi çevirebilir; buffer büyütme minör iyileştirme.
+
+## ✅ NİHAİ MİNİMAL CONFIG (2026-07-18, fast_bt 3-yıl doğrulaması)
+
+7-sleeve config 3-yıl look-ahead'siz backtest'te net kaybeden (PF 0.98, 4 yılın
+1'i +). Çöp atıldı, sadece 3-yıl 4/4-yıl doğrulanmış kazananlar kaldı. fast_bt.py
+(vektörel, saniyeler) 3 yıl gerçek veride (2023-2026):
+
+| Sleeve @ coin | 3-yıl | 2023 | 2024 | 2025 | 2026 |
+|---|---|---|---|---|---|
+| donchian @ BTC | +$98 PF1.32 | 1.36 | 1.32 | 1.32 | 1.25 |
+| squeeze @ SOL | +$193 PF1.32 | 1.08 | 1.45 | 1.12 | 1.76 |
+
+İkisi de 4/4 yıl pozitif. Farklı coinler → SIFIR ÇAKIŞMA.
+CANLI CONFIG: donchian=BTC, squeeze=SOL, BB/FVG/IFVG/SR/ORB kapalı,
+SYMBOLS=BTC,SOL, MAX_POSITIONS=2, RISK_SCALE=1.0 (tam doğrulanmış risk).
+
+Kesilen (3-yıl net kaybeden): BB/mean_rev (-$156, en çok SOL), FVG/IFVG/SR.
+Not: bu in-sample (2023-2026 = seçim dönemi); forward gerçek hakem. Ama
+elimizdeki en kanıtlı, en sade, çakışmasız config bu.
