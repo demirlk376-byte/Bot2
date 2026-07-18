@@ -22,31 +22,43 @@ BAL = 190.0
 FEE = 0.0001
 
 
-def load(coin: str) -> pd.DataFrame:
-    files = sorted(glob.glob(f"BTCUSDT-1m-*.csv")) if coin == "BTC" else []
-    if files:
-        fr = []
-        for f in files:
-            d = pd.read_csv(f); d.columns = ["ts","o","h","l","c","v","ct","qv","n","a","b","g"]
-            fr.append(d[["ts","o","h","l","c","v"]].astype(float))
-        m = pd.concat(fr).drop_duplicates("ts").sort_values("ts")
-        m.index = pd.to_datetime(m["ts"], unit="ms", utc=True)
-        m = m.rename(columns={"o":"open","h":"high","l":"low","c":"close","v":"volume"})
-        return m.drop(columns=["ts"])
+def load(coin: str, source: str = "mexc_futures") -> pd.DataFrame:
+    """CANLI-BİREBİR VERİ: varsayılan MEXC VADELİ (perp, COIN/USDT:USDT) — canlı
+    botun GERÇEKTEN işlem gördüğü borsa+enstrüman. Eski hata: spot (COIN/USDT) ya
+    da yerel Binance CSV çekiliyordu; spot/Binance ≠ MEXC vadeli, mumlar (wick'ler,
+    funding/basis) farklı → sinyaller kayabiliyordu.
+    source='binance_csv' (yalnız BTC): yerel 1m CSV — HIZLI ama BINANCE venue,
+    canlı MEXC vadeli DEĞİL. Sadece hızlı tarama; karar için mexc_futures kullan."""
+    if source == "binance_csv" and coin == "BTC":
+        files = sorted(glob.glob("BTCUSDT-1m-*.csv"))
+        if files:
+            print("  ⚠️  UYARI: yerel BTC CSV = BINANCE; canlı = MEXC VADELİ. Venue farkı var!")
+            fr = []
+            for f in files:
+                d = pd.read_csv(f); d.columns = ["ts","o","h","l","c","v","ct","qv","n","a","b","g"]
+                fr.append(d[["ts","o","h","l","c","v"]].astype(float))
+            m = pd.concat(fr).drop_duplicates("ts").sort_values("ts")
+            m.index = pd.to_datetime(m["ts"], unit="ms", utc=True)
+            m = m.rename(columns={"o":"open","h":"high","l":"low","c":"close","v":"volume"})
+            return m.drop(columns=["ts"])
+    # CANLI-BİREBİR: MEXC VADELİ (perp) — canlının fetch ettiği enstrümanın AYNISI
     import ccxt
-    ex = ccxt.mexc()
+    ex = ccxt.mexc({"options": {"defaultType": "swap"}})
+    sym = f"{coin}/USDT:USDT"
     since = int((datetimeutc() - 1200*86400)*1000)
     rows = []
     while True:
-        b = ex.fetch_ohlcv(f"{coin}/USDT", "1h", since=since, limit=500)
+        b = ex.fetch_ohlcv(sym, "1h", since=since, limit=500)
         if not b: break
         rows += b
         if len(b) < 500: break
         since = b[-1][0] + 1
     if not rows:
-        raise SystemExit(f"{coin}: MEXC 1h verisi çekilemedi")
+        raise SystemExit(f"{coin}: MEXC VADELİ ({sym}) 1h verisi çekilemedi")
     m = pd.DataFrame(rows, columns=["ts","open","high","low","close","volume"])
     m.index = pd.to_datetime(m["ts"], unit="ms", utc=True)
+    m = m.drop_duplicates("ts")
+    print(f"  veri: MEXC VADELİ {sym} 1h, {len(m)} bar (canlı-birebir borsa/enstrüman)")
     return m.drop(columns=["ts"]).astype(float).iloc[:-1]   # 1h; sleeve'ler 4h'a resample eder
 
 

@@ -29,17 +29,14 @@ import fast_bt
 
 RISK=0.02; BAL=190.0; FEE=0.0001
 coin = sys.argv[1] if len(sys.argv)>1 else "BTC"
+# 2. arg: veri kaynağı. Varsayılan mexc_futures = CANLI-BİREBİR (borsa+enstrüman).
+# 'binance_csv' = yerel BTC 1m CSV (hızlı ama Binance venue ≠ canlı MEXC vadeli).
+source = sys.argv[2] if len(sys.argv)>2 else "mexc_futures"
 
 def load(c):
-    if c=="BTC":
-        fr=[]
-        for f in sorted(glob.glob("BTCUSDT-1m-*.csv")):
-            d=pd.read_csv(f); d.columns=["ts","o","h","l","c","v","ct","qv","n","a","b","g"]
-            fr.append(d[["ts","o","h","l","c","v"]].astype(float))
-        m=pd.concat(fr).drop_duplicates("ts").sort_values("ts")
-        m.index=pd.to_datetime(m["ts"],unit="ms",utc=True)
-        return m.rename(columns={"o":"open","h":"high","l":"low","c":"close","v":"volume"}).drop(columns=["ts"])
-    return fast_bt.load(c)
+    # Her coin CANLININ işlem gördüğü MEXC VADELİ veriden (COIN/USDT:USDT) yüklenir.
+    # Eski hata: BTC yerel Binance CSV, SOL MEXC spot çekiliyordu → venue farkı.
+    return fast_bt.load(c, source=source)
 
 def simtrades(df, ents, sl_mult, rr, max_hold):
     """ents: (i, dir, atr_entry) — atr_entry canlının o barda kullandığı
