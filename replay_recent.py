@@ -1,34 +1,32 @@
 """
 replay_recent.py — MEVCUT sistemi son N günde "sanki canlıymış gibi" koştur.
 
-Amaç: bu haftanın 21 hata düzeltmesi + ORB kapatma SONRASI kodun, canlının
-işlem yaptığı pencerede ne YAPARDI'ğını görmek. Canlı defterle (hatalı dönem)
-kıyaslanır: fark, düzeltmelerin değeri.
+Üç soruya cevap verir:
+  1. Düzeltilmiş sistem (21 hata + ORB off) canlı defterin -$10.85'ine karşı ne yapar?
+  2. ORB açılırsa ne değişir?  (--orb)
+  3. Çakışma (one-per-symbol) olmasaydı — her strateji KENDİ YOLUNDA — ne olurdu? (--lanes)
 
-FIDELITY (üretim kodunu maksimum kullanır — uydurma yok):
-  • Gerçek .env: load_config() ile OKUNUR → aynı allowlist / risk / gate'ler
-    (ORB kapalı, BB_SYMBOLS, IFVG/SQUEEZE/DONCHIAN allowlist'leri, RISK_SCALE).
-  • Gerçek strateji sınıfları: her sleeve'in kendi .analyze()'ı (zone state
-    dahil), bar-bar, coin-bazında sırayla çağrılır.
-  • Gerçek RiskManager: build_trade_setup / _from_levels, EQUITY üzerinden,
-    sleeve başına risk override (execution.py zinciriyle aynı).
-  • Canlı gate'ler: ADX rejim (bo_allowed/bb_allowed), hafta sonu, allowlist.
-  • ONE-PER-SYMBOL (canlı netted): coin başına AYNI ANDA tek pozisyon — asıl
-    sansür mekanizması budur. max_positions + korelasyon capi de uygulanır.
-  • Dolum: BB maker@kapanış; yapısal sleeve'ler market@kapanış (force_market).
-  • Çıkış: 1m intrabar (SL önce), sleeve başına max-hold, ifvg BE@1R.
+FIDELITY (üretim kodunu maksimum kullanır):
+  • Gerçek .env (load_config) → aynı allowlist / risk / gate'ler.
+  • Üretim strateji sınıfları (.analyze, zone state dahil).
+  • Üretim RiskManager, EQUITY üzerinden, sleeve başına risk override.
+  • GERÇEKÇİ DOLUM: limit-retest sleeve'leri (FVG/IFVG/ORB) HEMEN dolmaz —
+    seviyeye ancak WINDOW bar içinde fiyat DÖNERSE dolar, dönmezse iptal
+    (canlıdaki 'market fallback yok' davranışı). Market sleeve'leri (BB
+    fallback'li, squeeze/sr/donchian force_market) kapanışta dolar.
+  • Çıkış: 1h bar high/low (SL önce, parite yöntemi), sleeve max-hold, ifvg BE@1R.
 
-APPROKSİMASYONLAR (dürüstçe):
-  • BE@1R 1h kapanışta kontrol edilir (canlı da öyle; backtest intrabar'dan
-    hafif farklı — bilinen #4).
-  • Maker giriş her zaman dolar varsayılır (paper modeliyle aynı).
-  • Fee: maker %0 giriş + taker %0.01 çıkış (canlı muhasebe modeli).
+MODLAR:
+  varsayılan : netted (coin başına tek slot — CANLI gerçeği, one-per-symbol)
+  --lanes    : her sleeve KENDİ slotunda (sub-account dünyası — çakışma YOK)
+  --orb      : ORB'yi de dahil et (limit-retrace, gerçekçi dolum)
 
-Kullanım (VPS):  venv/bin/python replay_recent.py [gün_sayısı]
+Kullanım (VPS):  venv/bin/python replay_recent.py 21 [--orb] [--lanes]
 """
 from __future__ import annotations
 
 import sys
+from collections import defaultdict
 from datetime import datetime, timezone
 
 import numpy as np
@@ -44,18 +42,23 @@ from strategies.ifvg import IfvgStrategy
 from strategies.squeeze import SqueezeStrategy
 from strategies.donchian import DonchianStrategy
 from strategies.sr_breakout import SrBreakoutStrategy
+from strategies.orb import OrbStrategy
 
-DAYS = int(sys.argv[1]) if len(sys.argv) > 1 else 21
+DAYS = int([a for a in sys.argv[1:] if a.isdigit()][0]) if any(a.isdigit() for a in sys.argv[1:]) else 21
+WITH_ORB = "--orb" in sys.argv
+LANES = "--lanes" in sys.argv
 EPOCH = pd.Timestamp("2026-06-29", tz="UTC")
 FEE_TAKER = 0.0001
+FILL_WINDOW = 2          # limit-retest sleeve'leri kaç bar içinde dolmalı
+MARKET = {"mean_rev", "squeeze", "sr_breakout", "donchian"}   # kapanışta dolar
+LIMIT = {"fvg", "ifvg", "orb"}                                # retest gerekir
+MAXHOLD = {"donchian": 120, "fvg": 24, "ifvg": 24, "orb": 6}
 
 
 def fetch(symbol: str, tf: str, days: int) -> pd.DataFrame:
-    """Doğrudan tf'yi çek (benchmark_recent'te doğrulanan yöntem). MEXC 1m
-    geçmişi sınırlı sayfalıyor; 1h/4h since ile sorunsuz geliyor."""
     import ccxt
     ex = ccxt.mexc()
-    since = int((datetime.now(timezone.utc).timestamp() - (days + 12) * 86400) * 1000)
+    since = int((datetime.now(timezone.utc).timestamp() - (days + 14) * 86400) * 1000)
     rows = []
     while True:
         b = ex.fetch_ohlcv(symbol, tf, since=since, limit=500)
@@ -70,54 +73,65 @@ def fetch(symbol: str, tf: str, days: int) -> pd.DataFrame:
     return df.drop(columns=["ts"]).astype(float).iloc[:-1]
 
 
-def resample(df1m: pd.DataFrame, tf: str) -> pd.DataFrame:
-    return df1m.resample(tf).agg({"open": "first", "high": "max", "low": "min",
-                                  "close": "last", "volume": "sum"}).dropna()
-
-
 class Sim:
     def __init__(self, cfg):
         self.cfg = cfg
         self.risk = RiskManager(cfg.risk)
         self.equity = 190.0
         self.start_equity = 190.0
-        self.positions = {}   # symbol -> dict (one-per-symbol, netted)
-        self.trades = []      # closed
+        self.positions = {}   # slot -> pos dict
+        self.pending = []     # bekleyen limit emirleri
+        self.trades = []
+        self.blocked = defaultdict(int)   # sleeve -> çakışma yüzünden bloklanan sinyal
 
-    def _allowed(self, sleeve: str, symbol: str) -> bool:
+    def slot(self, symbol, sleeve):
+        return f"{symbol}:{sleeve}" if LANES else symbol
+
+    def _allowed(self, sleeve, symbol):
         s = self.cfg.strategy
-        amap = {"mean_rev": getattr(s, "bb_symbols", None),
-                "sr_breakout": getattr(s, "sr_breakout_symbols", None),
-                "ifvg": getattr(s, "ifvg_symbols", None),
-                "squeeze": getattr(s, "squeeze_symbols", None),
-                "donchian": getattr(s, "donchian_symbols", None)}
+        amap = {"mean_rev": s.bb_symbols, "sr_breakout": s.sr_breakout_symbols,
+                "ifvg": s.ifvg_symbols, "squeeze": s.squeeze_symbols,
+                "donchian": s.donchian_symbols}
         allow = amap.get(sleeve)
         return allow is None or symbol in allow
 
-    def _risk_override(self, sleeve: str) -> float:
+    def _risk(self, sleeve):
         r = self.cfg.risk
-        return {"fvg": getattr(r, "fvg_risk_pct", 0.0),
-                "ifvg": getattr(r, "ifvg_risk_pct", 0.0),
-                "donchian": getattr(r, "donchian_risk_pct", 0.0),
+        return {"fvg": r.fvg_risk_pct, "ifvg": r.ifvg_risk_pct,
+                "donchian": r.donchian_risk_pct,
                 "squeeze": getattr(r, "squeeze_risk_pct", r.max_risk_per_trade),
-                }.get(sleeve, 0.0)
+                "orb": getattr(r, "orb_risk_pct", 0.05)}.get(sleeve, 0.0)
 
-    def try_open(self, symbol, sleeve, direction, entry, sl, tp, atr, ts):
-        # one-per-symbol (canlı netted): coin başına tek pozisyon
-        if symbol in self.positions:
-            return "occupied"
-        if len(self.positions) >= getattr(self.cfg.risk, "max_positions", 12):
-            return "max_pos"
-        # korelasyon capi (BTC/ETH/SOL aynı yön)
+    def _can_place(self, slot, symbol, direction):
+        if slot in self.positions:
+            return False
+        if any(p["slot"] == slot for p in self.pending):
+            return False
+        if len(self.positions) >= self.cfg.risk.max_positions:
+            return False
         cap = getattr(self.cfg.risk, "max_correlated_direction", 0)
         if cap:
             grp = {"BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"}
             same = sum(1 for p in self.positions.values()
                        if p["symbol"] in grp and p["dir"] == direction)
             if symbol in grp and same >= cap:
-                return "corr_cap"
-        ro = self._risk_override(sleeve)
-        if sleeve in ("mean_rev",):
+                return False
+        return True
+
+    def signal(self, symbol, sleeve, direction, entry, sl, tp, atr, ts):
+        slot = self.slot(symbol, sleeve)
+        if not self._can_place(slot, symbol, direction):
+            self.blocked[sleeve] += 1
+            return
+        if sleeve in MARKET:
+            self._open(slot, symbol, sleeve, direction, entry, sl, tp, atr, ts, maker=(sleeve == "mean_rev"))
+        else:  # limit-retest: bekleyen emir
+            self.pending.append(dict(slot=slot, symbol=symbol, sleeve=sleeve, dir=direction,
+                                     entry=entry, sl=sl, tp=tp, atr=atr, ts=ts, bars=0))
+
+    def _open(self, slot, symbol, sleeve, direction, entry, sl, tp, atr, ts, maker):
+        ro = self._risk(sleeve)
+        if sleeve == "mean_rev":
             setup = self.risk.build_trade_setup(direction, entry, atr, self.equity,
                                                 self.cfg.exchange.leverage, symbol)
         else:
@@ -125,24 +139,39 @@ class Sim:
                 direction, entry, sl, tp, self.equity, self.cfg.exchange.leverage,
                 symbol, risk_pct_override=ro)
         if setup is None:
-            return "setup_none"
-        maker = sleeve == "mean_rev"
-        self.positions[symbol] = dict(
-            symbol=symbol, sleeve=sleeve, dir=direction, entry=setup.entry_price,
-            sl=setup.sl_price, tp=setup.tp_price, qty=setup.quantity, atr=atr,
-            open_ts=ts, maker=maker, be_done=False,
-            risk0=abs(setup.entry_price - setup.sl_price),  # orijinal 1R (BE sonrası korunur)
-            max_hold={"donchian": 120, "fvg": 24, "ifvg": 24}.get(sleeve, 48))
-        return "opened"
+            return
+        self.positions[slot] = dict(
+            slot=slot, symbol=symbol, sleeve=sleeve, dir=direction, entry=setup.entry_price,
+            sl=setup.sl_price, tp=setup.tp_price, qty=setup.quantity, open_ts=ts,
+            maker=maker, be_done=False, risk0=abs(setup.entry_price - setup.sl_price))
 
-    def check_exit(self, symbol, hi, lo, close, ts, hours_held):
-        p = self.positions.get(symbol)
+    def process_pending(self, symbol, hi, lo, ts):
+        """Bekleyen limit-retest emirleri: fiyat seviyeye DÖNERSE dolar, WINDOW
+        bar içinde dönmezse iptal (canlı: market fallback yok)."""
+        still = []
+        for o in self.pending:
+            if o["symbol"] != symbol:
+                still.append(o)
+                continue
+            o["bars"] += 1
+            if lo <= o["entry"] <= hi:   # seviyeye dönüldü → dolar
+                if self._can_place(o["slot"], symbol, o["dir"]):
+                    self._open(o["slot"], symbol, o["sleeve"], o["dir"], o["entry"],
+                               o["sl"], o["tp"], o["atr"], ts, maker=False)
+                continue  # dolduysa ya da yer yoksa: emir düşer
+            if o["bars"] < FILL_WINDOW:
+                still.append(o)   # hâlâ bekliyor
+            # else: süre doldu, iptal
+        self.pending = still
+
+    def check_exit(self, slot, hi, lo, close, ts):
+        p = self.positions.get(slot)
         if not p:
             return
         d = p["dir"]
-        # BE@1R (ifvg) — 1h kapanış kontrolü, canlı ile aynı
+        held = (ts - p["open_ts"]).total_seconds() / 3600
         if p["sleeve"] == "ifvg" and not p["be_done"]:
-            r = abs(p["entry"] - p["sl"])
+            r = p["risk0"]
             if r > 0 and ((d == 1 and close >= p["entry"] + r) or
                           (d == -1 and close <= p["entry"] - r)):
                 p["sl"] = p["entry"]; p["be_done"] = True
@@ -153,7 +182,7 @@ class Sim:
         else:
             if hi >= p["sl"]: ep = p["sl"]
             elif lo <= p["tp"]: ep = p["tp"]
-        if ep is None and hours_held >= p["max_hold"]:
+        if ep is None and held >= MAXHOLD.get(p["sleeve"], 48):
             ep = close
         if ep is not None:
             entry_fee = 0.0 if p["maker"] else FEE_TAKER
@@ -161,54 +190,50 @@ class Sim:
             pnl = d * (ep - p["entry"]) * p["qty"] - fees
             self.equity += pnl
             r0 = p["risk0"] if p["risk0"] > 0 else 1.0
-            self.trades.append(dict(symbol=symbol, sleeve=p["sleeve"], pnl=pnl,
+            self.trades.append(dict(symbol=p["symbol"], sleeve=p["sleeve"], pnl=pnl,
                                     r=d * (ep - p["entry"]) / r0))
-            del self.positions[symbol]
+            del self.positions[slot]
+
+
+def mk(cfg):
+    s = cfg.strategy
+    d = dict(
+        mean_rev=MeanReversionStrategy(s),
+        fvg=FvgStrategy(min_gap_atr=s.fvg_min_gap_atr, rr=s.fvg_rr) if s.fvg_enabled else None,
+        ifvg=IfvgStrategy(min_gap_atr=s.ifvg_min_gap_atr, rr=s.ifvg_rr) if s.ifvg_enabled else None,
+        squeeze=SqueezeStrategy(kc_mult=s.squeeze_kc_mult, min_squeeze_bars=s.squeeze_min_bars,
+                                sl_atr=s.squeeze_sl_atr, rr=s.squeeze_rr, mtf_filter=s.squeeze_mtf) if s.squeeze_enabled else None,
+        donchian=DonchianStrategy(channel=s.donchian_channel, rr=s.donchian_rr,
+                                  sl_atr=s.donchian_sl_atr, ema_trend=s.donchian_ema_trend) if s.donchian_enabled else None,
+        sr_breakout=SrBreakoutStrategy() if s.sr_breakout_enabled else None,
+        orb=OrbStrategy() if WITH_ORB else None,
+    )
+    return d
 
 
 def main():
     cfg = load_config()
     symbols = cfg.exchange.symbols or [cfg.exchange.symbol]
-    print(f"Replay: {DAYS} gün, coinler={[s.split('/')[0] for s in symbols]}")
-    print(f"Gate'ler (gerçek .env): ORB={'ON' if cfg.strategy.orb_enabled else 'OFF'}, "
-          f"RISK_SCALE={getattr(cfg.risk,'risk_scale',1.0)}, "
-          f"max_pos={cfg.risk.max_positions}")
+    mode = ("LANES (her sleeve kendi slotu — çakışma YOK)" if LANES
+            else "NETTED (coin başına tek slot — CANLI gerçeği)")
+    print(f"Replay {DAYS}g | mod: {mode} | ORB: {'AÇIK' if WITH_ORB else 'kapalı'}")
+    print(f"  gerçek .env: RISK_SCALE={cfg.risk.risk_scale} max_pos={cfg.risk.max_positions}")
 
-    # veri: 1m (intrabar) + 1h + 4h
     data = {}
     for full in symbols:
         sym = full.split(":")[0]
         try:
-            d1 = fetch(sym, "1h", DAYS)
-            d4 = fetch(sym, "4h", DAYS)
-            data[full] = dict(sym=sym, h1=d1, h4=d4)
-            print(f"  {sym}: {len(d1)} 1h bar, {len(d4)} 4h bar")
+            data[full] = dict(sym=sym, h1=fetch(sym, "1h", DAYS), h4=fetch(sym, "4h", DAYS))
+            print(f"  {sym}: {len(data[full]['h1'])} 1h, {len(data[full]['h4'])} 4h")
         except Exception as e:
             print(f"  {sym}: veri hatası: {e}")
 
-    # sleeve örnekleri (üretim sınıfları)
-    def mk(full):
-        s = cfg.strategy
-        return dict(
-            mean_rev=MeanReversionStrategy(s),
-            fvg=FvgStrategy(min_gap_atr=s.fvg_min_gap_atr, rr=s.fvg_rr) if s.fvg_enabled else None,
-            ifvg=IfvgStrategy(min_gap_atr=s.ifvg_min_gap_atr, rr=s.ifvg_rr) if s.ifvg_enabled else None,
-            squeeze=SqueezeStrategy(kc_mult=s.squeeze_kc_mult, min_squeeze_bars=s.squeeze_min_bars,
-                                    sl_atr=s.squeeze_sl_atr, rr=s.squeeze_rr, mtf_filter=s.squeeze_mtf) if s.squeeze_enabled else None,
-            donchian=DonchianStrategy(channel=s.donchian_channel, rr=s.donchian_rr,
-                                      sl_atr=s.donchian_sl_atr, ema_trend=s.donchian_ema_trend) if s.donchian_enabled else None,
-            sr_breakout=SrBreakoutStrategy() if s.sr_breakout_enabled else None,
-        )
-    sleeves = {full: mk(full) for full in data}
-
+    sleeves = {full: mk(cfg) for full in data}
     sim = Sim(cfg)
+    r = cfg.risk
 
-    # kronolojik birleşik 1h zaman çizgisi
     all_ts = sorted(set().union(*[set(d["h1"].index) for d in data.values()]))
     for ts in all_ts:
-        if ts < EPOCH:
-            # zone state'i ısıt ama trade açma
-            pass
         for full, d in data.items():
             if ts not in d["h1"].index:
                 continue
@@ -219,77 +244,58 @@ def main():
             atr_v = atr_fn(sub["high"], sub["low"], sub["close"], 14).iloc[-1]
             if np.isnan(atr_v) or atr_v <= 0:
                 continue
-            # exit: bu 1h barın high/low'u ile (parite testi yöntemi, SL-önce
-            # pesimistik). Aynı barda giriş yok → bu barın range'i pozisyona ait.
-            if full in sim.positions:
-                p = sim.positions[full]
-                held = (ts - p["open_ts"]).total_seconds() / 3600
-                sim.check_exit(full, float(sub["high"].iloc[-1]), float(sub["low"].iloc[-1]),
-                               float(sub["close"].iloc[-1]), ts, held)
+            hi = float(sub["high"].iloc[-1]); lo = float(sub["low"].iloc[-1]); close = float(sub["close"].iloc[-1])
+            # 1) çıkışlar
+            for slot in [s for s in list(sim.positions) if sim.positions[s]["symbol"] == full]:
+                sim.check_exit(slot, hi, lo, close, ts)
+            # 2) bekleyen limitler (retest dolumu / iptal)
+            sim.process_pending(full, hi, lo, ts)
             if ts < EPOCH:
                 continue
-            # rejim + gate'ler
+            # gate'ler
             adx_raw = adx_fn(sub["high"], sub["low"], sub["close"], 14).iloc[-1]
             adx_v = float(adx_raw) if np.isfinite(adx_raw) else 20.0
-            regime = ("trending" if adx_v >= cfg.risk.adx_trending_threshold
-                      else "ranging" if adx_v <= cfg.risk.adx_ranging_threshold else "neutral")
-            rf = cfg.risk.regime_filter_enabled
+            regime = ("trending" if adx_v >= r.adx_trending_threshold
+                      else "ranging" if adx_v <= r.adx_ranging_threshold else "neutral")
+            rf = r.regime_filter_enabled
             bo_ok = not (rf and regime == "ranging")
             bb_ok = not (rf and regime == "trending")
-            if datetime.now(timezone.utc).weekday() >= 5:
-                pass
-            is_weekend = ts.weekday() >= 5
-            if not getattr(cfg.risk, "bb_weekday_enabled", True) and not is_weekend:
-                bb_ok = False
-            close = sub["close"].iloc[-1]
-            sl = sleeves[full]
+            sym = d["sym"]; sl = sleeves[full]
 
-            # BB
             if sl["mean_rev"] and bb_ok and sim._allowed("mean_rev", full):
-                sig = sl["mean_rev"].analyze(sub)
-                if sig.direction != 0:
-                    sim.try_open(full, "mean_rev", sig.direction, close, 0, 0, atr_v, ts)
-            # FVG (allowlist yok — canlıda da yok)
-            if sl["fvg"]:
-                sub250 = h1.iloc[max(0, i - 249): i + 1]
-                sg = sl["fvg"].analyze(sub250, atr_v)
-                if sg.direction != 0 and sg.sl_price > 0:
-                    sim.try_open(full, "fvg", sg.direction, sg.entry_price, sg.sl_price, sg.tp_price, atr_v, ts)
-            # IFVG
-            if sl["ifvg"] and sim._allowed("ifvg", full):
-                sub250 = h1.iloc[max(0, i - 249): i + 1]
-                sg = sl["ifvg"].analyze(sub250, atr_v)
-                if sg.direction != 0 and sg.sl_price > 0:
-                    sim.try_open(full, "ifvg", sg.direction, sg.entry_price, sg.sl_price, sg.tp_price, atr_v, ts)
-            # Squeeze
-            if sl["squeeze"] and bo_ok and sim._allowed("squeeze", full):
-                sg = sl["squeeze"].analyze(sub, atr_v)
-                if sg.direction != 0 and sg.sl_price > 0:
-                    sim.try_open(full, "squeeze", sg.direction, sg.entry_price, sg.sl_price, sg.tp_price, atr_v, ts)
-            # S/R (BB slotunu paylaşır — one-per-symbol zaten hallediyor)
-            if sl["sr_breakout"] and bo_ok and sim._allowed("sr_breakout", full):
-                sg = sl["sr_breakout"].analyze(sub, atr_v)
-                if sg.direction != 0 and sg.sl_price > 0:
-                    sim.try_open(full, "sr_breakout", sg.direction, close, sg.sl_price, sg.tp_price, atr_v, ts)
-            # Donchian (4h sınırında)
+                g = sl["mean_rev"].analyze(sub)
+                if g.direction != 0:
+                    sim.signal(full, "mean_rev", g.direction, close, 0, 0, atr_v, ts)
+            if WITH_ORB and sl["orb"] and bo_ok:
+                g = sl["orb"].analyze(sub)
+                if g.direction != 0 and g.sl_price > 0:
+                    sim.signal(full, "orb", g.direction, g.entry_price, g.sl_price, g.tp_price, atr_v, ts)
+            for name, gate in (("fvg", True), ("ifvg", True), ("squeeze", bo_ok), ("sr_breakout", bo_ok)):
+                st = sl[name]
+                if not st or not gate or not sim._allowed(name, full):
+                    continue
+                sub2 = h1.iloc[max(0, i - 249): i + 1] if name in ("fvg", "ifvg") else sub
+                g = st.analyze(sub2, atr_v)
+                if g.direction != 0 and g.sl_price > 0:
+                    entry = close if name == "sr_breakout" else g.entry_price
+                    sim.signal(full, name, g.direction, entry, g.sl_price, g.tp_price, atr_v, ts)
             if sl["donchian"] and sim._allowed("donchian", full) and ts.hour % 4 == 3:
                 h4 = d["h4"]; sub4 = h4[h4.index <= ts]
-                if len(sub4) >= max(cfg.strategy.donchian_channel + 2, cfg.strategy.donchian_ema_trend):
-                    atr4 = atr_fn(sub4["high"], sub4["low"], sub4["close"], 14).iloc[-1]
-                    if not (np.isnan(atr4) or atr4 <= 0):
-                        sg = sl["donchian"].analyze(sub4, float(atr4))
-                        if sg.direction != 0 and sg.sl_price > 0:
-                            sim.try_open(full, "donchian", sg.direction, sg.entry_price, sg.sl_price, sg.tp_price, float(atr4), ts)
+                need = max(cfg.strategy.donchian_channel + 2, cfg.strategy.donchian_ema_trend)
+                if len(sub4) >= need:
+                    a4 = atr_fn(sub4["high"], sub4["low"], sub4["close"], 14).iloc[-1]
+                    if not (np.isnan(a4) or a4 <= 0):
+                        g = sl["donchian"].analyze(sub4, float(a4))
+                        if g.direction != 0 and g.sl_price > 0:
+                            sim.signal(full, "donchian", g.direction, g.entry_price, g.sl_price, g.tp_price, float(a4), ts)
 
-    # rapor
     tr = sim.trades
-    print("\n" + "=" * 66)
-    print(f"  MEVCUT SİSTEM — {DAYS}g REPLAY (sanki canlı, düzeltmeler + ORB off)")
-    print("=" * 66)
+    print("\n" + "=" * 68)
+    print(f"  REPLAY SONUÇ — {mode.split('(')[0].strip()}{' +ORB' if WITH_ORB else ''}")
+    print("=" * 68)
     if not tr:
         print("  Kapanan trade yok.")
         return
-    from collections import defaultdict
     by = defaultdict(list)
     for t in tr:
         by[t["sleeve"]].append(t["pnl"])
@@ -298,17 +304,20 @@ def main():
     gp = sum(t["pnl"] for t in tr if t["pnl"] > 0); gl = -sum(t["pnl"] for t in tr if t["pnl"] < 0)
     pf = gp / gl if gl > 0 else 9.99
     print(f"  TOPLAM: {len(tr)}t  WR{wr:.0%}  PF{pf:.2f}  net ${tot:+.2f}  "
-          f"(equity ${sim.start_equity:.0f}→${sim.equity:.2f})")
-    print("  " + "-" * 62)
+          f"(${sim.start_equity:.0f}→${sim.equity:.2f})")
+    print("  " + "-" * 64)
     for s in sorted(by, key=lambda k: -sum(by[k])):
-        p = by[s]
-        w = sum(1 for x in p if x > 0)
+        p = by[s]; w = sum(1 for x in p if x > 0)
         sgp = sum(x for x in p if x > 0); sgl = -sum(x for x in p if x < 0)
         spf = sgp / sgl if sgl > 0 else 9.99
-        print(f"  {s:12s} {len(p):>3d}t  WR{w/len(p):>3.0%}  PF{spf:4.2f}  ${sum(p):+7.2f}")
-    print("  " + "-" * 62)
-    print("  Kıyas: canlı defter aynı pencerede -$10.85 (26t, PF0.52) — o HATALI")
-    print("  dönemdi. Bu replay DÜZELTİLMİŞ kodun ne yapacağını gösterir.")
+        blk = sim.blocked.get(s, 0)
+        print(f"  {s:12s} {len(p):>3d}t WR{w/len(p):>3.0%} PF{spf:4.2f} ${sum(p):+7.2f}"
+              f"   (çakışma-blok: {blk})")
+    print("  " + "-" * 64)
+    print("  Kıyas: canlı defter -$10.85 (26t) — HATALI dönem.")
+    print("  'çakışma-blok' = one-per-symbol yüzünden alınamayan sinyal sayısı.")
+    if not LANES:
+        print("  --lanes ile koş: her strateji kendi yolunda ne yapardı gör.")
 
 
 if __name__ == "__main__":
