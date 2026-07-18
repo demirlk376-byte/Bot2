@@ -119,3 +119,24 @@ SYMBOLS=BTC,SOL, MAX_POSITIONS=2, RISK_SCALE=1.0 (tam doğrulanmış risk).
 Kesilen (3-yıl net kaybeden): BB/mean_rev (-$156, en çok SOL), FVG/IFVG/SR.
 Not: bu in-sample (2023-2026 = seçim dönemi); forward gerçek hakem. Ama
 elimizdeki en kanıtlı, en sade, çakışmasız config bu.
+
+## ✅ NİHAİ CONFIG DÜZELTMESİ (2026-07-18, faithful_bt canlı-birebir 3-yıl)
+
+verify_conformance: fast_bt squeeze üretim sınıfından %50 sapıyordu → fast_bt
+squeeze GÜVENİLMEZ. faithful_bt (üretim sınıfı = canlı birebir, 3-yıl):
+
+| Sleeve @ coin | 3-yıl | 2025 | 2026 |
+|---|---|---|---|
+| squeeze @ SOL | +$107 | **-7** | **-14** (çürümüş, son 2 yıl -) |
+| squeeze @ BTC | +$225 | +4 | +34 (4/4 yıl +) |
+| donchian @ SOL | +$127 | +50 | +14 |
+| donchian @ BTC | +$83 | +22 | +7 |
+
+İlk deploy (donchian-BTC + squeeze-SOL) squeeze-SOL çürümesi yüzünden 2026'da
+net eksi olurdu. DÜZELTME: squeeze→BTC (en iyi coini), donchian→SOL. Hâlâ
+farklı coinler → sıfır çakışma. Son 2 yıl her ikisi de pozitif.
+CANLI: SQUEEZE_SYMBOLS=BTC, DONCHIAN_SYMBOLS=SOL.
+
+DERS: fast_bt (vektörel) squeeze'de canlıdan saptı; faithful_bt (üretim sınıfı,
+bounded pencere = canlı birebir) doğru araç. Her strateji kararı faithful_bt
+ile alınır. Kullanıcının "test güvenilir olmalı" ısrarı kötü deploy'u önledi.
