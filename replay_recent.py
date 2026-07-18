@@ -160,6 +160,21 @@ class Sim:
                 if self._can_place(o["slot"], symbol, o["dir"]):
                     self._open(o["slot"], symbol, o["sleeve"], o["dir"], o["entry"],
                                o["sl"], o["tp"], o["atr"], ts, maker=False)
+                    # AYNI BARDA SL/TP kontrolü (audit v_bt #2): dolum barının
+                    # kalan hareketi stop'u vurabilir — validated model 'aynı bar
+                    # SL = kayıp' der. SL önce (pesimistik).
+                    pos = self.positions.get(o["slot"])
+                    if pos is not None:
+                        dd = pos["dir"]
+                        ep2 = None
+                        if dd == 1:
+                            if lo <= pos["sl"]: ep2 = pos["sl"]
+                            elif hi >= pos["tp"]: ep2 = pos["tp"]
+                        else:
+                            if hi >= pos["sl"]: ep2 = pos["sl"]
+                            elif lo <= pos["tp"]: ep2 = pos["tp"]
+                        if ep2 is not None:
+                            self._book(o["slot"], pos, ep2, ts)
                 continue  # dolduysa ya da yer yoksa: emir düşer
             if o["bars"] < FILL_WINDOW:
                 still.append(o)   # hâlâ bekliyor
@@ -172,11 +187,9 @@ class Sim:
             return
         d = p["dir"]
         held = (ts - p["open_ts"]).total_seconds() / 3600
-        if p["sleeve"] == "ifvg" and not p["be_done"]:
-            r = p["risk0"]
-            if r > 0 and ((d == 1 and close >= p["entry"] + r) or
-                          (d == -1 and close <= p["entry"] - r)):
-                p["sl"] = p["entry"]; p["be_done"] = True
+        # 1) ÖNCE mevcut sl/tp ile çıkış (SL önce, pesimistik). BE bu bardan
+        #    önce kurulduysa zaten p["sl"] güncel; bu bar kapanışında kurulacak
+        #    BE ise yalnız SONRAKİ barları etkiler (look-ahead yok — audit v_bt #1).
         ep = None
         if d == 1:
             if lo <= p["sl"]: ep = p["sl"]
@@ -187,14 +200,25 @@ class Sim:
         if ep is None and held >= MAXHOLD.get(p["sleeve"], 48):
             ep = close
         if ep is not None:
-            entry_fee = 0.0 if p["maker"] else FEE_TAKER
-            fees = (p["entry"] * entry_fee + ep * FEE_TAKER) * p["qty"]
-            pnl = d * (ep - p["entry"]) * p["qty"] - fees
-            self.equity += pnl
-            r0 = p["risk0"] if p["risk0"] > 0 else 1.0
-            self.trades.append(dict(symbol=p["symbol"], sleeve=p["sleeve"], pnl=pnl,
-                                    year=ts.year, r=d * (ep - p["entry"]) / r0))
-            del self.positions[slot]
+            self._book(slot, p, ep, ts)
+            return
+        # 2) Çıkış olmadıysa: ifvg BE'yi bu barın KAPANIŞINDAN kur (gelecekte etkiler)
+        if p["sleeve"] == "ifvg" and not p["be_done"]:
+            r = p["risk0"]
+            if r > 0 and ((d == 1 and close >= p["entry"] + r) or
+                          (d == -1 and close <= p["entry"] - r)):
+                p["sl"] = p["entry"]; p["be_done"] = True
+
+    def _book(self, slot, p, ep, ts):
+        d = p["dir"]
+        entry_fee = 0.0 if p["maker"] else FEE_TAKER
+        fees = (p["entry"] * entry_fee + ep * FEE_TAKER) * p["qty"]
+        pnl = d * (ep - p["entry"]) * p["qty"] - fees
+        self.equity += pnl
+        r0 = p["risk0"] if p["risk0"] > 0 else 1.0
+        self.trades.append(dict(symbol=p["symbol"], sleeve=p["sleeve"], pnl=pnl,
+                                year=ts.year, r=d * (ep - p["entry"]) / r0))
+        del self.positions[slot]
 
 
 def mk(cfg):
@@ -240,9 +264,13 @@ def main():
             if ts not in d["h1"].index:
                 continue
             h1 = d["h1"]; i = h1.index.get_loc(ts)
-            if i < 210:
+            if i < 260:
                 continue
-            sub = h1.iloc[: i + 1]
+            # CANLI pencere boyutu: bot BB/squeeze/sr'ye 120 bar besliyor
+            # (get_candles(120)). Tam geçmiş beslemek hem O(n^2) hem canlıdan
+            # sapma; 120 bara sınırla (tüm göstergeler <=64 bar geriye bakar,
+            # ATR/ADX seed etkisi 120 barda ihmal edilebilir → birebir aynı).
+            sub = h1.iloc[max(0, i - 119): i + 1]
             atr_v = atr_fn(sub["high"], sub["low"], sub["close"], 14).iloc[-1]
             if np.isnan(atr_v) or atr_v <= 0:
                 continue
@@ -283,7 +311,7 @@ def main():
                     entry = close if name == "sr_breakout" else g.entry_price
                     sim.signal(full, name, g.direction, entry, g.sl_price, g.tp_price, atr_v, ts)
             if sl["donchian"] and sim._allowed("donchian", full) and ts.hour % 4 == 3:
-                h4 = d["h4"]; sub4 = h4[h4.index <= ts]
+                h4 = d["h4"]; sub4 = h4[h4.index <= ts].tail(260)
                 need = max(cfg.strategy.donchian_channel + 2, cfg.strategy.donchian_ema_trend)
                 if len(sub4) >= need:
                     a4 = atr_fn(sub4["high"], sub4["low"], sub4["close"], 14).iloc[-1]
