@@ -259,3 +259,15 @@ kapalı (güvenilmez ya da model).
 
 NOT: in-sample (2023-2026 = seçim dönemi). Çürüme-izleme önerildi (bir sleeve@coin
 son N işlemde PF<1 olursa uyarı) — henüz eklenmedi.
+
+## ⚠️ BB ÇAKIŞMA TUZAĞI (2026-07-18) — config v3 deploy sırasında yakalandı
+
+BB'nin enable flag'i YOK, sadece bb_symbols allowlist'iyle geçitleniyor. Eskiden
+BB'yi kapatmak için BB_SYMBOLS=XRP (o zaman işlem görmeyen coin) yapılmıştı. config
+v3'te XRP işlem görmeye başlayınca BB tam XRP'de uyandı → [XRP] active sleeves:
+BB, Squeeze = ÇAKIŞMA. Startup logu yakaladı ("active sleeves" satırları).
+DÜZELTME: BB_SYMBOLS=NONE/USDT:USDT (hiç işlem görmeyen sahte sembol; _normalize_symbol
+sadece formatlar, fetch edilmez). BB her yerde kapalı, ileride BTC/BNB eklense de
+kapalı kalır. DERS: bir sleeve'i "işlem görmeyen coine sabitleyerek" kapatmak, o coin
+sonradan traded olursa geri teper — kapatmayı fetch edilmeyen sahte sembolle yap.
+Config değişince HER ZAMAN "active sleeves" startup logunu kontrol et (coin başına 1).
