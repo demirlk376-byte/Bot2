@@ -131,6 +131,7 @@ class Sim:
             symbol=symbol, sleeve=sleeve, dir=direction, entry=setup.entry_price,
             sl=setup.sl_price, tp=setup.tp_price, qty=setup.quantity, atr=atr,
             open_ts=ts, maker=maker, be_done=False,
+            risk0=abs(setup.entry_price - setup.sl_price),  # orijinal 1R (BE sonrası korunur)
             max_hold={"donchian": 120, "fvg": 24, "ifvg": 24}.get(sleeve, 48))
         return "opened"
 
@@ -159,8 +160,9 @@ class Sim:
             fees = (p["entry"] * entry_fee + ep * FEE_TAKER) * p["qty"]
             pnl = d * (ep - p["entry"]) * p["qty"] - fees
             self.equity += pnl
+            r0 = p["risk0"] if p["risk0"] > 0 else 1.0
             self.trades.append(dict(symbol=symbol, sleeve=p["sleeve"], pnl=pnl,
-                                    r=d * (ep - p["entry"]) / abs(p["entry"] - p["sl"])))
+                                    r=d * (ep - p["entry"]) / r0))
             del self.positions[symbol]
 
 
