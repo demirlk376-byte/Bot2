@@ -78,17 +78,24 @@ def prep4h(m):
     return d, at
 
 
-def simulate(df, orders, risk_pct):
+CD_DELTA = pd.Timedelta(minutes=240)   # canlı cooldown_minutes (config default 240)
+
+
+def simulate(df, orders, risk_pct, cooldown=False):
     """orders: dict(i, dir, entry, sl, tp, max_hold, fill, be, expiry). Canlı exit:
     sabit SL/TP + max-hold; BE (orb/ifvg) +1R'de SL→entry, SONRAKİ bara etkir
-    (main.py: taşınmış SL bu barın SL kontrolünü etkilemez). SL-önce-TP = kötümser."""
+    (main.py: taşınmış SL bu barın SL kontrolünü etkilemez). SL-önce-TP = kötümser.
+    cooldown=True → canlı execution.py: 2 ARDIŞIK KAYIP sonrası bu sleeve@coin
+    240 dk yeni giriş almaz (kazanç streak'i sıfırlar)."""
     hi = df["high"].values; lo = df["low"].values; cl = df["close"].values
     idx = df.index; n = len(cl)
-    tr = []; occ = -1
+    tr = []; occ = -1; streak = 0; cd_until = None
     for od in sorted(orders, key=lambda o: o["i"]):
         i = od["i"]
         if i <= occ or i >= n - 1:
             continue
+        if cooldown and cd_until is not None and idx[i] < cd_until:
+            continue   # canlı: cooldown aktif → yeni giriş yok
         d = od["dir"]; SL = od["sl"]; TP = od["tp"]; mh = od["max_hold"]; be = od.get("be", False)
         # ── giriş fill ──
         if od["fill"] == "market":
@@ -120,6 +127,13 @@ def simulate(df, orders, risk_pct):
             j = min(fi + mh, n - 1); ep = cl[j]
         R = d * (ep - fe) / r0 - 2 * FEE * fe / r0
         tr.append({"r": R, "year": idx[fi].year}); occ = j
+        if cooldown:                               # canlı ardışık-zarar cooldown'u
+            if R < 0:
+                streak += 1
+                if streak >= 2:
+                    cd_until = idx[j] + CD_DELTA
+            else:
+                streak = 0; cd_until = None
     return tr, risk_pct
 
 
@@ -249,27 +263,31 @@ SLEEVES = {
 }
 
 
+def _stats(tr, rp):
+    r = np.array([t["r"] for t in tr]) if tr else np.array([])
+    if len(r) == 0:
+        return 0, 0.0, 0.0, 0.0
+    gp = r[r > 0].sum(); gl = -r[r < 0].sum(); pf = gp / gl if gl > 0 else 9.99
+    return len(r), (r > 0).mean(), pf, r.sum() * BAL * rp
+
+
 def rep(name, kind, res):
     if res is None:
         return None
     df_i, orders, risk = res
-    tr, rp = simulate(df_i, orders, risk)
-    if not tr:
+    tr_off, _ = simulate(df_i, orders, risk, cooldown=False)   # backtest: hepsini al
+    tr_on, _ = simulate(df_i, orders, risk, cooldown=True)     # canlı: 2-kayıp→4h dur
+    if not tr_off:
         print(f"  {name:9s} [{kind:6s}] sinyal/işlem yok", flush=True); return None
-    r = np.array([t["r"] for t in tr]); yrs = np.array([t["year"] for t in tr])
-    gp = r[r > 0].sum(); gl = -r[r < 0].sum(); pf = gp / gl if gl > 0 else 9.99
-    usd = r.sum() * BAL * rp
+    n0, wr0, pf0, u0 = _stats(tr_off, risk)
+    n1, wr1, pf1, u1 = _stats(tr_on, risk)
     tag = "BİREBİR" if kind == "market" else "MODEL"
-    print(f"  {name:9s} [{kind:6s}] n={len(r):>3d} WR{(r>0).mean():>3.0%} PF{pf:4.2f} "
-          f"${usd:+7.2f}  ({tag})", flush=True)
-    per = {}
-    for yr in sorted(set(yrs.tolist())):
-        ry = r[yrs == yr]; g1 = ry[ry > 0].sum(); g2 = -ry[ry < 0].sum()
-        pfy = g1 / g2 if g2 > 0 else 9.99
-        print(f"      {yr} n={len(ry):>3d} WR{(ry>0).mean():>3.0%} PF{pfy:4.2f} {ry.sum()*BAL*rp:+7.2f}$", flush=True)
-        per[yr] = ry.sum() * BAL * rp
-    return dict(name=name, kind=kind, n=len(r), pf=pf, usd=usd,
-                yrs_pos=all(v > 0 for v in per.values()), per=per)
+    delta = u1 - u0
+    print(f"  {name:9s} [{kind:6s}] ({tag})", flush=True)
+    print(f"      cooldown YOK : n={n0:>3d} WR{wr0:>3.0%} PF{pf0:4.2f} ${u0:+7.2f}", flush=True)
+    print(f"      cooldown VAR : n={n1:>3d} WR{wr1:>3.0%} PF{pf1:4.2f} ${u1:+7.2f}  (CANLI) "
+          f"→ cooldown etkisi ${delta:+6.2f}", flush=True)
+    return dict(name=name, kind=kind, u_off=u0, u_on=u1, delta=delta, n_off=n0, n_on=n1)
 
 
 def main():
@@ -294,20 +312,23 @@ def main():
                     row["coin"] = coin; summary.append(row)
             except Exception as e:
                 print(f"  {name:9s} [{kind:6s}] HATA: {e}", flush=True)
-    # ── Sıralı özet ──
-    print(f"\n{'='*64}\n=== ÖZET — en iyi (sleeve@coin), $ (BAL=190, risk_pct sleeve'e göre) ===")
-    print("    MARKET (byte-birebir) — kararlar bunlarla:")
-    for row in sorted([r for r in summary if r["kind"] == "market"], key=lambda x: -x["usd"]):
-        flag = "✅her yıl+" if row["yrs_pos"] else "  "
-        print(f"      {row['name']:9s}@{row['coin']:5s}  ${row['usd']:+7.2f}  PF{row['pf']:.2f}  n={row['n']:<3d} {flag}")
+    # ── ÖZET: COOLDOWN ETKİSİ ──
+    print(f"\n{'='*64}\n=== ÖZET — COOLDOWN + KATKI SAĞLIYOR MU? (market sleeve'ler) ===", flush=True)
+    mkt = [r for r in summary if r["kind"] == "market"]
+    for row in sorted(mkt, key=lambda x: -x["u_off"]):
+        print(f"  {row['name']:9s}@{row['coin']:5s}  YOK ${row['u_off']:+7.2f} (n{row['n_off']}) "
+              f"→ VAR ${row['u_on']:+7.2f} (n{row['n_on']})   Δ${row['delta']:+6.2f}", flush=True)
+    tot_off = sum(r["u_off"] for r in mkt); tot_on = sum(r["u_on"] for r in mkt)
+    print(f"\n  TOPLAM (market): cooldown YOK ${tot_off:+.2f}  →  VAR ${tot_on:+.2f}   "
+          f"Δ${tot_on - tot_off:+.2f}", flush=True)
+    if tot_on > tot_off:
+        print("  → COOLDOWN + KATKI: canlıda TUT + backtest'e dahil et (test=canlı).", flush=True)
+    else:
+        print("  → COOLDOWN zararlı/nötr: canlıda KAPAT → backtest zaten hepsini alır (test=canlı).", flush=True)
     lim = [r for r in summary if r["kind"] != "market"]
     if lim:
-        print("    LİMİT (modellenmiş — yol gösterici, kesin değil):")
-        for row in sorted(lim, key=lambda x: -x["usd"]):
-            flag = "her yıl+" if row["yrs_pos"] else "  "
-            print(f"      {row['name']:9s}@{row['coin']:5s}  ${row['usd']:+7.2f}  PF{row['pf']:.2f}  n={row['n']:<3d} {flag}")
-    print("\nÇakışmasız config = coin başına 1 sleeve. En sağlam = her yıl+ olan,")
-    print("yüksek $ + makul n. Kararı MARKET sleeve'lerden ver; limitler ipucu.")
+        print("\n  LİMİT (model — ipucu): " + ", ".join(
+            f"{r['name']}@{r['coin']} YOK${r['u_off']:+.0f}/VAR${r['u_on']:+.0f}" for r in lim), flush=True)
 
 
 if __name__ == "__main__":
