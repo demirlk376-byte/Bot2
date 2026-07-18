@@ -269,7 +269,8 @@ def main():
             if WITH_ORB and sl["orb"] and bo_ok:
                 g = sl["orb"].analyze(sub)
                 if g.direction != 0 and g.sl_price > 0:
-                    sim.signal(full, "orb", g.direction, g.entry_price, g.sl_price, g.tp_price, atr_v, ts)
+                    orb_entry = g.orb_high if g.direction == 1 else g.orb_low
+                    sim.signal(full, "orb", g.direction, orb_entry, g.sl_price, g.tp_price, atr_v, ts)
             for name, gate in (("fvg", True), ("ifvg", True), ("squeeze", bo_ok), ("sr_breakout", bo_ok)):
                 st = sl[name]
                 if not st or not gate or not sim._allowed(name, full):
@@ -313,6 +314,16 @@ def main():
         blk = sim.blocked.get(s, 0)
         print(f"  {s:12s} {len(p):>3d}t WR{w/len(p):>3.0%} PF{spf:4.2f} ${sum(p):+7.2f}"
               f"   (çakışma-blok: {blk})")
+    print("  " + "-" * 64)
+    bycoin = defaultdict(list)
+    for t in tr:
+        bycoin[t["symbol"].split("/")[0]].append((t["sleeve"], t["pnl"]))
+    print("  COIN kırılımı:")
+    for cn in sorted(bycoin, key=lambda k: -sum(x[1] for x in bycoin[k])):
+        rows = bycoin[cn]
+        sl_str = " ".join(f"{sv}:{sum(x[1] for x in rows if x[0]==sv):+.1f}"
+                          for sv in sorted(set(x[0] for x in rows)))
+        print(f"    {cn:5s} {len(rows):>2d}t ${sum(x[1] for x in rows):+7.2f}  {sl_str}")
     print("  " + "-" * 64)
     print("  Kıyas: canlı defter -$10.85 (26t) — HATALI dönem.")
     print("  'çakışma-blok' = one-per-symbol yüzünden alınamayan sinyal sayısı.")
