@@ -51,16 +51,18 @@ FEE_TAKER = 0.0001
 
 
 def fetch(symbol: str, tf: str, days: int) -> pd.DataFrame:
+    """Doğrudan tf'yi çek (benchmark_recent'te doğrulanan yöntem). MEXC 1m
+    geçmişi sınırlı sayfalıyor; 1h/4h since ile sorunsuz geliyor."""
     import ccxt
     ex = ccxt.mexc()
-    since = int((datetime.now(timezone.utc).timestamp() - (days + 3) * 86400) * 1000)
+    since = int((datetime.now(timezone.utc).timestamp() - (days + 12) * 86400) * 1000)
     rows = []
     while True:
-        b = ex.fetch_ohlcv(symbol, tf, since=since, limit=1000)
+        b = ex.fetch_ohlcv(symbol, tf, since=since, limit=500)
         if not b:
             break
         rows.extend(b)
-        if len(b) < 1000:
+        if len(b) < 500:
             break
         since = b[-1][0] + 1
     df = pd.DataFrame(rows, columns=["ts", "open", "high", "low", "close", "volume"])
@@ -175,11 +177,10 @@ def main():
     for full in symbols:
         sym = full.split(":")[0]
         try:
-            m1 = fetch(sym, "1m", DAYS)
-            d1 = resample(m1, "1h")
-            d4 = resample(m1, "4h")
-            data[full] = dict(sym=sym, m1=m1, h1=d1, h4=d4)
-            print(f"  {sym}: {len(d1)} 1h bar")
+            d1 = fetch(sym, "1h", DAYS)
+            d4 = fetch(sym, "4h", DAYS)
+            data[full] = dict(sym=sym, h1=d1, h4=d4)
+            print(f"  {sym}: {len(d1)} 1h bar, {len(d4)} 4h bar")
         except Exception as e:
             print(f"  {sym}: veri hatası: {e}")
 
@@ -216,19 +217,13 @@ def main():
             atr_v = atr_fn(sub["high"], sub["low"], sub["close"], 14).iloc[-1]
             if np.isnan(atr_v) or atr_v <= 0:
                 continue
-            # 1m intrabar exit önce (bu 1h barın içi)
+            # exit: bu 1h barın high/low'u ile (parite testi yöntemi, SL-önce
+            # pesimistik). Aynı barda giriş yok → bu barın range'i pozisyona ait.
             if full in sim.positions:
-                bar_m1 = d["m1"][(d["m1"].index > ts) & (d["m1"].index <= ts + pd.Timedelta(hours=1))]
                 p = sim.positions[full]
                 held = (ts - p["open_ts"]).total_seconds() / 3600
-                if len(bar_m1):
-                    for mt, mr in bar_m1.iterrows():
-                        sim.check_exit(full, mr["high"], mr["low"], mr["close"], mt, held)
-                        if full not in sim.positions:
-                            break
-                else:
-                    sim.check_exit(full, sub["high"].iloc[-1], sub["low"].iloc[-1],
-                                   sub["close"].iloc[-1], ts, held)
+                sim.check_exit(full, float(sub["high"].iloc[-1]), float(sub["low"].iloc[-1]),
+                               float(sub["close"].iloc[-1]), ts, held)
             if ts < EPOCH:
                 continue
             # rejim + gate'ler
