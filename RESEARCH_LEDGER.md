@@ -216,3 +216,46 @@ FIXED_MARGIN_USDT=0 (risk-bazlı boyutlama aktif). Servis restart edildi, active
 DERS: sinyal mantığı byte-birebir olsa bile YANLIŞ VERİ KAYNAĞI testi yalancı yapar.
 Her backtest canlının işlem gördüğü borsa+enstrümandan (MEXC vadeli) beslenmeli.
 Kullanıcının "testte hata olabilir" ısrarı ikinci kez kötü kararı önledi.
+
+## 🔬 TAM SLEEVE × COIN SWEEP (2026-07-18) — faithful_all, MEXC vadeli, 3.3 yıl
+
+Test harness'ine güvendikten sonra (test==canlı, doğru veri kanıtlı) TÜM sleeve'ler
+6 likit MEXC-vadeli coinde canlı-birebir koşuldu (faithful_all.py). Market-giriş
+sleeve'leri byte-birebir; limit-giriş (orb/fvg/ifvg) modellendi (kesin değil, karara
+katılmadı).
+
+MARKET (byte-birebir) $ (BAL=190, risk_pct sleeve'e göre, 3.3 yıl):
+| sleeve | BTC | ETH | SOL | BNB | XRP | DOGE |
+|---|---|---|---|---|---|---|
+| donchian | +60✅ | +126 | +135✅ | +79 | +79 | +72 |  (6/6 coin +, evrensel)
+| squeeze  | +84 | +85 | +103✅ | +22 | +123 | +114✅ |
+| sr_break | +18 | +48 | +10 | +13 | +89 | −48 |  (coin-seçici, güvenilmez)
+| BB       | +52 | +56 | −53 | +17 | +29 | −17 |  (zayıf/kaybeden, elendi)
+(✅ = her yıl pozitif)
+
+BULGULAR: donchian = evrensel edge (6/6 coin +). squeeze = birkaç coinde çok güçlü
+(XRP/DOGE/SOL). sr_break & BB güvenilmez → elendi. Limitler (orb $+271 SOL gibi)
+MODEL, karara katılmadı.
+
+## ✅ CANLI CONFIG v3 (2026-07-18) — 4 coin, dengeli, çakışmasız
+
+Coin başına en iyi market sleeve, 2 donchian + 2 squeeze:
+| coin | sleeve | $ 3.3y | PF |
+|---|---|---|---|
+| SOL | donchian | +135 | 1.46 |
+| ETH | donchian | +126 | 1.40 |
+| XRP | squeeze | +123 | 1.40 |
+| DOGE | squeeze | +114 | 1.50 |
+Toplam ~$498/3.3yıl (in-sample). Her coin tek sleeve → sıfır çakışma.
+
+CANLI .env (/opt/bot2, btc-bot.service):
+  SYMBOLS=SOL,ETH,XRP,DOGE (full :USDT form)
+  DONCHIAN_ENABLED=true, DONCHIAN_SYMBOLS=SOL,ETH
+  SQUEEZE_ENABLED=true,  SQUEEZE_SYMBOLS=XRP,DOGE
+  MAX_POSITIONS=4, RISK_SCALE=1.0 (=%2/işlem, backtest birebir), FIXED_MARGIN_USDT=0
+Kullanıcı 4-coin dengeli'yi seçti (6-coin ~$661 agresif, 3-coin ~$309 en sağlam
+alternatifleri arasından). Forward tutarsa 6'ya çıkılabilir. sr_break/BB/orb/fvg/ifvg
+kapalı (güvenilmez ya da model).
+
+NOT: in-sample (2023-2026 = seçim dönemi). Çürüme-izleme önerildi (bir sleeve@coin
+son N işlemde PF<1 olursa uyarı) — henüz eklenmedi.
