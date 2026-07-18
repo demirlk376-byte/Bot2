@@ -25,6 +25,9 @@ Kullanım (VPS):  venv/bin/python replay_recent.py 21 [--orb] [--lanes]
 """
 from __future__ import annotations
 
+import logging
+logging.disable(logging.WARNING)   # risk.py per-bar "below minimum" selini sustur
+
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
