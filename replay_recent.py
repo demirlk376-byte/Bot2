@@ -111,7 +111,7 @@ class Sim:
         # korelasyon capi (BTC/ETH/SOL aynı yön)
         cap = getattr(self.cfg.risk, "max_correlated_direction", 0)
         if cap:
-            grp = {"BTC/USDT", "ETH/USDT", "SOL/USDT"}
+            grp = {"BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"}
             same = sum(1 for p in self.positions.values()
                        if p["symbol"] in grp and p["dir"] == direction)
             if symbol in grp and same >= cap:
@@ -243,7 +243,7 @@ def main():
             sl = sleeves[full]
 
             # BB
-            if sl["mean_rev"] and bb_ok and sim._allowed("mean_rev", d["sym"]):
+            if sl["mean_rev"] and bb_ok and sim._allowed("mean_rev", full):
                 sig = sl["mean_rev"].analyze(sub)
                 if sig.direction != 0:
                     sim.try_open(full, "mean_rev", sig.direction, close, 0, 0, atr_v, ts)
@@ -254,23 +254,23 @@ def main():
                 if sg.direction != 0 and sg.sl_price > 0:
                     sim.try_open(full, "fvg", sg.direction, sg.entry_price, sg.sl_price, sg.tp_price, atr_v, ts)
             # IFVG
-            if sl["ifvg"] and sim._allowed("ifvg", d["sym"]):
+            if sl["ifvg"] and sim._allowed("ifvg", full):
                 sub250 = h1.iloc[max(0, i - 249): i + 1]
                 sg = sl["ifvg"].analyze(sub250, atr_v)
                 if sg.direction != 0 and sg.sl_price > 0:
                     sim.try_open(full, "ifvg", sg.direction, sg.entry_price, sg.sl_price, sg.tp_price, atr_v, ts)
             # Squeeze
-            if sl["squeeze"] and bo_ok and sim._allowed("squeeze", d["sym"]):
+            if sl["squeeze"] and bo_ok and sim._allowed("squeeze", full):
                 sg = sl["squeeze"].analyze(sub, atr_v)
                 if sg.direction != 0 and sg.sl_price > 0:
                     sim.try_open(full, "squeeze", sg.direction, sg.entry_price, sg.sl_price, sg.tp_price, atr_v, ts)
             # S/R (BB slotunu paylaşır — one-per-symbol zaten hallediyor)
-            if sl["sr_breakout"] and bo_ok and sim._allowed("sr_breakout", d["sym"]):
+            if sl["sr_breakout"] and bo_ok and sim._allowed("sr_breakout", full):
                 sg = sl["sr_breakout"].analyze(sub, atr_v)
                 if sg.direction != 0 and sg.sl_price > 0:
                     sim.try_open(full, "sr_breakout", sg.direction, close, sg.sl_price, sg.tp_price, atr_v, ts)
             # Donchian (4h sınırında)
-            if sl["donchian"] and sim._allowed("donchian", d["sym"]) and ts.hour % 4 == 3:
+            if sl["donchian"] and sim._allowed("donchian", full) and ts.hour % 4 == 3:
                 h4 = d["h4"]; sub4 = h4[h4.index <= ts]
                 if len(sub4) >= max(cfg.strategy.donchian_channel + 2, cfg.strategy.donchian_ema_trend):
                     atr4 = atr_fn(sub4["high"], sub4["low"], sub4["close"], 14).iloc[-1]
