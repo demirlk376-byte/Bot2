@@ -1,0 +1,295 @@
+"""
+faithful_all.py — TÜM sleeve'ler CANLI-BİREBİR, MEXC VADELİ veride, çok-coin sweep.
+
+Amaç: test harness'ine güvendiğimize göre (test==canlı, doğru veri kanıtlı), tüm
+stratejileri aynı güvenilir zeminde karşılaştırıp en sağlam çakışmasız config'i
+seçmek. Üretim strateji SINIFLARINI kullanır (canlı ile aynı), canlının pencere/
+tf/kapı/risk'iyle bar-bar koşar.
+
+DÜRÜST GÜVEN AYRIMI (fill modeli):
+  • MARKET giriş (force_market / market-fallback) → BYTE-BİREBİR:
+      squeeze, donchian, sr_breakout, BB/mean_rev. Fill = sinyal barı close.
+  • LİMİT giriş (retest, fallback yok) → MODELLENİR (kesin değil, işaretli):
+      orb, fvg, ifvg. Fill = sinyalden sonra fiyat entry seviyesine değerse.
+      Canlı emir-yaşamdöngüsü (yeni sinyalde iptal) tam modellenmez. Karar
+      market sleeve'ler + faithful_bt ile alınır; limitler yol gösterici.
+
+Canlı davranış (main.py'den, byte-exact spec):
+  sleeve   | tf/N       | atr        | fill   | SL/TP            | max_hold | BE  | risk | kapı
+  squeeze  | 1h/120→4h  | 1h atr14   | market | 2xATR / rr2.5    | 48       | -   | .02  | ranging blok
+  donchian | 4h/260     | 4h atr14   | market | 2xATR / rr2.0    | 30(4h)   | -   | .02  | yok(EMA200)
+  sr_break | 1h/120     | 1h atr14   | market | 3xATR / rr3.0    | 48       | -   | .02  | ranging blok
+  BB       | 1h/120     | 1h atr14   | market*| 3xATR / rr1.667  | 48       | -   | .02  | trending blok
+  orb      | 1h/120     | -          | LİMİT  | range / +2xrange | 6        | 1R  | .05  | ranging blok
+  fvg      | 1h/250     | 1h atr14   | LİMİT  | zone / rr2.5      | 24       | -   | .02  | yok
+  ifvg     | 1h/250     | 1h atr14   | LİMİT  | zone / rr2.0      | 24       | 1R  | .02  | yok
+
+Kullanım:
+  python faithful_all.py BTC                 # tüm sleeve'ler tek coin (MEXC vadeli)
+  python faithful_all.py BTC,ETH,SOL,BNB     # coin sweep
+  python faithful_all.py BTC binance_csv     # yerel BTC CSV (hızlı, venue farklı!)
+"""
+import sys
+import numpy as np, pandas as pd
+import fast_bt
+from indicators import atr as atr_fn, adx as adx_fn
+from strategies.squeeze import SqueezeStrategy
+from strategies.donchian import DonchianStrategy
+from strategies.sr_breakout import SrBreakoutStrategy
+from strategies.fvg import FvgStrategy
+from strategies.ifvg import IfvgStrategy
+from strategies.orb import OrbStrategy
+
+BAL = 190.0
+FEE = 0.0001
+
+
+def watr(sub, p=14):
+    v = atr_fn(sub["high"], sub["low"], sub["close"], p).iloc[-1]
+    return float(v) if np.isfinite(v) else 0.0
+
+
+def wadx(sub, p=14):
+    v = adx_fn(sub["high"], sub["low"], sub["close"], p).iloc[-1]
+    return float(v) if np.isfinite(v) else 20.0   # düz piyasa → nötr 20 (canlı ile aynı)
+
+
+def simulate(df, orders, risk_pct):
+    """orders: dict(i, dir, entry, sl, tp, max_hold, fill, be, expiry). Canlı exit:
+    sabit SL/TP + max-hold; BE (orb/ifvg) +1R'de SL→entry, SONRAKİ bara etkir
+    (main.py: taşınmış SL bu barın SL kontrolünü etkilemez). SL-önce-TP = kötümser."""
+    hi = df["high"].values; lo = df["low"].values; cl = df["close"].values
+    idx = df.index; n = len(cl)
+    tr = []; occ = -1
+    for od in sorted(orders, key=lambda o: o["i"]):
+        i = od["i"]
+        if i <= occ or i >= n - 1:
+            continue
+        d = od["dir"]; SL = od["sl"]; TP = od["tp"]; mh = od["max_hold"]; be = od.get("be", False)
+        # ── giriş fill ──
+        if od["fill"] == "market":
+            fi = i; fe = cl[i]                      # force_market/fallback → close'da
+        else:                                       # LİMİT retest: entry seviyesine değme
+            E = od["entry"]; exp = od.get("expiry", mh); fi = None
+            for j in range(i + 1, min(i + 1 + exp, n)):
+                if lo[j] <= E <= hi[j]:
+                    fi = j; break
+            if fi is None:
+                occ = min(i + exp, n - 1)           # dolmayan limit slotu meşgul tutar
+                continue
+            fe = E
+        r0 = abs(fe - SL)
+        if r0 <= 0:
+            continue
+        sl = SL; be_done = False; ep = None; j = fi
+        for j in range(fi + 1, min(fi + 1 + mh, n)):
+            if d == 1:
+                if lo[j] <= sl: ep = sl; break
+                if hi[j] >= TP: ep = TP; break
+            else:
+                if hi[j] >= sl: ep = sl; break
+                if lo[j] <= TP: ep = TP; break
+            if be and not be_done:                  # BE: bu bar exit OLMADIYSA taşı → j+1'e etkir
+                if d == 1 and hi[j] >= fe + r0: sl = max(sl, fe); be_done = True
+                elif d == -1 and lo[j] <= fe - r0: sl = min(sl, fe); be_done = True
+        if ep is None:
+            j = min(fi + mh, n - 1); ep = cl[j]
+        R = d * (ep - fe) / r0 - 2 * FEE * fe / r0
+        tr.append({"r": R, "year": idx[fi].year}); occ = j
+    return tr, risk_pct
+
+
+# ── Sinyal üreticiler — üretim sınıfı, canlı pencere/tf/kapı ──
+def sig_squeeze(m):
+    d = fast_bt.resample(m, "1h")
+    s = SqueezeStrategy(kc_mult=1.5, min_squeeze_bars=5, sl_atr=2.0, rr=2.5, mtf_filter=True)
+    out = []
+    for i in range(260, len(d)):
+        sub = d.iloc[max(0, i - 119):i + 1]
+        a = watr(sub, 14)
+        if a <= 0 or wadx(sub) <= 20.0:            # ranging blok (bo_allowed)
+            continue
+        sg = s.analyze(sub, a)
+        if sg.direction != 0:
+            out.append(dict(i=i, dir=sg.direction, entry=sg.entry_price, sl=sg.sl_price,
+                            tp=sg.tp_price, max_hold=48, fill="market", be=False))
+    return d, out, 0.02
+
+
+def sig_donchian(m):
+    d = fast_bt.resample(m, "4h")
+    s = DonchianStrategy(channel=40, rr=2.0, sl_atr=2.0, ema_trend=200, buffer_atr=0.0)
+    out = []
+    for i in range(260, len(d)):
+        sub = d.iloc[max(0, i - 259):i + 1]
+        a = watr(sub, 14)
+        if a <= 0:
+            continue
+        sg = s.analyze(sub, a)
+        if sg.direction != 0:
+            out.append(dict(i=i, dir=sg.direction, entry=sg.entry_price, sl=sg.sl_price,
+                            tp=sg.tp_price, max_hold=30, fill="market", be=False))
+    return d, out, 0.02
+
+
+def sig_sr(m):
+    d = fast_bt.resample(m, "1h")
+    s = SrBreakoutStrategy()   # lookback80, min_touches3, sl_atr3, rr3
+    out = []
+    for i in range(260, len(d)):
+        sub = d.iloc[max(0, i - 119):i + 1]
+        a = watr(sub, 14)
+        if a <= 0 or wadx(sub) <= 20.0:            # ranging blok
+            continue
+        sg = s.analyze(sub, a)
+        if sg.direction != 0:
+            out.append(dict(i=i, dir=sg.direction, entry=float(sub["close"].iloc[-1]),
+                            sl=sg.sl_price, tp=sg.tp_price, max_hold=48, fill="market", be=False))
+    return d, out, 0.02
+
+
+def sig_bb(m):
+    try:
+        from config import load_config
+        s = MeanRev(load_config().strategy)
+    except Exception as e:
+        print(f"  BB atlandı (config/sınıf yüklenemedi: {e})"); return None
+    d = fast_bt.resample(m, "1h")
+    out = []
+    for i in range(260, len(d)):
+        sub = d.iloc[max(0, i - 119):i + 1]
+        a = watr(sub, 14)
+        if a <= 0 or wadx(sub) >= 28.0:            # trending blok (bb_allowed)
+            continue
+        sg = s.analyze(sub)
+        if sg.direction != 0:
+            E = float(sub["close"].iloc[-1]); sld = 3.0 * a   # RiskManager: SL 3xATR, TP rr1.667
+            out.append(dict(i=i, dir=sg.direction, entry=E, sl=E - sg.direction * sld,
+                            tp=E + sg.direction * 1.667 * sld, max_hold=48, fill="market", be=False))
+    return d, out, 0.02
+
+
+def sig_orb(m):
+    d = fast_bt.resample(m, "1h")
+    s = OrbStrategy()   # rr2.0, ORB_HOUR=14
+    out = []
+    for i in range(260, len(d)):
+        sub = d.iloc[max(0, i - 119):i + 1]
+        if wadx(sub) <= 20.0:                      # ranging blok
+            continue
+        sg = s.analyze(sub)
+        if sg.direction != 0:
+            entry = sg.orb_high if sg.direction == 1 else sg.orb_low   # limit trigger
+            out.append(dict(i=i, dir=sg.direction, entry=entry, sl=sg.sl_price, tp=sg.tp_price,
+                            max_hold=6, fill="limit", be=True, expiry=6))   # BE@1R
+    return d, out, 0.05
+
+
+def sig_fvg(m):
+    d = fast_bt.resample(m, "1h")
+    s = FvgStrategy(min_gap_atr=0.5, rr=2.5)
+    out = []
+    for i in range(260, len(d)):
+        sub = d.iloc[max(0, i - 249):i + 1]        # 250 bar (EMA200)
+        a = watr(sub.iloc[-120:], 14)              # ATR canlıda 120-bar
+        if a <= 0:
+            continue
+        sg = s.analyze(sub, a)
+        if sg.direction != 0:
+            out.append(dict(i=i, dir=sg.direction, entry=sg.entry_price, sl=sg.sl_price,
+                            tp=sg.tp_price, max_hold=24, fill="limit", be=False, expiry=24))
+    return d, out, 0.02
+
+
+def sig_ifvg(m):
+    d = fast_bt.resample(m, "1h")
+    s = IfvgStrategy(min_gap_atr=0.75, rr=2.0)
+    out = []
+    for i in range(260, len(d)):
+        sub = d.iloc[max(0, i - 249):i + 1]
+        a = watr(sub.iloc[-120:], 14)
+        if a <= 0:
+            continue
+        sg = s.analyze(sub, a)
+        if sg.direction != 0:
+            out.append(dict(i=i, dir=sg.direction, entry=sg.entry_price, sl=sg.sl_price,
+                            tp=sg.tp_price, max_hold=24, fill="limit", be=True, expiry=24))   # BE@1R
+    return d, out, 0.02
+
+
+# MeanReversionStrategy adını geç-import et (config bağımlılığı sig_bb içinde)
+try:
+    from strategies.mean_reversion import MeanReversionStrategy as MeanRev
+except Exception:
+    MeanRev = None
+
+SLEEVES = {
+    "squeeze":  (sig_squeeze, "market"),
+    "donchian": (sig_donchian, "market"),
+    "sr_break": (sig_sr,       "market"),
+    "BB":       (sig_bb,       "market"),
+    "orb":      (sig_orb,      "LİMİT"),
+    "fvg":      (sig_fvg,      "LİMİT"),
+    "ifvg":     (sig_ifvg,     "LİMİT"),
+}
+
+
+def rep(name, kind, res):
+    if res is None:
+        return None
+    df_i, orders, risk = res
+    tr, rp = simulate(df_i, orders, risk)
+    if not tr:
+        print(f"  {name:9s} [{kind:6s}] sinyal/işlem yok"); return None
+    r = np.array([t["r"] for t in tr]); yrs = np.array([t["year"] for t in tr])
+    gp = r[r > 0].sum(); gl = -r[r < 0].sum(); pf = gp / gl if gl > 0 else 9.99
+    usd = r.sum() * BAL * rp
+    tag = "BİREBİR" if kind == "market" else "MODEL"
+    print(f"  {name:9s} [{kind:6s}] n={len(r):>3d} WR{(r>0).mean():>3.0%} PF{pf:4.2f} "
+          f"${usd:+7.2f}  ({tag})")
+    per = {}
+    for yr in sorted(set(yrs.tolist())):
+        ry = r[yrs == yr]; g1 = ry[ry > 0].sum(); g2 = -ry[ry < 0].sum()
+        pfy = g1 / g2 if g2 > 0 else 9.99
+        print(f"      {yr} n={len(ry):>3d} WR{(ry>0).mean():>3.0%} PF{pfy:4.2f} {ry.sum()*BAL*rp:+7.2f}$")
+        per[yr] = ry.sum() * BAL * rp
+    return dict(name=name, kind=kind, n=len(r), pf=pf, usd=usd,
+                yrs_pos=all(v > 0 for v in per.values()), per=per)
+
+
+def main():
+    coins = (sys.argv[1] if len(sys.argv) > 1 else "BTC").split(",")
+    source = sys.argv[2] if len(sys.argv) > 2 else "mexc_futures"
+    summary = []
+    for coin in coins:
+        coin = coin.strip().upper()
+        print(f"\n{'='*64}\n=== {coin} — TÜM SLEEVE'LER (canlı-birebir) ===")
+        try:
+            m = fast_bt.load(coin, source=source)
+        except Exception as e:
+            print(f"  {coin} veri yüklenemedi: {e}"); continue
+        for name, (fn, kind) in SLEEVES.items():
+            try:
+                row = rep(name, kind, fn(m))
+                if row:
+                    row["coin"] = coin; summary.append(row)
+            except Exception as e:
+                print(f"  {name:9s} [{kind:6s}] HATA: {e}")
+    # ── Sıralı özet ──
+    print(f"\n{'='*64}\n=== ÖZET — en iyi (sleeve@coin), $ (BAL=190, risk_pct sleeve'e göre) ===")
+    print("    MARKET (byte-birebir) — kararlar bunlarla:")
+    for row in sorted([r for r in summary if r["kind"] == "market"], key=lambda x: -x["usd"]):
+        flag = "✅her yıl+" if row["yrs_pos"] else "  "
+        print(f"      {row['name']:9s}@{row['coin']:5s}  ${row['usd']:+7.2f}  PF{row['pf']:.2f}  n={row['n']:<3d} {flag}")
+    lim = [r for r in summary if r["kind"] != "market"]
+    if lim:
+        print("    LİMİT (modellenmiş — yol gösterici, kesin değil):")
+        for row in sorted(lim, key=lambda x: -x["usd"]):
+            flag = "her yıl+" if row["yrs_pos"] else "  "
+            print(f"      {row['name']:9s}@{row['coin']:5s}  ${row['usd']:+7.2f}  PF{row['pf']:.2f}  n={row['n']:<3d} {flag}")
+    print("\nÇakışmasız config = coin başına 1 sleeve. En sağlam = her yıl+ olan,")
+    print("yüksek $ + makul n. Kararı MARKET sleeve'lerden ver; limitler ipucu.")
+
+
+if __name__ == "__main__":
+    main()
