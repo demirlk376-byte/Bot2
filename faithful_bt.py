@@ -97,9 +97,12 @@ def rep(name,tr):
         print(f"      {yr} n={len(ry):>3d} WR{(ry>0).mean():>3.0%} PF{(g1/g2 if g2>0 else 9.99):4.2f} {ry.sum()*BAL*RISK:+7.2f}$")
 
 if __name__ == "__main__":
-    print(f"faithful_bt (ÜRETİM SINIFI = canlı birebir) @ {coin} — yükleniyor...")
-    m=load(coin)
-    print(f"  {len(m)} bar")
-    print(f"\n=== {coin} — CANLI BOTUN BİREBİR YAPACAĞI ===")
-    rep("donchian",prod_donchian(m))
-    rep("squeeze",prod_squeeze(m))
+    coins = [c.strip().upper() for c in coin.split(",")]   # çoklu coin destekli
+    for c in coins:
+        print(f"\n=== {c} — CANLI BOTUN BİREBİR YAPACAĞI (yıl-yıl) ===", flush=True)
+        try:
+            m = load(c)
+        except Exception as e:
+            print(f"  {c} veri hatası: {e}", flush=True); continue
+        rep("donchian", prod_donchian(m))
+        rep("squeeze", prod_squeeze(m))
