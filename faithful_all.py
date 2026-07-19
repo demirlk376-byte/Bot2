@@ -43,6 +43,17 @@ from strategies.orb import OrbStrategy
 BAL = 190.0
 FEE = 0.0001
 
+_PROG = {"done": 0, "total": 0}
+
+
+def progress(label):
+    """nohup/tail dostu metin ilerleme çubuğu — her iş birimi bitince bir satır."""
+    _PROG["done"] += 1
+    frac = _PROG["done"] / max(_PROG["total"], 1)
+    fill = int(frac * 22)
+    bar = "█" * fill + "░" * (22 - fill)
+    print(f"  [{bar}] {frac*100:3.0f}%  {label}", flush=True)
+
 
 def watr(sub, p=14):
     v = atr_fn(sub["high"], sub["low"], sub["close"], p).iloc[-1]
@@ -291,20 +302,21 @@ def rep(name, kind, res):
 
 
 def main():
-    coins = (sys.argv[1] if len(sys.argv) > 1 else "BTC").split(",")
+    coins = [c.strip().upper() for c in (sys.argv[1] if len(sys.argv) > 1 else "BTC").split(",")]
     source = sys.argv[2] if len(sys.argv) > 2 else "mexc_futures"
     summary = []
-    for coin in coins:
-        coin = coin.strip().upper()
-        print(f"\n{'='*64}\n=== {coin} — TÜM SLEEVE'LER (canlı-birebir) ===", flush=True)
+    _PROG["total"] = len(coins) * (1 + len(SLEEVES))   # coin başına: 1 hazırlık + N sleeve
+    for ci, coin in enumerate(coins, 1):
+        print(f"\n{'='*64}\n=== [{ci}/{len(coins)}] {coin} — TÜM SLEEVE'LER (canlı-birebir) ===", flush=True)
         try:
             m = fast_bt.load(coin, source=source)
-            print("  ADX/ATR ön-hesaplanıyor (1x)...", flush=True)
             d1, adx, at = prep1h(m)
             d4, at4 = prep4h(m)
             ctx = dict(d1=d1, adx=adx, at=at, d4=d4, at4=at4)
+            progress(f"{coin} hazırlık bitti")
         except Exception as e:
-            print(f"  {coin} veri/hazırlık hatası: {e}", flush=True); continue
+            print(f"  {coin} veri/hazırlık hatası: {e}", flush=True)
+            _PROG["done"] += 1 + len(SLEEVES); continue   # bu coinin birimlerini atla
         for name, (fn, kind) in SLEEVES.items():
             try:
                 row = rep(name, kind, fn(ctx))
@@ -312,6 +324,7 @@ def main():
                     row["coin"] = coin; summary.append(row)
             except Exception as e:
                 print(f"  {name:9s} [{kind:6s}] HATA: {e}", flush=True)
+            progress(f"{coin} {name}")
     # ── ÖZET: COOLDOWN ETKİSİ ──
     print(f"\n{'='*64}\n=== ÖZET — COOLDOWN + KATKI SAĞLIYOR MU? (market sleeve'ler) ===", flush=True)
     mkt = [r for r in summary if r["kind"] == "market"]
