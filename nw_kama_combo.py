@@ -102,7 +102,7 @@ def simulate(df, entries, max_hold):
         if ep is None:
             j = min(i + max_hold, n - 1); ep = cl[j]
         R = d * (ep - e) / sld - 2 * FEE * e / sld   # R = SL-mesafesi biriminde
-        tr.append({"r": R, "year": idx[i].year}); occ = j
+        tr.append({"r": R, "year": idx[i].year, "dir": d}); occ = j
     return tr
 
 
@@ -122,7 +122,18 @@ def rep(coin, tf, tr):
         per[yr] = ry.sum() * BAL * RISK
         yrbits.append(f"{yr}:${per[yr]:+.0f}(PF{pfy:.2f})")
     print(line + "   " + " ".join(yrbits), flush=True)
-    return dict(coin=coin, tf=tf, n=len(r), pf=pf, usd=usd,
+    # yön kırılımı — long-only / short-only ayrı
+    dirs = np.array([t["dir"] for t in tr])
+    def side(mask, tag):
+        rs = r[mask]
+        if len(rs) == 0:
+            return f"{tag} yok", 0.0
+        g1 = rs[rs > 0].sum(); g2 = -rs[rs < 0].sum(); pfs = g1 / g2 if g2 > 0 else 9.99
+        return f"{tag} n={len(rs):>2d} WR{(rs>0).mean():>3.0%} PF{pfs:4.2f} ${rs.sum()*BAL*RISK:+7.2f}", rs.sum()*BAL*RISK
+    ls, l_usd = side(dirs == 1, "LONG ")
+    ss, s_usd = side(dirs == -1, "SHORT")
+    print(f"            → {ls}   |   {ss}", flush=True)
+    return dict(coin=coin, tf=tf, n=len(r), pf=pf, usd=usd, l_usd=l_usd, s_usd=s_usd,
                 yrs_pos=all(v > 0 for v in per.values()))
 
 
@@ -154,7 +165,14 @@ def main():
         print(f"  {row['coin']:5s} {row['tf']:3s}  ${row['usd']:+7.2f}  PF{row['pf']:.2f}  n={row['n']:<3d} {flag}", flush=True)
     tot = sum(r["usd"] for r in summary)
     print(f"\n  Toplam (tüm coin×TF): ${tot:+.2f}")
-    print("  PF>1.3 + makul n + çok coinde + olan TF'ler umut verici. İyi çıkarsa üretim sınıfı.")
+    # ── YÖN KIRILIMI: 4h long-only vs short-only (kullanıcı sorusu) ──
+    for tf in TFS:
+        rows = [r for r in summary if r["tf"] == tf]
+        if not rows:
+            continue
+        l = sum(r["l_usd"] for r in rows); s = sum(r["s_usd"] for r in rows)
+        print(f"  {tf}: LONG-only ${l:+.2f}  |  SHORT-only ${s:+.2f}  (tüm coinler toplam)")
+    print("  PF>1.3 + makul n + çok coinde + olan yön/TF umut verici. İyi çıkarsa üretim sınıfı.")
 
 
 if __name__ == "__main__":
