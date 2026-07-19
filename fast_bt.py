@@ -12,7 +12,7 @@ Kullanım:
   python fast_bt.py all BTC          # tüm kazananlar tek coinde
 """
 from __future__ import annotations
-import sys, glob
+import sys, glob, os
 from datetime import datetime, timezone
 def datetimeutc(): return datetime.now(timezone.utc).timestamp()
 import numpy as np, pandas as pd
@@ -20,6 +20,18 @@ import numpy as np, pandas as pd
 RISK = 0.02          # sleeve başına per-trade risk (R ölçeği)
 BAL = 190.0
 FEE = 0.0001
+CACHE_DIR = "data"   # MEXC vadeli veri önbelleği (VPS'te doldurulur, PC çevrimdışı okur)
+
+
+def _cache_path(coin):
+    return os.path.join(CACHE_DIR, f"{coin}_fut_1h.csv")
+
+
+def _save_cache(coin, m):
+    """VPS MEXC'ten çekince otomatik kaydeder → PC (MEXC engelli) çevrimdışı okur."""
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    m.to_csv(_cache_path(coin))
+    print(f"  önbellek yazıldı: {_cache_path(coin)} ({len(m)} bar) — commit+push et, PC bunu okur")
 
 
 def load(coin: str, source: str = "mexc_futures") -> pd.DataFrame:
@@ -27,8 +39,20 @@ def load(coin: str, source: str = "mexc_futures") -> pd.DataFrame:
     botun GERÇEKTEN işlem gördüğü borsa+enstrüman. Eski hata: spot (COIN/USDT) ya
     da yerel Binance CSV çekiliyordu; spot/Binance ≠ MEXC vadeli, mumlar (wick'ler,
     funding/basis) farklı → sinyaller kayabiliyordu.
+    source='local' → data/{COIN}_fut_1h.csv önbelleğinden okur (MEXC gerekmez;
+      PC'de MEXC engelliyse: VPS'te bir kez fetch+kaydet+push, PC'de git pull+local).
     source='binance_csv' (yalnız BTC): yerel 1m CSV — HIZLI ama BINANCE venue,
     canlı MEXC vadeli DEĞİL. Sadece hızlı tarama; karar için mexc_futures kullan."""
+    if source == "local":
+        p = _cache_path(coin)
+        if not os.path.exists(p):
+            raise SystemExit(f"{coin}: yerel önbellek yok ({p}). Önce VPS'te "
+                             f"'python faithful_all.py {coin}' çalıştır (data/ dolar), "
+                             f"'git add data && git commit -m veri && git push' yap, "
+                             f"PC'de 'git pull' çek.")
+        m = pd.read_csv(p, index_col=0, parse_dates=True)
+        print(f"  veri: yerel önbellek {p}, {len(m)} bar (ÇEVRİMDIŞI, MEXC gerekmez)")
+        return m
     if source == "binance_csv" and coin == "BTC":
         files = sorted(glob.glob("BTCUSDT-1m-*.csv"))
         if files:
@@ -59,7 +83,12 @@ def load(coin: str, source: str = "mexc_futures") -> pd.DataFrame:
     m.index = pd.to_datetime(m["ts"], unit="ms", utc=True)
     m = m.drop_duplicates("ts")
     print(f"  veri: MEXC VADELİ {sym} 1h, {len(m)} bar (canlı-birebir borsa/enstrüman)")
-    return m.drop(columns=["ts"]).astype(float).iloc[:-1]   # 1h; sleeve'ler 4h'a resample eder
+    m = m.drop(columns=["ts"]).astype(float).iloc[:-1]   # 1h; sleeve'ler 4h'a resample eder
+    try:
+        _save_cache(coin, m)                              # VPS'te otomatik önbellek → PC çevrimdışı
+    except Exception as e:
+        print(f"  (önbellek yazılamadı: {e})")
+    return m
 
 
 def resample(m, tf):
