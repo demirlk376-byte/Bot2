@@ -271,3 +271,34 @@ sadece formatlar, fetch edilmez). BB her yerde kapalı, ileride BTC/BNB eklense 
 kapalı kalır. DERS: bir sleeve'i "işlem görmeyen coine sabitleyerek" kapatmak, o coin
 sonradan traded olursa geri teper — kapatmayı fetch edilmeyen sahte sembolle yap.
 Config değişince HER ZAMAN "active sleeves" startup logunu kontrol et (coin başına 1).
+
+## ✅ CANLI CONFIG v4 (2026-07-19) — 7 coin, disiplinli genişleme
+
+10 yeni likit MEXC-vadeli coin faithful_all ile tarandı. donchian EVRENSEL edge
+çıktı (yeni 10 coinin 9'unda +): ADA+156, TRX+101, NEAR+100, BNB+79, AVAX+75,
+DOT+62, BTC+60, LINK+28, ATOM+12 (sadece LTC−37). squeeze seçici (BTC+92, TRX+57,
+ATOM+50 iyi; DOT−81, ADA−73 kötü).
+
+Yıl-yıl robustluk (faithful_bt, byte-birebir) ile 3 sağlam yeni coin eklendi:
+| coin | sleeve | 2023/24/25/26 | PF | 
+|---|---|---|---|
+| ADA | donchian | +50/+34/+62/+11 (4/4) | 1.53 |
+| NEAR | donchian | +42/+18/+8/+31 (4/4) | 1.31 |
+| TRX | squeeze | +10/+32/+11/+5 (4/4) | 1.45 |
+KRİTİK: TRX'te donchian 2025 −$2 (3/4) ama squeeze 4/4 → squeeze seçildi.
+Yıl-yıl bakmasak yanlış sleeve giderdi. BNB donchian 3/4 (2026 −$0.5 düz) →
+şimdilik dışarıda (opsiyonel 8.).
+
+CANLI (/opt/bot2, btc-bot.service):
+  SYMBOLS=SOL,ETH,ADA,NEAR,XRP,DOGE,TRX (full :USDT)
+  DONCHIAN_SYMBOLS=SOL,ETH,ADA,NEAR ; SQUEEZE_SYMBOLS=XRP,DOGE,TRX
+  MAX_POSITIONS=7, RISK_SCALE=1.0, BB_SYMBOLS=NONE (kapalı)
+Her coin tek sleeve → sıfır çakışma (startup "active sleeves" ile teyit).
+In-sample katkı ~+$313/3.3yıl (mevcut +498 üstüne). Riski ARTIRMADAN,
+kanıtlı edge'i çeşitlendirerek büyüme (matematiksel doğru yol).
+
+ELENEN ARAŞTIRMALAR (hepsi doğru veride, PC'de, para kaybetmeden reddedildi):
+NW-alone −$656 (0/12), KAMA-alone +$107 ama PF1.13 short-only (yetersiz),
+NW+KAMA combo −$78, grid bot felaket (SOL maxDD $2095 = ~11x hesap yıkımı).
+DERS: WR peşinde koşma (kâr değil, filtreler overfit+winner keser); risk kırma
+(varyans+iflas, Kelly'yi geçme); çeşitlendirme = doğru büyüme düğmesi.
