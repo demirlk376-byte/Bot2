@@ -82,7 +82,50 @@ def combo_signals(df):
     return out
 
 
-def simulate(df, entries, max_hold):
+def nw_only_signals(df):
+    """SADECE NW (orijinal): close alt banda inince long, üst bandı aşınca short."""
+    close = df["close"].values
+    yhat = nadaraya_causal(close)
+    mae = pd.Series(np.abs(close - yhat)).rolling(NW_WIN).mean().values
+    out = []
+    for t in range(len(close)):
+        if np.isnan(yhat[t]) or np.isnan(mae[t]) or mae[t] <= 0:
+            continue
+        if close[t] < yhat[t] - NW_MULT * mae[t]:
+            out.append((t, 1))
+        elif close[t] > yhat[t] + NW_MULT * mae[t]:
+            out.append((t, -1))
+    return out
+
+
+def kama_only_signals(df):
+    """SADECE KAMA (orijinal): close yükselen KAMA'yı yukarı keserse long,
+    düşen KAMA'yı aşağı keserse short (trend-takip)."""
+    close = df["close"].values
+    k = kama(close)
+    out = []
+    for t in range(1, len(close)):
+        if np.isnan(k[t]) or np.isnan(k[t - 1]):
+            continue
+        up = k[t] > k[t - 1]
+        cross_up = close[t - 1] <= k[t - 1] and close[t] > k[t]
+        cross_dn = close[t - 1] >= k[t - 1] and close[t] < k[t]
+        if cross_up and up:
+            out.append((t, 1))
+        elif cross_dn and not up:
+            out.append((t, -1))
+    return out
+
+
+# strateji → (sinyal fonksiyonu, SL×ATR, TP×ATR)  — orijinal araştırmadaki çıkışlar
+STRATS = {
+    "nw":    (nw_only_signals,   3.0, 5.0),   # mean-rev: SL3 TP5 (BB gibi)
+    "kama":  (kama_only_signals, 2.0, 4.0),   # trend: SL2 TP4 (RR2)
+    "combo": (combo_signals,     3.0, 5.0),   # confluence
+}
+
+
+def simulate(df, entries, max_hold, sl_atr, tp_atr):
     hi = df["high"].values; lo = df["low"].values; cl = df["close"].values
     idx = df.index; n = len(cl)
     a = atr_fn(df["high"], df["low"], df["close"], 14).values
@@ -90,8 +133,8 @@ def simulate(df, entries, max_hold):
     for (i, d) in entries:
         if i <= occ or i >= n - 1 or np.isnan(a[i]) or a[i] <= 0:
             continue
-        e = cl[i]; sld = SL_ATR * a[i]
-        sl = e - d * sld; tp = e + d * TP_ATR * a[i]; ep = None; j = i
+        e = cl[i]; sld = sl_atr * a[i]
+        sl = e - d * sld; tp = e + d * tp_atr * a[i]; ep = None; j = i
         for j in range(i + 1, min(i + 1 + max_hold, n)):
             if d == 1:
                 if lo[j] <= sl: ep = sl; break
@@ -106,73 +149,63 @@ def simulate(df, entries, max_hold):
     return tr
 
 
-def rep(coin, tf, tr):
+def rep(strat, coin, tf, tr):
     if not tr:
-        print(f"  {coin:5s} {tf:3s}  işlem yok (confluence hiç tetiklenmedi)", flush=True)
+        print(f"    {strat:5s} {coin:5s} {tf:3s}  işlem yok", flush=True)
         return None
     r = np.array([t["r"] for t in tr]); yrs = np.array([t["year"] for t in tr])
+    dirs = np.array([t["dir"] for t in tr])
     gp = r[r > 0].sum(); gl = -r[r < 0].sum(); pf = gp / gl if gl > 0 else 9.99
     usd = r.sum() * BAL * RISK
     per = {}
-    line = f"  {coin:5s} {tf:3s}  n={len(r):>3d} WR{(r>0).mean():>3.0%} PF{pf:4.2f} ${usd:+7.2f}"
-    yrbits = []
     for yr in sorted(set(yrs.tolist())):
-        ry = r[yrs == yr]; g1 = ry[ry > 0].sum(); g2 = -ry[ry < 0].sum()
-        pfy = g1 / g2 if g2 > 0 else 9.99
-        per[yr] = ry.sum() * BAL * RISK
-        yrbits.append(f"{yr}:${per[yr]:+.0f}(PF{pfy:.2f})")
-    print(line + "   " + " ".join(yrbits), flush=True)
-    # yön kırılımı — long-only / short-only ayrı
-    dirs = np.array([t["dir"] for t in tr])
-    def side(mask, tag):
-        rs = r[mask]
-        if len(rs) == 0:
-            return f"{tag} yok", 0.0
-        g1 = rs[rs > 0].sum(); g2 = -rs[rs < 0].sum(); pfs = g1 / g2 if g2 > 0 else 9.99
-        return f"{tag} n={len(rs):>2d} WR{(rs>0).mean():>3.0%} PF{pfs:4.2f} ${rs.sum()*BAL*RISK:+7.2f}", rs.sum()*BAL*RISK
-    ls, l_usd = side(dirs == 1, "LONG ")
-    ss, s_usd = side(dirs == -1, "SHORT")
-    print(f"            → {ls}   |   {ss}", flush=True)
-    return dict(coin=coin, tf=tf, n=len(r), pf=pf, usd=usd, l_usd=l_usd, s_usd=s_usd,
-                yrs_pos=all(v > 0 for v in per.values()))
+        ry = r[yrs == yr]; per[yr] = ry.sum() * BAL * RISK
+    l = r[dirs == 1]; s = r[dirs == -1]
+    l_usd = l.sum() * BAL * RISK if len(l) else 0.0
+    s_usd = s.sum() * BAL * RISK if len(s) else 0.0
+    print(f"    {strat:5s} {coin:5s} {tf:3s}  n={len(r):>3d} WR{(r>0).mean():>3.0%} PF{pf:4.2f} "
+          f"${usd:+7.2f}   L${l_usd:+6.1f}(n{len(l)}) S${s_usd:+6.1f}(n{len(s)})", flush=True)
+    return dict(strat=strat, coin=coin, tf=tf, n=len(r), pf=pf, usd=usd,
+                l_usd=l_usd, s_usd=s_usd, yrs_pos=all(v > 0 for v in per.values()))
 
 
 def main():
     coins = [c.strip().upper() for c in (sys.argv[1] if len(sys.argv) > 1 else "BTC").split(",")]
     source = sys.argv[2] if len(sys.argv) > 2 else "mexc_futures"
-    print(f"NW+KAMA CONFLUENCE (ikisi de aynı yön) — {coins} @ {TFS}")
-    print(f"NW(h{NW_H},win{NW_WIN},x{NW_MULT}) KAMA(er{KAMA_ER}) SL{SL_ATR}ATR TP{TP_ATR}ATR")
+    print(f"NW / KAMA / COMBO — AYRI AYRI test (strateji mi kötü, combo kurgusu mu?)")
+    print(f"{coins} @ {TFS}  NW(h{NW_H},win{NW_WIN},x{NW_MULT}) KAMA(er{KAMA_ER},trendN{KAMA_TREND_N})")
     summary = []
     for coin in coins:
-        print(f"\n{'='*72}\n=== {coin} ===", flush=True)
+        print(f"\n{'='*74}\n=== {coin} ===", flush=True)
         try:
             m = fast_bt.load(coin, source=source)
         except Exception as e:
             print(f"  {coin} veri hatası: {e}", flush=True); continue
         for tf in TFS:
             d = fast_bt.resample(m, tf)
-            row = rep(coin, tf, simulate(d, combo_signals(d), TF_MAXHOLD[tf]))
-            if row:
-                summary.append(row)
-    # ── Özet ──
-    print(f"\n{'='*72}\n=== ÖZET — NW+KAMA confluence (araştırma, canlı sınıfı yok) ===", flush=True)
-    if not summary:
-        print("  Hiç işlem yok — confluence çok seçici (NW dip + KAMA trend nadir çakışıyor).")
-        print("  Gevşetme seçenekleri: KAMA'yı sadece eğim (close şartsız), ya da N-bar tolerans.")
-        return
-    for row in sorted(summary, key=lambda x: -x["usd"]):
-        flag = "✅her yıl+" if row["yrs_pos"] else ""
-        print(f"  {row['coin']:5s} {row['tf']:3s}  ${row['usd']:+7.2f}  PF{row['pf']:.2f}  n={row['n']:<3d} {flag}", flush=True)
-    tot = sum(r["usd"] for r in summary)
-    print(f"\n  Toplam (tüm coin×TF): ${tot:+.2f}")
-    # ── YÖN KIRILIMI: 4h long-only vs short-only (kullanıcı sorusu) ──
-    for tf in TFS:
-        rows = [r for r in summary if r["tf"] == tf]
+            for sname, (fn, sl_a, tp_a) in STRATS.items():
+                row = rep(sname, coin, tf, simulate(d, fn(d), TF_MAXHOLD[tf], sl_a, tp_a))
+                if row:
+                    summary.append(row)
+    # ── Özet: her strateji için toplam + en iyi hücre ──
+    print(f"\n{'='*74}\n=== ÖZET — strateji karşılaştırması (araştırma; hepsi canlı sınıfsız) ===", flush=True)
+    for sname in STRATS:
+        rows = [r for r in summary if r["strat"] == sname]
         if not rows:
-            continue
-        l = sum(r["l_usd"] for r in rows); s = sum(r["s_usd"] for r in rows)
-        print(f"  {tf}: LONG-only ${l:+.2f}  |  SHORT-only ${s:+.2f}  (tüm coinler toplam)")
-    print("  PF>1.3 + makul n + çok coinde + olan yön/TF umut verici. İyi çıkarsa üretim sınıfı.")
+            print(f"  {sname:5s}: işlem yok"); continue
+        tot = sum(r["usd"] for r in rows)
+        lt = sum(r["l_usd"] for r in rows); st = sum(r["s_usd"] for r in rows)
+        best = max(rows, key=lambda x: x["usd"])
+        npos = sum(1 for r in rows if r["usd"] > 0)
+        print(f"  {sname:5s}: TOPLAM ${tot:+7.2f}  (LONG ${lt:+.0f} / SHORT ${st:+.0f})  "
+              f"pozitif hücre {npos}/{len(rows)}  en iyi: {best['coin']}{best['tf']} ${best['usd']:+.1f}PF{best['pf']:.2f}", flush=True)
+        # her strateji için TF bazında long-only
+        for tf in TFS:
+            trows = [r for r in rows if r["tf"] == tf]
+            if trows:
+                print(f"         {tf}: ${sum(r['usd'] for r in trows):+7.2f}  (LONG ${sum(r['l_usd'] for r in trows):+.0f})", flush=True)
+    print("\n  Bir strateji TEK BAŞINA çok coinde + / PF>1.3 ise → o iyi, combo kurgum kötüymüş.")
+    print("  Üçü de zayıfsa → NW/KAMA ailesi bu coinlerde edge vermiyor, kapatırız.")
 
 
 if __name__ == "__main__":
