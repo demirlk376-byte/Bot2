@@ -59,9 +59,11 @@ def simtrades(df, ents, sl_mult, rr, max_hold):
         tr.append({"r":d*(ep-e)/sld - 2*FEE*e/sld,"year":idx[i].year}); occ=j
     return tr
 
-def prod_bb(m):
+def prod_bb(m, weekend_only=False):
     # Canlı BB/mean_rev: 1h/120 pencere, trending blok (adx>=28), market-fallback →
     # close'da fill, SL 3xATR TP rr1.667 (=5xATR), max-hold 48. analyze(df) ATR'siz.
+    # weekend_only=True → sadece Cmt/Paz (BB_WEEKDAY_ENABLED=false, DOĞRULANMIŞ rejim:
+    # hafta içi PF~0.97 kaybeder, hafta sonu mean-rev edge'i).
     try:
         from config import load_config
         from strategies.mean_reversion import MeanReversionStrategy
@@ -71,6 +73,7 @@ def prod_bb(m):
     d1 = fast_bt.resample(m, "1h"); ents = []
     for i in range(260, len(d1)):
         sub = d1.iloc[max(0, i-119):i+1]
+        if weekend_only and sub.index[-1].weekday() < 5: continue   # sadece hafta sonu (Cmt=5,Paz=6)
         av = atr_fn(sub["high"], sub["low"], sub["close"], 14).iloc[-1]
         if np.isnan(av) or av <= 0: continue
         adxr = adx_fn(sub["high"], sub["low"], sub["close"], 14).iloc[-1]
@@ -127,4 +130,5 @@ if __name__ == "__main__":
             print(f"  {c} veri hatası: {e}", flush=True); continue
         rep("donchian", prod_donchian(m))
         rep("squeeze", prod_squeeze(m))
-        rep("BB/mean_rev", prod_bb(m))
+        rep("BB-tümü", prod_bb(m, weekend_only=False))
+        rep("BB-haftasonu", prod_bb(m, weekend_only=True))
