@@ -20,7 +20,9 @@ from strategies.donchian import DonchianStrategy
 from strategies.squeeze import SqueezeStrategy
 
 BAL0 = 190.0; FEE = 0.0001
-RISKS = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06]   # işlem başı risk (0.02 = mevcut)
+RISKS = [0.02, 0.03, 0.04, 0.06, 0.08, 0.10, 0.12]   # işlem başı risk (0.02 = mevcut)
+# NOT: yüksek seviyeler Kelly'yi aşar — MAX DD patlar ama final $ ARTMAYI durdurur
+# / DÜŞER (over-betting). Amaç bunu GÖSTERMEK, öneri DEĞİL.
 DEPLOY = {
     "SOL": ("donchian", 2.0, 2.0, 30), "ETH": ("donchian", 2.0, 2.0, 30),
     "ADA": ("donchian", 2.0, 2.0, 30), "NEAR": ("donchian", 2.0, 2.0, 30),
