@@ -2,7 +2,17 @@
   "coins": {
     "BTC": {
       "balance": 10028.15665558397,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 64101.8,
+        "sl": 63218.84916676455,
+        "tp": 65573.38472205908,
+        "qty": 0.07822055430256225,
+        "atr": 294.3169444118173,
+        "entry_ts": "2026-07-20T05:00:00+00:00",
+        "fng_at_entry": 29,
+        "funding_at_entry": 3.7e-05
+      },
       "n_trades": 9,
       "n_wins": 4,
       "total_pnl": 28.15665558397062,
@@ -10,7 +20,17 @@
     },
     "ETH": {
       "balance": 10182.738814401066,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 1854.51,
+        "sl": 1815.6530282938545,
+        "tp": 1919.2716195102425,
+        "qty": 2.745398734544722,
+        "atr": 12.952323902048489,
+        "entry_ts": "2026-07-20T05:00:00+00:00",
+        "fng_at_entry": 29,
+        "funding_at_entry": 1.2e-05
+      },
       "n_trades": 6,
       "n_wins": 4,
       "total_pnl": 182.73881440106587,
@@ -26,7 +46,17 @@
     },
     "BNB": {
       "balance": 10252.777471631405,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 565.4,
+        "sl": 558.0437227369048,
+        "tp": 577.6604621051587,
+        "qty": 9.066835401159715,
+        "atr": 2.4520924210317356,
+        "entry_ts": "2026-07-20T05:00:00+00:00",
+        "fng_at_entry": 29,
+        "funding_at_entry": 0.0
+      },
       "n_trades": 9,
       "n_wins": 5,
       "total_pnl": 252.7774716314077,
@@ -34,7 +64,17 @@
     },
     "XRP": {
       "balance": 9753.488233786093,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 1.0873,
+        "sl": 1.0679225153594398,
+        "tp": 1.119595807734267,
+        "qty": 4485.1872683648,
+        "atr": 0.006459161546853401,
+        "entry_ts": "2026-07-20T05:00:00+00:00",
+        "fng_at_entry": 29,
+        "funding_at_entry": -2.4e-05
+      },
       "n_trades": 6,
       "n_wins": 1,
       "total_pnl": -246.51176621390718,
