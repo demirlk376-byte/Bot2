@@ -59,6 +59,27 @@ def simtrades(df, ents, sl_mult, rr, max_hold):
         tr.append({"r":d*(ep-e)/sld - 2*FEE*e/sld,"year":idx[i].year}); occ=j
     return tr
 
+def prod_bb(m):
+    # Canlı BB/mean_rev: 1h/120 pencere, trending blok (adx>=28), market-fallback →
+    # close'da fill, SL 3xATR TP rr1.667 (=5xATR), max-hold 48. analyze(df) ATR'siz.
+    try:
+        from config import load_config
+        from strategies.mean_reversion import MeanReversionStrategy
+        s = MeanReversionStrategy(load_config().strategy)
+    except Exception as e:
+        print(f"  BB atlandı ({e})"); return []
+    d1 = fast_bt.resample(m, "1h"); ents = []
+    for i in range(260, len(d1)):
+        sub = d1.iloc[max(0, i-119):i+1]
+        av = atr_fn(sub["high"], sub["low"], sub["close"], 14).iloc[-1]
+        if np.isnan(av) or av <= 0: continue
+        adxr = adx_fn(sub["high"], sub["low"], sub["close"], 14).iloc[-1]
+        if (float(adxr) if np.isfinite(adxr) else 20.0) >= 28.0: continue   # bb_allowed: trending blok
+        sg = s.analyze(sub)
+        if sg.direction != 0: ents.append((i, sg.direction, float(av)))
+    return simtrades(d1, ents, 3.0, 1.667, 48)
+
+
 def prod_donchian(m):
     # Canlı: df_4h=get_candles(260); atr_4h=atr(df_4h,14).iloc[-1]; analyze(df_4h,atr_4h)
     d4=fast_bt.resample(m,"4h"); s=DonchianStrategy(channel=40,rr=2.0,sl_atr=2.0,ema_trend=200)
@@ -106,3 +127,4 @@ if __name__ == "__main__":
             print(f"  {c} veri hatası: {e}", flush=True); continue
         rep("donchian", prod_donchian(m))
         rep("squeeze", prod_squeeze(m))
+        rep("BB/mean_rev", prod_bb(m))
