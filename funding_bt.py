@@ -16,7 +16,8 @@ import numpy as np, pandas as pd
 import fast_bt
 
 BAL = 190.0
-FEE = 0.0002          # taker/taraf — funding anında market giriş/çıkış (tur = 2×FEE)
+FEE = 0.0004          # taraf başı GERÇEK maliyet: ~0.0002 taker + ~0.0002 slippage
+#                       (yüksek-frekans market giriş/çıkış; tur = 2×FEE = 0.0008)
 FUND_DIR = "data"
 THRESHOLDS = [0.0001, 0.0003, 0.0005, 0.001]   # |funding| eşiği (8h başına oran)
 
