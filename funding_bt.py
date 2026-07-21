@@ -16,6 +16,7 @@ import numpy as np, pandas as pd
 import fast_bt
 
 BAL = 190.0
+FEE = 0.0002          # taker/taraf — funding anında market giriş/çıkış (tur = 2×FEE)
 FUND_DIR = "data"
 THRESHOLDS = [0.0001, 0.0003, 0.0005, 0.001]   # |funding| eşiği (8h başına oran)
 
@@ -80,7 +81,8 @@ def backtest(coin, source, thr):
             continue
         price_ret = d * (x - e) / e
         fund_ret = -d * rate                       # short+pozitif funding → funding AL
-        trades.append({"r": price_ret + fund_ret, "fund": fund_ret,
+        net = price_ret + fund_ret - 2 * FEE       # fee dahil (giriş+çıkış taker)
+        trades.append({"r": net, "fund": fund_ret,
                        "price": price_ret, "year": ftimes[i].year})
     return trades
 
