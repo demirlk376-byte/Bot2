@@ -36,11 +36,14 @@ def load_funding(coin, source):
     sym = f"{coin}/USDT:USDT"
     from datetime import datetime, timezone
     since = int((datetime.now(timezone.utc).timestamp() - 1200 * 86400) * 1000)
-    rows = []
-    while True:
+    rows = []; last_ts = None; guard = 0
+    while guard < 500:                              # sonsuz döngü koruması
+        guard += 1
         b = ex.fetch_funding_rate_history(sym, since=since, limit=1000)
         if not b: break
-        rows += b
+        if last_ts is not None and b[-1]["timestamp"] <= last_ts:
+            break                                  # ilerleme yoksa dur (MEXC since'i yok saydı)
+        rows += b; last_ts = b[-1]["timestamp"]
         if len(b) < 1000: break
         since = b[-1]["timestamp"] + 1
     if not rows:
@@ -54,9 +57,12 @@ def load_funding(coin, source):
     return f
 
 
+_PRICE = {}
 def backtest(coin, source, thr):
-    m = fast_bt.load(coin, source=source)          # 1h fiyat
-    f = load_funding(coin, source)
+    if coin not in _PRICE:
+        _PRICE[coin] = fast_bt.load(coin, source="local")   # fiyat HEP cache'ten (yeniden çekme yok)
+        _PRICE[coin + "_f"] = load_funding(coin, source)     # funding bir kez
+    m = _PRICE[coin]; f = _PRICE[coin + "_f"]
     close = m["close"]
     rates = f["rate"].values; ftimes = f.index
     trades = []
