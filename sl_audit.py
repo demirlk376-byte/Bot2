@@ -33,7 +33,7 @@ def main():
     rows = con.execute(
         "SELECT symbol, side, entry_price, sl_price, tp_price, exit_price, "
         "entry_time, exit_time, pnl_usdt, strategy_scores FROM trades "
-        "WHERE exit_reason='sl' AND exit_time IS NOT NULL"
+        "WHERE exit_reason IN ('sl','sl_hit','stop_loss') AND exit_time IS NOT NULL"
     ).fetchall()
     print(f"{DB}: {len(rows)} SL işlemi denetleniyor\n")
     flagged = []; normal = 0; nodata = 0
