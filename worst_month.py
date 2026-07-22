@@ -58,7 +58,7 @@ def gen(sleeve, coin, m):
         if ep is None: j = min(i + mh, n - 1); ep = cl[j]
         R = d_ * (ep - e) / sld - 2 * FEE * e / sld
         out.append({"entry_ns": idx[i].value, "exit": idx[j], "R": R,
-                    "coin": coin, "sleeve": sleeve, "dir": d_})
+                    "coin": coin, "sleeve": sleeve, "dir": d_}); occ = j   # occ=coin başına tek-pozisyon
     return out
 
 
