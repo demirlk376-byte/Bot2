@@ -425,3 +425,23 @@ Kullanıcı 2%'de, tarihsel DD %42, tolerans %50 → kullanılmamış risk-büt�
 KÖTÜ (en kötü kümelenme henüz olmadı) → 2.5%'te tarihsel tam %50 zaten, ileride aşar. Getiri ~%12↑.
 Kaldıraç (kayıpları da büyütür), geri alınabilir (env). Canlı DD izlenir, gerekirse geri çekilir.
 Piramitleme (kazanana ekleme, turtle-native) = potansiyel GERÇEK edge kolu, ayrı test edilecek.
+
+## 🔺 PİRAMİTLEME (2026-07-22, pyramid_test) — +EV ama RISK_SCALE domine ediyor → deploy YOK
+
+Turtle-native "kazanana ekleme". Kesin test: add-unit tek-başına EV, birebir tarihsel yolla.
+Donchian 7-coin, add tetik = +kATR lehe, kendi 2ATR stop'u, taban TP:
+  TABAN PF1.51 $996 | add+0.5ATR PF1.42 $696 HER YIL+ | add+1.0 PF1.24 $367 | add+1.5 PF1.11
+  (2025−5,2026−19 ÖLÜ).
+**+0.5ATR add GERÇEKTEN +EV** (PF1.42 her yıl+) — trend edge geç-girişte sürüyor. Beklenti
+düşüktü (trailing reddedilmişti) ama add-unit farklı: taze +EV pozisyon, stop-hilesi değil.
+
+**AMA DEPLOY EDİLMEZ, 3 sebep:**
+(1) add PF1.42 < taban PF1.51 → bir birim risk tabana uniform (RISK_SCALE) konursa daha verimli;
+    piramitleme +EV ama RISK_SCALE tarafından DOMİNE EDİLİYOR.
+(2) +0.5ATR tetiği seçici değil (846/997=%85 trade tetikliyor) → esasen "daha-verimsiz RISK_SCALE
+    artışı", kalite-seçiciliği yok. Uzak tetikler (+1.5) kovalama = ölü.
+(3) Netted mod = tek pozisyon/tek stop; iki ayrı-stop'lu ünite canlıda kurulamaz (ortalama-giriş
+    olur) → KOD + execution riski (env değil), $188 hesapta değmez.
+DERS: gerçek +EV desen bulundu ama basit kol (RISK_SCALE) domine → doğru yargı = deploy etme.
+Temiz getiri kolları TÜKENDİ: çeşitlendirme(ICP+BNB) + risk-bütçesi(1.125) deploy edildi; filtre,
+gün-içi, literatür-filtre, piramitleme = hepsi kanıtla elendi. Sistem sıkı, overfitsiz büyütüldü.
