@@ -20,7 +20,7 @@ from strategies.squeeze import SqueezeStrategy
 BAL0 = 190.0; FEE = 0.0001; RISKF = 0.0225   # %2.25/işlem
 DONCH = ["SOL", "ETH", "ADA", "NEAR", "BCH", "ICP", "BNB"]
 SQZ = ["XRP", "DOGE", "TRX", "XLM"]
-MAXPOS = 10
+MAXPOS = int(sys.argv[2]) if len(sys.argv) > 2 else 7   # py monthly_return.py local 10
 CFG = {"donchian": ("4h", 259, 2.0, 2.5, 30), "squeeze": ("1h", 119, 2.0, 2.5, 48)}
 
 
