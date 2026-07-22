@@ -445,3 +445,22 @@ düşüktü (trailing reddedilmişti) ama add-unit farklı: taze +EV pozisyon, s
 DERS: gerçek +EV desen bulundu ama basit kol (RISK_SCALE) domine → doğru yargı = deploy etme.
 Temiz getiri kolları TÜKENDİ: çeşitlendirme(ICP+BNB) + risk-bütçesi(1.125) deploy edildi; filtre,
 gün-içi, literatür-filtre, piramitleme = hepsi kanıtla elendi. Sistem sıkı, overfitsiz büyütüldü.
+
+## 📉 BB DİVERSİFİER AVI + AYLIK GETİRİ (2026-07-22)
+
+**BB mean-rev genişleme (bb_expand, faithful/byte-exact, hafta-sonu, 13 coin taranan):**
+DD-düşürücü düşük-korelasyon kolu aranıyordu. SONUÇ: HİÇBİR coin her-yıl-pozitif değil.
+En iyi ETH PF1.31 +$106 (2026−16), ATOM PF1.30 +$87 (2023−29), ICP PF1.15 (2025−6). Hepsinin
+kaybeden yılı var → BB weekend mean-rev GENELLEŞMİYOR (squeeze gibi coin-özel kırılgan; deploy'daki
+LTC o dönem şansı). Robust çakışmasız aday = YOK. DD-düşürücü diversifier bulunamadı. Dürüst negatif.
+
+**AYLIK GETİRİ (monthly_return, deploy portföyü, %2.25 risk, MAX_POS=7, sabit-oran compounding-YOK):**
+  1922 işlem/40ay/3.2yıl: ort +25.7%/ay, medyan +22%, en iyi +151%, EN KÖTÜ −35%, std ±40%, poz-ay %72.
+  Yıl-yıl: 2023 +42% → 2024 +26% → 2025 +15% → 2026 +21% (EDGE DÜŞÜYOR, en eski yıl en yüksek).
+  DÜRÜST çıpa: backtest ~%20-25 ama ileriye BEKLEME — edge zayıflar (2025-26 ~%15-21), varyans dev
+  (tek ay −35% mümkün, %28 ay kayıp), küçük-hesap sürtünmesi ısırır. Gerçekçi: ileride ~%5-15/ay +
+  arada −%30 aylar + kayıp dönemleri = iyi sonuç. compounding fantezisi ($190→$64k) DEĞİL.
+
+**DURUM:** Temiz kollar bitti. KAZANANLAR (deploy): donchian coin genişleme (ICP+BNB) + risk-bütçesi
+(RISK_SCALE 1.125). ELENENLER (kanıtla): SL-filtre, gün-içi, literatür-filtre, piramitleme (+EV ama
+domine), BB-diversifier. Sistem sıkı, overfitsiz büyütüldü — pratik tavana ulaşıldı.
