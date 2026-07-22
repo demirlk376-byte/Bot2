@@ -331,3 +331,36 @@ Canlı DB'de 27/30 SL/TP işlemi araç↔bot BİREBİR uyuştu (araç TP kararla
 üretiyor = güvenilir + execution temiz). 3 uyuşmazlık: fvg (kapalı strateji) + 'neither'
 = 1h çözünürlük/entry-mum-içi sınırı, execution bug DEĞİL (ters-sıra vaka yok). MFE:
 %39 temiz kayıp, %11 whipsaw; SL'ler tasarım gereği, trailing/BE zaten test edilip elenmişti.
+
+## 🔎 SL AVI (2026-07-22) — filtre sınıfları elendi (literatür + veri-güdümlü)
+
+Amaç: SL'leri (sahte breakout) TP'leri bozmadan önleyen nedensel filtre bul.
+İki bağımsız açı, ikisi de NEGATİF çıktı (dürüst, temiz sonuç):
+
+**A) Literatür filtreleri (vol_filter_test, üretimde/canlı-doğru, yıl-yıl):**
+hacim-onayı (breakout hacmi >1.5× 20-bar ort), ATR-genişlemesi, volatilite-tabanı.
+- TOPLAM baseline PF1.48 $1115 → +Hacim PF1.58 ama SADECE $806 (−$309), +ATRexp $862,
+  +VolFloor $1025 (squeeze'de PF 1.40'a DÜŞÜYOR — coil stratejisine ters), +Hacim+ATR $631.
+- Hepsi PF'i sadece İŞLEM KESEREK yükseltiyor; total hep düşüyor, hiçbiri her-yıl korumuyor.
+- NEDEN: sleeve'ler breakout'u zaten sıkı ön-filtreliyor (donchian EMA200+40-kanal;
+  squeeze coil+ADX>20+MTF) → "düşük hacim=sahte" için artık marjinal edge yok. RED.
+
+**B) Veri-güdümlü ayrışma (loser_analysis, TP-kazanan vs SL-kaybeden giriş özellikleri):**
+- HİÇBİR özellik >0.4σ ayrışmıyor (adx/atr%/ema200-uzaklık/rejim/momentum hepsi ≤0.25σ).
+  → SL'ler giriş anında ÖNGÖRÜLEMEZ (trend/breakout edge'inin doğası, tasarım gereği).
+- TEK yapısal sinyal: donchian gün-içi — Pzt %61/Sal %65 SL vs Çar %41/Per %37.
+
+**C) Gün-içi filtresi (dow_test, veri-taranmış lead → yıl-yıl sınandı):**
+- -MonTue: PF 1.49→**1.67**, total $700→$700 (AYNI para, 168 az işlem) — aggregate HARİKA.
+- AMA yıl-yıl: 2023 $174→$161 KÖTÜ, 2026 $118→$90 KÖTÜ (Pzt/Sal zayıflığı 2026'da TERSİNE
+  döndü). Non-stationary → her-yıl testini geçmiyor, hele en güncel yılda. RED (overfit).
+- -Mon/-MonTueSun/WedThuOnly: hepsi total kesiyor. RED.
+
+**SONUÇ:** Ana literatür + veri-güdümlü filtre sınıfları elendi. Deploy edilen sleeve'lerin
+SL'leri temiz filtrelenemiyor — edge zaten sıkı. Disiplin çalıştı: PF-başlığı güzel görünen
+(-MonTue 1.67) aday, recency+per-year kontrolüyle doğru şekilde reddedildi.
+
+**ARAÇ HIZLANDIRMA:** vol_filter/loser_analysis O(n·pencere)→O(n): ATR/ADX full-series bir
+kez (i≥260'ta Wilder yakınsadığı için pencere-yerel ≈ full-series; donchian 1e-8), analyze
+akışı filtreden bağımsız → coin başına bir kez. 10dk+timeout → 2m42s. baseline birebir
+filter_test'i üretti (öz-denetim geçti). Adaylar yine window-yerel filter_test ile doğrulanır.
