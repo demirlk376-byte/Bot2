@@ -37,7 +37,7 @@ def gen(sleeve, coin, m):
     s = (DonchianStrategy(channel=40, rr=2.0, sl_atr=2.0, ema_trend=200, buffer_atr=0.0)
          if sleeve == "donchian" else
          SqueezeStrategy(kc_mult=1.5, min_squeeze_bars=5, sl_atr=2.0, rr=2.5, mtf_filter=True))
-    hi = d["high"].values; lo = d["low"].values; cl = d["close"].values; n = len(cl)
+    hi = d["high"].values; lo = d["low"].values; cl = d["close"].values; idx = d.index; n = len(cl)
     out = []; occ = -1
     for i in range(260, n):
         sub = d.iloc[max(0, i - win):i + 1]
@@ -60,7 +60,7 @@ def gen(sleeve, coin, m):
         R = d_ * (ep - e) / sld - 2 * FEE * e / sld
         dup = bool(up_daily.iloc[i]) if not pd.isna(up_daily.iloc[i]) else True
         aligned = (d_ == 1 and dup) or (d_ == -1 and not dup)
-        out.append({"R": R, "adx": adxv, "aligned": aligned}); occ = j
+        out.append({"R": R, "adx": adxv, "aligned": aligned, "year": idx[i].year}); occ = j
     return out
 
 
@@ -94,8 +94,23 @@ def main():
     print(f"\n{'='*68}\n=== TOPLAM (donchian+squeeze) ===")
     for k, v in grand.items():
         print(f"  {k:11s}: {st(v)}")
-    print("\n  Bak: filtre PF'i artırıyor mu, total'i ne kadar düşürüyor mu?")
-    print("  PF belirgin artıp total ~aynı kalıyorsa → uygula. Total çok düşüyorsa → değmez.")
+    # ── MTF yıl-yıl doğrulama: baseline vs +MTF her yıl ──
+    print(f"\n=== YIL-YIL: baseline vs +MTF (her yıl iyileştiriyor mu?) ===")
+    yrs = sorted(set(t["year"] for t in grand["baseline"]))
+    def yr_usd(tr, y):
+        r = np.array([t["R"] for t in tr if t["year"] == y])
+        return r.sum() * BAL * RISK if len(r) else 0.0
+    def yr_pf(tr, y):
+        r = np.array([t["R"] for t in tr if t["year"] == y])
+        if not len(r): return 0.0
+        gl = -r[r < 0].sum(); return r[r > 0].sum() / gl if gl > 0 else 9.99
+    all_better = True
+    for y in yrs:
+        b = yr_usd(grand["baseline"], y); mm = yr_usd(grand["+MTF"], y)
+        mark = "✅" if mm >= b - 1 else "⚠️ MTF kötü"
+        if mm < b - 1: all_better = False
+        print(f"  {y}: baseline ${b:+7.1f} (PF{yr_pf(grand['baseline'],y):.2f}) → +MTF ${mm:+7.1f} (PF{yr_pf(grand['+MTF'],y):.2f})  {mark}")
+    print(f"\n  {'✅ MTF HER YIL iyileştiriyor/eşit → ROBUST, deploy edilebilir.' if all_better else '⚠️ MTF bazı yıl kötü → tek yıla yaslı olabilir, dikkat.'}")
 
 
 if __name__ == "__main__":
