@@ -302,3 +302,32 @@ NW-alone −$656 (0/12), KAMA-alone +$107 ama PF1.13 short-only (yetersiz),
 NW+KAMA combo −$78, grid bot felaket (SOL maxDD $2095 = ~11x hesap yıkımı).
 DERS: WR peşinde koşma (kâr değil, filtreler overfit+winner keser); risk kırma
 (varyans+iflas, Kelly'yi geçme); çeşitlendirme = doğru büyüme düğmesi.
+
+## ✅ GELİŞTİRME v1 (2026-07-21) — donchian rr 2.0→2.5 (doğrulanmış, deploy)
+
+DEPLOY sonrası sistematik iyileştirme avı (paralel testler, PC'de, canlı-doğru):
+- **donchian TP/RR: 2.0→2.5 → DEPLOY.** +$96 (+16%), PF 1.40→1.49, yıl-yıl 3/4 belirgin
+  iyi + 2025 eşit (−$1.4 gürültü). Monotonik sweep (yüksek rr hep iyi) = yapısal, overfit
+  değil (kazananları koştur). CANLI: DONCHIAN_RR=2.5 (/opt/bot2/.env, env — kod yok).
+- **squeeze rr3.0: RED.** Aggregate +$33 ama per-year mixed (2023/24 kötü, 2025/26 iyi =
+  kayma, robust değil). squeeze rr2.5 kalıyor. Disiplin: mixed per-year → güvenme.
+- **donchian MTF (günlük EMA20 trend hizası): GERÇEK ama ertelendi.** +$42, PF 1.40→1.45,
+  HER YIL ≥ baseline. Ama kod gerektiriyor (canlı donchian'a günlük-trend kontrolü); RR
+  daha büyük + env-only olduğu için önce o. Sonra eklenebilir.
+- **max-hold:** donchian 45 marjinal (+$22), squeeze 48 zaten en iyi → dokunma.
+- **EMA200 / EMA50-200 golden / PxBoth / MTF+golden:** hepsi redundant/zarar → RED.
+
+## 🔧 ÖZ-DENETİM: İKİ ARAÇ BUG'I YAKALANDI (kullanıcı ısrarı)
+1. **post-hoc filtreleme YANLIŞ:** quality_test/ema_test filtreyi işlem üretildikten sonra
+   uyguluyordu → occ/slot mantığını yeniden koşmuyor → SAHTE iyileştirme (BTC +EMA200
+   post-hoc +$40 vs üretimde +$36). DÜZELTME: filter_test = filtre ÜRETİM SIRASINDA
+   (elenen sinyal slotu meşgul etmez, canlı-doğru). baseline faithful_bt ile birebir.
+2. **cur=rest[2]=sl_a (rr değil):** rr_test squeeze "mevcut"u yanlış (2.0) gösteriyordu →
+   rest[3]. + tatlı-nokta seçimi (max'ın %97'sine ulaşan en küçük rr) = extreme'e overfit yok.
+DERS: aracın kendisi denetlenmeden sonucuna güvenilmez. İki bug da bu sayede elendi.
+
+## SL/EXECUTION DENETİMİ (sl_audit, öz-denetimli)
+Canlı DB'de 27/30 SL/TP işlemi araç↔bot BİREBİR uyuştu (araç TP kararlarını da doğru
+üretiyor = güvenilir + execution temiz). 3 uyuşmazlık: fvg (kapalı strateji) + 'neither'
+= 1h çözünürlük/entry-mum-içi sınırı, execution bug DEĞİL (ters-sıra vaka yok). MFE:
+%39 temiz kayıp, %11 whipsaw; SL'ler tasarım gereği, trailing/BE zaten test edilip elenmişti.
