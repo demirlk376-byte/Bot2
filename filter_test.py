@@ -17,11 +17,11 @@ from strategies.donchian import DonchianStrategy
 from strategies.squeeze import SqueezeStrategy
 
 BAL = 190.0; FEE = 0.0001; RISK = 0.02
-DEPLOY = {
-    "donchian": (["SOL", "ETH", "ADA", "NEAR", "BCH"], "4h", 259, 2.0, 2.0, 30),
+DEPLOY = {   # donchian rr 2.0→2.5 DEPLOY EDİLDİ → MTF'i yeni rr'nin ÜSTÜNDE test et
+    "donchian": (["SOL", "ETH", "ADA", "NEAR", "BCH"], "4h", 259, 2.0, 2.5, 30),
     "squeeze":  (["XRP", "DOGE", "TRX", "XLM"], "1h", 119, 2.0, 2.5, 48),
 }
-FILTERS = ["baseline", "+MTF", "+EMA200", "+EMA50/200", "+PxBoth", "+MTF+E50/200"]
+FILTERS = ["baseline", "+MTF"]   # rr2.5 üstünde sadece MTF'i doğrula (diğerleri elendi)
 
 
 def run(sleeve, coin, m, which):
