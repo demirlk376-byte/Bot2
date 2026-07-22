@@ -1,0 +1,110 @@
+"""
+loser_analysis.py — SL kaybedenleri ile TP kazananları GİRİŞ-ANI özelliklerine
+göre ayır. Amaç: kazananları BOZMADAN kaybedenleri elen bir nedensel filtre var mı?
+
+Her işlem için giriş anında (nedensel, sonuç değil) özellikler:
+  adx, atr% (volatilite), ema200-uzaklığı (ATR cinsinden = aşırı-uzama),
+  ema50>ema200 (rejim), günlük EMA20 hizası (MTF), haftagünü, 10-bar momentum.
+Sonra TP-outcome vs SL-outcome işlemlerin özellik ORTALAMALARINI karşılaştırır.
+Belirgin ayrışan özellik = filtre adayı (SONRA canlı-doğru + yıl-yıl test edilir).
+
+DÜRÜST: çoğu özellik ayrışMAZ (giriş anında winner/loser benzer görünür — edge'in
+doğası). Ayrışan çıkarsa test ederiz; çıkmazsa "önlenemez, tasarım" deriz.
+
+Kullanım:  py loser_analysis.py local
+"""
+import sys
+import numpy as np, pandas as pd
+import fast_bt
+from indicators import atr as atr_fn, adx as adx_fn, ema as ema_fn
+from strategies.donchian import DonchianStrategy
+from strategies.squeeze import SqueezeStrategy
+
+BAL = 190.0; FEE = 0.0001; RISK = 0.02
+DEPLOY = {   # rr2.5 canlı
+    "donchian": (["SOL", "ETH", "ADA", "NEAR", "BCH"], "4h", 259, 2.0, 2.5, 30),
+    "squeeze":  (["XRP", "DOGE", "TRX", "XLM"], "1h", 119, 2.0, 2.5, 48),
+}
+
+
+def gen(sleeve, coin, m):
+    _, tf, win, sl_a, rr, mh = DEPLOY[sleeve]
+    d = fast_bt.resample(m, tf)
+    ema50 = ema_fn(d["close"], 50).values; ema200 = ema_fn(d["close"], 200).values
+    dd = fast_bt.resample(m, "1d"); dema = ema_fn(dd["close"], 20)
+    up_daily = (dd["close"] > dema).reindex(d.index, method="ffill").values
+    s = (DonchianStrategy(channel=40, rr=2.0, sl_atr=2.0, ema_trend=200, buffer_atr=0.0)
+         if sleeve == "donchian" else
+         SqueezeStrategy(kc_mult=1.5, min_squeeze_bars=5, sl_atr=2.0, rr=2.5, mtf_filter=True))
+    hi = d["high"].values; lo = d["low"].values; cl = d["close"].values; idx = d.index; n = len(cl)
+    out = []; occ = -1
+    for i in range(260, n):
+        sub = d.iloc[max(0, i - win):i + 1]
+        a = atr_fn(sub["high"], sub["low"], sub["close"], 14).iloc[-1]
+        if np.isnan(a) or a <= 0: continue
+        adxv = adx_fn(sub["high"], sub["low"], sub["close"], 14).iloc[-1]
+        adxv = float(adxv) if np.isfinite(adxv) else 20.0
+        if sleeve == "squeeze" and adxv <= 20.0: continue
+        sg = s.analyze(sub, float(a))
+        if sg.direction == 0 or i <= occ or i >= n - 1: continue
+        if np.isnan(ema200[i]) or np.isnan(ema50[i]): continue
+        d_ = sg.direction; e = cl[i]; sld = sl_a * a; slp = e - d_ * sld; tp = e + d_ * rr * sld
+        ep = None; j = i; outcome = "hold"
+        for j in range(i + 1, min(i + 1 + mh, n)):
+            if d_ == 1:
+                if lo[j] <= slp: ep = slp; outcome = "sl"; break
+                if hi[j] >= tp: ep = tp; outcome = "tp"; break
+            else:
+                if hi[j] >= slp: ep = slp; outcome = "sl"; break
+                if lo[j] <= tp: ep = tp; outcome = "tp"; break
+        if ep is None: j = min(i + mh, n - 1); ep = cl[j]
+        R = d_ * (ep - e) / sld - 2 * FEE * e / sld
+        dup = bool(up_daily[i]) if not (isinstance(up_daily[i], float) and np.isnan(up_daily[i])) else True
+        out.append({
+            "outcome": outcome, "R": R,
+            "adx": adxv,
+            "atr_pct": a / e * 100,
+            "ema200_dist": (e - ema200[i]) / a * d_,           # +: yön lehine uzama (ATR)
+            "ema50_gt_200": 1.0 if ema50[i] > ema200[i] else 0.0,
+            "mtf_aligned": 1.0 if ((d_ == 1 and dup) or (d_ == -1 and not dup)) else 0.0,
+            "dow": idx[i].dayofweek,
+            "mom10": (e - cl[i - 10]) / cl[i - 10] * 100 * d_,  # yön lehine 10-bar momentum
+        }); occ = j
+    return out
+
+
+def main():
+    source = sys.argv[1] if len(sys.argv) > 1 else "mexc_futures"
+    feats = ["adx", "atr_pct", "ema200_dist", "ema50_gt_200", "mtf_aligned", "mom10"]
+    for sleeve, (coins, *_) in DEPLOY.items():
+        trs = []
+        for coin in coins:
+            try: trs += gen(sleeve, coin, fast_bt.load(coin, source=source))
+            except Exception as e: print(f"  {coin}: {e}")
+        tp = [t for t in trs if t["outcome"] == "tp"]
+        sl = [t for t in trs if t["outcome"] == "sl"]
+        hold = [t for t in trs if t["outcome"] == "hold"]
+        print(f"\n{'='*70}\n=== {sleeve.upper()} — {len(trs)} işlem (TP {len(tp)} / SL {len(sl)} / hold {len(hold)}) ===")
+        print(f"  {'özellik':13s}  {'TP-kazanan ort':>15s}  {'SL-kaybeden ort':>15s}  {'ayrışma?':>10s}")
+        for f in feats:
+            tv = np.mean([t[f] for t in tp]) if tp else 0
+            sv = np.mean([t[f] for t in sl]) if sl else 0
+            # ayrışma: iki grubun std'ine göre fark büyük mü (kabaca)
+            allv = np.array([t[f] for t in trs]); sd = allv.std() + 1e-9
+            gap = abs(tv - sv) / sd
+            mark = "⭐BÜYÜK" if gap > 0.4 else ("orta" if gap > 0.2 else "yok")
+            print(f"  {f:13s}  {tv:>15.3f}  {sv:>15.3f}  {mark:>10s} ({gap:.2f}σ)")
+        # haftagünü kırılımı (SL oranı günlere göre)
+        print(f"  --- haftagünü SL oranı (Pzt=0..Paz=6) ---")
+        for dw in range(7):
+            dd = [t for t in trs if t["dow"] == dw]
+            if dd:
+                slr = sum(1 for t in dd if t["outcome"] == "sl") / len(dd)
+                print(f"    gün{dw}: n={len(dd):>3d} SL%{slr*100:>3.0f}", end="  ")
+        print()
+    print("\n  ⭐BÜYÜK ayrışma (>0.4σ) = filtre adayı → canlı-doğru + yıl-yıl test.")
+    print("  Hiçbiri ayrışmıyorsa → SL'ler giriş anında öngörülemez (tasarım gereği).")
+
+
+if __name__ == "__main__":
+    main()
