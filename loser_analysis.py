@@ -11,6 +11,9 @@ Belirgin ayrışan özellik = filtre adayı (SONRA canlı-doğru + yıl-yıl tes
 DÜRÜST: çoğu özellik ayrışMAZ (giriş anında winner/loser benzer görünür — edge'in
 doğası). Ayrışan çıkarsa test ederiz; çıkmazsa "önlenemez, tasarım" deriz.
 
+HIZ: ATR/ADX full-series (vektörize), analyze coin başına tek geçiş. win=259/119 için
+i>=260'ta pencere-yerel ile örtüşür (AV aracı; aday sonra filter_test ile doğrulanır).
+
 Kullanım:  py loser_analysis.py local
 """
 import sys
@@ -30,6 +33,8 @@ DEPLOY = {   # rr2.5 canlı
 def gen(sleeve, coin, m):
     _, tf, win, sl_a, rr, mh = DEPLOY[sleeve]
     d = fast_bt.resample(m, tf)
+    atr_ser = atr_fn(d["high"], d["low"], d["close"], 14).values     # full-series
+    adx_ser = adx_fn(d["high"], d["low"], d["close"], 14).values
     ema50 = ema_fn(d["close"], 50).values; ema200 = ema_fn(d["close"], 200).values
     dd = fast_bt.resample(m, "1d"); dema = ema_fn(dd["close"], 20)
     up_daily = (dd["close"] > dema).reindex(d.index, method="ffill").values
@@ -39,12 +44,11 @@ def gen(sleeve, coin, m):
     hi = d["high"].values; lo = d["low"].values; cl = d["close"].values; idx = d.index; n = len(cl)
     out = []; occ = -1
     for i in range(260, n):
-        sub = d.iloc[max(0, i - win):i + 1]
-        a = atr_fn(sub["high"], sub["low"], sub["close"], 14).iloc[-1]
-        if np.isnan(a) or a <= 0: continue
-        adxv = adx_fn(sub["high"], sub["low"], sub["close"], 14).iloc[-1]
-        adxv = float(adxv) if np.isfinite(adxv) else 20.0
+        a = atr_ser[i]
+        if not np.isfinite(a) or a <= 0: continue
+        adxv = adx_ser[i] if np.isfinite(adx_ser[i]) else 20.0
         if sleeve == "squeeze" and adxv <= 20.0: continue
+        sub = d.iloc[max(0, i - win):i + 1]
         sg = s.analyze(sub, float(a))
         if sg.direction == 0 or i <= occ or i >= n - 1: continue
         if np.isnan(ema200[i]) or np.isnan(ema50[i]): continue
@@ -92,18 +96,18 @@ def main():
             # ayrışma: iki grubun std'ine göre fark büyük mü (kabaca)
             allv = np.array([t[f] for t in trs]); sd = allv.std() + 1e-9
             gap = abs(tv - sv) / sd
-            mark = "⭐BÜYÜK" if gap > 0.4 else ("orta" if gap > 0.2 else "yok")
-            print(f"  {f:13s}  {tv:>15.3f}  {sv:>15.3f}  {mark:>10s} ({gap:.2f}σ)")
+            mark = "*BUYUK" if gap > 0.4 else ("orta" if gap > 0.2 else "yok")
+            print(f"  {f:13s}  {tv:>15.3f}  {sv:>15.3f}  {mark:>10s} ({gap:.2f}sd)")
         # haftagünü kırılımı (SL oranı günlere göre)
-        print(f"  --- haftagünü SL oranı (Pzt=0..Paz=6) ---")
+        print(f"  --- haftagunu SL orani (Pzt=0..Paz=6) ---")
         for dw in range(7):
-            dd = [t for t in trs if t["dow"] == dw]
-            if dd:
-                slr = sum(1 for t in dd if t["outcome"] == "sl") / len(dd)
-                print(f"    gün{dw}: n={len(dd):>3d} SL%{slr*100:>3.0f}", end="  ")
+            ddd = [t for t in trs if t["dow"] == dw]
+            if ddd:
+                slr = sum(1 for t in ddd if t["outcome"] == "sl") / len(ddd)
+                print(f"    gun{dw}: n={len(ddd):>3d} SL%{slr*100:>3.0f}", end="  ")
         print()
-    print("\n  ⭐BÜYÜK ayrışma (>0.4σ) = filtre adayı → canlı-doğru + yıl-yıl test.")
-    print("  Hiçbiri ayrışmıyorsa → SL'ler giriş anında öngörülemez (tasarım gereği).")
+    print("\n  *BUYUK ayrisma (>0.4sd) = filtre adayi -> canli-dogru + yil-yil test.")
+    print("  Hicbiri ayrismiyorsa -> SL'ler giris aninda ongorulemez (tasarim geregi).")
 
 
 if __name__ == "__main__":
