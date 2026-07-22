@@ -487,3 +487,20 @@ gerekçeydi ama zararsız; 7'de bırak.**
 BTC +12%), donchian-sürücülü (squeeze tamamlayıcı, çoğu kötü ay +), yön dağınık. cooldown (temiz
 occ) worst'u düşürMÜYOR + her yıl bozuyor → RED geçerli. false_breakout ML OOS AUC 0.509 → geçerli.
 DERS: raporlama araçları da deploy araçları kadar denetlenmeli; raw-havuz çapraz-kontrol = altın.
+
+## ✅ DEPLOY SAĞLIK DENETİMİ + CANLI BYTE-KONTROL (2026-07-22)
+
+**deployed_health (izole, occ-doğru, yıl-yıl):** 11 deploy coininin HEPSİ sağlam — hiçbirinin
+2025+2026 toplamı negatif değil, ölü ağırlık YOK. En güçlü ADA(PF1.78), en zayıf BCH(1.30)/BNB(1.33)
+ama hepsi son-2-yıl pozitif. PF soğuması (portföy 1.54→1.37) TEK coinden değil, TÜM coinlere yayılmış
+= piyasa-geneli edge-decay (coin çıkararak düzeltilmez, kabul). Çıkarma adayı yok, dokunma.
+SONUÇ: temiz backtest kolları bitti; sistem sağlıklı+doğrulanmış. Sonraki değer = CANLI doğrulama,
+daha fazla in-sample tarama DEĞİL (overfit sızma noktası).
+
+**deployed_backtest (canlı config, düzeltilmiş occ, MP=7, %2.25):** 1401 işlem/3.2yıl, PF1.48, WR%43,
+işlem başı +0.256R. Sabit-oran: +$1535, GERÇEK max drawdown (tepe-dip) %19.9, aylık ort+%20/en kötü−%16.4,
+her yıl+ (397/496/447/194). Bileşik $190→$275k = FANTEZİ (uyarılı, gerçek A'ya yakın).
+
+**CANLI BYTE-KONTROL (kullanıcı screenshot):** ADA donchian LONG — TP0.1862/SL0.1655, geri-çözülen
+giriş≈0.1714 → R:R=2.500 TAM, ima ATR%≈1.73 makul → backtest matematiğiyle nokta-nokta uyuştu = PASS.
+NEAR donchian SHORT (SL1.937 fiyat üstünde) tutarlı; TP+giriş beklenerek ikinci onay. test=canlı doğru.
