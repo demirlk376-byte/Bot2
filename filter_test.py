@@ -21,7 +21,7 @@ DEPLOY = {
     "donchian": (["SOL", "ETH", "ADA", "NEAR", "BCH"], "4h", 259, 2.0, 2.0, 30),
     "squeeze":  (["XRP", "DOGE", "TRX", "XLM"], "1h", 119, 2.0, 2.5, 48),
 }
-FILTERS = ["baseline", "+MTF", "+EMA200", "+EMA50/200"]
+FILTERS = ["baseline", "+MTF", "+EMA200", "+EMA50/200", "+PxBoth", "+MTF+E50/200"]
 
 
 def run(sleeve, coin, m, which):
@@ -57,6 +57,14 @@ def run(sleeve, coin, m, which):
             if not ((d_ == 1 and e > ema200[i]) or (d_ == -1 and e < ema200[i])): continue
         elif which == "+EMA50/200":
             if not ((d_ == 1 and ema50[i] > ema200[i]) or (d_ == -1 and ema50[i] < ema200[i])): continue
+        elif which == "+PxBoth":   # fiyat hem EMA50 hem EMA200 trend tarafında (çift onay)
+            if d_ == 1 and not (e > ema50[i] and e > ema200[i]): continue
+            if d_ == -1 and not (e < ema50[i] and e < ema200[i]): continue
+        elif which == "+MTF+E50/200":   # kazanan MTF + golden-cross birlikte
+            dup = bool(up_daily[i]) if not (isinstance(up_daily[i], float) and np.isnan(up_daily[i])) else True
+            mtf_ok = (d_ == 1 and dup) or (d_ == -1 and not dup)
+            gold_ok = (d_ == 1 and ema50[i] > ema200[i]) or (d_ == -1 and ema50[i] < ema200[i])
+            if not (mtf_ok and gold_ok): continue
         sld = sl_a * a; slp = e - d_ * sld; tp = e + d_ * rr * sld; ep = None; j = i
         for j in range(i + 1, min(i + 1 + mh, n)):
             if d_ == 1:
