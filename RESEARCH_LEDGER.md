@@ -464,3 +464,26 @@ LTC o dönem şansı). Robust çakışmasız aday = YOK. DD-düşürücü divers
 **DURUM:** Temiz kollar bitti. KAZANANLAR (deploy): donchian coin genişleme (ICP+BNB) + risk-bütçesi
 (RISK_SCALE 1.125). ELENENLER (kanıtla): SL-filtre, gün-içi, literatür-filtre, piramitleme (+EV ama
 domine), BB-diversifier. Sistem sıkı, overfitsiz büyütüldü — pratik tavana ulaşıldı.
+
+## 🐛 ÖZ-DENETİM BUG YAKALAMA (2026-07-22) — occ eksik + düzeltilmiş rakamlar
+
+Kullanıcı "araçları denetle" disiplini → raw-havuz çapraz-kontrolü: monthly_return.gen 7 coin için
+2541 donchian üretti, DÖRT temiz araç (cooldown/pyramid/false_breakout_ml/coin_expand) 997 dedi.
+KÖK NEDEN: monthly_return.gen + worst_month.gen'de append sonrası **occ=j EKSİK** → coin-başına
+tek-pozisyon guard'ı (i<=occ) hiç tetiklenmedi → örtüşen aynı-coin işlemler (SOL'da 261/399,
+netted modda İMKANSIZ) → işlem sayısı ~2.5×, getiri+drawdown şişti. DÜZELTME: occ=j eklendi.
+Grep audit: SADECE bu 2 raporlama aracı etkilendi; TÜM deploy-karar araçları (growth_sim→RISK_SCALE,
+coin_expand→ICP/BNB, portfolio_sim→MAX_POS, cooldown, false_breakout_ml, filter_test) occ'lu = TEMİZ.
+ICP/BNB + RISK_SCALE 1.125 kararları SAĞLAM. Düzeltme sonrası monthly==cooldown birebir (1401 işlem,
+worst −16.4%) = çapraz-doğrulandı.
+
+**DÜZELTİLMİŞ AYLIK (MP=7, %2.25, sabit-oran): ort +20.2%/ay, en kötü ay −16.4% (−35 DEĞİL),
+std ±25%, poz-ay %70. MP=10 neredeyse aynı (+20.9%, worst −16.4%) → koltuk 7↔10 farkı ihmal
+edilebilir (yavaş sleeve'ler nadiren >7 eşzamanlı). MAX_POSITIONS 10→7 değişikliği bug-kaynaklı
+gerekçeydi ama zararsız; 7'de bırak.**
+
+**DÜZELTİLMİŞ worst_month: niteliksel sonuç AYNEN duruyor** (büyüklük düzeldi): kötü aylar whipsaw
+(WR %22-33), BTC-korelasyon +0.09 (çöküş DEĞİL; kötü aylarda BTC ort −0.2%, hatta 2026-04 −16%'da
+BTC +12%), donchian-sürücülü (squeeze tamamlayıcı, çoğu kötü ay +), yön dağınık. cooldown (temiz
+occ) worst'u düşürMÜYOR + her yıl bozuyor → RED geçerli. false_breakout ML OOS AUC 0.509 → geçerli.
+DERS: raporlama araçları da deploy araçları kadar denetlenmeli; raw-havuz çapraz-kontrol = altın.
