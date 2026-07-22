@@ -68,12 +68,25 @@ def main():
             try: ms[coin] = fast_bt.load(coin, source=source)
             except Exception as e: print(f"  {coin}: {e}")
         print(f"\n{'='*66}\n=== {sleeve.upper()} — TP/RR taraması (SL sabit 2×ATR) ===")
+        by_rr = {}
         for rr in RRS:
             allt = []
             for coin, m in ms.items():
                 allt += run(sleeve, coin, m, rr)
+            by_rr[rr] = allt
             mark = " ← MEVCUT" if abs(rr - cur) < 0.01 else ""
             print(f"  rr{rr}: {st(allt)}{mark}")
+        # yıl-yıl: mevcut vs en iyi total
+        best = max(RRS, key=lambda r: sum(t["R"] for t in by_rr[r]))
+        print(f"  --- YIL-YIL: mevcut rr{cur} vs en iyi rr{best} ---")
+        yrs = sorted(set(t["year"] for t in by_rr[cur]))
+        allbet = True
+        for y in yrs:
+            c = np.array([t["R"] for t in by_rr[cur] if t["year"] == y]).sum() * BAL * RISK
+            b = np.array([t["R"] for t in by_rr[best] if t["year"] == y]).sum() * BAL * RISK
+            if b < c - 1: allbet = False
+            print(f"    {y}: rr{cur} ${c:+7.1f} → rr{best} ${b:+7.1f}  {'✅' if b>=c-1 else '⚠️'}")
+        print(f"  → {'rr'+str(best)+' HER YIL iyi/eşit → ROBUST, deploy edilebilir.' if allbet else 'bazı yıl kötü → dikkat, tek yıla yaslı olabilir.'}")
     print("\n  Mevcut rr en iyiyse → dokunma. Belirgin daha iyi rr varsa → test/deploy.")
 
 
