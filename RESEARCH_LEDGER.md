@@ -383,3 +383,25 @@ coin_expand: 13 deploy-dışı coin × 2 sleeve, yıl-yıl, canlı-doğru (donch
 varsa risk tavanı sabit, sadece fırsat kümesi büyür (sınırlı-riskli net-yukarı).
 **UYARILAR:** (1) hepsi kripto=korelasyonlu, mutlak $ artar ama DD $ kadar çeşitlenmez.
 (2) in-sample seçim (2023-26), gerçek OOS ileriye. Deploy kararı kullanıcıda (canlı para).
+
+## 📊 PORTFÖY SİM + BNB ÖZ-DENETİMİ (2026-07-22, coin genişleme v2)
+
+coin_expand İZOLE test ediyordu; portfolio_sim koltuk-kısıtlı ORTAK portföyü simüle eder
+(giriş sırası + MAX_POSITIONS koltuk mantığı = canlı-doğru). Donchian alt-portföyü:
+  MP=3: baseline $692(DD30%) → +ICP+BNB $773(DD30%)  = +$81 aynı DD
+  MP=4: $718(DD36%) → $855(DD33%)  = +$137 DAHA DÜŞÜK DD
+  MP=5: $742(DD40%) → $949(DD38%)  = +$207 DAHA DÜŞÜK DD   ← tatlı nokta
+  MP=8: $742(DD40%) → $996(DD49%)  = +$254 daha yüksek DD
+  → MP≥3'te ICP+BNB para+risk-ayarlı İYİLEŞTİRİYOR (yüksek-PF coin koltuk kalitesini artırır).
+  → +hepsi(10): marjinal para, PF düşer, DD şişer (MP=8 DD%73). DOT/AVAX/VET REDDEDİLDİ.
+Canlı MAX_POSITIONS=7; squeeze(4 coin) de aynı koltukları yediği için efektif donchian
+eşzamanı <7 → gerçek davranış tatlı-nokta (MP4-5) rejimine yakın (para↑, DD~sabit/↓).
+
+**BNB ÖZ-DENETİMİ:** Eski ledger "BNB 2026 −$0.5, dışarıda" diyordu; coin_expand 4/4 +$8 buldu.
+ÇÖZÜM: eski −$0.5 daha az 2026-verili anlık görüntüden; güncel (19Tem26) BNB 2026=+$7.90
+(24 işlem, 11 kaz/46% WR) = pozitif ama BNB'nin EN ZAYIF yılı (ince). rr2.5 breakeven WR~%29
+→ pozitif-EV, sahte değil ama küçük. ICP 2026=+$40 (54%WR) çok daha sağlam.
+→ **ICP yüksek güven; BNB orta güven (gerçek ama ince 2026).**
+
+**NET ÖNERİ:** DONCHIAN_SYMBOLS'a ICP ekle (kesin), BNB ekle (opsiyonel, ince-2026 kabulüyle).
+  SOL,ETH,ADA,NEAR,BCH → +ICP(,BNB). Kod yok, geri alınabilir. filter_test byte-doğruladı.
