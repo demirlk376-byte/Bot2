@@ -405,3 +405,23 @@ eşzamanı <7 → gerçek davranış tatlı-nokta (MP4-5) rejimine yakın (para�
 
 **NET ÖNERİ:** DONCHIAN_SYMBOLS'a ICP ekle (kesin), BNB ekle (opsiyonel, ince-2026 kabulüyle).
   SOL,ETH,ADA,NEAR,BCH → +ICP(,BNB). Kod yok, geri alınabilir. filter_test byte-doğruladı.
+
+## 💰 BÜYÜME-OPTIMAL RİSK (2026-07-22, growth_sim) — getiri kolu = risk-bütçesi kullanımı
+
+Filtre+edge tükendi → kalan dürüst getiri kolu: mevcut edge'i risk-tavanına kadar dolu kullanmak
+(yeni edge DEĞİL, kaldıraç). growth_sim: deploy portföyünü (7 donch+4 sqz, 1420 işlem ~3.2yıl)
+BİLEŞİK simüle eder (canlı gibi, her işlem mevcut equity'nin f'i), MAX_POSITIONS=7 koltuk.
+
+**terminal$ sütunu FANTEZİ** ($190→$64k @2%, $18M @8%): sıfır-sürtünme in-sample bileşik patlama,
+gerçek değil (edge ileriye zayıflar, slippage/likidite/min-notional, R-dizisi tekrarlamaz).
+Kullanıcıya asla "$64k yapacağız" denmez (hype = geçmişte azarlandı).
+
+**TAŞINABİLİR sinyal = maxDD sütunu** (ölçek-değişmez, kayıp-kümelenmesinin gerçek özelliği):
+  2.0%→DD42% (CANLI) | 2.25%→~46% | 2.5%→DD50% (tam tavan) | 3%→57% | 4%→68% | 8%→93%(Kelly tepesi).
+Kullanıcı 2%'de, tarihsel DD %42, tolerans %50 → kullanılmamış risk-bütçesi var.
+
+**KARAR: RISK_SCALE 1.0→1.125 (%2.25/işlem).** Tam tavan (2.5%) DEĞİL çünkü:
+(1) tarihsel DD ~%46 → %50 tavanın altında tampon; (2) ileriye-dönük DD ~her zaman in-sample'dan
+KÖTÜ (en kötü kümelenme henüz olmadı) → 2.5%'te tarihsel tam %50 zaten, ileride aşar. Getiri ~%12↑.
+Kaldıraç (kayıpları da büyütür), geri alınabilir (env). Canlı DD izlenir, gerekirse geri çekilir.
+Piramitleme (kazanana ekleme, turtle-native) = potansiyel GERÇEK edge kolu, ayrı test edilecek.
