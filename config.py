@@ -274,6 +274,8 @@ class StrategyConfig:
     donchian_ema_trend: int = 200     # HTF trend filter (EMA200 on 4h)
     donchian_buffer_atr: float = 0.0  # require break beyond channel by this × ATR
     donchian_symbols: list[str] | None = ("BTC/USDT:USDT",)  # validated BTC-only
+    donchian_mtf_enabled: bool = False   # günlük EMA20 trend hizası filtresi (backtest:
+    #   rr2.5 üstünde +$42, PF1.49→1.53, her yıl≥; ters-günlük-trend breakout'ları eler)
 
 
 @dataclass
@@ -450,6 +452,7 @@ def load_config() -> AppConfig:
         donchian_sl_atr=_getfloat("DONCHIAN_SL_ATR", 2.0),
         donchian_ema_trend=_getint("DONCHIAN_EMA_TREND", 200),
         donchian_buffer_atr=_getfloat("DONCHIAN_BUFFER_ATR", 0.0),
+        donchian_mtf_enabled=_getbool("DONCHIAN_MTF", False),
         donchian_symbols=donchian_symbols,
     )
 

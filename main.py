@@ -714,7 +714,13 @@ def make_on_candle_close(ctx: "SymbolContext"):
                                      config.strategy.atr_period).iloc[-1]
                         if not (pd.isna(atr_4h) or atr_4h <= 0):
                             dch_sig = ctx.donchian_strategy.analyze(df_4h, float(atr_4h))
-                            if dch_sig.direction != 0:
+                            if dch_sig.direction != 0 and not _donchian_mtf_ok(
+                                    df_4h, dch_sig.direction):
+                                logger.info("[%s] Donchian MTF: günlük trend ters "
+                                            "(dir=%d), atlandı", ctx.symbol, dch_sig.direction)
+                                web_dashboard.add_signal(ctx.symbol, "Donch", 0,
+                                                         "MTF: günlük trend ters")
+                            elif dch_sig.direction != 0:
                                 dch_combined = CombinedSignal(
                                     direction=dch_sig.direction,
                                     confidence=dch_sig.strength,
@@ -1034,6 +1040,24 @@ def _get_regime(adx_val: float) -> str:
     if adx_val <= ranging:
         return "ranging"
     return "neutral"
+
+
+def _donchian_mtf_ok(df_4h, direction: int) -> bool:
+    """Donchian MTF filtresi (DONCHIAN_MTF): giriş yönü günlük EMA20 trendiyle
+    hizalı mı? Kapalıysa her zaman True (davranış değişmez). df_4h (~260 4h bar ≈
+    43 gün) → günlük resample → EMA20. Backtest doğrulanmış: rr2.5 üstünde +$42,
+    PF1.49→1.53, her yıl≥ baseline; ters-günlük-trend breakout'ları eler."""
+    if not getattr(config.strategy, "donchian_mtf_enabled", False):
+        return True
+    try:
+        d1d = df_4h.resample("1D").agg({"close": "last"}).dropna()
+        if len(d1d) < 20:
+            return True   # yeterli günlük veri yoksa filtreleme (güvenli taraf)
+        dema20 = d1d["close"].ewm(span=20, adjust=False).mean().iloc[-1]
+        daily_up = float(d1d["close"].iloc[-1]) > float(dema20)
+        return (direction == 1 and daily_up) or (direction == -1 and not daily_up)
+    except Exception:
+        return True   # hata olursa filtreleme (mevcut davranış)
 
 
 async def _update_trailing_stops(symbol: str, current_price: float, atr_val: float) -> None:
