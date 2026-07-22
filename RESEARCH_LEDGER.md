@@ -364,3 +364,22 @@ SL'leri temiz filtrelenemiyor — edge zaten sıkı. Disiplin çalıştı: PF-ba
 kez (i≥260'ta Wilder yakınsadığı için pencere-yerel ≈ full-series; donchian 1e-8), analyze
 akışı filtreden bağımsız → coin başına bir kez. 10dk+timeout → 2m42s. baseline birebir
 filter_test'i üretti (öz-denetim geçti). Adaylar yine window-yerel filter_test ile doğrulanır.
+
+## 🌱 ÇEŞİTLENDİRME AVI (2026-07-22) — donchian coin genişlemesi (doğrulanmış aday)
+
+Filtre yolu kapandı (SL kesilemiyor) → ledger'ın endorse ettiği büyüme düğmesi: çeşitlendirme.
+coin_expand: 13 deploy-dışı coin × 2 sleeve, yıl-yıl, canlı-doğru (donchian rr2.5+MTF).
+
+**İSTATİSTİK:** Her-yıl-pozitif testini şansla geçme ~ (0.5)^4=%6 → sleeve başı ~0.8 coin.
+- **donchian 5 coin geçti (şansın ~6 katı) → trend edge coinler arası GENELLEŞİYOR.**
+- squeeze 1 geçti (≈şans) → squeeze GENELLEŞMİYOR (kendi tuned coinlerine özel). Coin eklenmez.
+
+**Robust donchian adaylar (window-yerel byte-doğrulandı, filter_test kod-yolundan bağımsız):**
+  ICP PF1.57 $155 [7/73/35/40] | BNB PF1.33 $99 [10/58/22/8] | AVAX PF1.29 $87 [34/40/1/12] |
+  DOT PF1.22 $70 [10/21/11/27] | VET PF1.21 $66 [7/21/27/11].  ICP iki sleeve'de robust → donchian'a.
+  ICP+BNB en güçlü (temiz her-yıl, sağlam 2026). AVAX(2025 ince) / VET(2023 ince) marjinal.
+
+**DEPLOY:** DONCHIAN_SYMBOLS env-var'a ekle (kod yok, geri alınabilir). MAX_POSITIONS tavanı
+varsa risk tavanı sabit, sadece fırsat kümesi büyür (sınırlı-riskli net-yukarı).
+**UYARILAR:** (1) hepsi kripto=korelasyonlu, mutlak $ artar ama DD $ kadar çeşitlenmez.
+(2) in-sample seçim (2023-26), gerçek OOS ileriye. Deploy kararı kullanıcıda (canlı para).
