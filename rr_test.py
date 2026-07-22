@@ -62,7 +62,7 @@ def st(tr):
 def main():
     source = sys.argv[1] if len(sys.argv) > 1 else "mexc_futures"
     for sleeve, (coins, *rest) in DEPLOY.items():
-        cur = rest[2]
+        cur = rest[3]   # rr (rest = tf,win,sl_a,rr,mh) — BUG düzeltmesi (rest[2]=sl_a idi)
         ms = {}
         for coin in coins:
             try: ms[coin] = fast_bt.load(coin, source=source)
@@ -76,9 +76,11 @@ def main():
             by_rr[rr] = allt
             mark = " ← MEVCUT" if abs(rr - cur) < 0.01 else ""
             print(f"  rr{rr}: {st(allt)}{mark}")
-        # yıl-yıl: mevcut vs en iyi total
-        best = max(RRS, key=lambda r: sum(t["R"] for t in by_rr[r]))
-        print(f"  --- YIL-YIL: mevcut rr{cur} vs en iyi rr{best} ---")
+        # TATLI NOKTA: max total'in %97'sine ulaşan EN KÜÇÜK rr (extreme'e overfit değil)
+        tot = {r: sum(t["R"] for t in by_rr[r]) for r in RRS}
+        mx = max(tot.values())
+        best = min([r for r in RRS if tot[r] >= 0.97 * mx and r >= cur], default=max(RRS, key=tot.get))
+        print(f"  --- YIL-YIL: mevcut rr{cur} vs tatlı-nokta rr{best} (max'ın %97'si, en küçük) ---")
         yrs = sorted(set(t["year"] for t in by_rr[cur]))
         allbet = True
         for y in yrs:
