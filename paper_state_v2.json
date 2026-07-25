@@ -24,7 +24,7 @@
       "n_trades": 8,
       "n_wins": 5,
       "total_pnl": 252.25968160526162,
-      "skipped": 17
+      "skipped": 18
     },
     "SOL": {
       "balance": 10245.996356309475,
@@ -50,7 +50,7 @@
       "n_trades": 12,
       "n_wins": 7,
       "total_pnl": 360.8355909512394,
-      "skipped": 6
+      "skipped": 7
     },
     "XRP": {
       "balance": 9803.817285325445,
