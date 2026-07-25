@@ -504,3 +504,21 @@ her yıl+ (397/496/447/194). Bileşik $190→$275k = FANTEZİ (uyarılı, gerçe
 **CANLI BYTE-KONTROL (kullanıcı screenshot):** ADA donchian LONG — TP0.1862/SL0.1655, geri-çözülen
 giriş≈0.1714 → R:R=2.500 TAM, ima ATR%≈1.73 makul → backtest matematiğiyle nokta-nokta uyuştu = PASS.
 NEAR donchian SHORT (SL1.937 fiyat üstünde) tutarlı; TP+giriş beklenerek ikinci onay. test=canlı doğru.
+
+## 🎯 SL YERLEŞİMİ / LİKİDİTE KOLU (2026-07-22, sl_placement_test) — RED
+
+Kullanıcı sezgisi (SMC/likidite): "SL'lerimiz likidite havuzlarında oturup süpürülüyor olabilir;
+SL'i havuzun ötesine koyup TP'yi bozmadan SL'leri azaltabilir miyiz?" TP FİYATI SABİT (entry±5×ATR),
+%2.25 risk, donchian 7 coin, canlı-doğru. Bilimsel kontrol: düz geniş ATR stop da aynı işi yapıyorsa
+"likidite" çerçevesi bir şey katmıyor demektir.
+
+  baseline2ATR SL%50 PF1.51 $+1121 | wide2.5ATR SL%42 PF1.44 $+833 | wide3ATR SL%34 PF1.43 $+693
+  swing10 SL%25 PF1.31 $+410 | swing20 SL%16 PF1.31 $+323
+
+**SEZGİ KISMEN DOĞRU:** yapısal SL gerçekten süpürülmeyi azaltıyor — SL oranı %50→%16, WR %44→%53.
+**AMA PARA KAYBETTİRİYOR:** $1121→$323, HER YIL kötü (2025 $287→$30). Neden: aynı riskte geniş SL =
+çok daha küçük pozisyon → kazançlar küçülüyor, takas net negatif.
+**KONTROL BAŞARISIZ:** swing(PF1.31) < düz geniş ATR(PF1.43) → "likidite" çerçevesi ekstra edge
+KATMIYOR, sadece stop-genişliği etkisi. SMC likidite fikri bu sistemde ölçülebilir edge vermiyor.
+**SONUÇ: 2×ATR optimal, dokunma.** SL'ler "düzeltilebilir" değil — süpürülme dar stopun bedeli ve
+dar stop daha çok kazandırıyor. (Sahte-breakout öngörülemezliği + cooldown reddi ile tutarlı.)
