@@ -14,7 +14,7 @@
       "n_trades": 8,
       "n_wins": 5,
       "total_pnl": 252.25968160526162,
-      "skipped": 20
+      "skipped": 21
     },
     "SOL": {
       "balance": 10246.001149918251,
@@ -22,7 +22,7 @@
       "n_trades": 7,
       "n_wins": 4,
       "total_pnl": 246.00114991824864,
-      "skipped": 9
+      "skipped": 10
     },
     "BNB": {
       "balance": 10360.83559095124,
