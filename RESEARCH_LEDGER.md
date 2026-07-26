@@ -522,3 +522,27 @@ SL'i havuzun ötesine koyup TP'yi bozmadan SL'leri azaltabilir miyiz?" TP FİYAT
 KATMIYOR, sadece stop-genişliği etkisi. SMC likidite fikri bu sistemde ölçülebilir edge vermiyor.
 **SONUÇ: 2×ATR optimal, dokunma.** SL'ler "düzeltilebilir" değil — süpürülme dar stopun bedeli ve
 dar stop daha çok kazandırıyor. (Sahte-breakout öngörülemezliği + cooldown reddi ile tutarlı.)
+
+## 🩸 SL YERLEŞİMİ / LİKİDİTE KOLU (2026-07-22, sl_placement_test) — sezgi DOĞRU ama net NEGATİF
+
+Kullanıcı sezgisi (SMC/likidite): SL'ler bariz likidite havuzlarında (swing-low altı) süpürülüyor →
+SL'i yapısal seviyenin ÖTESİNE koy, TP FİYATINI SABİT tut (entry±5×ATR), %2.25 risk sabit.
+Bilimsel kontrol: düz geniş ATR stop (2.5/3×ATR) aynı işi yapıyorsa "likidite" çerçevesi katkısız.
+
+  baseline2ATR: SL%50 WR44% PF1.51 $+1121  ← EN İYİ
+  wide2.5ATR  : SL%42 WR47% PF1.44 $ +833
+  wide3ATR    : SL%34 WR50% PF1.43 $ +693
+  swing10     : SL%25 WR52% PF1.31 $ +410
+  swing20     : SL%16 WR53% PF1.31 $ +323   (SL oranı 50%→16%!)
+
+**SEZGİ DOĞRULANDI:** geniş/yapısal stop SL-avını GERÇEKTEN azaltıyor (SL%50→16, WR%44→53).
+**AMA NET NEGATİF:** toplam $1121→$323, PF 1.51→1.31, HER YIL daha kötü, MONOTONİK bozulma.
+NEDEN (korunum yasası): sabit %2.25 riskte geniş stop = küçük pozisyon = kazançta daha az $/işlem.
+Kaçınılan SL'ler bunu telafi etmiyor. "TP'yi bozmadan SL'i azalt" MÜMKÜN ama parayı azaltıyor.
+LİKİDİTE ÇERÇEVESİ KATKISIZ: swing10/20, benzer SL-azaltmasında 3ATR'den DAHA KÖTÜ → etki sadece
+stop-genişliği, "likidite havuzu" bilgisi ek değer katmıyor. RED (baseline 2ATR optimal kalıyor).
+
+## 🔍 4h MUM UYUMU DOĞRULANDI (test=canlı)
+Canlı `get_candles(confirm_tf=4h)` NATIVE MEXC 4h çekiyor; backtest 1h→4h resample ediyor.
+Kontrol: resample sınırları [0,4,8,12,16,20] UTC = MEXC native 4h sınırlarıyla BİREBİR → aynı mumlar.
+(Canlıda ayrıca 4h tazelik kontrolü + _poll_once var → kapanmamış bara göre işlem açılmıyor.)
