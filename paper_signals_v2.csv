@@ -114,3 +114,4 @@ ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
 2026-07-26T14:00:00+00:00,ETH,SHORT,1897.83,6.4779,26,-3e-06,False,çelişki: F&G=26 (korku ortamında short riskli)
 2026-07-26T16:00:00+00:00,ETH,SHORT,1915.51,8.2851,26,5.1e-05,False,çelişki: F&G=26 (korku ortamında short riskli)
 2026-07-26T16:00:00+00:00,SOL,SHORT,75.49,0.337,26,9e-06,False,çelişki: F&G=26 (korku ortamında short riskli)
+2026-07-26T21:00:00+00:00,SOL,SHORT,75.61,0.3113,26,1.8e-05,False,çelişki: F&G=26 (korku ortamında short riskli)
