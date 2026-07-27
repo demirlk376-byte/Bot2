@@ -726,3 +726,33 @@ sahip olduğumuz şey, çeşitlendirici değil.
 DERS: bugün üçüncü kez aggregate-güzel/yıl-yıl-ölü tuzağı (önce -MonTue PF1.67, sonra kısmi TP +%27,
 şimdi XS momentum PF2.14). Yıl-yıl kontrolü olmasa üçü de deploy edilir, üçünden de zarar edilirdi.
 SIRADAKİ AİLE: spread/pairs (piyasa-nötr, gerçek düşük-korelasyon adayı).
+
+## 🔀 YENİ SİSTEM AİLESİ #2: PAIRS SPREAD (2026-07-25) — EDGE GERÇEK, DEPLOY EDİLEBİLİR HALİ YOK
+
+**TAM EVREN (günlük barlar) — bugüne kadar hem OOS hem her-yıl geçen TEK şey:**
+  z2.0/0.5/3.5: PF1.63 $+532 TRAIN+321 TEST+211 | 2023+179 2024+141 2025+82 2026+129 HER-YIL+
+  z2.0/0.0/3.0: PF1.67 $+610 TRAIN+383 TEST+227 | her yıl +
+  z2.5/0.5/4.0: PF1.40 $+241 TRAIN+137 TEST+104 | her yıl +
+  (4h barlar BAŞARISIZ: üçü de TRAIN+/TEST− = overfit imzası → sadece günlük çalışıyor.)
+  Metodoloji korumaları: çiftler SADECE 2023-24'ten seçildi, z rolling pencereden, z-stop var.
+
+**ÇEŞİTLENDİRME TEZİ DOĞRULANDI (seansın en iyi sonucu):**
+  Kitapla korelasyon **−0.362** (Spearman −0.28). Kitabın 15 KAYIP ayında pairs **+$399**,
+  15 ayın **12'sinde pozitif**. Birleştirme: $1224 → **$1756 (+%43)**, maxDD $59 → $60 (AYNI).
+  Teori tuttu: chop breakout'u öldürürken mean-reversion'ı besliyor. BB'de bulamadığımız
+  tamamlayıcı akış BU.
+
+**AMA ÇAKIŞMA ÖLDÜRÜYOR (netted: coin başına tek pozisyon):**
+  8 çiftin 6'sı deploy coini kullanıyor (ETC/ETH, BTC/ETH, ADA/DOT, XLM/XRP, ADA/ALGO, ADA/ATOM).
+  Serbest olan 2 çiftle (ATOM/DOT, ALGO/DOT): PF1.09 **+$22** = değersiz.
+
+**SERBEST EVREN DENEMESİ (10 deploy-dışı coin, 45 çift, 9 kombinasyon) — BARAJA TAKILDI:**
+  En iyi 8-çift z2.5: PF1.45 $+302 TEST+185 ama **2025 −$1** ve kârın **%62'si 2026'dan**.
+  z2.5 config'i 4/6/8 çiftte tutarlı (olumlu işaret) AMA: (a) her-yıl barajı geçilmiyor,
+  (b) tek yıla yığılma — bugün aynı gerekçeyle kısmi TP ve -MonTue reddedildi, kural esnetilemez,
+  (c) İLK DENEME BAŞARISIZ OLDUKTAN SONRA aynı veriye 9 yeni kombinasyonla bakıldı → araştırmacı
+  serbestlik derecesi birikti = yanlış-pozitif üreten mekanizmanın ta kendisi. **RED (şimdilik).**
+
+**DÖNÜNCE TEK YAPISAL HİPOTEZ (tarama değil):** ETH'yi donchian'dan çıkarıp pairs'e açmak.
+ETH donchian'da zayıf halka (PF1.39, 2026 −$7) ama İKİ güçlü çiftte geçiyor (BTC/ETH, ETC/ETH).
+Takas net pozitif mi? Tek ve yapısal soru — TAZE GÖZLE ve yıl-yıl doğrulanarak bakılmalı.
