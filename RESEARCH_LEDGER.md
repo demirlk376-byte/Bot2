@@ -702,3 +702,27 @@ maxhold 332 (%23) ort **+0.56R +$748, %77 kârlı**, ort MFE 1.54R, ort 33.9 bar
 **SONUÇ:** kayıpların dörtte üçü, girişte ayırt edilemeyen ve hemen sönen sahte kırılımlar =
 breakout edge'inin kelime anlamıyla maliyeti. SL ARAŞTIRMA KOLU KAPANDI (spekülasyonla değil,
 mekanik kanıtla). %52 SL oranına RAĞMEN PF 1.44 — kazananların 2.49R'si taşıyor.
+
+## 🆕 YENİ SİSTEM AİLESİ #1: KESİTSEL MOMENTUM (2026-07-25, xsec_momentum) — RED
+
+Mevcut kitabın tamamı (donchian/squeeze/BB + elenen NW/KAMA/grid/funding/ORB/FVG/IFVG/SR/Asia)
+TEK COİNE bakan zaman-serisi sinyalleri. Kesitsel momentum yapısal olarak FARKLI: "hangi coinler
+BİRBİRİNE göre güçlü". 22 coin, günlük, L∈{7,14,30} K∈{2,3,4} R∈{7,14} = 18 konfigürasyon.
+
+**AGGREGATE'TE HARİKA GÖRÜNÜYOR (tuzak):** en iyiler 14/4/14 PF **2.14** ve 14/3/14 PF **2.10** —
+bizim donchian'ımız 1.44. Kullanıcının aylardır istediği "PF 2.0" tam burada. Aggregate'e baksak
+"bulduk" derdik.
+
+**AMA 18 KONFİGÜRASYONUN 18'İ DE 2026'DA NEGATİF.** İstisnasız, parametreye duyarsız →
+gürültü DEĞİL, sistematik çöküş. 2023 + / 2024 + / 2025 çoğu + / 2026 HEPSİ −.
+Kesitsel momentum 2023-25 çalışmış, 2026'da ÖLMÜŞ (literatürde de kripto XS momentum zayıflaması
+belgeleniyor; penceremiz tam o döneme denk).
+
+**LONG-ONLY KONTROLÜ DOĞRULADI:** L14K3R7 long-only = PF 1.44 **+$451** — long/short'un en iyisinden
+(+$260) DAHA FAZLA. Yani "edge"in önemli kısmı kesitsel seçicilik değil, KRİPTO BETASI = zaten
+sahip olduğumuz şey, çeşitlendirici değil.
+
+**KARAR: RED** (PF>1.2 + HER YIL pozitif barajını hiçbiri geçemiyor; en güncel yıl hepsinde negatif).
+DERS: bugün üçüncü kez aggregate-güzel/yıl-yıl-ölü tuzağı (önce -MonTue PF1.67, sonra kısmi TP +%27,
+şimdi XS momentum PF2.14). Yıl-yıl kontrolü olmasa üçü de deploy edilir, üçünden de zarar edilirdi.
+SIRADAKİ AİLE: spread/pairs (piyasa-nötr, gerçek düşük-korelasyon adayı).
