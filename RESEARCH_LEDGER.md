@@ -971,3 +971,30 @@ ccxt-MEXC hiç desteklemiyor). Tek yol: bot bugünden itibaren OI kaydetsin, 6-1
 **NİHAİ CEVAP:** sahte kırılım, elimizdeki HİÇBİR veriyle giriş anında öngörülemez. Bu bir eksiklik
 değil, edge'in ÖN KOŞULU: ayırt edilebilseydi herkes filtreler, edge kalmazdı. %52 SL oranı,
 2.49R'lik kazananların bedeli — ayrı bir sorun değil, aynı madalyonun diğer yüzü.
+
+## ✅ RETLERİN YENİDEN DOĞRULANMASI (2026-07-27) — "gerçekten mi elendi?" (kullanıcı denetimi)
+
+SORUN: MTF lookahead 14 araçta düzeltildi AMA bazı retler düzeltmeden ÖNCE, kirli araçlarla
+verilmişti. Mantık yürütmek yerine (bugün mantık yürütmek yerine ölçtüğümüz için 2 bug yakalandı)
+dördü de düzeltilmiş araçlarla YENİDEN koşuldu:
+
+  COOLDOWN      : baseline +$1451 | 6 varyant $1060-$1302, hepsi çoklu yıl bozuyor → RET GEÇERLİ
+  PİRAMİTLEME   : taban PF1.45 | add+0.5ATR PF**1.38** (eski 1.42), +1.0 PF1.24, +1.5 PF1.10
+                  (2025−5, 2026−21) → add PF < taban PF, RET GEÇERLİ (marj GENİŞLEDİ)
+  STOP YERLEŞİMİ: baseline2ATR PF1.45 +$1037 | wide2.5 $760, wide3 $650, swing10 $356, swing20 $280
+                  monotonik bozulma aynı, her yılda baseline üstün → RET GEÇERLİ
+  SAHTE-BREAKOUT ML: OOS AUC **0.502** (eski 0.509), in-sample 0.563 → klasik overfit imzası,
+                  13 özelliğin hepsi ≤0.10σ → RET GEÇERLİ (DAHA KESİN)
+
+**HİÇBİRİ YÖN DEĞİŞTİRMEDİ.** Sebep: lookahead hem baseline'a hem varyanta EŞİT uygulanıyordu =
+ortak-mod hata → mutlak rakamları şişiriyordu, göreli sıralamayı bozmuyordu. İkisinde marj GENİŞLEDİ.
+YAN DOĞRULAMA: ML çıktısında mtf_aligned artık kazanan/kaybeden ikisinde de 1.000 → MTF'nin canlıda
+etkisiz olduğu BAĞIMSIZ bir yoldan teyit edildi.
+
+## 🌍 FARKLI VARLIK SINIFLARI — doğru yön, şu an ERİŞİLEMEZ
+Profesyonel CTA'lar (AQR/Man AHL/Winton) 80-150 piyasada çalışıyor ve kazanma oranları %38-48 —
+BİZİMKİ %43, yani AYNI. Sahte kırılımı bizden iyi ayırt etmiyorlar; ilişkisiz bahis sayısıyla
+sönümlüyorlar. Ama bize bugün uygulanabilir DEĞİL: (1) veri yok (sadece 22 coin kripto cache),
+(2) MEXC kripto-only → petrol/tahvil için FARKLI BROKER + execution katmanı yeniden yazımı,
+(3) vadeli kontrat nominal değerleri $188 hesabın çok üstünde. Sıralama: pairs alt-hesabı
+(~$400-500, 2-3 ay) → daha çok kripto coini (yapıldı) → varlık sınıfı çeşitlendirmesi (uzak gelecek).
