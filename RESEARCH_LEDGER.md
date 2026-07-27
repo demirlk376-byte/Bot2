@@ -764,3 +764,31 @@ SIRADAKİ AİLE: spread/pairs (piyasa-nötr, gerçek düşük-korelasyon adayı)
 **DÖNÜNCE TEK YAPISAL HİPOTEZ (tarama değil):** ETH'yi donchian'dan çıkarıp pairs'e açmak.
 ETH donchian'da zayıf halka (PF1.39, 2026 −$7) ama İKİ güçlü çiftte geçiyor (BTC/ETH, ETC/ETH).
 Takas net pozitif mi? Tek ve yapısal soru — TAZE GÖZLE ve yıl-yıl doğrulanarak bakılmalı.
+
+## 🏛️ PROFESYONEL STANDART #1: ÇOKLU HORİZON (2026-07-25, horizon_sweep) — ENSEMBLE RED, AMA SİSTEM DOĞRULANDI
+
+Web araştırması: çoklu-lookback ensemble managed-futures ENDÜSTRİ STANDARDI ("hiçbir tek horizon
+tüm ortamları yakalayamaz; hız çeşitliliği zamanlama riskini dağıtır"; CFA Institute, TSMOM
+literatürü). Biz TEK horizonda (kanal=40) çalışıyoruz → hem standart test hem ÖZ-DENETİM.
+
+**ÖZ-DENETİM GEÇTİ:** vektörize donchian, kanal=40'ta **1017 işlem** = bilinen sonuçla BİREBİR.
+
+**BULGU 1 — SİSTEM PARAMETRE-KIRILGAN DEĞİL (deploy için çok iyi haber):**
+  ch20 PF1.30 $+919 DD13.3 | ch30 1.32 $+855 DD11.0 | **ch40 1.44 $+1003 DD8.6 (DEPLOY)** |
+  ch60 1.30 $+610 DD16.2 | ch80 1.32 $+567 DD17.0 | ch120 1.39 $+546 DD14.8
+  **ALTI HORİZONUN ALTISI DA HER YIL POZİTİF** → edge YAPISAL, parametre şansı değil.
+  40 üç metrikte de en iyi AMA komşuları makul (30:1.32, 60:1.30) = eğri PÜRÜZSÜZ.
+  Overfit spike olsaydı 30/60 çökerdi. Bu, "40 şanslı seçim mi?" sorusunun en iyi cevabı.
+
+**BULGU 2 — ENSEMBLE FAYDASIZ (red):** horizonlar arası aylık korelasyon **0.76-0.96**
+(komşular 0.90-0.96) → aynı şeyin kopyaları, literatürün vaat ettiği düşük-korelasyon YOK.
+Tüm kombinasyonlar 40'ın altında: (20,40,80) $829 | (20,40,60,80) $775 | (30,60,120) $670 |
+hepsi $750 — vs 40 tek başına **$1003**. En iyiyi zayıf+korele horizonlarla seyreltmek zarar.
+NEDEN literatürle çelişiyor: CTA'lar 1-12 AY horizonu kullanıyor; bizim 20-120 bar (4h) = 3-20 GÜN,
+hepsi literatürün "hızlı" ucunda → benzeşiyorlar. Gerçek çeşitlilik haftalık/aylık sinyal ister,
+3.3 yıllık veride o örneklem yok.
+NOT: tablodaki ensemble DD'si $ , tek-horizon DD'si % — farklı birim, karar toplam$ + yıl-yıl'dan.
+
+**VOLATİLİTE HEDEFLEME (2. standart):** kısmen ZATEN VAR — boyut = risk/(giriş×SL%) ve SL ∝ ATR,
+yani pozisyon volatiliteyle ters orantılı. Eksik tarafı bugün ölçülmüştü: notional tavanı
+işlemlerin %25'inde bunu bozuyor (squeeze'de %72).
