@@ -943,3 +943,31 @@ breakout fade · ETH takası. Hepsi yıl-yıl kontrolünde öldü; detaylar yuka
 Aggregate metrik YANILTIR. -MonTue PF1.67, kısmi TP +%27, XS momentum PF2.14, long-only +$451 —
 dördü de toplamda harika, dördü de yıl-yıl ölü. **HER YIL pozitif + TEST penceresi pozitif** barajı
 olmadan hiçbir şey deploy edilmez. Ve ledger'a toplam yazılıyorsa YIL-YIL da yazılır.
+
+## 🔒 FUNDING FİLTRESİ TEST EDİLDİ (2026-07-27, VPS'te koşturuldu) — RED, SAHTE KIRILIM KOLU KESİN KAPANDI
+
+VERİ SINIRI: MEXC funding endpoint'i `since`'i yok sayıp SON 1000 kaydı döndürüyor →
+sadece **2025-08-28 → 2026-07-27 (~11 ay)**. 2023-24 satırları tüm varyantlarda BİREBİR aynı
+(+287/+394) çünkü o dönemde funding NaN → filtre devreye girmiyor. Gerçek test sadece 2025-08 sonrası.
+
+**SONUÇ — 6 varyantın 6'sı da baseline'ın ALTINDA:**
+  baseline           PF1.45 **+$1270** | 2025+392 2026+197
+  skip_crowded 1e-4  PF1.45  +$1219  | 2025+402 2026**+136**  (2026 bozuldu)
+  skip_crowded 3e-4  PF1.45  +$1246  | 2025+391 2026+173      (ikisi de bozuldu)
+  skip_crowded 5e-4  PF1.45  +$1268  | 2025+390 2026+197      (neredeyse hiç filtrelemiyor)
+  only_fuel    1e-4  PF1.43  +$895   | 2025+208 2026**+6**    (yıkım)
+  only_fuel    3e-4  PF1.44  +$889   | 2025+212 2026**−4**    (yıkım)
+En sıkı eşik 2025'i +10 iyileştirip 2026'yı −61 bozdu → sinyal DEĞİL, gürültü.
+
+## ⛔ SAHTE KIRILIM: ERİŞİLEBİLİR TÜM VERİ KAYNAKLARI TÜKENDİ
+  OHLCV özellikleri (13, çok-değişkenli, dürüst OOS) → AUC **0.509** (yazı tura)
+  hacim / ATR-genişleme / volatilite-tabanı        → hepsi toplamı düşürdü
+  zaman-takvim (gün, saat)                          → 2026'da tersine döndü
+  yapı (kanal aşımı, ters fitil, mum-içi kapanış)   → ayrışma yok (<0.4σ)
+  **pozisyonlanma (funding)**                       → **hiçbir eşikte işe yaramadı**
+Geriye SADECE open interest kalıyor → BACKTEST EDİLEMEZ (hiçbir borsa çok-yıllık geçmiş OI vermiyor;
+ccxt-MEXC hiç desteklemiyor). Tek yol: bot bugünden itibaren OI kaydetsin, 6-12 ay sonra test edilsin.
+
+**NİHAİ CEVAP:** sahte kırılım, elimizdeki HİÇBİR veriyle giriş anında öngörülemez. Bu bir eksiklik
+değil, edge'in ÖN KOŞULU: ayırt edilebilseydi herkes filtreler, edge kalmazdı. %52 SL oranı,
+2.49R'lik kazananların bedeli — ayrı bir sorun değil, aynı madalyonun diğer yüzü.
