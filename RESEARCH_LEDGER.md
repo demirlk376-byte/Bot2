@@ -581,3 +581,41 @@ Denetim bulgularının adversaryal doğrulaması (5/12 tamamlandı, kalanı otur
   ✅ Isolated margin: bir pozisyonun kaybı diğerlerine sıçramaz.
   ⚠ VPS systemd Restart=always buradan doğrulanamıyor (service dosyası VPS'te) — kullanıcı teyit etmeli.
   ⚠ 7 denetim bulgusu (exit yolu, max-hold, likidasyon guard, cooldown) HÂLÂ DOĞRULANMAMIŞ (limit).
+
+## 🔬 NEGATİF AYLAR NEDEN NEGATİF (2026-07-25) — kesin cevap, 2 bağımsız analiz
+
+**MEKANİZMA: negatif aylar = CHOP (testere/yatay) AYLARI.** Gerçek, tanımlanabilir bir durum
+(aynı-ay çapraz-coin ADX ayrımı AUC 0.68, p=0.003 — karıştırılmış işlemlere karşı; etiketleme
+artefaktı DEĞİL). Kimliği: düşük ADX + 4h barların büyük kısmı önceki-40 kanalın İÇİNDE sıkışmış.
+
+**NASIL kaybediyoruz (önemli):** kayıplar BÜYÜMÜYOR, kazançlar AZALIYOR.
+  kötü ay (16/40) vs iyi ay (24/40): WR %34.2 vs %47.7 | ort kazanç +1.56R vs +1.91R |
+  **ort kayıp −0.94R vs −0.95R (AYNI)** | 31.2 vs 38.4 işlem/ay.
+  → Tüm fark isabet oranı + küçülen kazançlar. Stop'lar sorun değil; TP'ye ulaşamamak sorun.
+
+**KÜMELENME DEĞİL:** kayıplar aya yayılmış (3-gün penceresinde max kayıp 6.25 gözlenen vs 6.25
+rastgele-null = fark yok). Ay-üçtebirlerinin %82'sinde yüksek kayıp oranı. Coinler arası günlük
+korelasyon kötü aylarda +0.075, iyi aylarda +0.089 (yani kötü ayda DAHA AZ senkron). Aynı-gün
+çoklu-SL kümeleri var ama SİMETRİK (hep-kazanç günleri de var) → mekanizma bu değil.
+
+**ÖNGÖRÜLEMEZ (kanıtlı):** rejim ANTI-PERSISTENT — ADX ay-ay otokorelasyon −0.379, aylık PnL
+otokorelasyon −0.345. Önceki-ay göstergelerinin hiçbiri anlamlı değil (FWER p=0.41). OOS AUC
+0.52-0.69, işaret isabeti 0.48 (hiçbir şey yapmamak 0.56). In-sample, HİNDSIGHT ile bile en iyi
+eşik kuralı eğitim PnL'ini iyileştiremiyor ($611 vs $614) — her kesim iyi ayları kötülerden çok siliyor.
+
+**EKONOMİK ÖLDÜRÜCÜ ARGÜMAN (korelasyon tahmini gerektirmez):** iyi aylar ort +%31.9 (toplam
++$1455), kötü aylar ort sadece −%7.6 (toplam −$231). İyi ay kötü ayın **4.2 katı**. MÜKEMMEL bir
+kâhin tüm 16 kötü ayı atlasa kazanç sadece **+$231 / 3.2 yıl (~$6/ay)**. Simülasyon: bir ay-kapısının
+başabaş olması için ~AUC 0.90 gerekir. → Denemeye DEĞMEZ, doğruluk ne olursa olsun.
+
+**20 KALDIRAÇ TEST EDİLDİ, HİÇBİRİ +$1222'yi GEÇMEDİ.** Kill-switch'ler en kötü ayı DAHA KÖTÜ
+yapıyor (−%23..−%29 vs −%20.9) çünkü aylık PnL ortalamaya dönüyor. MAXPOS=5 yazı-tura ($1239 vs
+$1222 = gürültü). Aynı-yön cap K=4 dolar-negatif ve yıl-yıl kırılgan.
+
+**BİLİNMESİ GEREKEN (aksiyon değil):** yılda ~2.5 kez, 5+ pozisyon aynı UTC gününde stop oluyor,
+equity'nin %11-13'ü tek günde gidiyor. Yapısal, öngörülemez ve simetrik (hep-kazanç günleri de
+aynı sıklıkta). Filtrelenmez, BOYUTLANDIRMAYLA yönetilir.
+
+**SONUÇ: negatif aylar breakout edge'inin kaçınılmaz maliyeti.** Aksiyon: YOK. Doğru çerçeve
+"chop'u önceden bil" değil, "chop'ta daha az kaybet" (giriş/çıkış tasarımı) — ama o kol da
+(filtreler, cooldown, stop yerleşimi, piramitleme) daha önce kanıtla elendi.
