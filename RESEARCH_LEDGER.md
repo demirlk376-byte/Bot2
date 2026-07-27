@@ -546,3 +546,38 @@ stop-genişliği, "likidite havuzu" bilgisi ek değer katmıyor. RED (baseline 2
 Canlı `get_candles(confirm_tf=4h)` NATIVE MEXC 4h çekiyor; backtest 1h→4h resample ediyor.
 Kontrol: resample sınırları [0,4,8,12,16,20] UTC = MEXC native 4h sınırlarıyla BİREBİR → aynı mumlar.
 (Canlıda ayrıca 4h tazelik kontrolü + _poll_once var → kapanmamış bara göre işlem açılmıyor.)
+
+## 🧾 DÜRÜST KAPANIŞ TABLOSU + DENETİMSİZ-ÇALIŞMA GÜVENLİĞİ (2026-07-25)
+
+Denetim bulgularının adversaryal doğrulaması (5/12 tamamlandı, kalanı oturum limitine takıldı):
+**3 GERÇEK KUSUR bulundu ve DÜZELTİLDİ:**
+1. MTF LOOKAHEAD (araçlarda): günün TAM kapanışı ffill ile gün-içi barlara → gelecek bilgisi.
+   14 araçta canlı-birebir forma çevrildi. Ölçüm: lookahead PF1.51/+$1121 vs gerçek PF1.45/+$1037.
+   AYRICA: canlı MTF kapısı 1017 sinyalin **0**'ını blokluyor = TAMAMEN ETKİSİZ (40-bar kanal
+   kırılımı + EMA200 zaten fiyatı 20-gün EMA üstüne çıkarıyor → kapı gereksiz).
+   → Ledger'ın "MTF +$42, PF1.49→1.53" kredisi GERÇEKLEŞMİYOR. Deploy zararsız (no-op), inanç yanlıştı.
+2. FAIL-OPEN SLEEVE DEFAULT'LARI: ORB/SR/FVG/IFVG config'de True → .env'den anahtar düşerse
+   sessizce açılır (ölçülen felaket: maxDD %20→%103). config.py'de 8 default False yapıldı.
+   Canlıda zaten kapalılar (loglar: her coin tek sleeve) → davranış değişmedi, tehlike kalktı.
+3. NOTIONAL TAVANI MODELLENMEMİŞ: risk.py boyutu min(risk%, cap×SL%) ile sınırlıyor →
+   dar-stop'lu işlemler (özellikle squeeze) hedeften küçük. deployed_backtest artık modelliyor.
+
+**DÜRÜST NİHAİ RAKAMLAR (occ+lookahead+tavan hepsi düzeltilmiş, MP=7, cap=1.0):**
+  1421 işlem/3.2yıl, PF **1.44**, WR %43. Canlı boyutla toplam **+$1224** (düz modelin %84'ü).
+  Gerçek ort risk %2.06 (hedef %2.25), işlemlerin %25'i tavana takılı.
+  **maxDD %18.2** | aylık ort +%16.1 | en kötü ay −%20.9 | poz-ay %60.
+  Yıl-yıl: 2023 +$286 (PF1.53) | 2024 +$389 (1.43) | 2025 +$379 (1.45) | 2026 +$171 (1.35).
+  PF YILDAN YILA DÜŞÜYOR (1.53→1.35) = piyasa-geneli edge decay, tek coin suçu değil (health temiz).
+  ICP/BNB deploy kararı düzeltilmiş veriyle de AYAKTA (her yıl pozitif). 11 coin hepsi sağlam.
+
+**DENETİMSİZ ÇALIŞMA GÜVENLİĞİ (koddan doğrulandı):**
+  ✅ Birincil koruma = giriş emrine iliştirilmiş pozisyon-seviyesi SL/TP → MEXC'te YAPIŞKAN, süresi
+     DOLMAZ (exchange.py: "sticky, survives cancel_stop_orders"). 24h executeCycle SADECE acil
+     yedek plan-emirleri için → 5 günlük donchian tutuşunda korumasız kalma riski YOK.
+  ✅ has_attached_protection MUHAFAZAKÂR: belirsizlikte False döner → stop koyar (asla korumasız varsaymaz).
+  ✅ Reconciliation loop 2 dakikada bir: dış kapanışları yakalar, kardeş stop'ları yeniden koyar.
+  ✅ Günlük zarar kill-switch: gün başlangıcının −%35'inde halt + emergency_close_all, 2 dk'da bir
+     kontrol (sadece yeni sinyalde değil — eski açık bulunmuştu, kapatılmış).
+  ✅ Isolated margin: bir pozisyonun kaybı diğerlerine sıçramaz.
+  ⚠ VPS systemd Restart=always buradan doğrulanamıyor (service dosyası VPS'te) — kullanıcı teyit etmeli.
+  ⚠ 7 denetim bulgusu (exit yolu, max-hold, likidasyon guard, cooldown) HÂLÂ DOĞRULANMAMIŞ (limit).
