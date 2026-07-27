@@ -110,9 +110,10 @@ def main():
     mon = dfm.groupby("m")["pnl"].sum() / BAL0 * 100
     print(f"    Aylık: ort {mon.mean():+.1f}% | en kötü ay {mon.min():+.1f}% | poz-ay {(mon>0).mean()*100:.0f}%")
     print(f"    Yıl-yıl kâr:")
-    for y in sorted(set(x.year for x in exits)):
-        ry = np.array([R for (x, R) in taken if pd.Timestamp(x).year == y])
-        print(f"      {y}: ${ry.sum()*RISKF*BAL0:+7.0f}  (n{len(ry)}, PF{ry[ry>0].sum()/max(-ry[ry<0].sum(),1e-9):.2f})")
+    yr_arr = np.array([x.year for x in exits])
+    for y in sorted(set(yr_arr)):
+        msk = yr_arr == y; ry = r[msk]
+        print(f"      {y}: ${pnl[msk].sum():+7.0f}  (n{msk.sum()}, PF{ry[ry>0].sum()/max(-ry[ry<0].sum(),1e-9):.2f})")
 
     # B) BİLEŞİK (canlı gibi) — uyarılı
     eqc = BAL0
