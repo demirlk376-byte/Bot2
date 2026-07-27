@@ -647,3 +647,29 @@ Kısmi TP = trailing/BE'den FARKLI (o stop oynatır, elenmişti; bu gerçek kâr
 
 **DÖNÜNCE SIRA:** (a) kısmi TP'yi kodla + paper modda doğrula, (b) canlı-doğru test, (c) riski
 KADEMELİ artır — hepsi kullanıcı bakarken. Şimdilik sistem doğrulanmış haliyle kalıyor.
+
+## ⚠️ KISMİ TP DÜZELTMESİ (2026-07-25, partial_by_sleeve) — "ilk gerçek aday" ZAYIFLADI
+
+Kullanıcı gözlemi ("2023 sadece +%5, çok dengesiz") doğru çıktı ve iki şeyi ortaya çıkardı:
+
+**1. "2023 trend yılıydı" HİPOTEZİ ÇÜRÜTÜLDÜ.** Yıl karakteri ölçüldü (7 donchian coini, 4h barların
+önceki-40 kanal İÇİNDE kalma payı + ort ADX): 2023 chop%92.8/ADX28.3 | 2024 %93.8/27.2 |
+2025 %93.7/26.2 | 2026 %93.8/27.8 → **DÖRT YIL DA BİREBİR AYNI.** Rejim farkı YOK.
+→ 2023'ün zayıf kalması rejimden değil, AÇIKLANAMAYAN GÜRÜLTÜ = kullanıcının sezdiği kırılganlık.
+
+**2. KISMİ TP SABİT RİSKTE HER YERDE ZARARLI (risk %2.25 sabit, kaldıraç izole):**
+  baseline $1224 (DD18.2) | sadece-donchian $1047 (−$178, DD14.7) | sadece-squeeze $1211 (−$13,
+  DD17.6) | ikisi $1034 (−$191, DD12.5).
+  Hipotezin yarısı doğru: hasar DONCHIAN'da (trend takipçisinin kazananı kırpılıyor, her yıl −$4..−$78).
+  AMA squeeze fayda da sağlamıyor (sadece nötr) → "kısmi TP'yi squeeze'e uygula" kazanç kapısı YOK.
+
+**SONUÇ: önceki +%27 tamamen KALDIRAÇTAN geliyordu.** Kısmi TP edge'in %16'sını yok edip (1224→1034)
+drawdown'ı %31 düşürüyor (18.2→12.5); boşluk %78 kaldıraçla dolduruluyor. Matematiksel olarak geçerli
+bir takas (riskin %31'i karşılığında getirinin %16'sı) ama EDGE İYİLEŞTİRMESİ DEĞİL — volatilite
+paketleyip kaldıraca çevirmek. Ve dengesiz yıl dağılımı rejimle açıklanamıyor → kırılgan.
+→ ADAYLIK ZAYIFLADI. Deploy yok (zaten yoktu). Dönünce bakılacaksa "kaldıraç kararı" olarak bakılmalı,
+"yeni edge" olarak değil.
+
+**BONUS BULGU (kullanıcının "bot duruma göre davranmalı" sorusuna):** yıllar arasında adapte olunacak
+DURUM FARKI YOK (chop %92.8-93.8, ADX 26-28 bandında sabit). Ay içinde chop durumu gerçek (p=0.003)
+ama ay-ölçeğinde rejim ÖNGÖRÜLEMEZ (kanıtlı). Piyasa hep aynı karakterde; değişen sonuçların dağılımı.
