@@ -823,3 +823,30 @@ ikinci sleeve birincinin stop'unu EZER (execution.py:388 gerekçesi). Hedge mode
 **SONUÇ: pairs deploy yolu hedge mode olmadan KAPALI.** Üç seçenek de elendi: (1) serbest-evren
 çiftleri zayıf/2026'ya yığılmış, (2) ETH takası −$52, (3) ADA/XLM/XRP feda etmek ETH'den çok daha
 pahalı (test gereksiz). Pairs'in çeşitlendirme değeri GERÇEK (korr −0.36) ama erişilemiyor.
+
+## 🔄 BREAKOUT FADE (2026-07-25, fade_test) — MEKANİZMA GERÇEK, KÂR YOK → RED
+
+Hipotez kendi bulgularımızdan: breakout'ların %76.5'i 1R'ye ulaşmadan sönüyor + kötü aylar chop.
+→ "kanal kırıldı AMA ADX düşük" durumunda FADE et. 10 SERBEST coin (çakışma yok, hedge mode YOK,
+tek bacak = mevcut altyapıyla uyumlu → deploy edilebilirliği en yüksek aday).
+
+**MONOTONLUK TESTİ GEÇTİ (mekanizma gerçek):** ADX<15 → PF1.00-1.13 (+$6..+$60) | ADX<20 →
+PF0.89-0.95 (−$67..−$145) | ADX<25 → PF0.92-0.98 (−$61..−$191). Eşik genişledikçe (trendli
+kırılımlar karışınca) fade KÖTÜLEŞİYOR = "trendsiz rejimde ortalamaya dönüş" mekanizması DOĞRU.
+
+**TERS KORELASYON DA GERÇEK:** kitapla korr **−0.22 .. −0.50**. ADX<25 rr2.5 kitabın kayıp
+aylarında **+$416** (15 ayın 10'unda pozitif).
+
+**AMA KÂR YOK → RED:** hiçbir konfigürasyon HER-YIL testini geçmiyor (en iyi ADX<15 rr2.5 bile
+2023 −$10, 2025 −$12), en iyi toplam 3.3 yılda +$60, birleştirme kazancı en iyi durumda
++$59/3.3yıl ≈ **yılda $18**. Çoğu varyant zaten zararda.
+
+## 🧭 ÇEŞİTLENDİRİCİ ARAMASI KAPANDI — SINIR TESPİTİ
+İki ters-korelasyonlu akış bulundu, ikisi de kullanılamıyor ama FARKLI sebeplerden:
+  pairs spread : korr −0.36 | KÂRLI (+$532, her yıl+) | ERİŞİLEMEZ (çakışma: ADA/XLM/XRP)
+  breakout fade: korr −0.22..−0.50 | KÂRSIZ | ERİŞİLEBİLİR (serbest coinler)
+Kârlı olan erişilemiyor, erişilebilir olan kârlı değil. TESADÜF DEĞİL, ekonomik olarak anlamlı:
+kripto TREND-AĞIRLIKLI bir varlık sınıfı → ters yönde kazanmak ya piyasa-nötr yapı ister (pairs,
+altyapı/hedge mode) ya da yönlü fade (kripto trendli olduğu için kaybettirir).
+SONUÇ: bu 22-coin evreninde, bu veri penceresinde, mevcut kitaba ERİŞİLEBİLİR çeşitlendirici YOK.
+Bu bir başarısızlık değil, SINIR TESPİTİ — olmayan şeyi aramaya devam etmekten iyidir.
