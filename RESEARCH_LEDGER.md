@@ -905,3 +905,41 @@ doğrulaması için kullandığı asıl bilgi ikincisi (emir defteri/akış) —
 
 **BU SON TEST EDİLEBİLİR FİKİR.** Geçerse: pozisyonlanma sinyali gerçek. Geçmezse: sahte kırılım,
 ELİMİZDEKİ HİÇBİR VERİYLE öngörülemez — kesin kapanış (ve tek kalan yol ileriye dönük OI toplamak).
+
+---
+# 📌 DÖNÜŞ NOTU (2026-07-25 sonu) — bir aylık aradan sonra buradan devam
+
+## CANLI DURUM (dokunma, çalışıyor)
+donchian 7 (SOL,ETH,ADA,NEAR,BCH,ICP,BNB) + squeeze 4 (XRP,DOGE,TRX,XLM) + BB(LTC hafta sonu)
+RISK_SCALE=1.125 (%2.25/işlem) | MAX_POSITIONS=7 | 10x isolated | DONCHIAN_RR=2.5 | DONCHIAN_MTF=true
+systemd: Restart=always + enabled (doğrulandı). Koruma: pozisyona iliştirilmiş YAPIŞKAN SL/TP
+(süresi dolmaz; 24h plan emirleri sadece acil yedek). Günlük −%35 kill-switch, 2dk'da bir kontrol.
+
+## DÜRÜST BEKLENTİ (tüm düzeltmeler sonrası)
+PF 1.44, WR %43, 1421 işlem/3.2yıl. Canlı boyutla +$1224, GERÇEK maxDD %18.2, en kötü ay −%20.9.
+Yıl-yıl hep pozitif AMA PF düşüyor (1.53→1.35 = piyasa geneli edge decay, coin suçu değil).
+İleriye: backtest'in ALTI bekle. Gerçekçi ~%5-10/ay, arada −%15-20 aylar. $188'de bu ~$10-20/ay.
+NOT: DONCHIAN_MTF canlıda ETKİSİZ (1017 sinyalin 0'ını blokluyor) — zararsız ama "+$42" kredisi SAHTE.
+
+## SIRADAKİ 3 İŞ (öncelik sırasıyla)
+1. **CANLI DOĞRULAMA (en değerli):** ~30-40 işlem birikti. `sl_audit` ile DB'den çek, backtest
+   beklentisiyle karşılaştır. WR/PF tutuyor mu? Slippage var mı? Bu tek veri, buradaki 14 testin
+   toplamından fazlasını söyler — overfit edilemeyen TEK şey o.
+2. **FUNDING FİLTRESİ (son test edilebilir fikir):** VPS'te
+   `cd /opt/bot2 && python3 fetch_funding.py && git add data/*_funding.csv && git commit -m funding && git push`
+   sonra `git pull && py funding_filter_test.py local`. Geçerse ilk kez OHLCV dışına çıkarız;
+   geçmezse sahte kırılım kesin olarak öngörülemez (ve tek yol ileriye dönük OI toplamak).
+3. **PAIRS ALT-HESAP (sermaye ~$400-500'e ulaşınca):** çakışmayı TAMAMEN çözer, GERÇEK 8-çiftlik
+   seti açar (+$532, her yıl+, korr −0.36). Mevcut bota SIFIR dokunuş. Sıra: alt-hesap aç →
+   paper doğrula → küçük sermayeyle canlı.
+
+## DOKUNMA (kanıtla elenmiş, tekrar açma)
+SL filtreleri · gün-içi · literatür filtreleri (hacim/ATR/vol-taban) · cooldown · stop yerleşimi
+(geniş+yapısal/likidite) · piramitleme · kısmi TP · rejim tahmini · BB genişleme · kesitsel momentum
+(l/s VE long-only) · horizon ensemble · pairs serbest-evren (korelasyon VE kointegrasyon ile) ·
+breakout fade · ETH takası. Hepsi yıl-yıl kontrolünde öldü; detaylar yukarıda.
+
+## KURAL (bugün 4 yanlış pozitif yakalattı)
+Aggregate metrik YANILTIR. -MonTue PF1.67, kısmi TP +%27, XS momentum PF2.14, long-only +$451 —
+dördü de toplamda harika, dördü de yıl-yıl ölü. **HER YIL pozitif + TEST penceresi pozitif** barajı
+olmadan hiçbir şey deploy edilmez. Ve ledger'a toplam yazılıyorsa YIL-YIL da yazılır.
