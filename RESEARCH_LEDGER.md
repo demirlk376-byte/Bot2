@@ -998,3 +998,24 @@ sönümlüyorlar. Ama bize bugün uygulanabilir DEĞİL: (1) veri yok (sadece 22
 (2) MEXC kripto-only → petrol/tahvil için FARKLI BROKER + execution katmanı yeniden yazımı,
 (3) vadeli kontrat nominal değerleri $188 hesabın çok üstünde. Sıralama: pairs alt-hesabı
 (~$400-500, 2-3 ay) → daha çok kripto coini (yapıldı) → varlık sınıfı çeşitlendirmesi (uzak gelecek).
+
+## 📅 KAYAN 12-AYLIK PENCERELER (2026-07-27, rolling_year) — "kötü yıl ne kadar kötü?"
+
+Takvim yılı sorusu ölçülemez (4 yılın 4'ü de pozitif, 2026 kısmi) → 29 KAYAN 12-aylık pencere.
+
+**29 PENCERENİN HİÇBİRİ NEGATİF DEĞİL.** en kötü **+$316** (2024-09→2025-08) | en iyi +$535 |
+medyan +$392 | ortalama +$400 (taban $190).
+
+**EN KÖTÜ YILIN İÇİ (asıl öğretici):** +43 −8 +97 +22 −27 +131 −31 +51 −1 −18 +80 −22
+  → 12 ayın **6'sı negatif** AMA pozitif toplam **+$425** vs negatif **−$109**.
+  Dayanıklılık isabet oranından DEĞİL, ASİMETRİDEN: kayıp aylar küçük (ort −$18), kazanç ayları
+  büyük (ort +$71). Yarısı kayıp olan bir yıl bile rahat pozitif kapanıyor.
+
+**ÖZ-ELEŞTİRİ:** bu veri, benim kullanıcıya verdiğim "−$645 kötü yıl" senaryosundan ÇOK daha
+iyimser. Backtest'in EN KÖTÜ yılı bile +%166 (taban), benim tahminim %36-60/yıl = verinin ~1/4'ü.
+Kesinti gerekçeleri GERÇEK: (a) parametreler bu veriden seçildi (rr2.5 sweep, coinler "her yıl+"
+filtresi, ICP/BNB aynı) = seçim yanlılığı, (b) PF ölçülebilir soğuma 1.53→1.35, (c) slippage/
+funding/küçük-hesap sürtünmesi modellenmemiş, (d) 29 pencere ÖRTÜŞÜYOR → bağımsız gözlem sayısı
+~3, 29 değil. AMA %75 kesinti agresif olabilir; dürüst aralık: backtest medyanı +%206/yıl,
+tahminim +%36-60/yıl, gerçek muhtemelen ARADA (bana daha yakın). Tutucu duruş bilinçli tercih:
+hayal kırıklığı sürpriz kazançtan pahalı. Kullanıcıya her iki çıpa da açıkça verildi.
