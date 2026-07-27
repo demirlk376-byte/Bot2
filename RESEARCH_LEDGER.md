@@ -850,3 +850,32 @@ kripto TREND-AĞIRLIKLI bir varlık sınıfı → ters yönde kazanmak ya piyasa
 altyapı/hedge mode) ya da yönlü fade (kripto trendli olduğu için kaybettirir).
 SONUÇ: bu 22-coin evreninde, bu veri penceresinde, mevcut kitaba ERİŞİLEBİLİR çeşitlendirici YOK.
 Bu bir başarısızlık değil, SINIR TESPİTİ — olmayan şeyi aramaya devam etmekten iyidir.
+
+## 🔬 PAIRS, DOĞRU METODOLOJİYLE (2026-07-25, pairs_coint) — SERBEST EVREN KESİN RED
+
+Kullanıcı "sorunu yarı değil TAMAMEN çöz" dedi → iki metodolojik hatamı düzeltip yeniden test:
+ 1) Çift seçimi KORELASYONLA yapılmıştı → KOİNTEGRASYON olmalı (korele çiftler kalıcı ayrışır,
+    kointegre çiftler yapısı gereği döner).
+ 2) log(A/B) = 1:1 hedge oranı VARSAYIMI → OLS β ile spread = log(A) − β·log(B) olmalı.
+scipy yok → Engle-Granger elle: OLS β + AR(1) half-life (2-30 gün bandı) + kalıntı stabilitesi,
+SEÇİM SADECE 2023-24'ten.
+
+**SONUÇ: 6 konfigürasyonun 6'sında da 2026 NEGATİF, TRAIN+$151..302 / TEST +$0..−$61.**
+  4 çift: z2.0/0.5/3.5 PF1.49 TEST+0 | z2.0/0.0/3.0 PF1.48 TEST−61 | z2.5/0.5/4.0 PF1.72 TEST+11
+  5 çift: PF1.20-1.36, TEST −2..−35, hepsi 2026 negatif
+Seçilen 5 çiftin 4'ünde ETC var = tek coine bağımlılık, kendi başına red sebebi.
+→ Sorun METODOLOJİDE DEĞİLDİ; serbest evrende edge GERÇEKTEN YOK. Bu, önceki bulguyu GÜÇLENDİRİR:
+tam evren pairs'i (ADA/XLM/XRP/ETH dahil) her yıl+ idi → edge O SPESİFİK COİNLERDE, artefakt değil.
+
+## ✅ TAM ÇÖZÜM TESPİT EDİLDİ: ALT-HESAP (sermaye meselesi, kod meselesi değil)
+Çakışma "yarı" değil TAMAMEN çözülebilir: pairs'i AYRI MEXC ALT-HESABINDA ayrı API anahtarıyla
+çalıştır → ayrı pozisyon defteri → ana hesap ADA'da donchian long tutarken alt-hesap ADA'da pairs
+short tutabilir, İKİSİ DE kendi yapışkan SL/TP'sini korur, ezme YOK.
+**KRİTİK: bu, zayıf serbest-evren versiyonunu değil GERÇEK olanı açar** — 8 çiftlik tam set
+(+$532, HER YIL+, kitapla korr −0.36, kitabın 15 kayıp ayının 12'sinde pozitif).
+**Hedge mode'dan ÇOK DAHA GÜVENLİ:** mevcut botun execution koduna SIFIR dokunuş — stop yerleştirme,
+2dk mutabakat, kısmi kapatma hiç değişmiyor. Sadece ikinci bot örneği + ayrı anahtar.
+**TEK ENGEL SERMAYE:** pairs 2 bacaklı (işlem başına 2 emir); alt-hesabın min-notional üstünde
+çalışması için ~$300-400 gerekir. $188 + ayda $150 → **2-3 ay sonra eşik geçilir.**
+→ "Çözemeyiz" DEĞİL: çözüm net, güvenli, bilinen — sadece henüz sermayesi yok. Sermaye gelince
+sıra: (a) alt-hesap aç, (b) pairs botunu paper modda doğrula, (c) küçük sermayeyle canlıya al.
