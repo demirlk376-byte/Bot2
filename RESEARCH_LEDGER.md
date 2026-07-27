@@ -619,3 +619,31 @@ aynı sıklıkta). Filtrelenmez, BOYUTLANDIRMAYLA yönetilir.
 **SONUÇ: negatif aylar breakout edge'inin kaçınılmaz maliyeti.** Aksiyon: YOK. Doğru çerçeve
 "chop'u önceden bil" değil, "chop'ta daha az kaybet" (giriş/çıkış tasarımı) — ama o kol da
 (filtreler, cooldown, stop yerleşimi, piramitleme) daha önce kanıtla elendi.
+
+## 🎯 KISMİ TP (scale-out) — İLK GERÇEK ADAY (2026-07-25, partial_tp_test) — DEPLOY EDİLMEDİ
+
+DOĞRU MEKANİZMAYI hedefleyen ilk test. Ay analizi göstermişti: kötü aylarda ort KAYIP değişmiyor
+(−0.94R vs −0.95R), KAZANÇ küçülüyor (1.56R vs 1.91R) → sorun SL değil, TP'ye ulaşamamak.
+Kısmi TP = trailing/BE'den FARKLI (o stop oynatır, elenmişti; bu gerçek kâr realize eder).
+
+**Sabit riskte (%2.25) RED ama risk-ayarlı İYİ:**
+  baseline    %2.25 → $1224, maxDD %18.2, $/DD 67.3
+  p50@1R      %2.25 → $1034 (−%16, 3 yıl bozuk) AMA maxDD %12.5, PF 1.44→1.48, poz-ay %60→%78
+**RİSKLE TELAFİ (tavan modellenmiş):**
+  p50@1R %3.00 → $1293, DD %13.9, $/DD 93.1 (en verimli) ama 3 yıl bozuk (2025'e yığılmış)
+  p50@1R %3.50 → $1430, DD %16.4, 2023 bozuk
+  **p50@1R %4.00 → $1557 (+%27), DD %18.4 (≈baseline 18.2), HER YIL İYİ ✓**
+     2023 $301(vs286) 2024 $473(vs389) 2025 $577(vs379) 2026 $207(vs171)
+
+**DEPLOY EDİLMEDİ — 5 sebep (kullanıcı 1 ay uzakta):**
+1. Yeni edge DEĞİL: kısmi TP volatiliteyi düşürüyor, boşluğu kaldıraçla dolduruyoruz (verimli
+   paketleme). Meşru ama "piyasadan daha çok koparmak" değil.
+2. 2023 kıl payı geçiyor (+%5); ağırlık 2025'te (+%52) → "her yıl" testini geçiyor ama RAHAT değil.
+3. %4 riskte işlemlerin **%53'ü** notional tavanına takılı → artış eşitsiz (donchian'a çok, squeeze
+   donuk), portföy dengesi kayıyor.
+4. Pozisyon boyutu +%78 → gap/flash-crash kuyruk riski DOĞRUSAL artar; maxDD bunu ÖLÇMEZ.
+5. **Canlıda kısmi TP YOK** → env değil, EXECUTION KATMANI KODU (reduce-only yarım kapatma, kalan
+   stop yönetimi, kısmi doluş, 2dk mutabakata yeni durum). Netted modda ciddi iş + denetimsiz bir ay.
+
+**DÖNÜNCE SIRA:** (a) kısmi TP'yi kodla + paper modda doğrula, (b) canlı-doğru test, (c) riski
+KADEMELİ artır — hepsi kullanıcı bakarken. Şimdilik sistem doğrulanmış haliyle kalıyor.
