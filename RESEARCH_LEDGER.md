@@ -718,9 +718,17 @@ gürültü DEĞİL, sistematik çöküş. 2023 + / 2024 + / 2025 çoğu + / 2026
 Kesitsel momentum 2023-25 çalışmış, 2026'da ÖLMÜŞ (literatürde de kripto XS momentum zayıflaması
 belgeleniyor; penceremiz tam o döneme denk).
 
-**LONG-ONLY KONTROLÜ DOĞRULADI:** L14K3R7 long-only = PF 1.44 **+$451** — long/short'un en iyisinden
-(+$260) DAHA FAZLA. Yani "edge"in önemli kısmı kesitsel seçicilik değil, KRİPTO BETASI = zaten
-sahip olduğumuz şey, çeşitlendirici değil.
+**LONG-ONLY KONTROLÜ — İKİ AYRI SEBEPLE RED (yıl-yıl kırılımı ŞART, toplam yanıltıcı):**
+  L14K3R7 long-only: PF1.44 +$451 maxDD**24.8%** | 2023+250 2024+292 2025**+33** 2026**−124**
+  L30K3R7 long-only: PF1.13 +$141 maxDD**48.6%** | 2023+195 2024+208 2025**−58** 2026**−204**
+(1) Toplam long/short'un en iyisini (+$260) geçiyor → "edge"in çoğu kesitsel seçicilik değil,
+    KRİPTO BETASI = zaten sahip olduğumuz şey, çeşitlendirici değil.
+(2) DAHA ÖNEMLİSİ: long-only DA 2026'da ölüyor (−$124/−$204), 2025 zaten sönük (+$33/−$58) →
+    desen long/short ile BİREBİR AYNI. Ailenin TAMAMI (l/s + long-only) mevcut rejimde ölü;
+    tek varyantın şanssızlığı değil, SİSTEMATİK. Ayrıca maxDD %24.8-48.6 vs bizim kitap %18.2 —
+    iyi yıllarında bile daha riskli.
+UYARI: bu satır ÖNCE sadece "PF1.44 +$451" olarak kaydedilmişti; bağlamdan kopunca çekici görünüp
+yeniden açılmaya davetiye çıkarıyordu. DERS: ledger'a toplam yazılacaksa YIL-YIL da yazılacak.
 
 **KARAR: RED** (PF>1.2 + HER YIL pozitif barajını hiçbiri geçemiyor; en güncel yıl hepsinde negatif).
 DERS: bugün üçüncü kez aggregate-güzel/yıl-yıl-ölü tuzağı (önce -MonTue PF1.67, sonra kısmi TP +%27,
