@@ -33,8 +33,11 @@ def gen(sleeve, m):
     d = fast_bt.resample(m, tf)
     atr_ser = atr_fn(d["high"], d["low"], d["close"], 14).values
     adx_ser = adx_fn(d["high"], d["low"], d["close"], 14).values
-    dd = fast_bt.resample(m, "1d"); dema = ema_fn(dd["close"], 20)
-    up = (dd["close"] > dema).reindex(d.index, method="ffill").values
+    # CANLI-BİREBİR MTF (lookahead YOK): canlı d1d=df_4h.resample("1D").close.last() +
+    # ewm20 dahil-bugün; cebirsel olarak == kapanış > DÜNE kadar tamamlanmış EMA20.
+    _dc = d["close"].resample("1D").last().dropna()
+    _dprev = _dc.ewm(span=20, adjust=False).mean().shift(1).reindex(d.index.normalize()).values
+    up = d["close"].values > _dprev
     s = (DonchianStrategy(channel=40, rr=2.0, sl_atr=2.0, ema_trend=200, buffer_atr=0.0)
          if sleeve == "donchian" else
          SqueezeStrategy(kc_mult=1.5, min_squeeze_bars=5, sl_atr=2.0, rr=2.5, mtf_filter=True))

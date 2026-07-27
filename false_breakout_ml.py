@@ -40,8 +40,11 @@ def gen(coin, m, btc_idx, btc_ema, btc_cl):
     atr_ser = atr_fn(d["high"], d["low"], d["close"], 14).values
     adx_ser = adx_fn(d["high"], d["low"], d["close"], 14).values
     ema50 = ema_fn(d["close"], 50).values; ema200 = ema_fn(d["close"], 200).values
-    dd = fast_bt.resample(m, "1d"); dema = ema_fn(dd["close"], 20)
-    up = (dd["close"] > dema).reindex(d.index, method="ffill").values
+    # CANLI-BİREBİR MTF (lookahead YOK): canlı d1d=df_4h.resample("1D").close.last() +
+    # ewm20 dahil-bugün; cebirsel olarak == kapanış > DÜNE kadar tamamlanmış EMA20.
+    _dc = d["close"].resample("1D").last().dropna()
+    _dprev = _dc.ewm(span=20, adjust=False).mean().shift(1).reindex(d.index.normalize()).values
+    up = d["close"].values > _dprev
     ch_hi = d["high"].rolling(40).max().shift(1).values     # prior-40 kanal (excl current)
     ch_lo = d["low"].rolling(40).min().shift(1).values
     # BTC hizalama: coin barına en yakın (<=) BTC bar indeksi
