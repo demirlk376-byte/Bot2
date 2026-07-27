@@ -673,3 +673,32 @@ paketleyip kaldıraca çevirmek. Ve dengesiz yıl dağılımı rejimle açıklan
 **BONUS BULGU (kullanıcının "bot duruma göre davranmalı" sorusuna):** yıllar arasında adapte olunacak
 DURUM FARKI YOK (chop %92.8-93.8, ADX 26-28 bandında sabit). Ay içinde chop durumu gerçek (p=0.003)
 ama ay-ölçeğinde rejim ÖNGÖRÜLEMEZ (kanıtlı). Piyasa hep aynı karakterde; değişen sonuçların dağılımı.
+
+## 🔚 SL SORUSU MEKANİK OLARAK KAPANDI (2026-07-25, mfe_anatomy) — 1440 işlem
+
+İlk kez sorulan soru: "SL olan işlem, stop'a gitmeden ÖNCE ne kadar lehimize gitti?" (MFE).
+Öncekiler hep "girişte öngörebilir miyiz" idi (HAYIR, OOS AUC 0.509). Bu MEKANİK cevap.
+
+**ÇIKIŞ EKONOMİSİ:** tp 366 (%25) ort +2.49R +$3435 | sl 742 (%52) ort −1.01R −$2913 |
+maxhold 332 (%23) ort **+0.56R +$748, %77 kârlı**, ort MFE 1.54R, ort 33.9 bar.
+
+**SL MFE DAĞILIMI (742 işlem):**
+  TEMİZ KAYIP <0.25R : 228 (%30.7) −$899   ← hiç lehimize gitmedi
+  erken dönüş 0.25-1R: 340 (%45.8) −$1325
+  WHIPSAW 1-2R       : 147 (%19.8) −$588
+  KIL PAYI >2R       :  27 (%3.6)  −$101
+  → **SL'lerin %76.5'i 1R'ye BİLE ULAŞMADI.** Ort MFE 0.64R, medyan 0.49R.
+  → SL'e ort 11.4 bar vs TP'ye 14.4 bar: başarısız breakout HEMEN belli oluyor.
+
+**DÖRT HİPOTEZ BİRDEN ÖLDÜ:**
+1. "Stop dar" ❌ — kazananların sadece %10.7'si stop'a yaklaşmış (<−0.75R), ort MAE −0.37R,
+   %40'ı −0.25R'yi bile görmemiş. Stop rahat yerde. (Geniş-stop testi zaten para kaybettirmişti.)
+2. "TP uzak" ❌ — kıl payı sadece %3.6 = $101. Yok denecek kadar az.
+3. "Whipsaw yakalanabilir" ⚠️ — %19.8 ($588) GERÇEK ama YAKALANAMIYOR: kısmi TP tam bunu
+   hedefliyordu, net −$191. Aritmetik doğruluyor: 147 whipsaw'dan +73R vs 366 TP'den −274R.
+4. "Max-hold zarar" ❌ — TERSİ: +$748, %77 kârlı, katkı sağlıyor. Süreyi kısaltmak zarar verir.
+   (Eski "45 bar marjinal" sweep'inin NEDENİ bu.)
+
+**SONUÇ:** kayıpların dörtte üçü, girişte ayırt edilemeyen ve hemen sönen sahte kırılımlar =
+breakout edge'inin kelime anlamıyla maliyeti. SL ARAŞTIRMA KOLU KAPANDI (spekülasyonla değil,
+mekanik kanıtla). %52 SL oranına RAĞMEN PF 1.44 — kazananların 2.49R'si taşıyor.
