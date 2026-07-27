@@ -792,3 +792,34 @@ NOT: tablodaki ensemble DD'si $ , tek-horizon DD'si % — farklı birim, karar t
 **VOLATİLİTE HEDEFLEME (2. standart):** kısmen ZATEN VAR — boyut = risk/(giriş×SL%) ve SL ∝ ATR,
 yani pozisyon volatiliteyle ters orantılı. Eksik tarafı bugün ölçülmüştü: notional tavanı
 işlemlerin %25'inde bunu bozuyor (squeeze'de %72).
+
+## ⛔ ETH TAKASI + ÇAKIŞMA ENGELİ (2026-07-25, eth_swap_test) — PAIRS YOLU KAPANDI
+
+**SORU:** ETH'yi donchian'dan çıkarıp BTC/ETH + ETC/ETH çiftlerini açmak net pozitif mi?
+RİSK-NÖTR kuruldu (pairs ham haliyle sermayenin ~tamamını nominal kullanıyor, kitap %2.25 risk →
+pairs, çıkarılan ETH-donchian'ın aylık std'sine eşitlendi; ölçek ×1.018).
+
+  baseline (d7+sqz) $+1224 en kötü ay −$40 maxDD $59 | 2023+286 2024+389 2025+379 2026+171
+  VARIANT (d6+pairs) $+1173 en kötü ay −$69 maxDD $69 | 2023+314 2024+407 2025**+252** 2026+200
+  **fark −$52, 2025 BOZULDU → RED. ETH donchian'da kalıyor.**
+
+**ASIL BULGU — pairs edge'i ETH çiftlerinde DEĞİL:** BTC/ETH+ETC/ETH tek başına sadece **+$36**
+(2025 **−$68**), oysa 8-çiftlik tam set +$532/her-yıl+. Kalan ~$496 çakışan DİĞER çiftlerde:
+ADA/DOT, XLM/XRP, ADA/ALGO, ADA/ATOM. Ve **ADA bizim EN İYİ donchian coinimiz** (PF1.78 +$226,
+ETH'nin ~2 katı), XLM/XRP sağlam squeeze coinleri (+$138/+$138).
+→ **Pairs edge'i tam da vazgeçemeyeceğimiz coinlerde yaşıyor.**
+
+**KOLTUK DİNAMİĞİ (öngörüldü, doğrulandı):** ETH'yi çıkarmak katkısını silmiyor, boşalan koltuklar
+diğer coinlere gidiyor → donchian6 ≈ $1136, yani ETH'nin maliyeti $129 değil **$88**. 2026'da
+d6 daha İYİ (+$185 vs +$171) ama 2025 çöküyor.
+
+**ÇAKIŞMA ENGELİ KALDIRILABİLİR Mİ?** ccxt mexc `setPositionMode` DESTEKLİYOR (hedge mode mümkün).
+AMA: (a) sorunu ancak YARI çözer — hedge long+short'u ayırır, aynı yöndeki iki sleeve yine tek
+pozisyona netlenir, pairs bacakları ~yarı zaman donchian ile aynı yönde; (b) asıl bedel GÜVENLİK:
+tek güvenilir korumamız pozisyona iliştirilmiş yapışkan SL/TP ve o pozisyon başına TEK tane —
+ikinci sleeve birincinin stop'unu EZER (execution.py:388 gerekçesi). Hedge mode = stop yerleştirme
++ 2dk mutabakat + kısmi kapatma mantığını baştan yazmak, sistemin en güvenlik-kritik parçası.
+
+**SONUÇ: pairs deploy yolu hedge mode olmadan KAPALI.** Üç seçenek de elendi: (1) serbest-evren
+çiftleri zayıf/2026'ya yığılmış, (2) ETH takası −$52, (3) ADA/XLM/XRP feda etmek ETH'den çok daha
+pahalı (test gereksiz). Pairs'in çeşitlendirme değeri GERÇEK (korr −0.36) ama erişilemiyor.
