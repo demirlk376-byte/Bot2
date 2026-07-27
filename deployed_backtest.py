@@ -20,6 +20,7 @@ from strategies.donchian import DonchianStrategy
 from strategies.squeeze import SqueezeStrategy
 
 BAL0 = 190.0; FEE = 0.0001; RISKF = 0.0225; MAXPOS = 7
+CAP = 1.0   # POSITION_CAP_FRACTION (config default; .env.example 1.25 → VPS'ten teyit)
 DONCH = ["SOL", "ETH", "ADA", "NEAR", "BCH", "ICP", "BNB"]
 SQZ = ["XRP", "DOGE", "TRX", "XLM"]
 CFG = {"donchian": ("4h", 259, 2.0, 2.5, 30), "squeeze": ("1h", 119, 2.0, 2.5, 48)}
@@ -61,16 +62,16 @@ def gen(sleeve, m):
                 if lo[j] <= tp: ep = tp; break
         if ep is None: j = min(i + mh, n - 1); ep = cl[j]
         R = d_ * (ep - e) / sld - 2 * FEE * e / sld
-        out.append((idx[i].value, idx[j], R)); occ = j
+        out.append((idx[i].value, idx[j], R, sld / e)); occ = j   # sld/e = SL mesafesi (oran)
     return out
 
 
 def seat_select(trades):
     ev = sorted(trades, key=lambda t: t[0]); openh = []; taken = []; ctr = 0
-    for entry_ns, exit_ts, R in ev:
+    for entry_ns, exit_ts, R, slp in ev:
         while openh and openh[0][0].value <= entry_ns: heapq.heappop(openh)
         if len(openh) < MAXPOS:
-            ctr += 1; heapq.heappush(openh, (exit_ts, ctr, R)); taken.append((exit_ts, R))
+            ctr += 1; heapq.heappush(openh, (exit_ts, ctr, R)); taken.append((exit_ts, R, slp))
     return sorted(taken, key=lambda t: t[0])   # exit sırası
 
 
@@ -84,7 +85,8 @@ def main():
     for c in DONCH: trades += gen("donchian", fast_bt.load(c, source=source))
     for c in SQZ: trades += gen("squeeze", fast_bt.load(c, source=source))
     taken = seat_select(trades)
-    r = np.array([R for _, R in taken]); exits = [pd.Timestamp(x) for x, _ in taken]
+    r = np.array([R for _, R, _ in taken]); exits = [pd.Timestamp(x) for x, _, _ in taken]
+    slpct = np.array([sp for _, _, sp in taken])
     years = (exits[-1] - exits[0]).days / 365.25
     gp = r[r > 0].sum(); gl = -r[r < 0].sum(); pf = gp / gl
     wr = (r > 0).mean() * 100
@@ -93,9 +95,15 @@ def main():
     print(f"  PF {pf:.2f} | WR {wr:.0f}% | ortalama işlem {r.mean():+.3f}R")
 
     # A) SABİT-ORAN
-    pnl = r * RISKF * BAL0; eq = BAL0 + np.cumsum(pnl)
+    eff = np.minimum(RISKF, CAP * slpct)        # risk.py:185-194 notional tavanı
+    pnl = r * eff * BAL0; eq = BAL0 + np.cumsum(pnl)
+    pnl_flat = r * RISKF * BAL0                 # eski (tavansız) model — karşılaştırma
     tot = eq[-1] - BAL0; dd = maxdd(np.concatenate([[BAL0], eq]))
-    print(f"\n  --- A) SABİT-ORAN (compounding YOK, taban ${BAL0:.0f}) ---")
+    print(f"\n  --- A) SABİT-ORAN + NOTIONAL TAVANI (canlı risk.py boyutu, cap={CAP}) ---")
+    print(f"    gerçek ort risk/işlem: {eff.mean()*100:.2f}% (hedef {RISKF*100:.2f}%), "
+          f"tavana takılan: {(eff < RISKF - 1e-12).mean()*100:.0f}% işlem")
+    print(f"    tavansız (eski model) toplam: ${pnl_flat.sum():+.0f} → tavanlı: ${pnl.sum():+.0f} "
+          f"({pnl.sum()/pnl_flat.sum()*100:.0f}%)")
     print(f"    Toplam kâr: ${tot:+.0f}  ({tot/BAL0*100:+.0f}%, {tot/BAL0*100/years:+.0f}%/yıl basit)")
     print(f"    Gerçek max drawdown (tepe-dip): {dd:.1f}%")
     dfm = pd.DataFrame({"pnl": pnl, "m": [x.to_period("M") for x in exits]})

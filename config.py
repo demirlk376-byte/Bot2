@@ -189,7 +189,7 @@ class StrategyConfig:
     whale_min_body_atr: float = 0.5      # candle body must be ≥ this × ATR
     whale_symbols: tuple = ("BTC/USDT:USDT",)  # BTC-only per backtest
     # Intraday breakout strategies (validated edge: ORB PF 1.44, Asia BO PF 2.15)
-    orb_enabled: bool = True
+    orb_enabled: bool = False
     asia_bo_enabled: bool = False
     # ORB stop-entry: enter at the opening-range boundary the instant price TOUCHES
     # it intra-candle (a live tick-watcher firing a market order at ~level), instead
@@ -202,7 +202,7 @@ class StrategyConfig:
     orb_stop_entry: bool = False
     # S/R breakout (swing momentum, validated: lb80 touch3 SL3ATR RR3.0 PF 1.72).
     # Uses the normal 48h max-hold + full risk (it's a swing trade, not intraday).
-    sr_breakout_enabled: bool = True
+    sr_breakout_enabled: bool = False
     # Per-coin allowlist for S/R. research_strategies_crosscoin.py showed the S/R
     # edge transfers to ETH (PF 1.15/1.20) but FAILS on SOL (PF 1.09/1.03, below
     # the ✅ bar). When None, S/R runs on every traded coin (single-coin compat);
@@ -215,7 +215,7 @@ class StrategyConfig:
     bb_symbols: list[str] | None = None
     # FVG (Fair Value Gap) — ICT price-action. Validated 1h 2023-2026: PF 1.37,
     # positive every year, with EMA200 trend + gap>=0.5×ATR + RR 2.5.
-    fvg_enabled: bool = True
+    fvg_enabled: bool = False
     fvg_min_gap_atr: float = 0.5      # only trade gaps >= this × ATR (filter noise)
     fvg_rr: float = 2.5              # TP = entry ± 2.5 × stop-distance
     # IFVG (Inverse FVG) — broken-gap reversal retest. ENABLED: validated-robust
@@ -228,7 +228,7 @@ class StrategyConfig:
     # PF 1.35, TRAIN 1.34 / TEST 1.45, positive EVERY year with 2025 lifted to
     # PF 1.20 (was ~0.99). Entry is a resting maker limit → no slippage/execution
     # gap vs backtest. Independent slot {symbol}:ifvg (needs a MAX_POSITIONS seat).
-    ifvg_enabled: bool = True
+    ifvg_enabled: bool = False
     ifvg_min_gap_atr: float = 0.75
     ifvg_rr: float = 2.0
     # IFVG validated BTC-only (the only coin with local history to test the
@@ -426,16 +426,16 @@ def load_config() -> AppConfig:
         whale_sl_atr=_getfloat("WHALE_SL_ATR", 2.0),
         whale_rr=_getfloat("WHALE_RR", 1.5),
         whale_min_body_atr=_getfloat("WHALE_MIN_BODY_ATR", 0.5),
-        orb_enabled=_getbool("ORB_ENABLED", True),
+        orb_enabled=_getbool("ORB_ENABLED", False),
         orb_stop_entry=_getbool("ORB_STOP_ENTRY", False),
         asia_bo_enabled=_getbool("ASIA_BO_ENABLED", False),
-        sr_breakout_enabled=_getbool("SR_BREAKOUT_ENABLED", True),
+        sr_breakout_enabled=_getbool("SR_BREAKOUT_ENABLED", False),
         sr_breakout_symbols=sr_breakout_symbols,
         bb_symbols=bb_symbols,
-        fvg_enabled=_getbool("FVG_ENABLED", True),
+        fvg_enabled=_getbool("FVG_ENABLED", False),
         fvg_min_gap_atr=_getfloat("FVG_MIN_GAP_ATR", 0.5),
         fvg_rr=_getfloat("FVG_RR", 2.5),
-        ifvg_enabled=_getbool("IFVG_ENABLED", True),
+        ifvg_enabled=_getbool("IFVG_ENABLED", False),
         ifvg_min_gap_atr=_getfloat("IFVG_MIN_GAP_ATR", 0.75),
         ifvg_rr=_getfloat("IFVG_RR", 2.0),
         ifvg_symbols=ifvg_symbols,
