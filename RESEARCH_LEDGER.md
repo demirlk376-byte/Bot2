@@ -1019,3 +1019,30 @@ funding/küçük-hesap sürtünmesi modellenmemiş, (d) 29 pencere ÖRTÜŞÜYOR
 ~3, 29 değil. AMA %75 kesinti agresif olabilir; dürüst aralık: backtest medyanı +%206/yıl,
 tahminim +%36-60/yıl, gerçek muhtemelen ARADA (bana daha yakın). Tutucu duruş bilinçli tercih:
 hayal kırıklığı sürpriz kazançtan pahalı. Kullanıcıya her iki çıpa da açıkça verildi.
+
+## ✅ LİKİDASYON BANDI DOĞRULANDI (2026-07-27, liq_check) — mekanizma gerçek, ETKİ SIFIR
+
+Denetimin doğrulanmamış bulgusu: "3.6% of donchian trades place the stop beyond the 10x-isolated
+liquidation band". 2571 donchian işleminde ölçüldü:
+  %10 bandı: 93 işlem (%3.6) SL bandın ÖTESİNDE → **iddia TAM DOĞRU**
+  bunların 68'i (%73) likidasyon seviyesine DEĞMİŞ
+  o 68'den SADECE **1 tanesi** sonra kazanmış (+$1); 67'si zaten kaybediyordu (−$277)
+  likidasyon senaryosu −$249 vs gerçek −$276 → **+$27 DAHA İYİ**
+(%9 bandı: 168 işlem/%6.5, +$40 daha iyi | %9.5: 119/%4.6, +$34 daha iyi)
+
+NEDEN ZARARSIZ: (a) izole marjda geniş stop = küçük nominal = küçük marj → likidasyon kaybı
+(%~1.9) hedeflenenden (%2.25) AZ; (b) 2×ATR sistemde %10 aleyhine giden işlem zaten ölmüş,
+68'de 1 toparlanıyor. Bot bu kontrolü yapmıyor ama YAPMASINA GEREK YOK.
+DERS: denetim mekanizmayı doğru tespit etmişti, ETKİ ANALİZİNİ atlamıştı. "Kod X yapıyor" ile
+"X şu kadara mal oluyor" ayrı sorular — ikincisi ölçülmeden severity verilemez.
+
+## 👁 BOTUN GÖREMEDİĞİ 3 ŞEY (kullanıcı sorusu: "senin görüp botun göremediği")
+1. **YÖN YOĞUNLAŞMASI:** şu an iki canlı pozisyon da SHORT + ikisi de alt-coin (ADA, NEAR).
+   Bot her sinyali BAĞIMSIZ değerlendiriyor, portföy yön dengesini hiç görmüyor. Ölçülen risk:
+   yılda ~2.5 kez 5+ pozisyon aynı gün stop = equity'nin %11-13'ü. Hata değil, yapısal.
+2. **KENDİ SLIPPAGE'INI GÖREMİYOR:** SL/TP çıkışları DB'ye TEORİK seviyeden yazılıyor (gerçek
+   doluştan değil) → botun defteri backtest'le TANIM GEREĞİ uyuşur, gerçek doluşlar kötü olsa bile.
+   Bir ay sonra "canlı backtest'i tutuyor mu" bakarken YANILTICI. Çözüm: sl_audit'i MEXC gerçek
+   emir geçmişiyle karşılaştırmak (döndüğünde).
+3. **PF SOĞUMASINI GÖREMİYOR:** 1.53→1.43→1.45→1.35. Bot kendi geçmiş performansını izlemiyor.
+   İZLENECEK TEK ŞEY BU: canlı PF 1.2'nin altına inip orada kalırsa "kötü dönem" değil EDGE ÖLÜMÜ.
