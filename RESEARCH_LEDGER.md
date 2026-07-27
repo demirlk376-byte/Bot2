@@ -879,3 +879,29 @@ short tutabilir, İKİSİ DE kendi yapışkan SL/TP'sini korur, ezme YOK.
 çalışması için ~$300-400 gerekir. $188 + ayda $150 → **2-3 ay sonra eşik geçilir.**
 → "Çözemeyiz" DEĞİL: çözüm net, güvenli, bilinen — sadece henüz sermayesi yok. Sermaye gelince
 sıra: (a) alt-hesap aç, (b) pairs botunu paper modda doğrula, (c) küçük sermayeyle canlıya al.
+
+## 🔭 SAHTE KIRILIM — SON TEST EDİLMEMİŞ AÇI: POZİSYONLANMA (2026-07-25)
+
+**KÖR NOKTA TESPİTİ:** bugüne kadar sahte kırılım için denenen TÜM özellikler (adx, atr%, hacim,
+ATR-genişleme, momentum, kanal-aşımı, mum-içi kapanış, ters fitil, BTC hizası, saat, gün, ema
+mesafeleri — 13 özellikli çok-değişkenli model dahil, OOS AUC 0.509) AYNI KAYNAKTAN: o coinin
+OHLCV'si. Yani fiyatın NE YAPTIĞINA bakıyorlar, KİMİN yaptığına DEĞİL. Profesyonellerin kırılım
+doğrulaması için kullandığı asıl bilgi ikincisi (emir defteri/akış) — bizde yok, geçmişe dönük alınamaz.
+
+**OPEN INTEREST = en doğrudan elde edilebilir vekil AMA BACKTEST EDİLEMEZ:**
+  ccxt-MEXC `fetchOpenInterest: False`, `fetchOpenInterestHistory: False` (doğrulandı).
+  Ayrıca HİÇBİR borsa çok-yıllık geçmiş OI vermiyor (Binance 30 gün, MEXC yok).
+  → OI ancak İLERİYE DÖNÜK toplanabilir. Mekanizma: kırılım+artan OI = yeni para = gerçek;
+    kırılım+düşen OI = pozisyon kapanışı (squeeze/stop avı) = sahte.
+
+**FUNDING = OI'nın test edilebilir vekili (fetchFundingRateHistory: True):**
+  Hipotez (kriptoya özgü, genel TA lore'u DEĞİL): yukarı kırılım + YÜKSEK POZİTİF funding =
+  long'lar kalabalık ve ödüyor → kalabalığa girmek → SAHTE. Negatif funding + yukarı kırılım =
+  short'lar ödüyor → squeeze yakıtı → GERÇEK. Aşağı kırılımda simetrik.
+  NOT: funding bir STRATEJİ olarak test edilip reddedilmişti (funding_bt); FİLTRE olarak HİÇ denenmedi.
+  ARAÇLAR HAZIR: fetch_funding.py (VPS'te çalışır, geçmişi CSV'ye) + funding_filter_test.py
+  (filtre ÜRETİMDE = canlı-doğru, 6 mod/eşik, yıl-yıl). Veri yoksa uyarıp çıkıyor.
+  Container MEXC'e erişemiyor → veri VPS'ten gelmeli (OHLCV cache'iyle aynı iş akışı).
+
+**BU SON TEST EDİLEBİLİR FİKİR.** Geçerse: pozisyonlanma sinyali gerçek. Geçmezse: sahte kırılım,
+ELİMİZDEKİ HİÇBİR VERİYLE öngörülemez — kesin kapanış (ve tek kalan yol ileriye dönük OI toplamak).
