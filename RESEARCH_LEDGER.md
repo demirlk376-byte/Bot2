@@ -1196,3 +1196,76 @@ istatistiksel olarak TERS yönde çalışır. **Risk seviyesi P&L'e değil drawd
 `test_multicoin.py` fail-safe varsayılan değişikliğinden (SR_BREAKOUT_ENABLED artık False)
 sonra kırık kalmıştı — düzeltildi ve fail-safe davranışı ARTIK TEST EDİLİYOR (env yokken emekli
 sleeve kapalı gelmeli, boş allowlist bunu maskelememeli). Yeni: `test_protection_watchdog.py`.
+
+---
+
+## 📉 2026-07-28 — CANLI DENETİM: ölçülen sürtünme + geri alınan iki alarm
+
+Canlı DB (59 işlem, 55 kapanmış, bakiye $188.22) `live_report.py` ile denetlendi.
+
+### DURUM: PF 0.83 / WR %33 — ama bu ARTIK VAR OLMAYAN bir konfigürasyon
+Sleeve zaman çizelgesi (ilk→son işlem, PnL):
+
+| sleeve | durum | n | PnL |
+|---|---|---|---|
+| asia_bo | KAPALI | 4 | −1.61 |
+| sr_breakout | KAPALI | 1 | −1.89 |
+| fvg | KAPALI | 10 | −0.45 |
+| orb | KAPALI | 21 | −4.00 |
+| **squeeze** | DEPLOY | 5 | −7.53 |
+| **mean_rev** | DEPLOY | 10 | **+11.88** |
+| **donchian** | DEPLOY | 8 | −3.52 |
+
+**Kapalı sleeve'ler: −$7.95. Deploy'daki üçü: +$0.83 (net POZİTİF).** Toplam −$7.12.
+ÖNCE/SONRA (kesim 2026-07-16, kapalı sleeve'lerin son işlemi):
+  ÖNCE n=50 −$8.24 WR%32 PF 0.75 | SONRA n=5 +$1.12 WR%40 PF 1.11
+→ "PF 0.83" ile "deploy'daki sistem çalışmıyor" AYNI ŞEY DEĞİL. Temiz dönem n=5 = gürültü.
+Bootstrap'a göre N=50'de çalışan sistem bile %12.8 ihtimalle PF<1 gösterir; 0.83 alt %5'te.
+
+### ✅ ÖLÇÜLEN GERÇEK SÜRTÜNME: donchian giriş kayması +13.4 bp
+`intended_entry` (execution.py:758) vs gerçek dolum, 36 işlem:
+
+| sleeve | n | ort bp | medyan bp | en kötü |
+|---|---|---|---|---|
+| **donchian** | 8 | **+13.4** | **+11.3** | +40.6 |
+| squeeze | 4 | +1.7 | +0.3 | +6.4 |
+| mean_rev | 5 | −0.9 | 0.0 | 0.0 |
+| fvg / orb / sr_breakout | 19 | 0.0 | 0.0 | 0.0 |
+
+Medyan ≈ ortalama → tek aykırıdan değil, HER İŞLEMDE oluyor. Sadece donchian'da.
+**MEKANİZMA:** ORB/FVG/SR önceden belli SEVİYEYE limit ile girer → dolum = niyet. Donchian
+kırılım mumunun KAPANIŞINDA piyasa emriyle girer; mum kapanışı → 120 mum çekme → ATR/ADX →
+sleeve döngüsü → emrin borsaya varması arasında fiyat kırılım yönünde koşmaya devam eder.
+Momentum stratejisinde bu gecikme yapısal olarak HEP ALEYHTE. Taker spread'i de üstüne biner.
+
+**DÜZELTİLEMEZ (araştırıldı, hipotez ÇÜRÜTÜLDÜ):** "MAKER_ENTRY açık, 45sn maker beklemesi
+kaymaya sebep oluyor, kapatalım" diye düşündüm — YANLIŞ. execution.py:592-595: donchian
+`force_market=True` ile gelir ve limit yoluna HİÇ GİRMEZ (2026-07-16 denetiminde bilerek).
+Zaten anında piyasa emri veriyor. Kalan kayma = spread + gecikme + momentum → yapılandırma
+hatası değil, giriş biçiminin doğal maliyeti.
+
+**BEDELİ:** R:R 2.5 → ~2.37 (kazanan başına %5.2 az). Donchian işlemlerin ~%70'i →
+brütte ~%3.6 → **net kârın ~%12'si (~$152/$1286)**. Funding'in −%2.2'siyle toplam **~%14**
+ölçülmüş sürtünme. İleriye dönük %75'lik ıskontonun İÇİNDE kalıyor — ama artık varsayım değil ÖLÇÜM.
+DOĞRULAMA: model 13.4bp ile R:R 2.37 öngörüyor; açık 4 pozisyonun ortalaması 2.385. Tutuyor.
+(Kapanmış 8 işlemdeki 2.187, en kötü durumların çektiği sapma. İlk tahminim ~35bp fazlaydı.)
+
+### ↩️ GERİ ALINAN İKİ ALARM (ikisi de doğrulanınca çürüdü)
+1. **"entry=0 PnL'i bozmuş olabilir"** — HAYIR. İki kayıt da entry=0 **ve** exit=0 **ve** pnl=0;
+   toplam katkı **$0.00**. Botun ilk dakikasından (06-18 00:01) kalma hayalet satırlar, pozisyon
+   hiç açılmamış. Kod yolu (exchange.py:715-733, tüm fallback'ler başarısız → filled_price=0)
+   teorik olarak hâlâ riskli ama gerçekleşmemiş.
+2. **"nominal tavanı delinmiş ($464.62 BNB)"** — ARTIK DEĞİL. Üç aşırı nominalin (BNB $464,
+   BTC $374, SOL $303) ÜÇÜ DE **2026-06-23**. 07-12'den sonraki her şey ≤$229, tavan 1.25×188=$235.
+   Tavan tam dayattığı yerde. risk.py:189-191'deki yorum hatayı anlatıyor: tavan `float(leverage)`
+   varsayılanına düşerse levels-sleeve'leri 10× nominal alabiliyordu (10×~$93=$930 ⊃ $464).
+   Hata GERÇEKTİ, OLDU, ZATEN DÜZELTİLMİŞ. `FIXED_MARGIN_USDT=0` → o dal hiç çalışmıyor
+   (fixed-margin hipotezim de yanlıştı).
+
+**Canlı .env teyidi:** LEVERAGE=10 · MAX_RISK_PCT=0.08 · RISK_SCALE=1.125 ·
+FIXED_MARGIN_USDT=0 · POSITION_CAP_FRACTION=1.25 · MAX_POSITIONS=7
+
+### 🧭 İLKE (funding'deki ayrımın tekrarı)
+Mekanik hata → düzelt (occ, MTF lookahead, fail-open sleeve, nominal tavanı — hepsi düzeltildi).
+Muhasebe körlüğü → düzeltilmez, beklentiden DÜŞÜLÜR (funding −%2.2, donchian kayması −%12).
+Karar körlüğü → genelde dokunma (~20 fikir reddedildi).
