@@ -6,96 +6,149 @@ NEDEN (breadth_test.py teşhisi): darboğaz KOLTUK değil SİNYAL. 7 koltuk zama
 coinlerin işlemini KOVMAZ — doğrudan yeni işlem ekler. Elimizdeki 22-coin evreni ise tarandı
 (coin_expand → ICP+BNB çıktı, gerisi elendi). Yeni coin = yeni veri gerekiyor.
 
+NEDEN ccxt DEĞİL: ccxt'nin load_markets()'i MEXC'in SPOT listesini de indiriyor (binlerce
+parite) ve 30sn'de timeout veriyor. Bize yalnız vadeli lazım → doğrudan contract API:
+  /api/v1/contract/detail  → tüm vadeli kontratlar
+  /api/v1/contract/ticker  → 24s hacim
+  /api/v1/contract/kline/  → OHLCV (interval=Min60, start/end SANİYE)
+Küçük, hızlı, spot yükü yok.
+
 LİKİDİTE TABANI — KEYFİ DEĞİL: edge'imiz ince (+0.239R/işlem). İnce spread'li büyük coinlerde
-çalışıyor; MEXC'in kuyruk paritelerinde spread+slippage bu edge'i tamamen yiyebilir. Bu yüzden
-taban "zaten DOĞRULANMIŞ en düşük likidite" olarak seçiliyor: mevcut 12 coinin en düşük 24s
-hacmi. Altına inmiyoruz — kanıtlanmamış bir likidite rejimine girmek testin görmediği bir
-maliyet ekler.
+çalışıyor; MEXC'in kuyruk paritelerinde spread+slippage bu edge'i tamamen yiyebilir. Taban
+"zaten DOĞRULANMIŞ en düşük likidite" = mevcut 12 coinin en düşük 24s hacmi. Altına inmiyoruz.
 
-Ayrıca: 2023-01'den ÖNCE listelenmemiş pariteler elenir (her-yıl testi için 3+ yıl geçmiş şart).
+Ayrıca: 2023-04'ten sonra listelenen pariteler elenir (her-yıl testi için geçmiş şart).
 
-Kullanım (VPS'te):
-  cd /opt/bot2 && python3 fetch_universe.py
-  git add data/ && git commit -m "universe data" && git push
-Sonra PC/container'da:  git pull && python3 breadth_expand.py local
+DAYANIKLILIK: her adım tek tek doğrulanır; bir alan adı beklenenden farklıysa script ham
+anahtarları basıp durur (sessizce yanlış veri üretmez).
+
+Kullanım (VPS'te):  cd /opt/bot2 && nice -n 19 ./venv/bin/python fetch_universe.py
 """
 import os, sys, time
 import pandas as pd
-import ccxt
+import requests
 
+BASE = "https://contract.mexc.com/api/v1/contract"
 OUT = "data"
 DEPLOYED = ["SOL", "ETH", "ADA", "NEAR", "BCH", "ICP", "BNB", "XRP", "DOGE", "TRX", "XLM", "LTC"]
-HAVE = ["AAVE", "ALGO", "ATOM", "AVAX", "BTC", "DOT", "ETC", "LINK", "VET", "XMR"]  # zaten indirdiklerimiz
-START = "2023-01-01T00:00:00Z"
-MAX_NEW = int(os.environ.get("MAX_NEW", "60"))     # kaç yeni coin indirilsin
-TF = "1h"
+HAVE = ["AAVE", "ALGO", "ATOM", "AVAX", "BTC", "DOT", "ETC", "LINK", "VET", "XMR"]
+START = pd.Timestamp("2023-01-01", tz="UTC")
+MIN_FIRST_BAR = pd.Timestamp("2023-04-01", tz="UTC")
+MAX_NEW = int(os.environ.get("MAX_NEW", "60"))
+CHUNK = 1900          # kline limiti ~2000; güvenli pay
+TIMEOUT = 45
 
 os.makedirs(OUT, exist_ok=True)
-ex = ccxt.mexc({"options": {"defaultType": "swap"}, "enableRateLimit": True, "timeout": 30000})
+S = requests.Session()
+S.headers.update({"User-Agent": "bot2-universe/1.0"})
 
-print("=== [1/3] MEXC vadeli evreni + 24s hacimler ===")
-mk = ex.load_markets()
-swaps = {s: v for s, v in mk.items()
-         if v.get("swap") and v.get("settle") == "USDT" and v.get("active")}
-print(f"  aktif USDT perp: {len(swaps)}")
 
-tk = ex.fetch_tickers(list(swaps.keys()))
-def qvol(sym):
-    t = tk.get(sym) or {}
-    q = t.get("quoteVolume")
-    if q: return float(q)
-    b, p = t.get("baseVolume"), t.get("last")
-    return float(b) * float(p) if b and p else 0.0
+def get(path, params=None, tries=4):
+    last = None
+    for k in range(tries):
+        try:
+            r = S.get(f"{BASE}/{path}", params=params, timeout=TIMEOUT)
+            r.raise_for_status()
+            j = r.json()
+            if not j.get("success", True):
+                raise RuntimeError(f"API success=false: {str(j)[:200]}")
+            return j.get("data")
+        except Exception as e:
+            last = e
+            if k < tries - 1:
+                time.sleep(2 ** k)
+    raise RuntimeError(f"{path} başarısız ({tries} deneme): {last}")
 
-# Likidite tabanı = mevcut 12 coinin EN DÜŞÜĞÜ (doğrulanmış rejim)
-dep_vols = {c: qvol(f"{c}/USDT:USDT") for c in DEPLOYED}
+
+print("=== [1/3] MEXC vadeli kontrat listesi ===")
+det = get("detail")
+if not isinstance(det, list) or not det:
+    sys.exit(f"BEKLENMEYEN detail yanıtı: {str(det)[:300]}")
+print(f"  örnek kayıt anahtarları: {sorted(det[0].keys())}")
+perps = {}
+for d in det:
+    sym = d.get("symbol") or ""
+    if not sym.endswith("_USDT"): continue
+    if d.get("state") not in (0, "0", None): continue      # 0 = aktif
+    perps[sym] = sym.split("_")[0]
+print(f"  aktif USDT perp: {len(perps)}")
+
+print("\n=== [2/3] 24s hacimler + likidite tabanı ===")
+tick = get("ticker")
+if isinstance(tick, dict): tick = [tick]
+if not isinstance(tick, list) or not tick:
+    sys.exit(f"BEKLENMEYEN ticker yanıtı: {str(tick)[:300]}")
+print(f"  örnek ticker anahtarları: {sorted(tick[0].keys())}")
+
+
+def qvol(row):
+    """24s ciro (quote). MEXC 'amount24' verir; yoksa volume24×lastPrice."""
+    for k in ("amount24", "amount", "turnover24", "quoteVolume"):
+        v = row.get(k)
+        if v not in (None, "", 0, "0"):
+            try: return float(v)
+            except (TypeError, ValueError): pass
+    try:
+        return float(row.get("volume24") or 0) * float(row.get("lastPrice") or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+vols = {r.get("symbol"): qvol(r) for r in tick if r.get("symbol")}
+dep_vols = {c: vols.get(f"{c}_USDT", 0.0) for c in DEPLOYED}
 for c, v in sorted(dep_vols.items(), key=lambda kv: kv[1]):
-    print(f"    {c:<6s} 24s hacim ${v:>15,.0f}")
-FLOOR = min(v for v in dep_vols.values() if v > 0)
+    print(f"    {c:<6s} 24s ciro ${v:>16,.0f}")
+live = [v for v in dep_vols.values() if v > 0]
+if not live:
+    sys.exit("Mevcut coinlerin hacmi okunamadı — alan adı değişmiş olabilir (yukarıdaki "
+             "ticker anahtarlarını bana gönder).")
+FLOOR = min(live)
 print(f"  → LİKİDİTE TABANI (mevcut en düşük): ${FLOOR:,.0f}")
 
 skip = set(DEPLOYED) | set(HAVE)
-cands = []
-for s in swaps:
-    base = s.split("/")[0]
-    if base in skip: continue
-    v = qvol(s)
-    if v >= FLOOR: cands.append((v, base, s))
-cands.sort(reverse=True)
-cands = cands[:MAX_NEW]
-print(f"\n=== [2/3] tabanı geçen {len(cands)} yeni aday (hacme göre) ===")
+cands = sorted(
+    ((vols.get(s, 0.0), b, s) for s, b in perps.items()
+     if b not in skip and vols.get(s, 0.0) >= FLOOR),
+    reverse=True)[:MAX_NEW]
+print(f"\n  tabanı geçen {len(cands)} yeni aday:")
 print("  " + ", ".join(b for _, b, _ in cands))
+if not cands:
+    sys.exit("\nAday yok — likidite tabanının üstünde yeni parite bulunamadı.")
 
-print(f"\n=== [3/3] 1h OHLCV indiriliyor ({START}'den) ===")
-since0 = ex.parse8601(START)
+print(f"\n=== [3/3] 1h OHLCV indiriliyor ({START.date()}'den) ===")
 ok, short, fail = [], [], []
 for n, (v, base, sym) in enumerate(cands, 1):
     path = f"{OUT}/{base}_fut_1h.csv"
     if os.path.exists(path):
         print(f"  [{n}/{len(cands)}] {base}: zaten var, atlanıyor"); ok.append(base); continue
-    rows, since, guard = [], since0, 0
+    frames, cur, guard = [], int(START.timestamp()), 0
+    now = int(time.time())
     try:
-        while guard < 600:
+        while cur < now and guard < 60:
             guard += 1
-            batch = ex.fetch_ohlcv(sym, TF, since=since, limit=1000)
-            if not batch: break
-            rows += batch
-            nxt = batch[-1][0] + 3_600_000
-            if nxt <= since: break
-            since = nxt
-            if len(batch) < 1000: break
-            time.sleep(0.12)
+            end = min(cur + CHUNK * 3600, now)
+            k = get(f"kline/{sym}", {"interval": "Min60", "start": cur, "end": end})
+            if not isinstance(k, dict) or "time" not in k:
+                raise RuntimeError(f"beklenmeyen kline şekli: {str(k)[:200]}")
+            t = k.get("time") or []
+            if not t: break
+            frames.append(pd.DataFrame({
+                "ts": t, "open": k["open"], "high": k["high"],
+                "low": k["low"], "close": k["close"], "volume": k["vol"]}))
+            nxt = int(t[-1]) + 3600
+            if nxt <= cur: break
+            cur = nxt
+            time.sleep(0.15)
     except Exception as e:
-        print(f"  [{n}/{len(cands)}] {base}: HATA {type(e).__name__}: {e}"); fail.append(base); continue
-    if not rows:
+        print(f"  [{n}/{len(cands)}] {base}: HATA {e}"); fail.append(base); continue
+    if not frames:
         fail.append(base); print(f"  [{n}/{len(cands)}] {base}: veri yok"); continue
-    d = pd.DataFrame(rows, columns=["ts", "open", "high", "low", "close", "volume"])
+    d = pd.concat(frames, ignore_index=True).astype({"ts": "int64"})
     d = d.drop_duplicates("ts").sort_values("ts")
-    d["ts"] = pd.to_datetime(d["ts"], unit="ms", utc=True)
-    d = d.set_index("ts")
+    d["ts"] = pd.to_datetime(d["ts"], unit="s", utc=True)
+    d = d.set_index("ts").astype(float)
     first = d.index[0]
-    # Her-yıl testi için 2023 başından beri geçmiş şart; sonradan listelenenler elenir.
-    if first > pd.Timestamp("2023-04-01", tz="UTC"):
+    if first > MIN_FIRST_BAR:
         short.append((base, first.date()))
         print(f"  [{n}/{len(cands)}] {base}: geçmiş KISA (ilk bar {first.date()}) — atlandı")
         continue
@@ -103,9 +156,8 @@ for n, (v, base, sym) in enumerate(cands, 1):
     ok.append(base)
     print(f"  [{n}/{len(cands)}] {base}: {len(d)} bar ({first.date()} → {d.index[-1].date()}) ✓")
 
-print(f"\n=== ÖZET ===")
+print("\n=== ÖZET ===")
 print(f"  indirildi/mevcut : {len(ok)}  {', '.join(ok)}")
 if short: print(f"  geçmiş kısa      : {len(short)}  " + ", ".join(f"{b}({d})" for b, d in short))
 if fail:  print(f"  başarısız        : {len(fail)}  {', '.join(fail)}")
-print(f"\n  Sıradaki: git add data/ && git commit -m 'universe data' && git push")
-print(f"  Sonra çevrimdışı: python3 breadth_expand.py local")
+print(f"\n  Sıradaki:  nice -n 19 ./venv/bin/python breadth_expand.py local")
