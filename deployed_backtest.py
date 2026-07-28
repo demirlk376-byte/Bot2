@@ -20,7 +20,10 @@ from strategies.donchian import DonchianStrategy
 from strategies.squeeze import SqueezeStrategy
 
 BAL0 = 190.0; FEE = 0.0001; RISKF = 0.0225; MAXPOS = 7
-CAP = 1.0   # POSITION_CAP_FRACTION (config default; .env.example 1.25 → VPS'ten teyit)
+# POSITION_CAP_FRACTION — canlı .env'deki GERÇEK değer (config.py varsayılanı 1.0 ama
+# .env POSITION_CAP_FRACTION=1.25 ile eziyor; canlı işlemlerin boyutundan da teyitli).
+# 1.0 kullanmak sonucu ~%5 DÜŞÜK gösteriyordu (live_gates.py ile ölçüldü).
+CAP = 1.25
 DONCH = ["SOL", "ETH", "ADA", "NEAR", "BCH", "ICP", "BNB"]
 SQZ = ["XRP", "DOGE", "TRX", "XLM"]
 CFG = {"donchian": ("4h", 259, 2.0, 2.5, 30), "squeeze": ("1h", 119, 2.0, 2.5, 48)}
@@ -106,7 +109,7 @@ def main():
           f"({pnl.sum()/pnl_flat.sum()*100:.0f}%)")
     print(f"    Toplam kâr: ${tot:+.0f}  ({tot/BAL0*100:+.0f}%, {tot/BAL0*100/years:+.0f}%/yıl basit)")
     print(f"    Gerçek max drawdown (tepe-dip): {dd:.1f}%")
-    dfm = pd.DataFrame({"pnl": pnl, "m": [x.to_period("M") for x in exits]})
+    dfm = pd.DataFrame({"pnl": pnl, "m": [x.tz_localize(None).to_period("M") for x in exits]})
     mon = dfm.groupby("m")["pnl"].sum() / BAL0 * 100
     print(f"    Aylık: ort {mon.mean():+.1f}% | en kötü ay {mon.min():+.1f}% | poz-ay {(mon>0).mean()*100:.0f}%")
     print(f"    Yıl-yıl kâr:")

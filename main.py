@@ -1406,6 +1406,53 @@ async def heartbeat_loop() -> None:
         await asyncio.sleep(interval)
 
 
+# Protection watchdog cadence, in reconciliation cycles (2 min each) → ~20 min.
+# Slow on purpose: the healthy path costs one read per open position per pass,
+# and MEXC rate-limits (code 510) the order endpoints this shares a budget with.
+PROTECTION_CHECK_EVERY = 10
+
+
+async def _verify_protection(symbol: str) -> None:
+    """Confirm a still-open position's exchange-side SL/TP is actually resting.
+
+    Protection was verified at entry and is re-asserted on restart, but nothing
+    re-checked a position that was protected at entry and lost its stop
+    mid-life (a MEXC-side cancellation, or a netting/partial-fill event). Left
+    unattended that is the one failure mode that can take out a large slice of
+    the account, because the position then runs with no downside limit at all.
+
+    Read-only on the healthy path — has_sltp_orders() only reads, so a
+    protected position is never touched. Acts solely on a CONFIRMED-naked
+    result (False, not None) seen on TWO consecutive reads: a single failed or
+    empty response must never trigger a cancel+re-place on a position that is
+    in fact protected. Re-arming reuses the audited resync path, which itself
+    force-closes the position if it cannot restore a stop (fail-safe = flat).
+
+    The caller must already hold executor._symbol_lock(symbol).
+    """
+    check = getattr(exchange, "has_sltp_orders", None)
+    if check is None:
+        return
+    try:
+        if await check(symbol) is not False:
+            return
+        # Re-confirm, mirroring the external-close double-read below.
+        await asyncio.sleep(3)
+        if await check(symbol) is not False:
+            return
+    except Exception as e:
+        logger.debug("protection watchdog %s: read failed: %s", symbol, e)
+        return
+    logger.critical(
+        "PROTECTION LOST on %s: open position has no resting SL/TP — re-arming",
+        symbol,
+    )
+    await _emit_alert(
+        f"⚠️ {symbol} pozisyonunun stop'u kaybolmuş — yeniden kuruluyor", "ERROR"
+    )
+    await executor._resync_symbol_stops_locked(symbol)
+
+
 async def position_reconciliation_loop() -> None:
     """Live-mode only: every 2 min, detect positions that were externally closed
     on MEXC (by SL/TP trigger orders) and sync the internal state.
@@ -1420,7 +1467,9 @@ async def position_reconciliation_loop() -> None:
     from collections import defaultdict
     # Small startup delay so the exchange client is fully warmed up.
     await asyncio.sleep(30)
+    cycle = 0
     while True:
+        cycle += 1
         try:
             # Periodic daily-loss enforcement: the entry-path check only runs
             # when a NEW signal fires, so an open position bleeding between
@@ -1451,7 +1500,14 @@ async def position_reconciliation_loop() -> None:
                         internal_qty = sum(p.quantity for p in positions)
                         tol = max(internal_qty * 0.01, 1e-9)
                         if exch_qty + tol >= internal_qty:
-                            continue  # all sleeves still open on the exchange
+                            # All sleeves still open on the exchange. Nothing to
+                            # reconcile — but on a slow cadence confirm the
+                            # position is still actually PROTECTED (see
+                            # _verify_protection: entry and restart were the only
+                            # checks, so a stop lost mid-life went unnoticed).
+                            if cycle % PROTECTION_CHECK_EVERY == 0:
+                                await _verify_protection(symbol)
+                            continue
 
                         # Re-confirm before acting: a single transient read of 0/low
                         # contracts (network glitch / partial response) must NOT

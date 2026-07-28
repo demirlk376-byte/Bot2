@@ -93,6 +93,11 @@ def _strategy_allowlist_gates() -> None:
     os.environ["SYMBOLS"] = "BTC,ETH,SOL,BNB,XRP"
     os.environ["BB_SYMBOLS"] = "BTC,ETH,SOL"
     os.environ["SR_BREAKOUT_SYMBOLS"] = "BTC,ETH"
+    # This block tests the ALLOWLIST gate, so the sleeve must be switched on
+    # explicitly: SR_BREAKOUT_ENABLED now defaults to FALSE (fail-safe — an
+    # un-set env var must never silently enable a retired sleeve). The
+    # fail-safe default itself is asserted separately at the end.
+    os.environ["SR_BREAKOUT_ENABLED"] = "true"
 
     c = load_config()
 
@@ -127,6 +132,20 @@ def _strategy_allowlist_gates() -> None:
     assert c2.strategy.bb_symbols is None
     assert c2.strategy.sr_breakout_symbols is None
     print("✓ Allowlist boş → tüm coin'lerde açık (geri uyumlu)")
+
+    # FAIL-SAFE: env değişkeni YOKKEN emekli sleeve'ler KAPALI gelmeli. Eskiden
+    # varsayılan True'ydu; .env'den bir satır düşerse bot sessizce elenmiş bir
+    # sleeve ile işlem açardı. Boş allowlist (None) bunu maskelememeli.
+    del os.environ["SR_BREAKOUT_ENABLED"]
+    c3 = load_config()
+    assert not c3.strategy.sr_breakout_enabled, "SR_BREAKOUT varsayılanı KAPALI olmalı"
+    assert c3.strategy.sr_breakout_symbols is None
+    for s in ["BTC/USDT:USDT", "ETH/USDT:USDT"]:
+        assert not (c3.strategy.sr_breakout_enabled
+                    and (c3.strategy.sr_breakout_symbols is None
+                         or s in c3.strategy.sr_breakout_symbols)), \
+            f"S/R {s} env yokken kapalı olmalı (fail-safe)"
+    print("✓ Fail-safe: env yokken emekli sleeve kapalı (allowlist boş olsa bile)")
 
     del os.environ["SYMBOLS"]
 

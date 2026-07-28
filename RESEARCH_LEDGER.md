@@ -1104,3 +1104,95 @@ değişikliği değil, MUHASEBE körlüğü) — sadece beklentiden %2 düşül�
    durup açılmazdı — deploy edilmeden yakalandı).
 **AYRIM: mekanik hata → düzelt. Karar körlüğü → genelde düzeltme (bot zaten elindeki bilgiyle
 optimuma yakın). Muhasebe körlüğü (funding) → düzeltilemez, beklentiden düş.**
+
+---
+
+## 🔒 2026-07-28 — BİR AY GÖZETİMSİZ ÇALIŞMA DENETİMİ (getiri değil, DAYANIKLILIK)
+
+Getiri tarafı kapandı (~20 fikir reddedildi, tavana yakınız). Bir ay başında kimse yokken kalan
+gerçek risk OPERASYONEL: 30 gün kendi başına dönerken kırılabilecek kod yolları. Denetimdeki
+36 bulgudan doğrulanmamış kalan 6'sı kapatıldı.
+
+### ✅ BULUNAN VE DÜZELTİLEN KÖR NOKTA: koruma orta ömürde kaybolursa kimse fark etmiyordu
+Borsa tarafı SL/TP SADECE iki noktada doğrulanıyordu:
+  1. Girişte (`execution.py:672` — has_sltp_orders, 3 deneme, teyitsizse pozisyonu kapat)
+  2. Yeniden başlatmada (`main.py:1752` — restore edilen pozisyonlar için resync)
+**Girişte korumalı açılıp SONRADAN stop'u kaybolan pozisyonu hiçbir şey tekrar kontrol etmiyordu.**
+`position_reconciliation_loop` yalnız pozisyon KAPANDIĞINDA (exch_qty < internal_qty) resync
+çağırıyor; hâlâ açık olan pozisyonda `continue` ile geçiyordu. Gözetimsiz bir ayda bu, hesabın
+büyük kısmını götürebilecek TEK arıza biçimi — pozisyon aşağı sınırı olmadan koşar.
+
+**DÜZELTME** (`main._verify_protection` + `PROTECTION_CHECK_EVERY=10`): mutabakat döngüsünde
+~20 dakikada bir, açık pozisyonun koruması SALT-OKUMA doğrulanır. Yalnız TEYİTLİ korumasızda
+(iki ardışık okuma da `False`; `None`=belirsiz sayılmaz) alarm + mevcut denetimli resync yolu
+devreye girer — o yol da stop'u kuramazsa pozisyonu kapatır (fail-safe = flat).
+Sağlıklı yolda HİÇBİR mutasyon yok → çalışan korumaya dokunulmaz, hız limiti yenmez.
+Test: `tests/test_protection_watchdog.py` — 8 senaryo (True/None/False→True/False→None/
+False→False/istisna×2/API yok).
+
+### ✅ DOĞRULANAN (sorun yok)
+- **max-hold duvar-saati**: donchian `scores["max_hold"]=120` (30×4h=120s, primary_tf=1h
+  biriminde) — `execution.py:769`. squeeze varsayılan 48 = 48s. Backtest bar sayımıyla birebir.
+- **Stop taşıma**: `main.py:1103` — BE/trailing YALNIZ orb/ifvg'ye uygulanıyor, ikisi de KAPALI.
+  Yani donchian/squeeze/BB'nin girişte takılan SL/TP'si ömrü boyunca HİÇ dokunulmuyor
+  → "taşıma yarıda kalır, stop kaybolur" riski deploy'daki sleeve'ler için YOK.
+- **Kontrat adımı kırpması**: `exchange.py:679` adım altı boyutu temiz hatayla reddediyor;
+  portföy `order.quantity` (kırpma SONRASI) kullanıyor (`execution.py:781`) → hayalet boyut yok.
+- **Plan-order 24h geçerliliği**: konu dışı kalıyor — birincil koruma giriş-bağlı position-level
+  SL/TP (sticky, süresiz). Plan order sadece acil yedek; restart + yeni nöbetçi kapsıyor.
+- **Çıkış muhasebesi**: mutabakat dış kapanışı doğru ücretle kaydediyor (giriş `entry_fee_rate`,
+  çıkış taker 1bp) ve `_close_position_internal` tek yetkili → çift sayım yok.
+- **Sleeve/coin çakışması**: donchian(7) ∩ squeeze(4) ∩ BB(LTC) = ∅ → netleşme çakışması yok.
+
+### 📏 CANLI GİRİŞ KAPILARI vs BACKTEST (`live_gates.py` — YENİ)
+Backtest "canlı config" diyordu ama `execution.py:334-412`'deki kapıların hepsini modellemiyordu.
+Envanter çıkarıldı ve ölçüldü:
+
+| kapı | backtest'te | etki |
+|---|---|---|
+| MAX_POSITIONS=7 | ✓ koltuk seçimi | modelli |
+| tek-pozisyon/sembol + slot | ✓ occ | modelli |
+| **COOLDOWN** (2 ardışık kayıp → 240dk) | **✗ YOKTU** | **1421 işlemde 1 sinyal, +$4** |
+| korelasyon tavanı (grup {BTC,ETH,SOL}, tavan 2) | ✗ | **ASLA tetiklenemez**: BTC deploy'da yok
+  → grubun 2 üyesi var → same_dir hiçbir zaman 2'yi aşamaz. Etki sıfır. |
+
+**COOLDOWN PRATİKTE ATIL.** Sebep yapısal: anahtar (sleeve:coin) bazlı ve 240dk = donchian'da 1
+bar / squeeze'de 4 bar. Stop olduktan sonra aynı coinde 1-4 bar içinde YENİ sinyal doğması
+(40-bar kanalı tekrar kırmak / 5-barlık coil'in yeniden kurulması) neredeyse imkânsız.
+3.2 yılda tek bir sinyal engelledi, o da kaybeden bir işlemdi (+$4 katkı).
+→ **İlan ettiğimiz backtest rakamı modellenmemiş kapılar yüzünden ŞİŞİK DEĞİL.** Kapatmaya gerek yok.
+
+### 🔧 DÜZELTİLEN ESKİMİŞ SABİT: POSITION_CAP_FRACTION
+`deployed_backtest.py` CAP=1.0 kullanıyordu; canlı `.env` **1.25** (canlı işlem boyutlarından da
+teyitli). Etki: **+$1224 → +$1286 (+%5)**, tavana takılan işlem %26→%17, maxDD %18.2→%19.5.
+Yani ANKOR RAKAM daha önce ~%5 DÜŞÜK ilan edilmişti (muhafazakâr yönde hata).
+
+**GÜNCEL ANKOR (3.2 yıl, sabit-oran, $190 taban, cap=1.25):**
+`1421 işlem | PF 1.44 | WR %43 | +$1286 | maxDD %19.5 | en kötü ay −%20 | poz-ay %62`
+`2023:$+307  2024:$+403  2025:$+398  2026:$+178` (her yıl pozitif)
+
+NOT: diğer araştırma araçları (fade/horizon/mfe/partial/pf_kill/funding/liq) CAP=1.0 kullanmaya
+devam ediyor. Bu, VERDİKLERİ KARARI değiştirmez (her iki kol da aynı yönde kayar), yalnız mutlak
+$ rakamları ~%5 düşük çıkar. Bilerek dokunulmadı — bir ay gözetimsizken gereksiz kod hareketi
+kendi başına bir risk.
+
+### 📐 KAÇ İŞLEM GEREKİR (`sample_size.py` — bootstrap, 20.000 tekrar, gerçek 1440-işlem R dağılımı)
+"Bir ay bakıp çalışıyorsa riski artırırız" sorusunun sayısal cevabı:
+
+| N işlem | ÇALIŞAN sistem zararda görünür | PF %5-95 aralığı | PF<1 olasılığı |
+|---|---|---|---|
+| 20 | %24.1 | 0.56 – 3.13 | %24.8 |
+| **30 (≈1 ay)** | **%18.9** | **0.72 – 2.82** | **%19.2** |
+| 50 | %12.5 | 0.84 – 2.35 | %12.8 |
+| 100 | %4.8 | 1.01 – 2.05 | %4.3 |
+| 200 | %0.8 | 1.13 – 1.87 | %0.7 |
+
+→ Bir ay (≈30 işlem) KANIT DEĞİL: çalışan sistem 5 ayın 1'inde zararda görünür ve ölçülen PF
+0.72–2.82 arasında herhangi bir yere düşebilir. PF aralığı ancak **N≈100'de** (3-4 ay) 1.0'ı geçer.
+Aylık PnL'in mean-reversion'ı (−0.345) ile birleşince "iyi aydan sonra riski artır" kuralı
+istatistiksel olarak TERS yönde çalışır. **Risk seviyesi P&L'e değil drawdown tahammülüne bağlanır.**
+
+### 🧪 TEST DURUMU: 8/8 GEÇİYOR
+`test_multicoin.py` fail-safe varsayılan değişikliğinden (SR_BREAKOUT_ENABLED artık False)
+sonra kırık kalmıştı — düzeltildi ve fail-safe davranışı ARTIK TEST EDİLİYOR (env yokken emekli
+sleeve kapalı gelmeli, boş allowlist bunu maskelememeli). Yeni: `test_protection_watchdog.py`.
