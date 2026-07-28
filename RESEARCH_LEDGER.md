@@ -1070,3 +1070,37 @@ ve yıl-yıl BİREBİR tutuyor ve karar onlara dayanıyor, ama sütunlar raporla
 **SONUÇ: PF izleme OTOMATİKLEŞTİRİLEMEZ.** Kill-switch koruma aracı değil. Doğru kullanım: PF'i
 RAPORLA, kararı İNSAN versin. Bot geçici çukurla gerçek edge-ölümünü ayırt edemiyor; "PF 1.2 altına
 indi ve 3 ay orada kaldı" bir insan kararıdır, bot refleksi değil.
+
+## 💸 FUNDING MALİYETİ ÖLÇÜLDÜ (2026-07-27, funding_cost, VPS'te) — GERÇEK ama KÜÇÜK
+
+Kör nokta: backtest sadece 2×1bp komisyon alıyor; donchian 5 GÜNE kadar tutuyor, funding 8 saatte
+bir ödeniyor. Hiç ölçülmemişti. Pencere: 380 işlem (%26), 2025-08→2026-07 (funding verisi kadar).
+
+  donchian 290 işlem: ort tutuş **68 saat**, ort **8.4 funding bacağı**, R etkisi ort −0.0058R
+    LONG n=115 ort −0.0044R | SHORT n=175 ort −0.0067R
+  squeeze  90 işlem: ort tutuş 20 saat, 2.6 bacak, ort −0.0084R
+  **PENCERE ETKİSİ: −$9.02 = PnL'in −%2.2'si** ($408.31→$399.29, PF 1.535→1.520)
+  2025 −$1.18 | 2026 −$7.84
+
+**HEM LONG HEM SHORT KAYBEDİYOR** — tesadüf değil: breakout takipçisi kalabalığın ZATEN ittiği yöne
+giriyor → her seferinde kalabalık tarafa katılıp funding ÖDÜYOR. Mekanik olarak tutarlı.
+→ Backtest bu eksende ~%2 FAZLA İYİMSER. Küçük ama gerçek ve HEP ALEYHTE. Düzeltilemez (davranış
+değişikliği değil, MUHASEBE körlüğü) — sadece beklentiden %2 düşülür.
+
+## 🧠 İLKE: "KÖR NOKTAYI DÜZELTMEK" NEDEN GENELDE PARA KAYBETTİRİR (kullanıcı sorusu)
+1. "Bot görmüyor" ≠ "görse daha iyi olurdu". Bilginin değeri kararı KÂRLI değiştirmesine bağlı.
+   5 pozisyonun da short olması hata değil, SİNYALİN KENDİSİ (5 coin birden kırılıyorsa kripto
+   düşüyordur). Limit = edge'in en güçlü anında işlem reddetmek.
+2. PF'e tepki TERSİNE çalışıyor: aylık PnL ortalamaya döner (−0.345) → "PF düştü" zayıf bir ALIŞ
+   sinyali, satış değil. Küçülmek = dipte küçülüp toparlanmayı kaçırmak.
+3. ENTEGRASYON SORUNU DEĞİL — özellikle test edildi: PF için 3 mekanizma×3 pencere×3 eşik=27 form,
+   yön için 4 limit. Entegrasyon sorunu olsaydı EN AZ BİR form çalışırdı. 27/27 başarısızlık
+   fikrin yanlış olduğunu söyler, kodun değil.
+4. EN DERİN SEBEP: her filtre kazananı da siler. Kâr için ORANTISIZ çok kaybeden elemeli; ama
+   kazanan/kaybeden girişte ayrılamıyor (OOS AUC 0.502) → filtre ikisini ORANTILI eler → elde aynı
+   sistemin KÜÇÜLMÜŞ KOPYASI kalır.
+5. AMA MEKANİK HATALAR DÜZELTİLİR (ve düzeltildi): occ eksikliği (imkânsız işlemler), MTF lookahead
+   (gelecek bilgisi), fail-open sleeve'ler (hesabı sıfırlayabilirdi), halt kilitlenmesi (bot sessizce
+   durup açılmazdı — deploy edilmeden yakalandı).
+**AYRIM: mekanik hata → düzelt. Karar körlüğü → genelde düzeltme (bot zaten elindeki bilgiyle
+optimuma yakın). Muhasebe körlüğü (funding) → düzeltilemez, beklentiden düş.**
