@@ -1046,3 +1046,27 @@ DERS: denetim mekanizmayı doğru tespit etmişti, ETKİ ANALİZİNİ atlamışt
    emir geçmişiyle karşılaştırmak (döndüğünde).
 3. **PF SOĞUMASINI GÖREMİYOR:** 1.53→1.43→1.45→1.35. Bot kendi geçmiş performansını izlemiyor.
    İZLENECEK TEK ŞEY BU: canlı PF 1.2'nin altına inip orada kalırsa "kötü dönem" değil EDGE ÖLÜMÜ.
+
+## ⛔ PF KILL-SWITCH (2026-07-27, pf_killswitch) — 27 FORMUN 27'Sİ RED + TASARIM KUSURU BULUNDU
+
+Kör nokta: bot kendi PF soğumasını (1.53→1.43→1.45→1.35) göremiyor. 3 farklı MEKANİZMA ×
+3 pencere (30/50/100 kapanmış işlem) × 3 eşik (1.0/1.1/1.2). Walk-forward: kayan PF SADECE
+giriş anından ÖNCE KAPANMIŞ işlemlerden (lookahead yok).
+
+**SONUÇ: 27 formun 27'si de baseline'ın ($1224) ALTINDA.** En iyi derisk_N100_T1.0 = $1126 (−$98).
+
+**YENİ BULGU — `halt` FORMLARI KİLİTLENİYOR (yapısal kusur):** halt_N30_T1.0 sadece 98 işlem,
+yıl-yıl kırılımında SADECE 2023 var → 2023'te durmuş, BİR DAHA AÇILMAMIŞ. Sebep: durunca yeni işlem
+KAPANMIYOR → kayan PF DONUYOR → eşiğin altında kalıyor → sonsuza kadar kapalı = TEK YÖNLÜ KAPI.
+Ayar sorunu değil, mekanizmanın kendi kusuru. Gerçek bir botta SESSİZCE olurdu.
+`derisk` kilitlenmiyor (yarım boyla devam → PF güncellenir, 1421 işlem korunur) ama yine kaybettiriyor,
+3-4 yıl bozuyor — bilinen tuzak DOĞRULANDI: aylık PnL ortalamaya döner (−0.345), kill-switch tam
+dipte küçültür, toparlanmayı küçük pozisyonla karşılar.
+
+**ARAÇ KUSURU (dürüstlük):** bu tablodaki maxDD/enKötüAy sütunları güvenilmez — baseline −39.7%
+gösteriyor ama deployed_backtest AYNI işlem setinde −20.9% veriyor; fark çözülmedi. Toplam ($1224)
+ve yıl-yıl BİREBİR tutuyor ve karar onlara dayanıyor, ama sütunlar raporlanırken belirtildi.
+
+**SONUÇ: PF izleme OTOMATİKLEŞTİRİLEMEZ.** Kill-switch koruma aracı değil. Doğru kullanım: PF'i
+RAPORLA, kararı İNSAN versin. Bot geçici çukurla gerçek edge-ölümünü ayırt edemiyor; "PF 1.2 altına
+indi ve 3 ay orada kaldı" bir insan kararıdır, bot refleksi değil.
