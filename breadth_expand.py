@@ -33,6 +33,7 @@ SQZ = ["XRP", "DOGE", "TRX", "XLM"]
 DEPLOYED = set(DONCH + SQZ) | {"LTC"}
 CFG = {"donchian": ("4h", 259, 2.0, 2.5, 30), "squeeze": ("1h", 119, 2.0, 2.5, 48)}
 TRAIN_END = pd.Timestamp("2025-01-01", tz="UTC")
+MIN_HISTORY = pd.Timestamp("2023-04-30", tz="UTC")   # her-yıl testi için 2023 kapsamı şart
 BASKET_SIZES = (3, 5, 8, 12, 16, 20)
 
 
@@ -132,6 +133,40 @@ def main():
     b_full, b_avg = occupancy_full(base_taken)
     print(f"\n  TABAN: n={len(base_taken)} ${base_tot:+.0f} | koltuk dolu %{b_full:.1f} | ort {b_avg:.2f} poz")
     print(f"    yıl-yıl: " + " ".join(f"{y}:${v:+.0f}" for y, v in base_y.items()))
+
+    # ── VERİ BÜTÜNLÜĞÜ: kırpılmış/delikli seri sessizce yanlış sonuç üretir ──
+    # Aday dosyaları farklı zamanlarda/farklı yollarla inmiş olabilir. Kapsama ve
+    # boşluk oranı GÖRÜNÜR olmalı; kötü veriyi teste sokup "sonuç" diye sunmayalım.
+    print(f"\n  ─── VERİ BÜTÜNLÜĞÜ (kötü kapsama = güvenilmez sonuç) ───")
+    print(f"  {'coin':<7s} {'ilk bar':<12s} {'son bar':<12s} {'bar':>7s} {'beklenen':>9s} "
+          f"{'kapsama':>8s}  durum")
+    ref_end = None
+    for c in DONCH[:1]:
+        ref_end = fast_bt.load(c, source=source).index[-1]
+    good = []
+    for c in cands:
+        try: m = fast_bt.load(c, source=source)
+        except SystemExit: continue
+        first, last = m.index[0], m.index[-1]
+        exp = int((last - first).total_seconds() // 3600) + 1
+        cover = len(m) / max(exp, 1) * 100
+        stale = (ref_end - last).days if ref_end is not None else 0
+        bad = []
+        if first > MIN_HISTORY: bad.append(f"geçmiş kısa({first.date()})")
+        if cover < 97.0: bad.append(f"delikli(%{cover:.0f})")
+        if stale > 7: bad.append(f"bayat({stale}g eski)")
+        status = "✓ TEMİZ" if not bad else "✗ " + ", ".join(bad)
+        print(f"  {c:<7s} {str(first.date()):<12s} {str(last.date()):<12s} {len(m):>7d} "
+              f"{exp:>9d} {cover:>7.1f}%  {status}")
+        if not bad: good.append(c)
+    dropped = [c for c in cands if c not in good]
+    if dropped:
+        print(f"\n  ELENEN {len(dropped)} coin (veri kalitesi): {', '.join(dropped)}")
+        print(f"  → bunlar teste ALINMIYOR; kötü veriden çıkan 'kâr' gerçek değildir.")
+    cands = good
+    if not cands:
+        print(f"\n  Temiz veriye sahip aday KALMADI — genişlik testi yapılamaz.")
+        return
 
     # ── Adayları hazırla: her coin TEK sleeve (TRAIN'e göre) ──
     print(f"\n  ─── aday değerlendirme (sleeve ataması + sıralama TRAIN'den) ───")

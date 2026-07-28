@@ -121,17 +121,27 @@ for n, (v, base, sym) in enumerate(cands, 1):
     path = f"{OUT}/{base}_fut_1h.csv"
     if os.path.exists(path):
         print(f"  [{n}/{len(cands)}] {base}: zaten var, atlanıyor"); ok.append(base); continue
-    frames, cur, guard = [], int(START.timestamp()), 0
+    frames, cur, guard, empties = [], int(START.timestamp()), 0, 0
     now = int(time.time())
     try:
-        while cur < now and guard < 60:
+        while cur < now and guard < 80:
             guard += 1
             end = min(cur + CHUNK * 3600, now)
             k = get(f"kline/{sym}", {"interval": "Min60", "start": cur, "end": end})
             if not isinstance(k, dict) or "time" not in k:
                 raise RuntimeError(f"beklenmeyen kline şekli: {str(k)[:200]}")
             t = k.get("time") or []
-            if not t: break
+            if not t:
+                # Boş pencere ≠ serinin sonu. Coin bu aralıkta HENÜZ listelenmemiş
+                # olabilir (2023 başı), ya da ortada bir durdurma/boşluk vardır.
+                # Kırarsak seriyi SESSİZCE kırpar ve backtest'e eksik veri gider.
+                # Pencereyi ilerlet; ancak arka arkaya çok boş gelirse gerçekten yok.
+                empties += 1
+                if empties >= 6: break
+                cur = end
+                time.sleep(0.15)
+                continue
+            empties = 0
             frames.append(pd.DataFrame({
                 "ts": t, "open": k["open"], "high": k["high"],
                 "low": k["low"], "close": k["close"], "volume": k["vol"]}))
