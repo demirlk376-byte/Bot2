@@ -1,324 +1,115 @@
 """
-live_report.py — realized live-performance & slippage report from trades.db.
+live_report.py — CANLI DURUM RAPORU: bot ne yapmış, backtest'i tutuyor mu?
 
-Read-only evidence tool for the data-collection period: it never touches the
-exchange or the running bot, just summarizes what ACTUALLY happened so the
-"grow / widen / adjust risk" decisions later rest on live numbers, not backtests.
+Fiyat cache'i GEREKMEZ, sadece trades.db okur → VPS'te doğrudan çalışır.
 
-Per-sleeve it reports realized PF / win-rate / net PnL / avg-hold / exit-reason
-mix, and — once trades carry strategy_scores.intended_entry — the realized entry
-SLIPPAGE (actual fill vs the signal's intended level), which is the key number
-for validating the live-vs-backtest discount (ORB/Donchian fill ~level; FVG/IFVG
-at the zone edge). Also weekly/monthly PnL and max drawdown on closed trades.
+KONTROL EDİLENLER:
+ 1) Kapanmış işlemler: n, WR, PF, toplam PnL  → BACKTEST BEKLENTİSİ ile karşılaştırma
+ 2) Çıkış sebebi dağılımı → backtest: SL %52 / TP %25 / max-hold %23
+ 3) R:R doğrulaması: (tp−giriş)/(giriş−sl) donchian+squeeze'de 2.5, BB'de 1.667 OLMALI
+ 4) Boyutlandırma: gerçekleşen risk% = |giriş−sl|×miktar / bakiye  → hedef %2.25 (tavana takılanlar
+    daha düşük olur, bu NORMAL — işlemlerin ~%25'i öyle)
+ 5) Sleeve/coin kırılımı + açık pozisyonlar
 
-Usage (on the VPS, in the bot dir):
-    venv/bin/python live_report.py                 # live (real-money) trades
-    venv/bin/python live_report.py --paper         # paper trades
-    venv/bin/python live_report.py --db trades.db --days 30
+BACKTEST ÇIPASI (düzeltilmiş, cap-aware): PF 1.44 | WR %43 | SL%52 TP%25 hold%23
+UYARI: az işlemle (n<30) PF/WR gürültüdür. Asıl bakılacak: R:R ve boyut TUTUYOR MU (yapısal).
+
+Kullanım:  python3 live_report.py /opt/bot2/trades.db [bakiye]
 """
-from __future__ import annotations
+import sys, sqlite3, json
+import pandas as pd, numpy as np
 
-import argparse
-import json
-import sqlite3
-from collections import defaultdict
-from datetime import datetime, timezone, timedelta
+DB = sys.argv[1] if len(sys.argv) > 1 else "trades.db"
+BAL = float(sys.argv[2]) if len(sys.argv) > 2 else None
 
+con = sqlite3.connect(DB)
+df = pd.read_sql_query("SELECT * FROM trades", con)
+con.close()
+if df.empty:
+    print("trades tablosu BOŞ"); sys.exit()
 
-def _parse_time(s: str):
-    if not s:
-        return None
+df["is_paper"] = df["is_paper"].astype(int)
+live = df[df["is_paper"] == 0].copy()
+print(f"\n{'='*88}\n=== CANLI RAPOR — {DB} ===")
+print(f"  toplam kayıt {len(df)} | canlı {len(live)} | kağıt {len(df)-len(live)}")
+if live.empty:
+    print("  canlı işlem YOK"); sys.exit()
+
+def sleeve_of(row):
     try:
-        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
-    except Exception:
-        return None
-    # Normalize to UTC-aware so naive inputs (e.g. a "2026-06-28" epoch) compare
-    # cleanly against the tz-aware entry/exit timestamps.
-    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+        s = json.loads(row["strategy_scores"] or "{}")
+        for k in ("sleeve", "strategy", "source"):
+            if k in s: return str(s[k])
+    except Exception: pass
+    return "?"
+live["sleeve"] = live.apply(sleeve_of, axis=1)
+live["entry_time"] = pd.to_datetime(live["entry_time"], errors="coerce")
+live["exit_time"] = pd.to_datetime(live["exit_time"], errors="coerce")
+closed = live[live["exit_price"].notna()].copy()
+open_ = live[live["exit_price"].isna()].copy()
 
+print(f"\n  --- AÇIK POZİSYONLAR ({len(open_)}) ---")
+for _, r in open_.iterrows():
+    rr = abs(r["tp_price"]-r["entry_price"]) / max(abs(r["entry_price"]-r["sl_price"]), 1e-12)
+    print(f"    {r['symbol']:16s} {r['side']:5s} giriş {r['entry_price']:.5f} SL {r['sl_price']:.5f} "
+          f"TP {r['tp_price']:.5f}  R:R {rr:.3f}  {r['sleeve']}")
 
-def _sleeve(scores_json: str) -> str:
-    try:
-        return (json.loads(scores_json or "{}") or {}).get("strategy", "?") or "?"
-    except Exception:
-        return "?"
+if closed.empty:
+    print("\n  Kapanmış işlem YOK — R:R kontrolü açıklardan yapıldı, gerisi için bekle.")
+    sys.exit()
 
+print(f"\n  --- KAPANMIŞ İŞLEMLER ({len(closed)}) ---")
+p = closed["pnl_usdt"].astype(float)
+gp = p[p > 0].sum(); gl = -p[p < 0].sum()
+pf = gp/gl if gl > 0 else float("inf")
+print(f"    ilk {closed['entry_time'].min()}  son {closed['exit_time'].max()}")
+print(f"    net PnL ${p.sum():+.2f} | WR %{(p>0).mean()*100:.0f} | PF {pf:.2f} | ort ${p.mean():+.3f}")
+print(f"    BACKTEST ÇIPASI: PF 1.44 | WR %43   ← n={len(closed)} ise" +
+      (" GÜRÜLTÜ, yorumlama" if len(closed) < 30 else " karşılaştırılabilir"))
 
-def _intended(scores_json: str) -> float:
-    try:
-        return float((json.loads(scores_json or "{}") or {}).get("intended_entry", 0.0) or 0.0)
-    except Exception:
-        return 0.0
+print(f"\n    çıkış sebebi (backtest: sl %52 / tp %25 / hold %23):")
+for rsn, cnt in closed["exit_reason"].value_counts().items():
+    sub = closed[closed["exit_reason"] == rsn]["pnl_usdt"].astype(float)
+    print(f"      {str(rsn):14s} n={cnt:>3d} (%{cnt/len(closed)*100:>3.0f})  PnL ${sub.sum():+7.2f}")
 
+print(f"\n    sleeve kırılımı:")
+for sv, g in closed.groupby("sleeve"):
+    q = g["pnl_usdt"].astype(float)
+    gp2 = q[q>0].sum(); gl2 = -q[q<0].sum()
+    print(f"      {sv:12s} n={len(g):>3d} WR%{(q>0).mean()*100:>3.0f} "
+          f"PF {gp2/gl2 if gl2>0 else 9.99:4.2f} PnL ${q.sum():+7.2f}")
 
-def _pf(pnls):
-    gp = sum(p for p in pnls if p > 0)
-    gl = -sum(p for p in pnls if p < 0)
-    return (gp / gl) if gl > 0 else (float("inf") if gp > 0 else 0.0)
+print(f"\n    coin kırılımı:")
+for sy, g in closed.groupby("symbol"):
+    q = g["pnl_usdt"].astype(float)
+    print(f"      {sy:16s} n={len(g):>3d} WR%{(q>0).mean()*100:>3.0f} PnL ${q.sum():+7.2f}")
 
+# R:R yapısal doğrulama (TÜM işlemler)
+print(f"\n  --- R:R DOĞRULAMASI (yapısal — az işlemle bile anlamlı) ---")
+allt = live.copy()
+allt["rr"] = (allt["tp_price"]-allt["entry_price"]).abs() / (allt["entry_price"]-allt["sl_price"]).abs().clip(lower=1e-12)
+for sv, g in allt.groupby("sleeve"):
+    exp = 1.667 if "bb" in sv.lower() or "mean" in sv.lower() else 2.5
+    ok = (g["rr"].sub(exp).abs() < 0.02).mean()*100
+    print(f"      {sv:12s} n={len(g):>3d} ort R:R {g['rr'].mean():.3f} (beklenen {exp}) → uyum %{ok:.0f}")
+bad = allt[(allt["rr"].sub(2.5).abs() > 0.02) & (allt["rr"].sub(1.667).abs() > 0.02)]
+if len(bad):
+    print(f"      ⚠ BEKLENMEDİK R:R ({len(bad)} işlem):")
+    for _, r in bad.head(5).iterrows():
+        print(f"        {r['symbol']:14s} R:R {r['rr']:.3f} giriş {r['entry_price']:.5f} sleeve {r['sleeve']}")
+else:
+    print(f"      ✅ TÜM işlemler beklenen R:R'de — sinyal→emir zinciri doğru")
 
-def _fmt_pf(pf):
-    return "inf" if pf == float("inf") else f"{pf:.2f}"
-
-
-def _compact_summary(rows, mode, days) -> str:
-    """Phone-friendly one-glance summary for push notifications."""
-    if not rows:
-        return f"📊 {mode} {'%dg' % days if days else 'tüm'}: kapanan işlem yok (henüz)."
-    p = [r["pnl_usdt"] or 0.0 for r in rows]
-    w = sum(1 for v in p if v > 0)
-    head = (f"📊 {mode} {'%dg' % days if days else 'tüm'} | {len(rows)}t "
-            f"WR{w/len(rows):.0%} PF{_fmt_pf(_pf(p))} {sum(p):+.2f}U")
-    bys = defaultdict(list)
-    for r in rows:
-        bys[_sleeve(r["strategy_scores"])].append(r["pnl_usdt"] or 0.0)
-    legs = " | ".join(
-        f"{s} {len(v)}t {sum(v):+.1f}"
-        for s, v in sorted(bys.items(), key=lambda kv: -sum(kv[1]))
-    )
-    return head + "\n" + legs
-
-
-def _send_ntfy(cfg, text: str) -> bool:
-    import requests
-    if not getattr(cfg.ntfy, "enabled", False) or not cfg.ntfy.topic:
-        return False
-    url = f"{cfg.ntfy.server.rstrip('/')}/{cfg.ntfy.topic}"
-    try:
-        r = requests.post(url, data=text.encode("utf-8"),
-                          headers={"Title": "Haftalik Rapor", "Priority": "default"},
-                          timeout=15)
-        return r.status_code < 300
-    except Exception as e:
-        print(f"  ntfy send failed: {e}")
-        return False
-
-
-def _send_telegram(cfg, text: str) -> bool:
-    import requests
-    if not getattr(cfg.telegram, "enabled", False) or not cfg.telegram.token:
-        return False
-    url = f"https://api.telegram.org/bot{cfg.telegram.token}/sendMessage"
-    try:
-        r = requests.post(url, json={"chat_id": cfg.telegram.chat_id, "text": text},
-                          timeout=15)
-        return r.status_code < 300
-    except Exception as e:
-        print(f"  telegram send failed: {e}")
-        return False
-
-
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--db", default="trades.db")
-    ap.add_argument("--paper", action="store_true", help="report paper trades (default: live)")
-    ap.add_argument("--days", type=int, default=0, help="only trades closed in the last N days (0=all)")
-    ap.add_argument("--since", default="",
-                    help="only trades OPENED on/after this UTC date/time (e.g. 2026-06-28). "
-                         "Overrides the stored epoch for this run.")
-    ap.add_argument("--set-epoch", default="",
-                    help="persist a clean-start epoch ('now' or an ISO date) so all future "
-                         "reports ignore dev-era trades opened before it, then exit.")
-    ap.add_argument("--notify", action="store_true",
-                    help="push a compact summary to ntfy/Telegram (uses the bot's .env config)")
-    args = ap.parse_args()
-
-    con = sqlite3.connect(args.db)
-    con.row_factory = sqlite3.Row
-    con.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)")
-
-    # --set-epoch: record the clean-start cutoff and exit. Everything before it
-    # (the unstable development period) is then excluded from every report.
-    if args.set_epoch:
-        when = (datetime.now(timezone.utc).isoformat() if args.set_epoch.lower() == "now"
-                else args.set_epoch)
-        con.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('report_epoch', ?)", (when,))
-        con.commit()
-        print(f"✓ report epoch set to {when}\n  Future reports count only trades opened on/after this.")
-        return
-
-    is_paper = 1 if args.paper else 0
-    rows = con.execute(
-        "SELECT * FROM trades WHERE is_paper=? AND exit_time IS NOT NULL AND exit_time!=''",
-        (is_paper,),
-    ).fetchall()
-
-    # Clean-start cutoff: explicit --since wins, else the persisted epoch. Filters
-    # by ENTRY time (when the CURRENT code opened the trade), so a dev-era trade
-    # that closed after the epoch is still excluded.
-    epoch_row = con.execute("SELECT value FROM meta WHERE key='report_epoch'").fetchone()
-    cutoff_src = args.since or (epoch_row["value"] if epoch_row else "")
-    epoch_cut = _parse_time(cutoff_src) if cutoff_src else None
-    if epoch_cut is not None:
-        rows = [r for r in rows
-                if (_parse_time(r["entry_time"]) or datetime.min.replace(tzinfo=timezone.utc)) >= epoch_cut]
-
-    if args.days > 0:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=args.days)
-        rows = [r for r in rows if (_parse_time(r["exit_time"]) or datetime.min.replace(tzinfo=timezone.utc)) >= cutoff]
-
-    mode = "PAPER" if args.paper else "LIVE"
-    win = (f"  (last {args.days}d)" if args.days else "  (all time)")
-    if epoch_cut is not None:
-        win += f"  since {cutoff_src[:16]}"
-    print("=" * 74)
-    print(f"  REALIZED {mode} PERFORMANCE — {args.db}{win}")
-    if epoch_cut is not None:
-        print(f"  (clean epoch active — dev-era trades before {cutoff_src[:16]} excluded)")
-    print("=" * 74)
-    if not rows:
-        print("  No closed trades yet. (Bot may still be warming up / no exits.)")
-        # Show any OPEN positions so it isn't mistaken for 'nothing happening'.
-        opn = con.execute(
-            "SELECT symbol, side, entry_price, json_extract(strategy_scores,'$.strategy') s, entry_time "
-            "FROM trades WHERE is_paper=? AND (exit_time IS NULL OR exit_time='')", (is_paper,)).fetchall()
-        if opn:
-            print(f"\n  {len(opn)} OPEN position(s):")
-            for o in opn:
-                print(f"    {o['symbol']:16s} {o['side']:5s} {str(o['s']):9s} @ {o['entry_price']:.4f}  ({o['entry_time']})")
-        if args.notify:
-            _do_notify(rows, mode, args.days)
-        return
-
-    pnls_all = [r["pnl_usdt"] or 0.0 for r in rows]
-    wins = sum(1 for p in pnls_all if p > 0)
-    n = len(rows)
-    print(f"  closed trades : {n}")
-    print(f"  win rate      : {wins/n:.0%}  ({wins}W / {n-wins}L)")
-    print(f"  profit factor : {_fmt_pf(_pf(pnls_all))}")
-    print(f"  net PnL       : {sum(pnls_all):+.2f} USDT")
-    print(f"  fees paid     : {sum((r['fees_usdt'] or 0.0) for r in rows):.2f} USDT")
-
-    # equity curve + max drawdown on realized PnL (chronological by exit time)
-    ordered = sorted(rows, key=lambda r: _parse_time(r["exit_time"]) or datetime.min.replace(tzinfo=timezone.utc))
-    eq = 0.0; peak = 0.0; mdd = 0.0
-    for r in ordered:
-        eq += r["pnl_usdt"] or 0.0
-        peak = max(peak, eq)
-        mdd = max(mdd, peak - eq)
-    print(f"  max drawdown  : {mdd:.2f} USDT (realized, peak-to-trough of cum PnL)")
-
-    # ── per-sleeve ────────────────────────────────────────────────────────────
-    bys = defaultdict(list)
-    for r in rows:
-        bys[_sleeve(r["strategy_scores"])].append(r)
-    print("\n  SLEEVE      n    WR    PF      netPnL    avgHold  slippage(bps)  exits")
-    print("  " + "-" * 70)
-    for s in sorted(bys, key=lambda k: -sum((x["pnl_usdt"] or 0.0) for x in bys[k])):
-        rs = bys[s]
-        p = [x["pnl_usdt"] or 0.0 for x in rs]
-        w = sum(1 for v in p if v > 0)
-        # avg hold (hours)
-        holds = []
-        for x in rs:
-            t0, t1 = _parse_time(x["entry_time"]), _parse_time(x["exit_time"])
-            if t0 and t1:
-                holds.append((t1 - t0).total_seconds() / 3600)
-        avg_hold = (sum(holds) / len(holds)) if holds else 0.0
-        # realized entry slippage in bps: signed adverse (positive = paid worse)
-        slips = []
-        for x in rs:
-            intended = _intended(x["strategy_scores"])
-            if intended > 0 and x["entry_price"]:
-                d = 1 if x["side"] == "long" else -1
-                slips.append(d * (x["entry_price"] - intended) / intended * 1e4)
-        slip = (sum(slips) / len(slips)) if slips else None
-        slip_s = f"{slip:+.1f}" if slip is not None else "n/a"
-        exits = defaultdict(int)
-        for x in rs:
-            exits[x["exit_reason"] or "?"] += 1
-        exits_s = " ".join(f"{k}:{v}" for k, v in sorted(exits.items()))
-        print(f"  {s:9s} {len(rs):>3d}  {w/len(rs):>3.0%}  {_fmt_pf(_pf(p)):>5s}  "
-              f"{sum(p):>+9.2f}  {avg_hold:>6.1f}h  {slip_s:>12s}  {exits_s}")
-
-    # ── per-coin ──────────────────────────────────────────────────────────────
-    # Budamanın ikinci ekseni: sleeve iyi olsa da belirli bir coin sürüklüyor
-    # olabilir (paper scanner'da XRP ❌ örneği). Coin satırının altında o coinin
-    # sleeve kırılımı — "SOL kaybediyor" değil "SOL'da squeeze kaybediyor" denir.
-    byc = defaultdict(list)
-    for r in rows:
-        byc[(r["symbol"] or "?").split("/")[0]].append(r)
-    print("\n  COIN        n    WR    PF      netPnL   sleeves")
-    print("  " + "-" * 70)
-    for c in sorted(byc, key=lambda k: -sum((x["pnl_usdt"] or 0.0) for x in byc[k])):
-        rs = byc[c]
-        p = [x["pnl_usdt"] or 0.0 for x in rs]
-        w = sum(1 for v in p if v > 0)
-        bysl = defaultdict(float)
-        for x in rs:
-            bysl[_sleeve(x["strategy_scores"])] += x["pnl_usdt"] or 0.0
-        sl_s = " ".join(f"{k}:{v:+.2f}" for k, v in
-                        sorted(bysl.items(), key=lambda kv: -kv[1]))
-        print(f"  {c:9s} {len(rs):>3d}  {w/len(rs):>3.0%}  {_fmt_pf(_pf(p)):>5s}  "
-              f"{sum(p):>+9.2f}   {sl_s}")
-
-    # ── signal capture (sansür ölçümü) ───────────────────────────────────────
-    # Bir sleeve'in canlı WR/PF'i ancak sinyallerinin çoğunu ALABİLDİYSE onun
-    # ölçümüdür; one-per-symbol/slot blokları örneklemi sansürler. Bu tablo
-    # sleeve başına "üretilen vs alınan" oranını ve blok sebeplerini gösterir.
-    import csv as _csv
-    from pathlib import Path as _Path
-    sig_f = _Path("signals_log.csv")
-    if sig_f.exists():
-        caps = defaultdict(lambda: {"n": 0, "ok": 0, "reasons": defaultdict(int)})
-        with open(sig_f) as fh:
-            for srow in _csv.DictReader(fh):
-                st = _parse_time(srow.get("ts", ""))
-                if epoch_cut is not None and (st is None or st < epoch_cut):
-                    continue
-                c = caps[srow.get("strategy", "?")]
-                c["n"] += 1
-                if srow.get("executed") == "1":
-                    c["ok"] += 1
-                else:
-                    c["reasons"][(srow.get("reason") or "?")[:36]] += 1
-        if caps:
-            print("\n  SİNYAL YAKALAMA (sleeve: alınan/üretilen — blok sebepleri)")
-            print("  " + "-" * 70)
-            for st in sorted(caps, key=lambda k: -caps[k]["n"]):
-                c = caps[st]
-                rate = c["ok"] / c["n"] if c["n"] else 0.0
-                top = sorted(c["reasons"].items(), key=lambda kv: -kv[1])[:2]
-                top_s = "  ".join(f"[{k}]x{v}" for k, v in top)
-                print(f"  {st:9s} {c['ok']:>3d}/{c['n']:<3d} ({rate:4.0%})  {top_s}")
-
-    # ── weekly PnL ────────────────────────────────────────────────────────────
-    byw = defaultdict(list)
-    for r in rows:
-        t = _parse_time(r["exit_time"])
-        if t:
-            byw[t.strftime("%Y-W%W")].append(r["pnl_usdt"] or 0.0)
-    print("\n  WEEK        n    netPnL")
-    print("  " + "-" * 30)
-    cum = 0.0
-    for wk in sorted(byw):
-        wl = byw[wk]; cum += sum(wl)
-        print(f"  {wk:9s} {len(wl):>3d}  {sum(wl):>+9.2f}   (cum {cum:>+9.2f})")
-
-    if not args.paper:
-        print("\n  NOTE: slippage is 'n/a' for trades opened before intended_entry logging")
-        print("        was added — it populates going forward. Re-run after more trades.")
-
-    if args.notify:
-        _do_notify(rows, mode, args.days)
-
-
-def _do_notify(rows, mode, days):
-    """Build the compact summary and push it to whatever channels are enabled."""
-    try:
-        from config import load_config
-        cfg = load_config()
-    except Exception as e:
-        print(f"  notify: could not load config ({e}) — skipping push")
-        return
-    text = _compact_summary(rows, mode, days)
-    sent = []
-    if _send_ntfy(cfg, text):
-        sent.append("ntfy")
-    if _send_telegram(cfg, text):
-        sent.append("telegram")
-    print(f"\n  notify: sent to {', '.join(sent) if sent else 'nothing (no channel enabled/reachable)'}")
-
-
-if __name__ == "__main__":
-    main()
+# boyutlandırma
+if BAL:
+    print(f"\n  --- BOYUTLANDIRMA (bakiye ${BAL:.2f}, hedef %2.25) ---")
+    allt["risk_usd"] = (allt["entry_price"]-allt["sl_price"]).abs()*allt["quantity"].astype(float)
+    allt["risk_pct"] = allt["risk_usd"]/BAL*100
+    allt["notional"] = allt["entry_price"]*allt["quantity"].astype(float)
+    print(f"      ort risk %{allt['risk_pct'].mean():.2f} | medyan %{allt['risk_pct'].median():.2f}")
+    print(f"      tavana takılan (notional≥bakiye): {(allt['notional']>=BAL*0.98).sum()}/{len(allt)}")
+    for _, r in allt.head(8).iterrows():
+        print(f"        {r['symbol']:14s} risk %{r['risk_pct']:.2f} nominal ${r['notional']:.2f}")
+else:
+    print(f"\n  (boyutlandırma kontrolü için bakiye ver: python3 live_report.py {DB} 340)")
+print("\nLIVEDONE")
