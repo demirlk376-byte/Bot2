@@ -112,4 +112,36 @@ if BAL:
         print(f"        {r['symbol']:14s} risk %{r['risk_pct']:.2f} nominal ${r['notional']:.2f}")
 else:
     print(f"\n  (boyutlandırma kontrolü için bakiye ver: python3 live_report.py {DB} 340)")
+# ── KAPALI SLEEVE'LER NE ZAMAN DURDU + SONRASI ──────────────────────────────
+DEPLOYED_SLEEVES = {"donchian", "squeeze", "mean_rev", "bb"}
+print(f"\n  --- SLEEVE ZAMAN ÇİZELGESİ (ilk/son işlem) ---")
+tl = live.groupby("sleeve").agg(n=("entry_time","size"), ilk=("entry_time","min"),
+                                son=("entry_time","max"), pnl=("pnl_usdt","sum")).sort_values("son")
+for sv, r in tl.iterrows():
+    tag = "DEPLOY" if sv in DEPLOYED_SLEEVES else "KAPALI"
+    print(f"      {sv:12s} [{tag}] n={int(r['n']):>3d}  {str(r['ilk'])[:16]} → {str(r['son'])[:16]}  PnL ${float(r['pnl'] or 0):+7.2f}")
+
+off = live[~live["sleeve"].isin(DEPLOYED_SLEEVES)]
+if len(off):
+    cutoff = off["entry_time"].max()
+    print(f"\n  --- KAPALI SLEEVE'LERİN SON İŞLEMİ: {str(cutoff)[:19]} ---")
+    after = closed[closed["entry_time"] > cutoff]
+    before = closed[closed["entry_time"] <= cutoff]
+    for lbl, seg in (("ÖNCE (karışık)", before), ("SONRA (temiz)", after)):
+        if seg.empty:
+            print(f"      {lbl:16s}: işlem yok"); continue
+        q = seg["pnl_usdt"].astype(float)
+        gp2 = q[q > 0].sum(); gl2 = -q[q < 0].sum()
+        print(f"      {lbl:16s}: n={len(seg):>3d}  PnL ${q.sum():+7.2f}  WR %{(q>0).mean()*100:>3.0f}  "
+              f"PF {gp2/gl2 if gl2>0 else 9.99:4.2f}")
+        for sv, g in seg.groupby("sleeve"):
+            qq = g["pnl_usdt"].astype(float)
+            print(f"          {sv:12s} n={len(g):>3d} PnL ${qq.sum():+7.2f}")
+    if not after.empty:
+        qa = after["pnl_usdt"].astype(float)
+        print(f"\n      → KAPANDIKTAN SONRA: ${qa.sum():+.2f} ({len(after)} işlem)")
+        print(f"        (n<30 ise bu rakam GÜRÜLTÜ — yön göstergesi, sonuç değil)")
+else:
+    print("\n  Kapalı sleeve işlemi yok — tüm işlemler deploy edilmiş kollardan.")
 print("\nLIVEDONE")
+
