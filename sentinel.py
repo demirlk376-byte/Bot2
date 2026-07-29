@@ -44,6 +44,9 @@ DISK_MIN_PCT = float(os.environ.get("DISK_MIN_PCT", "10"))      # boş disk %
 MEM_MAX_MB = float(os.environ.get("MEM_MAX_MB", "1200"))        # bot RSS tavanı (tipik ~260MB)
 NO_TRADE_MAX_H = float(os.environ.get("NO_TRADE_MAX_H", "168")) # 7 gün hiç işlem = şüpheli
 COOLDOWN_H = float(os.environ.get("COOLDOWN_H", "6"))
+# OI 15 dk'da bir yazılıyor; 2 saat sessizlik = toplayıcı durmuş demektir.
+OI_CSV = os.environ.get("OI_CSV", os.path.join(BOT_DIR, "data", "oi_log.csv"))
+OI_MAX_H = float(os.environ.get("OI_MAX_H", "2"))
 
 TG_TOKEN = os.environ.get("TELEGRAM_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN") or ""
 TG_CHAT = os.environ.get("TELEGRAM_CHAT_ID") or ""
@@ -169,6 +172,20 @@ def checks():
         out.append(("mem", bad,
                     (f"🔴 bot belleği {rss:.0f}MB (>{MEM_MAX_MB}) — sızıntı olabilir"
                      if bad else f"bellek {rss:.0f}MB")))
+
+    # OI toplayıcı sessizce ölürse, sahte kırılım için kalan TEK araştırma yolunun
+    # verisini bir ay boyunca kaybederiz — ve geçmiş OI sonradan satın alınamaz,
+    # sadece biriktirilebilir. Bu yüzden nöbetin kapsamında.
+    if os.path.exists(OI_CSV):
+        try:
+            age_h = (time.time() - os.path.getmtime(OI_CSV)) / 3600.0
+            bad = age_h > OI_MAX_H
+            out.append(("oi", bad,
+                        (f"⚠️ OI logu {age_h:.1f} saat güncellenmedi (>{OI_MAX_H}) — "
+                         f"toplayıcı durmuş olabilir"
+                         if bad else f"OI logu {age_h*60:.0f} dk önce yazıldı")))
+        except Exception as e:
+            out.append(("oi", True, f"⚠️ OI logu okunamadı: {e}"))
 
     age_h, err = last_trade_age_h()
     if err:

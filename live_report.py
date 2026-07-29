@@ -87,6 +87,20 @@ for sy, g in closed.groupby("symbol"):
 # R:R yapısal doğrulama (TÜM işlemler)
 print(f"\n  --- R:R DOĞRULAMASI (yapısal — az işlemle bile anlamlı) ---")
 allt = live.copy()
+# entry_price=0 olan kayıtlar (dolum fiyatı hiçbir yoldan okunamamış) R:R'yi
+# ANLAMSIZ yapar: |tp-0|/|0-sl| = tp/sl, sinyalle ilgisi yok. Bunları ölçüme
+# katmak "beklenmedik R:R" listesini gerçek olmayan satırlarla şişirir.
+# Ayrıca execution.py, dolum okunamayıp niyetlenen girişin kaydedildiği işlemleri
+# entry_price_estimated ile işaretler — onlar da temiz gözlem değildir.
+def _estimated(row):
+    try: return bool(json.loads(row["strategy_scores"] or "{}").get("entry_price_estimated"))
+    except Exception: return False
+allt["est"] = allt.apply(_estimated, axis=1)
+_bad_entry = (allt["entry_price"] <= 0) | allt["est"]
+if _bad_entry.any():
+    print(f"      NOT: {_bad_entry.sum()} işlem ölçüm dışı "
+          f"(giriş fiyatı okunamamış/tahmini) — R:R ve boyut istatistiklerine katılmıyor")
+    allt = allt[~_bad_entry].copy()
 allt["rr"] = (allt["tp_price"]-allt["entry_price"]).abs() / (allt["entry_price"]-allt["sl_price"]).abs().clip(lower=1e-12)
 for sv, g in allt.groupby("sleeve"):
     exp = 1.667 if "bb" in sv.lower() or "mean" in sv.lower() else 2.5
