@@ -621,6 +621,50 @@ class ExecutionEngine:
                 logger.error("Order placement failed: %s", e)
                 return ExecutionResult(False, error=str(e))
 
+            # Unknown fill price (audit 2026-07-28): place_market_order exhausts
+            # fetch_order → dealAvgPrice → mark price and, if ALL of them fail,
+            # returns filled_price=0. Nothing downstream checked for that, so a
+            # real, exchange-protected position could be booked with a $0 entry —
+            # and on close pnl = (exit − 0) × qty, i.e. the position's whole value
+            # recorded as profit/loss. That number feeds daily_stats, the
+            # daily-loss halt and the loss-streak cooldown, so one bad read could
+            # halt trading or mask a real drawdown.
+            #
+            # The position itself is fine: its SL/TP were computed from the setup,
+            # not from the fill, so it rests protected. Only the bookkeeping is
+            # missing. So fall back to the INTENDED entry rather than closing a
+            # healthy position over a transient read failure — the recorded PnL is
+            # then off by the entry slippage (~13bp measured), a bounded error
+            # instead of an unbounded one. Flagged in scores so live_report can
+            # surface it.
+            if order is not None and order.filled_price <= 0:
+                if setup.entry_price > 0:
+                    logger.critical(
+                        "%s: fill price unavailable — booking intended entry %.6f "
+                        "instead of $0 (PnL will be off by entry slippage)",
+                        setup.symbol, setup.entry_price)
+                    await self._alert(
+                        f"⚠️ {setup.symbol}: dolum fiyatı okunamadı, niyetlenen giriş "
+                        f"{setup.entry_price:.6f} kaydedildi (PnL ~13bp sapabilir)",
+                        "WARNING")
+                    order.filled_price = setup.entry_price
+                    fill_price_estimated = True
+                else:
+                    # No sane price anywhere — refuse to book a position we cannot
+                    # account for, and flatten it (fail-safe = flat).
+                    logger.critical(
+                        "%s: fill price AND setup entry both unusable — closing",
+                        setup.symbol)
+                    try:
+                        await self._exchange.close_position(
+                            setup.symbol, "long" if signal.direction == 1 else "short",
+                            order.quantity, "no_fill_price")
+                    except Exception as ce:
+                        logger.critical("Could not close unpriceable position: %s", ce)
+                    return ExecutionResult(False, error="Fill price unavailable")
+            else:
+                fill_price_estimated = False
+
             # HALT re-check AFTER the fill (audit v2): a structure-based limit
             # can rest up to 600s; the daily-loss kill switch may fire (and
             # emergency-close everything) while it waits. A fill landing after
@@ -757,6 +801,10 @@ class ExecutionEngine:
                 # zone edge). order.filled_price below is the actual fill.
                 "intended_entry": float(getattr(signal, "entry_price", 0.0) or setup.entry_price),
             }
+            # Mark trades whose entry price is an estimate, not a real fill, so the
+            # live report never treats them as clean slippage/R:R observations.
+            if fill_price_estimated:
+                scores["entry_price_estimated"] = True
             # Day-trading strategies use a shorter max-hold window. Store it in the
             # scores dict so _enforce_max_hold can read it per-position.
             if signal.dominant_strategy in ("orb", "asia_bo"):
