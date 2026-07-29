@@ -1342,3 +1342,48 @@ bir OPSİYON yaratır. Cevap yine HAYIR çıkabilir, ama o zaman ölçüye dayan
 giriş anında öngörülemiyor (AUC 0.502, 13 özellik, yapı, takvim, hacim, funding) ·
 çıkışta ucuzlatılamıyor (13 varyant, hepsi kaybettirdi, riske-göre bile) ·
 kalan tek kapı OI ve o da ancak ileriye dönük toplanarak açılabilir.
+
+---
+
+## 🧾 2026-07-29/30 — GENİŞLİK KAPANDI · OI AÇILDI (probe BAŞARILI)
+
+### ❌ GENİŞLİK (`breadth_expand.py`, VPS'te 9 yeni coin + 10 mevcut aday) — RET
+Seçim TRAIN(2023-24)'den, karar TEST(2025-26)'den:
+
+| K | n | toplam$ | Δtoplam | **ΔTEST** | dolu% | ort poz | yıl-yıl Δ |
+|---|---|---|---|---|---|---|---|
+| 3 | 1755 | +1454 | +169 | **−109** | 7.1% | 2.97 | 2023:+142 2024:+136 2025:−68 2026:−41 |
+| 5 | 1936 | +1622 | +337 | **−59** | 10.7% | 3.38 | 2023:+112 2024:+284 2025:+20 2026:−79 |
+| 8 | 2129 | +1809 | +523 | **−55** | 13.8% | 3.60 | 2023:+182 2024:+396 2025:+72 2026:−127 |
+| 12 | 2358 | +1849 | +563 | **−131** | 17.3% | 3.85 | 2023:+287 2024:+407 2025:+60 2026:−191 |
+| 16 | 2487 | +1762 | +477 | **−198** | 21.1% | 4.04 | 2023:+313 2024:+361 2025:+17 2026:−214 |
+
+**HER sepette toplam ARTIYOR (+169…+563) ama ΔTEST HEPSİNDE NEGATİF.** Kazanç tamamen seçim
+yapılan yıllarda (2023-24), dokunulmayan yıllarda (2025-26) bozuluyor = seçim yanlılığının
+ders kitabı imzası. Train/test ayrımı tam bu yüzden konmuştu.
+Koltuk doluluğu %7.1→%21.1, ort eşzamanlı 2.97→4.04 → K=16 < K=12 çünkü eklenen coinler artık
+taban coinlerin işlemlerini KOVUYOR (breadth_test'in öngördüğü tavan).
+
+**YAPILMAYAN VE NEDEN:** listede hem train hem test'te pozitif duran coinler var
+(ZEC +86/+89, INJ +88/+35, DOT +39/+31, VET +32/+38, UNI +15/+53). "Sadece bunları al" demek
+TEST VERİSİNE BAKARAK SEÇMEK olurdu = elimizdeki tek dürüst hakemi yakmak. Sonucu doğrulayacak
+hiçbir şey kalmazdı. **Genişlik kolu kapandı.**
+
+### 🔓 OI PROBE BAŞARILI — ledger'ın eski reti YANLIŞTI
+`oi_collect.py --probe` (ham MEXC contract ticker, BTC_USDT):
+```
+holdVol = 821787711     ← OPEN INTEREST, VAR
+fundingRate = 7.8e-05 · bid1/ask1 (spread) · fairPrice · indexPrice · amount24 · volume24
+```
+Eski ret "ccxt-MEXC fetchOpenInterest: False" idi → **ccxt'nin yeteneği, MEXC'in değil.**
+Ham API veriyor. Ret eksik gerekçeye dayanıyordu, düzeltildi.
+Bonus: bid1/ask1 → spread de kaydedilebilir (donchian'ın ölçülen 13.4bp kaymasının bileşeni).
+
+**KURULDU:** `install_oi.sh` → `btc-bot-oi.timer`, 15 dk'da bir, `data/oi_log.csv`.
+15 dk çözünürlük seçimi keyfi değil: donchian 4h barlarda çalışıyor → bir kırılım barının
+İÇİNDE 16 örnek. Büyüme ~420k satır/yıl (~25 MB), disk sorunu değil. Bota/borsaya dokunmuyor.
+
+**BUGÜNE KAZANCI SIFIR — bir OPSİYON yaratıyor.** 6-12 ay sonra test edilecek soru:
+"kırılım barındaki OI DEĞİŞİMİ kazananı kaybedenden ayırıyor mu?" Cevap yine HAYIR olabilir;
+ama o zaman ÖLÇÜYLE kapatılır, varsayımla değil. (Bu oturumda iki kez ölçüm, kurduğum mantığın
+yanlış olduğunu gösterdi: fixed-margin hipotezi ve maker-bekleme hipotezi.)
