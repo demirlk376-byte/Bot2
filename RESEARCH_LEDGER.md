@@ -1269,3 +1269,76 @@ FIXED_MARGIN_USDT=0 · POSITION_CAP_FRACTION=1.25 · MAX_POSITIONS=7
 Mekanik hata → düzelt (occ, MTF lookahead, fail-open sleeve, nominal tavanı — hepsi düzeltildi).
 Muhasebe körlüğü → düzeltilmez, beklentiden DÜŞÜLÜR (funding −%2.2, donchian kayması −%12).
 Karar körlüğü → genelde dokunma (~20 fikir reddedildi).
+
+---
+
+## 🚪 2026-07-29 — SAHTE KIRILIM: ÇIKIŞ TARAFI DA KAPANDI + OI RETİ YENİDEN AÇILDI
+
+Giriş tarafı zaten kapalıydı (AUC 0.502). Bu tur iki YENİ soru sordu.
+
+### ❌ ERKEN ÇIKIŞ (`early_exit_test.py`) — 13/13 KAYBETTİRDİ
+Soru farklıydı: "sahte kırılıma GİRME" (öngörü gerektirir, imkânsız) değil, "sahte kırılımın
+TAM BEDELİNİ ÖDEME" (girişten SONRAKİ bilgiyi kullanır, öngörü gerektirmez).
+Gerekçe: mfe_anatomy → SL'lerin %76.5'i 1R'ye bile ulaşmıyor = çoğu kaybeden kendini erken ele veriyor.
+Kural: giriş+k barında kapanış R'si eşiğin altındaysa piyasadan çık. k∈{2,3,4,6,8,12} × eşik∈{−0.25,0,+0.25}.
+
+| kural | n | WR | PF | toplam$ | Δ | maxDD% |
+|---|---|---|---|---|---|---|
+| TABAN | 1421 | %43 | 1.44 | +1286 | — | 21.5 |
+| k=4 eşik−0.25R | 1589 | %28 | 1.40 | +1018 | **−267** | 15.7 |
+| k=8 eşik 0.00R | 1568 | %26 | 1.42 | +1012 | −274 | 15.3 |
+| k=2 eşik 0.00R | 1821 | **%16** | 1.36 | +707 | **−579** | 16.9 |
+
+**MEKANİZMA = WR ÇÖKÜŞÜ (%43 → %16-30).** Kural, sonunda kazanacak işlemleri küçük zarara çeviriyor.
+→ **YENİ BULGU: ayırt edilemezlik giriş anıyla sınırlı değil, girişten sonraki 2-12 BAR boyunca sürüyor.**
+AUC 0.502'nin zaman eksenindeki uzantısı. Kazananlar da ilk barlarını rutin olarak girişin altında geçiriyor.
+İşlem sayısı ARTTI (1421→1887): erken çıkış koltuğu boşaltıyor, başka sinyaller giriyor. O ikinci
+mertebeden fayda GERÇEKTEN oluştu ve yine de yetmedi.
+
+**RİSKE GÖRE DÜZELTİLMİŞ KARŞI ARGÜMAN — kontrol edildi, geçmedi:** maxDD ciddi düzeliyor
+(21.5→15.7). Getiri/DD: k=4/−0.25R **64.8** vs taban **59.8** → oran olarak DAHA İYİ. Peki riski
+1.37× artırıp boşalan DD alanını doldursak? 2024: 283×1.37=**388 < 403**. 2026: 96×1.37=**132 < 178**.
+Yıl-yıl kuralı riske-göre-ölçeklenmiş halini de öldürüyor. (Bu argümanı kontrol etmeden reddetmek
+özensizlik olurdu — en güçlü karşı argümandı.)
+
+### ❌ HACİM ve SEANS (`vol_session_test.py`) — GÜNCEL tabanda yeniden, 11/11 RET
+Eski ret ESKİ konfigürasyondaydı (rr2.0, taban $1115) ve lookahead sonrası yeniden doğrulanan
+DÖRT retin arasında DEĞİLDİ. rr 2.0→2.5 ortak-mod değil (kazananın ödemesini büyütür) → verdict
+flip edebilirdi. Etmedi:
+
+| varyant | n | WR | PF | toplam$ | Δ$ |
+|---|---|---|---|---|---|
+| taban | 1421 | %43 | 1.44 | +1286 | — |
+| hacim>1.00x | 1195 | %43 | 1.47 | +1167 | −118 |
+| hacim>1.50x | 931 | %44 | 1.52 | +1014 | −272 |
+| hacim>2.00x | 673 | %43 | 1.45 | +643 | −643 |
+| sadece asya | 655 | %41 | 1.36 | +514 | −772 |
+| asya HARİÇ | 1175 | %43 | 1.45 | +1085 | −201 |
+| abd HARİÇ | 1103 | %42 | 1.38 | +857 | −429 |
+
+**HACİMDE WR HİÇ DEĞİŞMİYOR (%43→%43→%44→%43).** 1591 sinyal elenmesine rağmen kalan kümenin
+kazanma oranı aynı → hacim de kazananı kaybedenden ayıramıyor, sadece sistemi KÜÇÜLTÜYOR.
+PF'in yükselmesi (1.44→1.52) bundan: kalan işlemler daha iyi değil, daha AZ. **PF oran, biz dolar kazanıyoruz.**
+
+**SEANS — tutarlılık kapanı işledi:** "sadece asya" −$772 VE "asya HARİÇ" −$201 → İKİSİ DE kaybettiriyor.
+Asya gerçekten kötü olsa dışlamak KAZANDIRMALIYDI. İkisinin de kaybetmesi = seans etkisi YOK,
+sadece işlem sayısı düşüşünün maliyeti. (Bu kapan kasten kuruldu; olmasaydı "Asya'yı atla" makul görünürdü.)
+
+### 🔓 OI RETİ YENİDEN AÇILDI — eski gerekçe EKSİKTİ
+Ledger OI'yı "ccxt-MEXC `fetchOpenInterest: False`" diye kapatmıştı. Bu ret **ccxt'nin yetenek
+bayrağına** dayanıyor, MEXC'in yeteneğine değil. Bu gece ccxt'nin `load_markets()` timeout verdiği
+yerde HAM contract API'ye geçip veri aldık (fetch_universe.py) → **ccxt'nin sınırı MEXC'in sınırı DEĞİL.**
+→ `oi_collect.py` yazıldı: ham API'yi PROBE eder, OI alanı varsa data/oi_log.csv'ye kaydeder,
+yoksa gelen alan adlarını basar (tahminle kapatmak yerine ölçerek).
+
+**NEDEN SADECE BU KALDI:** denenen her özellik fiyatın NE YAPTIĞINA bakıyordu. OI POZİSYONUN KİMDE
+olduğuna bakar. Kırılım+artan OI = yeni para = gerçek; kırılım+düşen OI = pozisyon kapanışı =
+stop avı = sahte. Bu ayrım OHLCV'de GÖRÜNMEZ — aynı mum, aynı hacim, TERS anlam.
+**Geçmiş OI yok** (hiçbir borsa çok-yıllık vermiyor) → tek yol ileriye dönük toplamak. Bugün
+başlanırsa 6-12 ay sonra test edilebilir. Maliyeti sıfır, bota dokunmuyor, BUGÜNE bir şey kazandırmaz —
+bir OPSİYON yaratır. Cevap yine HAYIR çıkabilir, ama o zaman ölçüye dayanarak kapatılır.
+
+### 📌 ÖZET: sahte kırılım artık İKİ TARAFTAN da kapalı
+giriş anında öngörülemiyor (AUC 0.502, 13 özellik, yapı, takvim, hacim, funding) ·
+çıkışta ucuzlatılamıyor (13 varyant, hepsi kaybettirdi, riske-göre bile) ·
+kalan tek kapı OI ve o da ancak ileriye dönük toplanarak açılabilir.
