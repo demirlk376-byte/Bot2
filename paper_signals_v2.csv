@@ -127,3 +127,5 @@ ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
 2026-07-30T01:00:00+00:00,BNB,SHORT,576.5,585.1769,562.0385,2.8923,28,0.000104,True,karma: funding=+0.0104% (long ağırlıklı→short uygun) | F&G=28 (korku ortamında short riskli)
 2026-07-30T10:00:00+00:00,BNB,SHORT,587.8,597.4427,571.7289,3.2142,28,0.000102,True,karma: funding=+0.0102% (long ağırlıklı→short uygun) | F&G=28 (korku ortamında short riskli)
 2026-07-30T15:00:00+00:00,XRP,SHORT,1.0918,1.114,1.0549,0.0074,28,0.0001,True,karma: funding=+0.0100% (long ağırlıklı→short uygun) | F&G=28 (korku ortamında short riskli)
+2026-07-31T09:00:00+00:00,BTC,LONG,63689.1,62780.4081,65203.5865,302.8973,25,3.5e-05,True,F&G=25 (korku→long uygun)
+2026-07-31T09:00:00+00:00,ETH,LONG,1882.69,1845.9083,1943.9929,12.2606,25,-3.5e-05,True,F&G=25 (korku→long uygun)
