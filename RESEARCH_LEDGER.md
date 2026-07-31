@@ -1387,3 +1387,92 @@ Bonus: bid1/ask1 → spread de kaydedilebilir (donchian'ın ölçülen 13.4bp ka
 "kırılım barındaki OI DEĞİŞİMİ kazananı kaybedenden ayırıyor mu?" Cevap yine HAYIR olabilir;
 ama o zaman ÖLÇÜYLE kapatılır, varsayımla değil. (Bu oturumda iki kez ölçüm, kurduğum mantığın
 yanlış olduğunu gösterdi: fixed-margin hipotezi ve maker-bekleme hipotezi.)
+
+---
+
+## 🧊 2026-07-30 — KÖTÜ AYLAR: "KAZANMA" KOLU DA KAPANDI (3 açı + adversarial faz-2)
+
+Kaçınma kolunun tavanı zaten +$231'di (mükemmel kâhinle). Bu tur soruyu tersine çevirdi:
+**kötü aylarda kaçınmak yerine KAZANMAK.** Üç açı paralel test edildi, biri faz-2'ye geçti, o da düştü.
+
+### ❌ A) CHOP AYLARINDA MEAN-REVERSION — ana hipotez ÇÜRÜDÜ
+"Kırılımın sönmesi = ortalamaya dönüş" tezi YANLIŞ çıktı. Üretim `MeanReversionStrategy` ile
+11 coin, tüm günler: **n=4645, PF 0.97, toplam −$248**.
+  KÖTÜ aylarda −$220 (PF 0.92) | İYİ aylarda −$29 (PF 0.99)
+→ mean-rev kötü aylarda iyi aylardan **DAHA KÖTÜ**. Breakout ile korelasyon −0.074 (≈sıfır).
+Kâhinle sadece kötü aylarda açılsa bile −$216 = NEGATİF. TAM RED.
+
+### ⚠️ FAZ-2'YE GEÇEN ADAY: hafta-sonu BB'nin 11 coine açılması — **REDDEDİLDİ**
+Faz-1 umut vericiydi: tek başına +$275, korr −0.368, kötü-ay PnL'i **4/4 yıl pozitif**.
+Faz-2 tam üretim testi bunu yıktı ve **en önemli ders taban hatasıydı**:
+
+**TABAN HATASI (2.23× şişme):** Faz-1 salt-breakout'a ($1285.55) göre ölçtü. Ama CANLI config
+zaten **BB(LTC) hafta-sonunu içeriyor** (ledger 913/1145). Doğru taban T1 = **$1420.66**.
+LTC kolunun kendi katkısı $135.10 ve **4/4 yıl pozitif** — Faz-1 adaya "LTC'nin yokluğunu" da
+kredi yazıyordu. Düzeltince delta **+$244.80 → +$109.69**.
+→ **KURAL: bundan sonraki HER aday salt-breakout'a değil, CANLI konfigürasyona (BB-LTC dahil)
+göre ölçülecek.** Bu tek başına bir sonucu yarıya indirdi.
+
+Diğer red gerekçeleri (hepsi ölçüldü):
+- **0/45 parametre varyantı** doğru tabanda her-yıl barını geçiyor (T0'da 3/45 "geçiyor", T1'de 0).
+- **Takvime asılı, mekanizması yok:** hafta sonu +$110 | sadece Cmt +$13 | sadece Paz −$44 |
+  Cuma+hafta sonu −$188 | hafta içi −$454. Komşu takvim tanımlarının hiçbirinde yaşamıyor
+  → ledger'daki "seans filtresi = gürültü" imzasının aynısı.
+- **Kazancın %163'ü 3 ayda.** O 3 ay çıkınca kol −$69, 3/4 yıl negatif.
+- **Likidite testi TERSİNE çıktı:** en likit 3 coin −$4.57 | 5 −$7.85 | 7 −$8.84 | 9 +$76 | 11 +$99.
+  Edge **sadece illikit kuyrukta** yaşıyor (XLM/DOGE/TRX ~$0.02M/saat) — slippage ve min-notional'ın
+  en çok ısırdığı yerde, ve backtest ikisini de modellemiyor.
+- **RİSK (Faz-1'in hiç ölçmediği şey): maxDD %24.4 → %46.0**, neredeyse iki kat.
+  Getiri/DD oranı 58.2 → 33.2 (**%43 kötüleşme**). $190 hesapta %46 DD kabul edilemez.
+- **Gizli yapısal yan etki:** mevcut deploy'da donchian ∩ squeeze ∩ BB = ∅ (ledger'da GÜVENLİK
+  özelliği olarak kayıtlı). 11 coine açılınca 1736 hafta-sonu BB işleminin **579'u (%33)** aynı
+  coinde bir breakout pozisyonuyla zaman çakışıyor. Koltuk modeli koltuğu sayıyor ama aynı sembolde
+  **çift notional**'ın korelasyon/marjin riskini fiyatlamıyor → gerçek risk %46'dan da yüksek.
+- **Bootstrap:** gözlenen aylık dağılımın kendisiyle bile 4/4-yıl barını geçme olasılığı **%14.2**.
+  11 coinden sadece XRP'nin 4/4 geçmesi = şansın öngördüğü sayı (beklenen 1.6). Kanıt değil.
+
+### ❌ B) KESİTSEL DAĞILIM — ilk PERSISTENT gösterge bulundu ama PnL ile bağı SIFIR
+**POZİTİF BULGU (projede bir ilk):** kesitsel eş-hareket ölçüleri gerçekten öngörülebilir.
+Aylık ACF(1): avgcorr **+0.411**, pc1 +0.417, disp_ratio +0.457 (60-gün pencerede +0.72…+0.78).
+Karşılaştır: ADX ay-ay ACF **−0.379**. Yani "rejim ölçülemez" önermesi bu ölçü için YANLIŞ.
+
+**AMA PnL ile korelasyon sıfır:** önceki-ay-sonu → o ayın PnL'i, en iyi |r| = 0.268 (xsdisp),
+o da volatilite vekili — vol kontrol edilince kısmi korelasyon **−0.116**. Saf ayrışma **−0.086 ≈ 0**.
+Pencere 10/20/40/60 taransa değişmiyor. İşlem bazlı (n=1421) r = −0.025…+0.031, hepsi p>0.15.
+**Hipotezin işareti TERS:** "iyi" dediği rejimde (düşük korelasyon) işlem $+1097 < taban $+1286.
+30 filtre varyantı (eşikler in-sample seçilmiş = iyimser): **0/30** tabanı geçti.
+
+### 🧠 EN DEĞERLİ YAPISAL BULGU — bir FİKİR AİLESİNİ kapatıyor
+Aylık PnL ACF(1) = **−0.277** (bilinen −0.345 ile tutarlı). Yani:
+> **PERSISTENT bir gösterge ile ANTI-PERSISTENT bir hedefi kovalamak yapısal olarak çelişkilidir.**
+ACF(gösterge)=+0.41 ve ACF(hedef)=−0.277 iken teorik üst sınır |r| ≤ 0.72 ve o da artığın ACF'inin
+−1 olmasını gerektirir (gerçekleşmez); ölçülen her değer ≤0.27.
+→ Sorun "rejim ölçülemiyor" DEĞİL — bu rejim mükemmel ölçülüyor. Sorun **HEDEFİN kendisinin
+ay-ay ortalamaya dönmesi.** "Persistent rejim göstergesi bul, onunla aylık PnL'i zamanla"
+programı bu yüzden yapısal olarak sakat. **Bu kola bir daha girilmemeli.**
+
+### ❌ C) PORTFÖY VOL-HEDEFLEME — 36 varyant, "kazananların" tamamı gizli KALDIRAÇ
+Ham bakışta 12/36 varyant toplam+her-yıl geçiyor. Ama **12'sinin de tamamı üst-sınır>1 kolundan**;
+ortalama ölçek 1.04-1.08 → dağıtılan risk %3-6 daha fazla. Kazanç zamanlama değil, **kaldıraç**.
+- **Muhafazakâr kol (sadece-küçült, üst=1.0): 12/12 KAYBETTİRDİ** ($+1142…$+1282 < taban $+1286).
+- **maxDD DÜŞMÜYOR** (%19.4-26.9 vs taban %19.5) → "DD düşüyorsa kaldıraçlayalım" argümanının
+  yakıtı yok. DD tabana eşitlenerek ölçeklendiğinde **36/36 elendi**.
+- **En kötü ay KÖTÜLEŞİYOR** (−$38 → −$47…−$73). Sebep yine anti-persistence: düşük vol'den sonra
+  vol büyüyor, sistem tam kötü döneme kaldıraçlı giriyor. Mekanizma yanlış yöne çalışıyor.
+- **Permütasyon testi (2000 tur):** yıl-yıl geçen 6 varyantın p = 0.062-0.112 (anlamsız, üstelik
+  36 test yapıldı). p<0.05 olan 8 varyantın **hepsi** 2025'te yıl-yıl barını düşürüyor.
+  **İkisini birden sağlayan: 0/36.**
+- Normalizasyon tutarsızlığı (gürültü imzası): ham 12 aday, DD-eşitlenmiş 0, eşit-risk 6 →
+  **üçünün kesişimi 0**. Hangi normalizasyon seçildiğine göre aday kümesi tamamen değişiyor.
+- Kâhin (lookahead'li) tavanı bile 3.2 yılda +$90 ve çoğu kaldıraç.
+
+### 📌 KAPANIŞ
+| kol | tavan | durum |
+|---|---|---|
+| kötü aydan KAÇINMA (mükemmel kâhin) | +$231 | kapalı (20 varyant) |
+| chop'ta KAZANMA (mean-rev, doğru taban) | +$110, risk-ayarlı NEGATİF | **kapalı** |
+| kesitsel dağılım rejimi | $0 (r≈0) | **kapalı** |
+| portföy vol-hedefleme | ~$0 (kâhinle +$90, çoğu kaldıraç) | **kapalı** |
+
+**Kötü aylar sorusu artık her iki taraftan da kapalı.** İyi aylar kötü ayların 4.2 katı; kötü aylar
+bir kusur değil, iyi aylarda masada olmanın bedeli.
