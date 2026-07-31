@@ -1555,3 +1555,51 @@ Canlıda squeeze −$7.53 görünüyor ama **n=6**. Backtest aynı kolu 3.2 yıl
 ölçüyor. n=6'da PF 0.11 ile PF 3.0 arasında istatistiksel fark yok.
 **Bizi gerçekten bitiren kollar zaten kapatılmıştı** (orb/fvg/asia_bo/sr_breakout = −$7.95,
 canlı raporda "[kapalı]" satırı). O karar 2026-07-16'da verildi ve rakam o tarihten beri DONMUŞ.
+
+---
+
+## ⚖️ 2026-07-31 — "İYİ GİDEN KOLA DAHA ÇOK RİSK" (`sleeve_risk_test.py`) — HEPSİ RET
+
+Kullanıcı sorusu: "BB canlıda iyi görünüyor, riskini artıralım mı?"
+Canlı gerekçe zaten geçersiz (n=10, sonradan-seçim, aylık PnL −0.345 ile ortalamaya döner).
+Ama BACKTEST gerekçesi meşru olabilirdi (BB korr −0.368) → ölçüldü.
+
+### 🐛 ÖNCE: TESTİN KENDİ HATASI — 2 SAHTE "★ KABUL" ÜRETTİ
+İlk sürümde `budget_neutral()` yalnız "diğer" kolları kısıyordu ve alt sınırı 0.05'ti. Donchian
+işlemlerin %63'ü olduğu için 2x/3x'te diğerlerini sıfıra yaklaştırmak bile yetmedi; ikili arama
+hedefe ULAŞAMADAN durdu ama fonksiyon yine de sonuç döndürdü → **ort risk %2.73 / %3.47
+(taban %2.13) olduğu halde "bütçe-nötr" etiketiyle raporlandı** ve donchian 2x/3x satırları
+"★ KABUL" aldı. **Test, yakalamak için yazıldığı KALDIRAÇ tuzağına kendisi düştü.**
+DÜZELTME: global bir `g` ile TÜM vektör ölçeklenir (g serbestçe küçülebildiği için kısıt her
+zaman sağlanır); sağlanamazsa `None` döner ve satır GEÇERSİZ basılır — sessizce yanlış etiket yok.
+Düzeltilmiş koşuda **kabul edilen varyant sayısı: 0**.
+
+### SONUÇLAR (bütçe-nötr = ort risk %2.13, tabanla AYNI)
+| hedef | çarpan | A) ham Δ | risk× | **B) bütçe-nötr Δ** | karar |
+|---|---|---|---|---|---|
+| **bb** | 1.25 | +$22 | 1.016 | **+$2** (2024 −8) | yıl bozuk |
+| **bb** | 1.50 | +$29 | 1.026 | **−$2** | RET |
+| **bb** | 2.00 | +$20 | 1.038 | **−$24** | RET |
+| **bb** | 3.00 | −$9 | 1.050 | **−$69** | RET |
+| squeeze | 1.25→3.0 | +$2…−$14 | ~1.03-1.07 | **−$31…−$111** | RET (hepsi) |
+| donchian | 1.25 | +$247 | 1.163 | **+$35** (2025 −2) | yıl bozuk |
+| donchian | 1.50 | +$478 | 1.318 | **+$54** (2025 −3) | yıl bozuk |
+| donchian | 2.00 | +$861 | 1.592 | **+$73** (2025 −8) | yıl bozuk |
+| donchian | 3.00 | +$1383 | 1.940 | **+$94** (2025 −11) | yıl bozuk |
+
+### 📌 EN ÇARPICI SAYI — KALDIRAÇ vs TAHSİS
+**donchian 3x: ham +$1383 → bütçe-nötr +$94.** Görünen kazancın **%93'ü kaldıraçtı**, sadece
+%7'si gerçek tahsis iyileşmesi. Bu, oturumdaki kaldıraç tuzağının en net örneği.
+(Aynı imza vol-hedeflemede de vardı: 12 "kazanan" varyantın hepsi A'da iyi, B'de yok.)
+
+### CEVAP: BB'nin riski ARTIRILMAMALI
+İki gerekçeyle: (1) canlı kanıt yok (n=10), (2) backtest'te de bütçe-nötr olarak NEGATİF
+(1.5x'ten itibaren −$2…−$69). BB zaten hak ettiği payı alıyor; değeri korelasyonunda
+(−0.368) ve boş koltuk doldurmasında, büyüklüğünde değil.
+
+### YAN BULGU (deploy EDİLMEDİ): donchian yoğunlaştırma
+Tek sinyal barındıran yön. Bütçe-nötr 3x: **+$94 VE maxDD %26.2→%24.0** (hem daha çok para hem
+daha az drawdown). AMA dört varyantın DÖRDÜNDE de 2025 negatif (−2/−3/−8/−11) → yıl-yıl barı
+geçmiyor. Ayrıca donchian zaten işlemlerin %63'ü; daha da yoğunlaştırmak çeşitlendirmeyi
+azaltır ve 2025 kırılması tam bu semptom. **+$94 = kitabın %6.6'sı** — bu kadar küçük bir
+kazanç için beş sahte pozitifi öldüren kuralı esnetmek mantıksız.
