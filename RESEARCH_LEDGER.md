@@ -1513,3 +1513,45 @@ sadece artık doğru ölçüyoruz.
 
 **KURAL (ledger'a kalıcı):** bundan sonraki HER aday `deployed_backtest.py`'nin ÜRETTİĞİ tabana
 kıyaslanacak. Salt-breakout tabanı artık YANLIŞ taban.
+
+---
+
+## 🔍 2026-07-31 — "Hangi kol bizi bitiriyor?" (`sleeve_audit.py`) — CEVAP: HİÇBİRİ
+
+Kullanıcı sorusu. Doğru soru "bu kol tek başına ne kazandı" DEĞİL (koltuklar paylaşılıyor;
+bir kolu çıkarınca koltukları boşalır ve başka sinyaller girer), **"bu kolu ÇIKARSAK kitap ne
+yapar"** — canlıda alınacak kararla (env'den kapatmak) birebir aynı soru.
+
+Taban: tam canlı config, n=1579, PF 1.45, WR %44, **$+1421**.
+
+### B) LEAVE-ONE-OUT (karar verdiren ölçü)
+| çıkarılan | kalan n | toplam$ | Δ | yıl-yıl Δ | karar |
+|---|---|---|---|---|---|
+| donchian | 586 | +418 | **−$1003** | −202/−376/−267/−158 | KATKI SAĞLIYOR |
+| squeeze | 1177 | +1154 | **−$267** | −99/−26/−135/−7 | KATKI SAĞLIYOR |
+| bb | 1421 | +1286 | **−$135** | −14/−54/−49/−18 | KATKI SAĞLIYOR |
+
+**Üç kolun da çıkarılması HER YIL zarar veriyor.** Kapatılacak kol yok.
+
+### C) COIN BAZINDA — 12 coinin 11'i katkı sağlıyor
+Tek pozitif delta: **TRX +$8** (çıkarınca kitap $8 iyileşir) ama 2026 −$7 → yıl-yıl barını
+geçmiyor ve 3.2 yılda $8 zaten gürültü. Diğer 11 coin çıkarılınca kitap kötüleşiyor:
+ADA −206 | SOL −166 | NEAR −150 | LTC −135 | ICP −126 | DOGE −113 | ETH −105 | XRP −84 |
+BNB −74 | XLM −69 | BCH −64.
+
+### 🧠 METODOLOJİK NOT: tek-başına ≠ portföy katkısı
+| kol | tek başına | leave-one-out |
+|---|---|---|
+| donchian | +$1027 | −$1003 |
+| squeeze | +$304 | −$267 |
+| **bb** | **+$114** | **−$135** |
+BB portföyde tek başına olduğundan **DAHA DEĞERLİ** (+$135 vs +$114). Sebep: hafta-sonu
+zamanlaması koltuk için neredeyse hiç rekabet etmiyor, aksi halde BOŞ duran kapasiteyi
+dolduruyor (breadth_test bulgusu: koltuklar zamanın %14.8'inde tamamen boş).
+→ Bir kolu tek-başına rakamıyla yargılamak yanlış; koltuk etkileşimi işareti bile değiştirebilir.
+
+### CANLI TABLOYLA İLİŞKİSİ
+Canlıda squeeze −$7.53 görünüyor ama **n=6**. Backtest aynı kolu 3.2 yılda +$267 değerinde
+ölçüyor. n=6'da PF 0.11 ile PF 3.0 arasında istatistiksel fark yok.
+**Bizi gerçekten bitiren kollar zaten kapatılmıştı** (orb/fvg/asia_bo/sr_breakout = −$7.95,
+canlı raporda "[kapalı]" satırı). O karar 2026-07-16'da verildi ve rakam o tarihten beri DONMUŞ.
