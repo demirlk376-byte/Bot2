@@ -1,8 +1,11 @@
 """
 deployed_backtest.py — Canlı config'in TAM backtest raporu (düzeltilmiş occ, MP=7).
 
-Deploy: donchian 7 (SOL,ETH,ADA,NEAR,BCH,ICP,BNB) + squeeze 4 (XRP,DOGE,TRX,XLM),
-MAX_POSITIONS=7, %2.25/işlem. (BB/LTC hafta-sonu küçük ek katkı — burada yok, ~%3-5.)
+Deploy: donchian 7 (SOL,ETH,ADA,NEAR,BCH,ICP,BNB) + squeeze 4 (XRP,DOGE,TRX,XLM)
++ BB/mean_rev 1 (LTC, YALNIZ hafta sonu), MAX_POSITIONS=7, %2.25/işlem.
+BB kolu 2026-07-30'a kadar "~%3-5 ek" notuyla dışarıda bırakılmıştı; ölçülünce +$135 ve
+4/4 yıl pozitif çıktı. Artık DAHİL — bu dosya canlının TAMAMINI temsil ediyor. Yeni adaylar
+buna kıyaslanmalı (salt-breakout'a kıyaslamak bir adayı 2.23x şişik gösterdi).
 
 İKİ görünüm:
   A) SABİT-ORAN (compounding YOK, taban $190) — edge'in taşınabilir ölçüsü, dürüst.
@@ -27,6 +30,13 @@ CAP = 1.25
 DONCH = ["SOL", "ETH", "ADA", "NEAR", "BCH", "ICP", "BNB"]
 SQZ = ["XRP", "DOGE", "TRX", "XLM"]
 CFG = {"donchian": ("4h", 259, 2.0, 2.5, 30), "squeeze": ("1h", 119, 2.0, 2.5, 48)}
+# BB/mean_rev kolu: LTC, YALNIZ hafta sonu (BB_WEEKDAY_ENABLED=false). CANLIDA AÇIK.
+# Uzun süre "burada yok, ~%3-5 ek" notuyla dışarıda bırakılmıştı; 2026-07-30'da ölçüldü:
+# +$135.10 ve 4/4 YIL POZİTİF. Dışarıda bırakmak ankoru ~%10 DÜŞÜK gösteriyordu — ve daha
+# kötüsü, yeni adayları YANLIŞ tabana kıyaslatıyordu (hafta-sonu BB genişlemesi adayı bu
+# yüzden 2.23x şişik ölçülmüştü). Ankor artık canlının TAMAMI.
+BB_COINS = ["LTC"]
+BB_TF = "1h"; BB_SL_ATR = 3.0; BB_RR = 1.667; BB_MH = 48; BB_ADX_MAX = 28.0
 
 
 def gen(sleeve, m):
@@ -69,6 +79,50 @@ def gen(sleeve, m):
     return out
 
 
+def gen_bb(m):
+    """BB/mean_rev kolu — canlı üretim sınıfıyla birebir (chop_meanrev_test.gen_bb ile aynı
+    mekanik; orada faithful_bt.prod_bb'ye karşı bayt-denk olduğu kanıtlandı).
+    Hafta sonu kapısı + ADX<28 kapısı + pencere-yerel göstergeler, occ per-coin."""
+    from indicators import bollinger_bands
+    from strategies.mean_reversion import MeanReversionStrategy
+    from config import load_config
+    s = MeanReversionStrategy(load_config().strategy)
+    d = fast_bt.resample(m, BB_TF)
+    hi = d["high"].values; lo = d["low"].values; cl = d["close"].values
+    idx = d.index; n = len(cl)
+    # ucuz ön-eleme: BB dışına taşan + hacim filtresini geçen barlar (tam-seri form
+    # 120-barlık pencere-yerel hesapla bayt-denk, bkz. chop_meanrev_test --verify)
+    up_b, _mid, lo_b = bollinger_bands(d["close"], 20, 2.0)
+    outside = (cl < lo_b.values) | (cl > up_b.values)
+    volma = d["volume"].rolling(20).mean().values
+    volok = ~(np.isfinite(volma) & (d["volume"].values < volma))
+    out = []; occ = -1
+    for i in np.where(outside & volok)[0]:
+        i = int(i)
+        if i < 260 or i >= n - 1 or i <= occ: continue
+        if idx[i].weekday() < 5: continue                 # YALNIZ hafta sonu
+        sub = d.iloc[max(0, i - 119):i + 1]               # canlı get_candles(120)
+        av = atr_fn(sub["high"], sub["low"], sub["close"], 14).iloc[-1]
+        if not np.isfinite(av) or av <= 0: continue
+        adxr = adx_fn(sub["high"], sub["low"], sub["close"], 14).iloc[-1]
+        if (float(adxr) if np.isfinite(adxr) else 20.0) >= BB_ADX_MAX: continue
+        d_ = s.analyze(sub).direction
+        if d_ == 0: continue
+        a = float(av); sld = BB_SL_ATR * a
+        e = cl[i]; slp = e - d_ * sld; tp = e + d_ * BB_RR * sld; ep = None; j = i
+        for j in range(i + 1, min(i + 1 + BB_MH, n)):
+            if d_ == 1:
+                if lo[j] <= slp: ep = slp; break
+                if hi[j] >= tp: ep = tp; break
+            else:
+                if hi[j] >= slp: ep = slp; break
+                if lo[j] <= tp: ep = tp; break
+        if ep is None: j = min(i + BB_MH, n - 1); ep = cl[j]
+        R = d_ * (ep - e) / sld - 2 * FEE * e / sld
+        out.append((idx[i].value, idx[j], R, sld / e)); occ = j
+    return out
+
+
 def seat_select(trades):
     ev = sorted(trades, key=lambda t: t[0]); openh = []; taken = []; ctr = 0
     for entry_ns, exit_ts, R, slp in ev:
@@ -87,6 +141,9 @@ def main():
     trades = []
     for c in DONCH: trades += gen("donchian", fast_bt.load(c, source=source))
     for c in SQZ: trades += gen("squeeze", fast_bt.load(c, source=source))
+    n_break = len(trades)
+    for c in BB_COINS: trades += gen_bb(fast_bt.load(c, source=source))
+    print(f"  ham sinyal: breakout {n_break} + BB/hafta-sonu {len(trades)-n_break} = {len(trades)}")
     taken = seat_select(trades)
     r = np.array([R for _, R, _ in taken]); exits = [pd.Timestamp(x) for x, _, _ in taken]
     slpct = np.array([sp for _, _, sp in taken])
@@ -129,7 +186,7 @@ def main():
     print(f"    ${BAL0:.0f} → ${eqc:,.0f}  (CAGR {cagr*100:.0f}%, max DD {ddc:.0f}%)")
     print(f"    ⚠ Bu FANTEZİ: küçük hesap sıfır-sürtünmeyle bileşiklenince patlar. Edge ileriye")
     print(f"      zayıflar + slippage/min-notional ısırır → gerçek bunun ÇOK altında. A) daha dürüst.")
-    print(f"\n  NOT: BB/LTC hafta-sonu kolu burada YOK (~%3-5 ek). Bu ~%95 aktivite.")
+    print(f"\n  NOT: BB/LTC hafta-sonu kolu ARTIK DAHİL (2026-07-30). Bu, canlının TAMAMI.")
 
 
 if __name__ == "__main__":

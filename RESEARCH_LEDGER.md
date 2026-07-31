@@ -1476,3 +1476,40 @@ ortalama ölçek 1.04-1.08 → dağıtılan risk %3-6 daha fazla. Kazanç zamanl
 
 **Kötü aylar sorusu artık her iki taraftan da kapalı.** İyi aylar kötü ayların 4.2 katı; kötü aylar
 bir kusur değil, iyi aylarda masada olmanın bedeli.
+
+---
+
+## 📐 2026-07-30 — ANKOR DÜZELTİLDİ: BB/LTC kolu artık DAHİL
+
+`deployed_backtest.py` ta baştan beri BB/mean_rev(LTC, hafta sonu) kolunu **dışarıda** bırakıyordu
+("~%3-5 ek" notuyla, ölçülmeden). Faz-2 ajanı ölçtü: kol **+$135.10 ve 4/4 YIL POZİTİF**
+(2023 +13.97 / 2024 +54.02 / 2025 +49.40 / 2026 +17.72). Kol canlıda AÇIK.
+
+İki ayrı zarar veriyordu:
+1. Ankor rakamı ~%10 DÜŞÜK ilan ediliyordu.
+2. Daha kötüsü: yeni adaylar YANLIŞ tabana kıyaslanıyordu. Hafta-sonu BB genişlemesi adayı bu
+   yüzden **2.23x şişik** ölçüldü (+$245 sanılan delta gerçekte +$110'du) — çünkü aday, zaten
+   sahip olduğumuz LTC kolunun kaldırılmasından doğan $135'i de kredi olarak alıyordu.
+
+**GÜNCEL ANKOR (canlının TAMAMI, 3.2 yıl, sabit-oran, $190 taban, CAP=1.25, MP=7):**
+`1579 işlem | PF 1.45 | WR %44 | +$1421 | maxDD %24.4 | en kötü ay −%21.0 | poz-ay %80`
+`2023:$+321  2024:$+457  2025:$+447  2026:$+195`  (her yıl pozitif)
+Ham sinyal: breakout 1440 + BB/hafta-sonu 163 = 1603 → koltuk sonrası 1579.
+ÇAPRAZ DOĞRULAMA: bağımsız faz-2 ajanı aynı tabanı $1420.66 ölçtü. Birebir tutuyor.
+
+**ESKİ (salt breakout) → YENİ (tam canlı) farkları:**
+| metrik | eski | yeni | not |
+|---|---|---|---|
+| toplam | +$1286 | **+$1421** | +%10.5 |
+| **pozitif ay oranı** | %62 | **%80** | BB kolu (korr −0.368) eğriyi DÜZLEŞTİRİYOR |
+| PF | 1.44 | 1.45 | ~aynı |
+| maxDD | %19.5 | **%24.4** | KÖTÜLEŞTİ — ek kol eşzamanlılığı artırıyor |
+| en kötü ay | −%20.0 | −%21.0 | ~aynı |
+
+**DÜRÜST OKUMA:** BB kolu parayı ve tutarlılığı artırıyor (poz-ay %62→%80, bu büyük bir fark)
+AMA drawdown'ı da artırıyor (%19.5→%24.4). Sebep koltuk seçimi değil, EŞZAMANLILIK: aynı anda
+daha çok pozisyon açık olması salınımı büyütüyor. Bu bir tercih değil, canlıda ZATEN böyle —
+sadece artık doğru ölçüyoruz.
+
+**KURAL (ledger'a kalıcı):** bundan sonraki HER aday `deployed_backtest.py`'nin ÜRETTİĞİ tabana
+kıyaslanacak. Salt-breakout tabanı artık YANLIŞ taban.
