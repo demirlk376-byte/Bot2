@@ -30,6 +30,7 @@ class TelegramNotifier:
       /positions – açık pozisyon detayı
       /balance   – bakiye + getiri
       /stats     – performans özeti (trade, WR, PnL)
+      /rapor     – ay sonu raporu: sleeve kırılımı, temiz dönem, R:R, açık pozisyon
       /pause     – yeni trade'leri durdur
       /resume    – trade'leri tekrar başlat
       /close     – açık pozisyonu manuel kapat
@@ -94,6 +95,8 @@ class TelegramNotifier:
         app.add_handler(CommandHandler("positions", self._cmd_positions))
         app.add_handler(CommandHandler("balance", self._cmd_balance))
         app.add_handler(CommandHandler("stats", self._cmd_stats))
+        app.add_handler(CommandHandler("rapor", self._cmd_rapor))
+        app.add_handler(CommandHandler("report", self._cmd_rapor))
         app.add_handler(CommandHandler("pause", self._cmd_pause))
         app.add_handler(CommandHandler("resume", self._cmd_resume))
         app.add_handler(CommandHandler("close", self._cmd_close))
@@ -202,6 +205,7 @@ class TelegramNotifier:
             "/positions – açık pozisyon detayı\n"
             "/balance – bakiye + getiri\n"
             "/stats – performans özeti\n"
+            "/rapor – AY SONU RAPORU (sleeve, temiz dönem, R:R, açık)\n"
             "/strategy – strateji bazlı performans\n"
             "/pause – yeni trade'leri durdur\n"
             "/resume – trade'leri başlat\n"
@@ -309,6 +313,108 @@ class TelegramNotifier:
             await self._reply(update, "\n".join(lines))
         except Exception as e:
             await self._reply(update, f"strategy hatası: {e}")
+
+    async def _cmd_rapor(self, update, context) -> None:
+        """Ay sonu kontrolünün telefondan tek komutla alınabilir hali.
+
+        VPS'e erişimi olmayan biri için tasarlandı: canlı raporun (live_report.py)
+        karar verdiren kısımlarını tek mesaja sığdırır. trades.db SALT-OKUNUR
+        açılır ve ayrı bir thread'de okunur — bot aynı dosyaya yazarken kilit
+        çekişmesi yaratmasın ve event loop bloklanmasın."""
+        if not self._authorized(update):
+            return
+        import asyncio as _aio, sqlite3, json as _json
+        path = getattr(self._db, "_path", "trades.db")
+
+        def _build() -> str:
+            con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=15)
+            try:
+                rows = con.execute(
+                    "SELECT symbol,side,entry_price,exit_price,sl_price,tp_price,"
+                    "pnl_usdt,entry_time,strategy_scores FROM trades WHERE is_paper=0"
+                ).fetchall()
+                bal = con.execute("SELECT ending_balance FROM daily_stats WHERE is_paper=0 "
+                                  "ORDER BY date DESC LIMIT 1").fetchone()
+            finally:
+                con.close()
+            if not rows:
+                return "Canlı işlem kaydı yok."
+
+            def sleeve_of(js):
+                try:
+                    s = _json.loads(js or "{}")
+                    for k in ("strategy", "sleeve", "source"):
+                        if k in s: return str(s[k])
+                except Exception: pass
+                return "?"
+
+            DEPLOY = {"donchian", "squeeze", "mean_rev", "bb"}
+            CUT = "2026-07-16"          # kapalı sleeve'lerin son işlemi
+            closed = [r for r in rows if r[3] is not None]
+            openp = [r for r in rows if r[3] is None]
+            pnl = sum(r[6] or 0.0 for r in closed)
+            wins = [r for r in closed if (r[6] or 0) > 0]
+            gp = sum(r[6] for r in wins)
+            gl = -sum(r[6] for r in closed if (r[6] or 0) < 0)
+            pf = (gp / gl) if gl > 0 else float("inf")
+            wr = len(wins) / len(closed) * 100 if closed else 0.0
+
+            per = {}
+            for r in rows:
+                sv = sleeve_of(r[8])
+                key = sv if sv in DEPLOY else "[kapalı]"
+                a = per.setdefault(key, [0, 0.0])
+                a[0] += 1; a[1] += (r[6] or 0.0)
+
+            temiz = [r for r in closed if str(r[7]) >= CUT]
+            tw = [r for r in temiz if (r[6] or 0) > 0]
+            tgp = sum(r[6] for r in tw)
+            tgl = -sum(r[6] for r in temiz if (r[6] or 0) < 0)
+            tpf = (tgp / tgl) if tgl > 0 else float("inf")
+
+            # R:R yapısal kontrol — az işlemle bile anlamlı (giriş=0 olanlar hariç)
+            rr = {}
+            for r in rows:
+                if not r[2] or r[2] <= 0: continue
+                risk = abs(r[2] - r[4])
+                if risk <= 0: continue
+                rr.setdefault(sleeve_of(r[8]), []).append(abs(r[5] - r[2]) / risk)
+
+            L = [f"<b>📋 AY SONU RAPORU</b>"]
+            if bal and bal[0]:
+                L.append(f"Bakiye <code>${float(bal[0]):,.2f}</code>")
+            L.append(f"kapanan <code>{len(closed)}</code> · açık <code>{len(openp)}</code>")
+            L.append(f"PnL <code>${pnl:+.2f}</code> · WR <code>%{wr:.0f}</code> · "
+                     f"PF <code>{pf:.2f}</code>")
+            L.append(f"<i>çıpa: PF 1.45 / WR %44 (backtest)</i>")
+
+            L.append("\n<b>Sleeve</b>")
+            for k in sorted(per, key=lambda x: -per[x][1]):
+                L.append(f"  {k:9s} n={per[k][0]:<3d} <code>${per[k][1]:+.2f}</code>")
+
+            L.append(f"\n<b>Temiz dönem</b> ({CUT} sonrası)")
+            L.append(f"  n=<code>{len(temiz)}</code> · <code>${sum(r[6] or 0 for r in temiz):+.2f}</code>"
+                     f" · PF <code>{tpf:.2f}</code>")
+
+            L.append("\n<b>R:R (yapısal)</b>")
+            for k in sorted(rr):
+                exp = 1.667 if k in ("mean_rev", "bb") else 2.5
+                L.append(f"  {k:9s} <code>{sum(rr[k])/len(rr[k]):.2f}</code> (hedef {exp})")
+
+            if openp:
+                L.append("\n<b>Açık</b>")
+                for r in openp:
+                    L.append(f"  {r[0].split('/')[0]:5s} {r[1]:5s} "
+                             f"<code>{r[2]:.5g}</code> SL <code>{r[4]:.5g}</code>")
+
+            L.append("\n<i>⚠ n&lt;30 ise PF/WR GÜRÜLTÜ — yön göstergesi, sonuç değil.</i>")
+            return "\n".join(L)
+
+        try:
+            text = await _aio.to_thread(_build)
+        except Exception as e:
+            text = f"rapor hatası: {e}"
+        await self._reply(update, text)
 
     async def _cmd_pause(self, update, context) -> None:
         if not self._authorized(update):
