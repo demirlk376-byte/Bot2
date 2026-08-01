@@ -1603,3 +1603,84 @@ daha az drawdown). AMA dört varyantın DÖRDÜNDE de 2025 negatif (−2/−3/�
 geçmiyor. Ayrıca donchian zaten işlemlerin %63'ü; daha da yoğunlaştırmak çeşitlendirmeyi
 azaltır ve 2025 kırılması tam bu semptom. **+$94 = kitabın %6.6'sı** — bu kadar küçük bir
 kazanç için beş sahte pozitifi öldüren kuralı esnetmek mantıksız.
+
+---
+
+## 🎯 2026-07-31 — ÇERÇEVEYE DOKUNAN 3 KOL (`param_rederive` / `daily_trend_test` / `trail_exit_test`)
+
+Bugüne kadar her test mevcut çerçevenin ÜSTÜNE bir şey ekliyordu. Bu tur çerçevenin KENDİSİNE
+dokundu: çekirdek parametreler, zaman ölçeği, çıkış mekaniği. Üçü de reddedildi — ama ikisi
+"edge yok" değil, **"edge var, kullanamıyoruz"** dedi.
+
+### ❌ A) ÇEKİRDEK PARAMETRELER BAYAT DEĞİL (427 kombinasyon)
+Şüphe meşruydu: kanal40/SL2.0/mh30 occ hatası ve MTF lookahead DÜZELTİLMEDEN seçilmişti.
+Temiz motorla yeniden türetildi → **aynı yere düşüyor.** Taban 400'lük ızgarada TRAIN sıra
+**20/400**, TOPLAM **18/400**. kanal=40 hem TRAIN hem TEST marjinalinde açık ara en iyi.
+TAM barı (TEST>taban VE 4/4 yıl) geçen kombinasyon: **0/400**.
+
+**ASIL BULGU — parametre seçimi bu veride BİLGİ TAŞIMIYOR:**
+  TRAIN↔TEST sıra korelasyonu: donchian **+0.27**, squeeze **−0.14**.
+  TRAIN'de tabanı geçen 19 donchian noktasının yalnız 4'ü (**%21**) TEST'te de geçiyor —
+  **saf şanstan (%50) DAHA KÖTÜ.** TRAIN ilk-10'un TEST ortalaması (+537) taban TEST'inin (+643) ALTINDA.
+  Şans büyüklüğü: TRAIN-en-iyi z=+2.98; 400 çekilişin beklenen maksimumu z≈2.84 → **tepe, saf
+  gürültünün üreteceğiyle neredeyse birebir aynı.**
+→ Bu ızgarada parametre optimizasyonu yapmak yapısal olarak beyhude. Kol kapandı.
+
+**🐛 ARAÇ HATASI (kayda değer):** ajan kendi kodunda pandas 3 tuzağı buldu — index dtype
+`datetime64[us]`, `.values.astype(int64)` MİKRO-saniye veriyor ama `idx[i].value` NANO-saniye.
+Karışık birim koltuk seçimini bozuyor (n=1584/$1399 vs doğru n=1579/$1421, ~%2 sapma).
+**pandas 3'te bu depodaki her aracın zaman-damgası aritmetiği kontrol edilmeli.**
+
+### ❌ B) GÜNLÜK YAVAŞ TREND — EDGE GERÇEK, KOLTUK-GÜNÜ ÖLDÜRÜYOR (270 kombinasyon)
+**Bu oturumda görülen EN TEMİZ OOS davranışı:** TRAIN'de **270/270** kombinasyon pozitif,
+TEST'te **259/270 (%96)** pozitif. Argmax değil, AİLE genelinde edge.
+  En iyi (ch30/EMA100/SL2.0/rr4.0/mh60g): TEST n=104 PF 1.37 **$+104**; tüm dönem $+430
+  bootstrap GA [$+183,$+683], P>0=%100.
+  Kitapla aylık korelasyon **+0.193** (TEST döneminde **−0.211**) → hedef <+0.30 GEÇTİ.
+  Tutuş 23.6 gün (taban 2.03). En iyi %10 işlem +84.0R / toplam +100.5R → **klasik CTA imzası
+  doğrulandı: kâr az sayıda büyük trendden geliyor.**
+
+**AMA BİRLEŞİK PORTFÖYDE ÖLÜYOR:** $+1421 → $+1206 (**Δ−214**), 2024/2025/2026 tabanın altında.
+**SEBEP ÖLÇÜLDÜ — kıt kaynak KOLTUK değil, KOLTUK-GÜNÜ:**
+  taban **$0.44/koltuk-günü** (squeeze 0.74 · bb 0.69 · donchian 0.39) vs günlük kol **$0.08**
+  = tabanın **0.19x**'i. 23.6 gün koltuk tutan bir işlem yerine ~15 taban işlemi girebiliyordu.
+  258 günlük sinyalin 157'si koltuk buluyor ve **453 taban işlemini dışarı itiyor** (1579→1126).
+SEÇİM ARTEFAKTI DEĞİL: 270 kombinasyonun **261'i** TEST'te kitabı bozuyor. Parametreden bağımsız.
+9 koltuğa çıkarma da çözmüyor (bütçe-nötr Δ−248; kaldıraçlı formda bile 2025 447→283).
+→ **Tek meşru yol: AYRI SERMAYE / AYRI KOLTUK HAVUZU.** Kitaba ekleyerek değil.
+
+### ❌ C) SABİT TP'Yİ KALDIR — MEKANİZMA DOĞRU, VERİ KARAR VERDİRMİYOR (69 kombinasyon)
+**Tez mekanik olarak DOĞRULANDI:** TP'ye değen donchian işlemleri TP'den sonra ort **+2.17R**
+daha gidiyor (medyan +1.12R, p90 +4.95R, maks +30.5R); %33'ü 2R'den fazla. Saf "TP yok" kontrolü:
+ort işlem **+0.237R → +0.321R (+%35)**, maks R 2.5→**24.6**, R>5 işlem sayısı **0→24**.
+Yani sabit TP büyük trendleri GERÇEKTEN kesiyordu.
+
+**AMA:** TRAIN'de 10/66 tabanı geçti, **TEST'te 10/10 kaldı.** 11 varyantın 11'inde 2023 pozitif,
+2025 negatif.
+**KARARI VEREN ÖLÇÜM — KUYRUK YOĞUNLAŞMASI:** kolun kârının **%73'ü 24 işlemden** (%2.6) geliyor.
+Yıl dağılımı 2023:11 · 2024:7 · 2025:2 · 2026:4 → **TRAIN'de 18, TEST'te 6.**
+En iyi 10 işlem olmasa kol tabanın ALTINDA. Taban ise dağınık (en iyi 10 = kârın %8'i).
+→ Soru 1476 işlemle değil, **efektif olarak ~24 gözlemle** cevaplanıyor. Bu örneklemde TRAIN/TEST
+ayrımı sorunu ÇÖZEMEZ. Dürüst okuma: "trailing kötü" DEĞİL, **"bu veriyle karar verilemez"** →
+kabul barı bunu RED olarak sonuçlandırır ve doğrusu budur.
+
+**🧠 EN ÖNEMLİ METODOLOJİK DERS:** TRAIN'de geniş, monotonik, mekanik olarak anlamlı bir PLATO
+vardı (dontr 5/10/15/20/30 = +641/+877/+1039/+1060/+1057; chand gevşedikçe monoton iyileşiyor)
+ve **TEST'e hiç taşınmadı.**
+> **PLATO, PARAMETRE gürültüsüne karşı korur; ÖRNEKLEM gürültüsüne karşı KORUMAZ.**
+Belirsizlik parametrede değil, kârı taşıyan 24 işlemlik kuyruktaydı. Plato şartını bundan sonra
+tek başına yeterli sayma.
+
+**ÖZ-DENETİM:** ajan kendi varyantında bulaşma buldu — donchian-trail kaybedenleri de erken
+kesiyor (ort kaybeden −0.855R vs taban −0.928R), yani kısmen reddedilmiş "erken çıkış" sınıfına
+giriyor. Saf kontrol (notp: TP yok, stop SABİT) eklendi; sonuç değişmedi.
+
+### 📌 BU TURUN GERÇEK SONUCU: DARBOĞAZ FİKİR DEĞİL, SERMAYE
+İki bağımsız kol aynı yere çıktı:
+| kol | edge gerçek mi | neden kullanılamıyor |
+|---|---|---|
+| **pairs** (ledger 2026-07-25) | evet, korr −0.362 | alt-hesap min-notional → ~$300-400 gerek |
+| **günlük trend** (bugün) | evet, 259/270 TEST+, korr +0.19 | koltuk-günü maliyeti → ayrı havuz gerek |
+Her ikisi de "daha zeki olamadık" değil, **"ikinci bir sermaye havuzu yok"** diyor.
+Mevcut 7 koltuk 12 coin ve 3 sleeve arasında zaten paylaşılıyor; dördüncü bir kol ancak
+başkasının yerini alarak girebiliyor ve koltuk-günü verimi tabanın 1/5'i.
