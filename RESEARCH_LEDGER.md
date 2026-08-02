@@ -1826,3 +1826,59 @@ Yıl-yıl barının yanlış-negatif oranı YÜKSEK: gözlenen dağılımın ken
 olasılığı **%14.2** (trailing testinden). Yani bu bar, gerçek ama küçük edge'lerin ~%86'sını
 reddediyor. Beş sahte pozitifi öldürdü; bedeli bu. $181'lik gözetimsiz bir hesapta doğru takas —
 ama takas olduğu bilinerek kullanılmalı.
+
+---
+
+## ✅ 2026-08-02 — PAIRS, YÜKSELTİLMİŞ BARLA YENİDEN SINANDI: TEK HAYATTA KALAN, AMA SINIRDA
+
+Pairs, oturumda hem OOS hem her-yıl geçen TEK bulguydu — ama **eski barla** doğrulanmıştı.
+Bugün bar yükseltildi (büyüklük eşiği, doz-tepki, düzeltilmiş permütasyon). Alt-hesap yatırımı
+önermeden önce yeni barla sınamak zorunluydu.
+
+### 🐛 ÖNCE KENDİ HATAM (yakalandı, düzeltildi)
+İlk yazdığım `pairs_verify` çiftleri **log FİYAT korelasyonundan** seçti; `pairs_spread.py`
+**log GETİRİ korelasyonu** kullanıyor. Seviye korelasyonu SAHTEDİR — iki trendli seri her zaman
+yüksek korelasyon verir, ortalamaya dönüş hakkında hiçbir şey söylemez.
+Sonuç: ledger'ın 8 çiftinden yalnız 2'si tuttu ve **TEST −$125** çıktı.
+**Oturumun tek hayatta kalan bulgusunu yanlış gerekçeyle çürütmeye çok yaklaştım.**
+Yakalanma yolu: seçilen çift listesini ledger'daki listeyle karşılaştırmak. Düzeltince
+ledger BİREBİR yeniden üretildi (aynı 8 çift, $+532/$+610, aynı yıl kırılımı).
+
+### YENİ BAR SONUÇLARI (çiftler: ETC/ETH · ATOM/DOT · BTC/ETH · ADA/DOT · XLM/XRP · ALGO/DOT · ADA/ALGO · ADA/ATOM)
+| z_in/out/stop | n | PF | TRAIN$ | TEST$ | toplam$ | yıl-yıl |
+|---|---|---|---|---|---|---|
+| 2.0/0.0/3.0 | 301 | 1.67 | +383 | +227 | **+610** | +32 / +351 / +121 / +106 ✓ |
+| **2.0/0.5/3.5** | 260 | 1.63 | +321 | +211 | **+532** | +179 / +141 / +82 / +129 ✓ |
+| 2.5/0.5/4.0 | 146 | 1.40 | +137 | +104 | +241 | +61 / +76 / +21 / +83 ✓ |
+| 3.0/0.5/4.5 | 80 | 1.15 | +33 | +35 | +68 | +65 / −32 / +45 / −10 ✗ |
+
+| kriter | sonuç |
+|---|---|
+| (a) TRAIN+ / TEST+ / HER YIL+ | ✓ **üç konfigde birden** |
+| (b) BÜYÜKLÜK (≥%2 taban) | ✓ **+$532 = tabanın %37'si** |
+| (c) DOZ-TEPKİ | ✓ **kusursuz monoton**: 610 → 532 → 241 → 68, işaret hiç dönmüyor |
+| **(d) PERMÜTASYON** | **SINIRDA**: ham **p=0.0060** (z=+2.97) ✓ · Šidák(12) **p=0.0695** ✗ |
+| (f) YOĞUNLAŞMA | ⚠ en iyi 10 işlem kârın **%77**'si, en iyi 20 → %107 |
+
+### 🎯 DÜRÜST HÜKÜM: SINIRDA POZİTİF — oturumdaki TEK örnek
+**Permütasyon ham haliyle GÜÇLÜ (p=0.006, z=+2.97): z-zamanlaması rastgele zamanlamayı
+gerçekten yeniyor.** Null hipotez "çiftler zaten kârlıydı" idi; reddedildi.
+Šidák(12) düzeltmesi p=0.0695 veriyor ama **12 test bağımsız DEĞİL** — aynı çiftlerde iç içe
+geçmiş z eşikleri, üstelik kusursuz doz-tepki gösteriyorlar. Etkin bağımsız test sayısı ~3;
+o zaman p=0.018 = anlamlı. **Hüküm düzeltme katsayısına bağlı = gerçekten sınırda.**
+Bu, ~260 hipotezde ilk kez "açıkça ölü" DEĞİL.
+
+**CİDDİ ÇEKİNCE — yoğunlaşma:** 260 işlemin en iyi 10'u kârın %77'sini taşıyor. Trailing'i
+öldüren patolojinin aynısı. TEK FARK ve önemli olan: pairs'in kârı **dört yıla dengeli yayılmış**
+(+179/+141/+82/+129), trailing'in kuyruğu ise TRAIN'e yığılmıştı (24 olayın 18'i). Yine de
+efektif örneklem ~20 gözlem; bu büyüklükte kesinlik iddia edilemez.
+
+### 📌 KARAR: ŞİMDİ ALTYAPI YAZMA — BEKLE VE YENİDEN ÖLÇ
+Gerekçe:
+1. Hüküm sınırda (çoklu-test düzeltme katsayısına bağlı), kesin değil.
+2. Kâr ~20 işlemde yoğunlaşmış; bu, veri arttıkça netleşecek bir soru.
+3. Alt-hesap zaten ~$300-400 gerektiriyor = ayda $150 ile **~2 ay**.
+4. O 2 ayda pairs'e ~15 yeni işlem eklenecek → yoğunlaşma sorusu VERİYLE cevaplanacak.
+**Doğru sıra:** sermaye eşiği geçilene kadar bekle → o gün pairs'i GÜNCEL veriyle yeniden sına
+→ hâlâ geçiyorsa alt-hesap aç, paper modda doğrula, küçük sermayeyle canlıya al.
+Şimdi kod yazmak, sınırda bir bulguya 2 ay erken bina kurmak olurdu.
