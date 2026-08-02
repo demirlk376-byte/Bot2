@@ -2207,3 +2207,50 @@ girmek para kaybettiriyor. (mfe_anatomy ile tutarlı: SL'lerin %76.5'i 1R'ye bil
 yani o kırılımlar gerçekten ölü.)
 **C) Yapısal çıkış:** 20-bar karşı kanal TRAIN'de tabanı geçen TEK varyant (+845 vs +826) ama
 TEST'te −$31 ve 2025 −$32. Sekizinci kez aynı imza: TRAIN'in en iyisi TEST'te düşüyor.
+
+---
+
+## 🔬 2026-08-02 — ÖLÇÜM GÜCÜ 21× ARTIRILDI · **H1 KAPANDI: FARK YOK**
+
+### FARK EDİLEN ŞEY: darboğaz veri değil, ÖLÇÜM TASARIMIYDI
+"1579 işlemle %10'luk bir farkı ayırt etmek için 12.700 işlem gerekir, 8 kat eksiğiz" teşhisi
+DOĞRUYDU ama **eksik**ti. Üç ayrı israf yapıyormuşum:
+1. **7 coin kullandım, elimde 22 var.** Coin eklemek DEPLOY için koltuk rekabeti yüzünden işe
+   yaramıyordu — ama **ÖLÇÜM için koltuk diye bir kısıt YOK.** Bu ikisini karıştırmışım.
+2. **Tek zaman dilimi (4h).** 2h/4h/6h/12h kısmen bağımsız örnekler verir.
+3. **Portföy TOPLAMI karşılaştırdım.** Koltuk seçimi, soruyla ilgisi olmayan devasa gürültü
+   ekliyor (hangi işlemin koltuk bulduğu tetikleyici kalitesinden bağımsız).
+Üçü düzeltilince örneklem **1.579 → 33.159 işlem (21×)**, 88 hücre.
+
+### ❌ H1 SONUCU: BOLLINGER ≠ DONCHIAN (fark yok)
+```
+İŞARET TESTİ : bollinger 51/88 hücrede kazanıyor (beklenen 44) → binom p = 0.165  ✗
+HAVUZLANMIŞ  : donchian +0.0784R (n=13.201) | bollinger +0.0875R (n=19.958)
+               fark +0.0091R ± 0.0160 → z = +0.57  ✗
+```
+**TUTARLILIK — kararı veren kısım (işaret DEĞİŞİYOR):**
+| tf | bolli kazanan | ort fark |
+|---|---|---|
+| 2h | 15/22 | **+0.0215** |
+| **4h** | **11/22** | **−0.0107** ← bizim deploy TF'imiz |
+| 6h | 17/22 | +0.0323 |
+| 12h | 8/22 | **−0.0387** |
+Dönem: TRAIN −0.0011R (z=−0.05) · TEST +0.0184R (z=+0.82) — ikisi de anlamsız.
+
+**HÜKÜM: `trigger_swap_test`'teki +%10.7 GÜRÜLTÜYDÜ.** 21× örneklemde fark yok ve
+**4h'te (gerçek deploy TF'imiz) donchian ZATEN ÖNDE.** Ön-kayıt H1 **KALICI OLARAK KAPANDI** —
+12 ay beklemeye gerek kalmadı, bugünkü veriyle cevaplandı.
+
+### 🧠 ASIL KAZANIM: YÖNTEM
+Bu, oturumda ilk kez bir soruyu **"bilmiyoruz"dan "biliyoruz"a** taşıdı. Fark, yeni veri değil
+—elimizdeki veriyi 21× daha verimli kullanmak:
+> **Bir A-vs-B sorusunu, portföy toplamıyla değil, TÜM coin × TÜM zaman dilimi × işlem-bazlı
+> eşleştirmeyle sor. Koltuk seçimini karıştırma — o bir portföy inşası aracı, kalite ölçüsü değil.**
+Bu araç (`power_test.py`) bundan sonraki her ikili karşılaştırma için kullanılabilir.
+UYARI: bu bir ÖLÇÜM aracıdır, DEPLOY kararı değil. Koltuk/sermaye kısıtları ayrı sorudur.
+
+### 📌 GERİYE DÖNÜK ANLAM
+8 ailede gördüğümüz "TRAIN'de iyi, TEST'te kötü" imzası artık daha net: o karşılaştırmaların
+ÇOĞU bu düşük güçle yapıldı. Yani "TRAIN seçimi bilgi taşımıyor" doğru — ama sebebi kısmen
+**ölçüm gücünün yetersizliğiydi**, verinin doğasında olan bir şey değil. Aynı sorular 21× güçle
+yeniden sorulabilir. (Bu tur H1 için soruldu ve cevap NET ÇIKTI: fark yok.)
