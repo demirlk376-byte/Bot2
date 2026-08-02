@@ -249,12 +249,17 @@ class ExecutionEngine:
     def _record_trade_outcome(
         self, net_pnl: float, strategy: str = "all", symbol: str = ""
     ) -> None:
-        """Track consecutive losses per (strategy, symbol); trigger a global
-        cooldown when any one sleeve hits the limit. Per-strategy counters prevent
-        a small ORB win from masking a BB loss streak; adding the symbol to the key
-        keeps each coin's streak independent (an ETH-BB loss must not be conflated
-        with BTC-BB, since the edges are validated per coin). The cooldown itself
-        stays global — a conservative account-wide risk-off after any sleeve fails."""
+        """Track consecutive losses per (strategy, symbol) and cool that key down
+        when it hits the limit. Per-strategy counters prevent a small ORB win from
+        masking a BB loss streak; adding the symbol to the key keeps each coin's
+        streak independent (an ETH-BB loss must not be conflated with BTC-BB, since
+        the edges are validated per coin).
+
+        SCOPE: the cooldown is written to _cooldown_until[key] and read back with the
+        SAME (strategy:symbol) key in execute_signal — so it pauses only that sleeve
+        on that coin; every other coin and sleeve keeps trading. An earlier version of
+        this docstring claimed the cooldown was account-wide, which overstated the
+        brake: the account-wide stop is the daily-loss halt (is_halted()), not this."""
         limit = getattr(self._config.risk, "consecutive_loss_limit", 2)
         cooldown_min = getattr(self._config.risk, "cooldown_minutes", 240)
         key = f"{strategy}:{symbol}" if symbol else strategy
