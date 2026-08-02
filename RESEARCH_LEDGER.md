@@ -1759,3 +1759,70 @@ Buna permütasyon bulgusu ekleniyor: **rastgele eleme bile negatif beklenen değ
   (DONCH→SQZ→BB) korunmalı. pandas 3 nano/mikro tuzağının kardeşi.
 - Bir ajan kendi eşik ızgarasını TEST çeyreklerini gördükten SONRA genişlettiğini fark edip o
   aileyi "KİRLİ" işaretledi (geçmediği için sonuca etkisi yok). Doğru davranış.
+
+---
+
+## 🧮 2026-08-02 — BOYUTLANDIRMA (filtre değil BOYUT): RED — ve manşet rakamın KİRLİ olduğunun itirafı
+
+Kullanıcı sorusu: "unuttuğumuz bir gösterge olabilir mi, ve bunları doğru test ediyor musun?"
+İkinci soru bu oturumda ÜÇÜNCÜ kez gerçek bir kusur ortaya çıkardı.
+
+### 🔍 BULUNAN BOŞLUK: ~230 hipotezin HEPSİ aç/kapa kapısıydı
+Permütasyon bulgusu şunu göstermişti: sinyallerin %4-7'sini RASTGELE atmak bile ortalamada para
+kaybettiriyor → **işlem SİLMEK her koşulda beklenen değeri düşürüyor.** Ama bazı göstergeler
+sinyal düzeyinde GERÇEK bilgi taşıyor (HURST TEST rho +0.185 p<0.001).
+→ **BOYUTLANDIRMA işlem silmez.** Filtrelemenin yok ettiği bilgiyi çıkarabilecek tek mekanizma.
+Hiç denenmemişti. Meşru boşluktu.
+
+### ⚠️ İLK DENEME KİRLİYDİ — kendi itirafım
+"Hurst50 tier k=0.6 → ΔTEST +$150" çıktı ve bunu örneklem-dışı sonuç olarak sunmaya yaklaştım.
+**Değildi.** Seçim zinciri TEST'e ÜÇ noktada dokunmuştu:
+  1. HURST, önceki bir ajanın POST-HOC analizinde **TEST** rho +0.185 bulduğu için seçildi
+  2. N=50 penceresi o post-hoc bulgudan MİRAS alındı (TRAIN'den türetilmedi)
+  3. k=0.6/tier, benim taramamda en büyük **ΔTEST**'i verdiği için öne çıktı
+Pencere sağlamlık testi bunu bağımsız olarak ele verdi: ΔTEST N30:+16 N50:**+150** N80:+80
+N100:−11 → **plato YOK**, ve TRAIN'in en iyisi (N=80) TEST'in en iyisi (N=50) DEĞİL.
+
+### ❌ TEMİZ TEST (tüm parametreler TRAIN'den, TEST bir kez açıldı)
+Izgara: 17 gösterge-pencere × 2 mod × 3 k = **102 kombinasyon**.
+**TRAIN argmax: hurst80/tier/k=0.6** (ΔTRAIN +$161) — kirli denemenin hurst50'si DEĞİL, tahmin edildiği gibi.
+
+| kriter | sonuç |
+|---|---|
+| (b) ΔTEST > 0 | ✓ **+$80** |
+| (c) HER YIL > 0 | ✓ 2023:+126 2024:+38 2025:+72 2026:+6 |
+| (d) BÜYÜKLÜK > %2 taban | ✓ (eşik $13) |
+| (e) DOZ-TEPKİ monoton | ✓ +27 → +56 → +80 |
+| **(f) PERMÜTASYON** | ✗ **ham p=0.1044** · Šidák(102) p=1.0000 |
+
+**DÜZELTMESİZ HALDE BİLE ANLAMSIZ (p=0.10).** +$80, rastgele boyutlandırmanın ürettiği aralığın
+içinde. Šidák tartışmasına bile gerek kalmadı. **SONUÇ: RED.**
+
+Not: önceden-kayıtlı seçim (+$80), kirli manşetin (+$150) yarısından biraz fazla — beklendiği gibi.
+
+### 🧠 ÜÇÜNCÜ KEZ AYNI YAPISAL BULGU: TRAIN SIRALAMASI TEST'İ ÖNGÖRMÜYOR
+Şeffaflık satırı: TEST'in en iyisi (hurst50/tier/k0.6, ΔTEST +$150) **TRAIN sıralamasında 28/102.**
+Bu, aynı olgunun üçüncü bağımsız ölçümü:
+| ölçüm | bulgu |
+|---|---|
+| parametre taraması (427 komb.) | TRAIN'de tabanı geçenlerin %21'i TEST'te de geçiyor (**şans %50**) |
+| günlük trend (270 komb.) | TRAIN↔TEST sıra korelasyonu Spearman **+0.247** |
+| boyutlandırma (102 komb.) | TEST'in en iyisi TRAIN'de **28/102** |
+→ **Bu veride "TRAIN'den seç" işleminin KENDİSİ bilgi taşımıyor.** Filtre, parametre, boyut —
+üçünde de aynı. Arama ekseni yapısal olarak kapalı; sorun aday fikir eksikliği DEĞİL,
+3.2 yıllık verinin seçim yapmaya yetmemesi.
+
+### 🔧 KABUL BARI DÜZELTİLDİ (eski bar büyüklük körüydü)
+Eski bar **$4'lük ADX gürültüsünü KABUL**, **$150'lik Hurst etkisini RED** etmişti (2025 deltası
++$0.4 yuvarlanınca pozitif göründüğü için). Eklenen üç şart:
+  (d) **BÜYÜKLÜK**: Δ tabanın en az %2'si — $4 buna takılır
+  (e) **DOZ-TEPKİ**: parametre arttıkça etki monoton artmalı — gürültü doz-tepki üretmez,
+      plato şartından daha güçlü ayırıcı
+  (f) **Šidák düzeltilmiş permütasyon**, ızgara boyutuna göre
+Ayrıca **şeffaflık satırı**: TEST'in en iyisi TRAIN'de kaçıncı — seçimin bilgi taşıyıp taşımadığı.
+
+### 📋 BİLİNEN KUSUR (dürüstlük için kayda geçiyor)
+Yıl-yıl barının yanlış-negatif oranı YÜKSEK: gözlenen dağılımın kendisiyle bile 4/4 barını geçme
+olasılığı **%14.2** (trailing testinden). Yani bu bar, gerçek ama küçük edge'lerin ~%86'sını
+reddediyor. Beş sahte pozitifi öldürdü; bedeli bu. $181'lik gözetimsiz bir hesapta doğru takas —
+ama takas olduğu bilinerek kullanılmalı.
