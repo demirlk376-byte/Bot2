@@ -2158,3 +2158,52 @@ H1 ancak şu üç şart BİRLİKTE sağlanırsa deploy edilir:
 TRAIN +438 vs +826 (ızgaranın EN KÖTÜSÜ). TRAIN↔TEST tam tersine dönüyor → bugünkü kanıt
 H1'den ÇOK daha zayıf. Aynı üç şarta tabidir; ayrıca TRAIN tersliği nedeniyle **öncelik H1'dedir**,
 ikisi aynı anda test edilmez (çoklu-test yükünü artırmamak için).
+
+---
+
+## ⏱️ 2026-08-02 — İŞLEM SİLMEYEN MEKANİKLER: giriş fiyatı · yeniden giriş · yapısal çıkış — RET
+### ama "13.4bp kayma geri alınamaz" ÖLÇÜLDÜ
+
+Bugüne kadar reddedilen her şey ya FİLTREydi (işlem siler) ya PARAMETRE. Permütasyon bulgusu:
+işlem silmek HER KOŞULDA negatif beklentili. Bu üç mekanik işlem SİLMİYOR — aynı sinyalleri
+alıyor, sadece nasıl girildiğini/çıkıldığını değiştiriyor. Hiçbiri denenmemişti.
+
+| varyant | n | PF | TRAIN$ | TEST$ | toplam$ |
+|---|---|---|---|---|---|
+| **TABAN (4h kapanışta piyasa)** | 1579 | **1.45** | +826 | **+599** | **+1424** |
+| A) limit @sinyal | 1579 | 1.45 | +826 | +599 | +1424 |
+| A) limit −0.25×ATR | 1579 | 1.44 | +796 | +566 | +1362 |
+| A) limit −0.50×ATR | 1579 | 1.43 | +784 | +548 | +1332 |
+| A) sonraki 1h kapanışı | 1579 | 1.43 | +796 | +536 | **+1333** |
+| B) stop sonrası yeniden giriş 5 bar | 1664 | 1.39 | +799 | +513 | +1312 |
+| B) yeniden giriş 10 bar | 1686 | 1.39 | +826 | +501 | +1328 |
+| C) çıkış: 10-bar karşı kanal | 1606 | 1.43 | +815 | +506 | +1321 |
+| C) çıkış: 20-bar karşı kanal | 1582 | 1.45 | **+845** | +567 | +1412 |
+TRAIN argmax = C/20-bar → **TEST Δ−$31**, 2025 −$32 → **RET.**
+
+### 🐛 DEJENERE VARYANT (dürüstlük): "limit @sinyal" tabanla BİREBİR AYNI
+Sebep mekanik: sinyal 4h bar i'nin kapanışında doğuyor, bar i+1 tam o fiyattan AÇILIYOR →
+ilk 1h barının düşüğü sinyal fiyatına neredeyse kesin değiyor → limit anında doluyor → giriş = taban.
+Ölçüm yapmıyor. (Hedef testindeki "5×ATR = rr×SL" hatasının kardeşi; aynı gün ikinci kez.)
+
+### 🎯 ASIL BULGU: 13.4bp KAYMA GERİ ALINAMAZ — BEKLEMEK DAHA PAHALI
+Canlıda donchian giriş kayması ölçülmüştü: **+13.4 bp** (net kârın ~%12'si). Bu turun sorusu:
+"daha iyi bir dolum alabilir miyiz?" Cevap **HAYIR ve ters yönde**:
+```
+geri çekilme beklemek  −0.25×ATR → −$62    (−%4.4)
+                       −0.50×ATR → −$92    (−%6.5)
+sadece 1 SAAT beklemek           → −$91    (−%6.4)
+```
+**Bir saat beklemenin bedeli $91 = kaymanın kendisinden büyük.** Mekanizma net: geri çekilme
+veren işlemler zaten başarısız olacaklar; kaçıp gidenler kazananlar ve onlara geri çekilme
+beklerken ya daha kötü giriliyor ya da hareketin iyi kısmı kaçırılıyor.
+→ **13.4bp, katılımın bedeli.** Anlık girmek, o kaymayı ödemekten daha değerli. Backtest'in
+"sinyal kapanışında dolar" varsayımı iyimser AMA alternatifi daha kötü — düzeltilecek bir
+verimsizlik değil, ödenmesi gereken bir maliyet.
+
+### DİĞER İKİSİ
+**B) Stop sonrası yeniden giriş:** 5 bar −$112, 10 bar −$96. Stop olan bir kırılıma tekrar
+girmek para kaybettiriyor. (mfe_anatomy ile tutarlı: SL'lerin %76.5'i 1R'ye bile ulaşmıyor,
+yani o kırılımlar gerçekten ölü.)
+**C) Yapısal çıkış:** 20-bar karşı kanal TRAIN'de tabanı geçen TEK varyant (+845 vs +826) ama
+TEST'te −$31 ve 2025 −$32. Sekizinci kez aynı imza: TRAIN'in en iyisi TEST'te düşüyor.
