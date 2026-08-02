@@ -326,13 +326,18 @@ class TelegramNotifier:
         import asyncio as _aio, sqlite3, json as _json
         path = getattr(self._db, "_path", "trades.db")
 
-        def _build() -> str:
+        def _build(live_bal) -> str:
             con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=15)
             try:
                 rows = con.execute(
                     "SELECT symbol,side,entry_price,exit_price,sl_price,tp_price,"
                     "pnl_usdt,entry_time,strategy_scores FROM trades WHERE is_paper=0"
                 ).fetchall()
+                # BAKİYE: borsadan CANLI gelir (live_bal). daily_stats YALNIZCA YEDEK —
+                # o satır gün BAŞINDA yazılır ve gün içinde ESKİR. Bu tam olarak /status ile
+                # /rapor arasında $4.47'lik sapmaya yol açmıştı (2026-08-02, kullanıcı yakaladı):
+                # /status $184.53 (canlı) vs /rapor $180.06 (bayat snapshot). Aynı bayatlık
+                # daha önce NEAR'ın +$10.20'lik kapanışında da tespit edilmişti.
                 bal = con.execute("SELECT ending_balance FROM daily_stats WHERE is_paper=0 "
                                   "ORDER BY date DESC LIMIT 1").fetchone()
             finally:
@@ -381,8 +386,10 @@ class TelegramNotifier:
                 rr.setdefault(sleeve_of(r[8]), []).append(abs(r[5] - r[2]) / risk)
 
             L = [f"<b>📋 AY SONU RAPORU</b>"]
-            if bal and bal[0]:
-                L.append(f"Bakiye <code>${float(bal[0]):,.2f}</code>")
+            if live_bal is not None:
+                L.append(f"Bakiye <code>${live_bal:,.2f}</code> <i>(canlı)</i>")
+            elif bal and bal[0]:
+                L.append(f"Bakiye <code>${float(bal[0]):,.2f}</code> <i>(DB, bayat olabilir)</i>")
             L.append(f"kapanan <code>{len(closed)}</code> · açık <code>{len(openp)}</code>")
             L.append(f"PnL <code>${pnl:+.2f}</code> · WR <code>%{wr:.0f}</code> · "
                      f"PF <code>{pf:.2f}</code>")
@@ -410,8 +417,18 @@ class TelegramNotifier:
             L.append("\n<i>⚠ n&lt;30 ise PF/WR GÜRÜLTÜ — yön göstergesi, sonuç değil.</i>")
             return "\n".join(L)
 
+        # Bakiyeyi ÖNCE borsadan çek (async), sonra salt-okunur DB işini thread'e ver.
+        live_bal = None
         try:
-            text = await _aio.to_thread(_build)
+            # /status ve /balance ile AYNI kaynak. Ham get_balance() canlıda SERBEST bakiyeyi
+            # döndürür (kilitli marjin HARİÇ) → açık pozisyon varken /rapor ile /status yine
+            # ayrışırdı. Tek-doğru-kaynak kuralı: equity her yerde aynı yerden gelir.
+            equity, _u = await self._equity_and_upnl()
+            live_bal = float(equity)
+        except Exception as e:
+            logger.debug("rapor: canlı equity alınamadı, DB'ye düşülüyor: %s", e)
+        try:
+            text = await _aio.to_thread(_build, live_bal)
         except Exception as e:
             text = f"rapor hatası: {e}"
         await self._reply(update, text)
