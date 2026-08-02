@@ -1684,3 +1684,78 @@ giriyor. Saf kontrol (notp: TP yok, stop SABİT) eklendi; sonuç değişmedi.
 Her ikisi de "daha zeki olamadık" değil, **"ikinci bir sermaye havuzu yok"** diyor.
 Mevcut 7 koltuk 12 coin ve 3 sleeve arasında zaten paylaşılıyor; dördüncü bir kol ancak
 başkasının yerini alarak girebiliyor ve koltuk-günü verimi tabanın 1/5'i.
+
+---
+
+## 🔬 2026-08-02 — 186 HİPOTEZ, 0 ADAY — ve NEDENİNİN MEKANİK AÇIKLAMASI
+
+Kullanıcı sorusu: "başka indikatör ya da filtre deneyebilir miyiz?" Ledger'daki 13 özellik
+listesinde RSI/MACD/StochRSI/Aroon/SuperTrend ve chop'a özel kanonik göstergeler YOKTU → meşru boşluk.
+Üç aile paralel tarandı, **toplam 186 hipotez**, permütasyon + çoklu-test düzeltmesi zorunlu.
+
+### ❌ A) TREND-KALİTESİ (68 hipotez) — Kaufman ER · Choppiness · VHF · Hurst
+Chop'u ölçmek için ÖZEL tasarlanmış kanonik göstergeler. ADX yönlü-hareket tabanlıydı, bunlar
+**yol-verimliliği** tabanlı = yapısal olarak farklı bilgi. Hepsi başarısız.
+  TRAIN'i geçen 9/68 — **hepsi sinyalin %85-100'ünü TUTAN** ("neredeyse filtresiz") ayarlar.
+  Anlamlı filtreleyen HER ayar para kaybetti: CHOP14<38.2 (−$146) · ER20>0.4 (−$78) ·
+  VHF28>0.4 (−$141) · HURST50>0.55 (−$166) · ER40>0.5 (−$539).
+  TEST'i geçen 2, HER YIL geçen **0/68**. Permütasyon (seçim döneminde) p=0.159 / 0.233.
+  Plato YOK: VHF14 eşiği 0.3→−$13, **0.35→+$33**, 0.4→−$11 = tek-eşik sivrilmesi.
+  Δ'nın %50'si **2-3 işlemden**.
+
+**🔑 KRİTİK GÖZLEM — permütasyon dağılımının ORTALAMASI NEGATİF (−$9…−$46):**
+sinyallerin %4-7'sini RASTGELE atmak bile ortalamada para kaybettiriyor. Yani "az filtreleyen"
+ayarların minik pozitif deltası, negatif bir taban üstündeki gürültüden ibaret.
+→ **Bu sistemde işlem ELEMEK, elenen ne olursa olsun, beklenen değeri DÜŞÜRÜR.**
+
+Post-hoc (seçimde KULLANILMADI): HURST50 sinyal-düzeyinde TEST rho **+0.185 p<0.001** — istatistiksel
+olarak gerçek. Ama PARASALLAŞMIYOR: PF 1.45→1.59 yükselirken işlem 1579→995 düşüyor, toplam $ HER
+YILDA tabanın altında. Kırmızı bayrak: HURST50 ile ER40 korelasyonu **−0.002** (ikisi de aynı şeyi
+ölçmeliydi; ER40-VHF28 +0.540). Basit R/S paydası yüzünden Hurst kısmen VOLATİLİTE-aykırılığı
+ölçüyor = zaten reddedilmiş ATR% ailesi.
+
+### ❌ B) KLASİK OSİLATÖRLER (50 hipotez) — **KÖK NEDEN BULUNDU: TOTOLOJİ**
+Bu turun en değerli bulgusu. Osilatörler, donchian girişinin **tanımı gereği zaten sağladığı**
+şeyleri soruyor. Sinyal anındaki dağılım (2570 donchian adayı):
+
+| gösterge | LONG sinyallerinde | sonuç |
+|---|---|---|
+| **RSI(14)** | min **57.7**, medyan **73.0** | "RSI>50 momentum onayı" **0 sinyal eliyor** |
+| **AroonUp(25)** | min **100.0**, medyan 100.0 | **MATEMATİKSEL TOTOLOJİ** (kırılım mumu zaten 25-bar zirvesi) |
+| SuperTrend(10,3) | sinyalle **%99.8** uyumlu | eleme ~0 |
+| MACD çizgi işareti | **%99.6** uyumlu | eleme ~0 |
+| MACD histogram | **%96.8** uyumlu | eleme ~%3 |
+
+→ "Uyum" filtreleri %0-4 eliyor, sonuç tabanla **özdeş**. "Fade" yönü sleeve'i yok ediyor
+(donchian RSI-fade %100 eliyor → −$578).
+**Bağımsız bilgi taşıyan tek ikisi para kaybettiriyor:** RSI>70 (%34 eliyor, TRAIN −$85 TEST −$164,
+**ama PF 1.48→1.52 YÜKSELİYOR** — klasik tuzak) · StochK>80 (%32 eliyor, −$92/−$51).
+**40-barlık bir kanal kırılımı, yüksek-RSI + Aroon-100 + pozitif-MACD + SuperTrend-uyumlu bir
+olayın TA KENDİSİDİR.** Bu göstergeleri "eklemek" yeni bilgi değil, aynı şeyi ikinci kez sormak.
+
+### ❌ C) HACİM TÜREVLERİ (68 hipotez) — ham hacimle AYNI patoloji
+  **WR 68 hipotezin hepsinde %41.5-44.9 bandında; |ΔWR| > 2 puan olan: 0/68** (taban %43.5).
+  Hacmin YÖNÜ ve BİRİKİMİ de kazananı kaybedenden ayırmıyor.
+  **VWAP24 donchian'da DEJENERE:** yön-işaretli mesafenin MİNİMUMU **+%0.89**, %100'ü >%1.
+  40-bar kırılımı tanımı gereği 24-bar VWAP'in çok üstünde kapanıyor → **sıfır bağımsız bilgi.**
+  (mean_rev'de çalışmasının sebebi de bu: orada giriş kuralının doğal parçası değil.)
+  **Seviye-likiditesine normalize kırılım gücü, ham hacimden ZAYIF** (rho +0.038 vs +0.075) →
+  normalize etmek bilgi eklemiyor, **gürültü ekliyor**.
+  A/D20 eğimi: TRAIN +0.263 (p=0.023) → TEST **−0.077** = ders kitabı işaret dönmesi.
+  TRAIN'i geçen tek filtre ([sqz] OBV10>0) TEST'te −$5, komşu eşiklerin hepsi negatif.
+
+### 🧠 BİRLEŞTİRİCİ AÇIKLAMA (bu eksenin KAPANIŞI)
+Üç ailenin üçü de aynı yere çıkıyor:
+> **Donchian giriş koşulu, bu göstergelerin ölçtüğü şeyi ZATEN İÇERİYOR.**
+> EMA200 üstünde 40-bar kanal kırılımı = yüksek RSI + Aroon 100 + pozitif MACD + VWAP üstü +
+> yüksek yol-verimliliği. Bunları filtre olarak eklemek ya hiçbir şey elemiyor (totoloji) ya da
+> bağımsız oldukları yerde kazananı da kaybedeni de ORANTILI eliyor (WR kıpırdamıyor).
+Buna permütasyon bulgusu ekleniyor: **rastgele eleme bile negatif beklenen değerli.**
+→ **Giriş-filtresi ekseni artık sadece "denendi, olmadı" değil, MEKANİK OLARAK kapalı.**
+
+### 📋 METODOLOJİ NOTLARI (ajanların kendi öz-denetimleri)
+- **Koltuk sırası tuzağı:** `seat_select` sort'u STABİL; sleeve'leri farklı sırada eklemek aynı
+  entry_ns'li işlemlerde koltuk sırasını değiştirip $1421→$1418 yapıyor. `DB.main`'in sırası
+  (DONCH→SQZ→BB) korunmalı. pandas 3 nano/mikro tuzağının kardeşi.
+- Bir ajan kendi eşik ızgarasını TEST çeyreklerini gördükten SONRA genişlettiğini fark edip o
+  aileyi "KİRLİ" işaretledi (geçmediği için sonuca etkisi yok). Doğru davranış.
