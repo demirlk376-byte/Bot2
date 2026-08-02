@@ -1980,3 +1980,62 @@ gösterge/pencere/parametre TEST'e bakılarak seçilirse sonuç OOS değildir (H
 12. canlı DB'ye her sorgu **salt-okunur** (`mode=ro`) açılmalı.
 **BİLİNEN KUSUR:** yıl-yıl barının yanlış-negatif oranı ~%86 (gerçek ama küçük edge'leri eler).
 Beş sahte pozitifi öldürdü; bilinçli takas.
+
+---
+
+## 🔁 2026-08-02 — TETİKLEYİCİ DEĞİŞTİRME (kullanıcı fikri): AİLE ÖNEMLİ, ÜYE DEĞİL
+
+**Kullanıcı sorusu: "üstüne filtre eklemek yerine, çalışan göstergenin YERİNE başkasını dene."**
+GERÇEKTEN YENİ SORU. Bugüne kadar donchian'ın ÜSTÜNE filtre (~230 hipotez) ve PARAMETRELERİ
+(427 komb.) tarandı — ama kanal UZUNLUĞU değişti, kanal **KAVRAMI** hiç değişmedi.
+
+**TEK DEĞİŞKEN:** sadece giriş tetikleyicisi. Aynı 7 coin · 4h · EMA200 · MTF · SL2×ATR · rr2.5 ·
+mh30 · occ · ortak 7 koltuk. Motor doğrulaması: elle yazılan `donchian_ref` → n=1579 $+1424
+(ankor n=1579 $+1421) ✓
+
+| tetikleyici | n | WR | PF | TRAIN$ | TEST$ | toplam$ | yıl-yıl |
+|---|---|---|---|---|---|---|---|
+| **donchian_ref** | 1579 | %44 | **1.45** | +826 | +599 | +1424 | 325/514/413/172 |
+| close_channel | 1939 | %42 | 1.37 | **+960** | +539 | +1499 | 495/478/433/93 |
+| keltner | 1831 | %43 | 1.40 | +938 | +549 | +1487 | 486/452/408/141 |
+| **bollinger** | 2067 | %42 | 1.37 | +851 | **+726** | **+1577** | 429/434/528/185 |
+| regression | 1884 | %43 | 1.36 | +811 | +572 | +1383 | 347/464/513/59 |
+| atr_break | 1896 | %42 | 1.33 | +735 | +521 | +1256 | 335/413/398/110 |
+| *dual_ma* | 1117 | %44 | 1.36 | +387 | +339 | **+726** | 156/231/397/**−58** |
+| *supertrend* | 1129 | %43 | 1.32 | +339 | +328 | **+667** | 117/222/344/**−15** |
+| *macd_zero* | 1272 | %41 | 1.28 | +388 | +253 | **+642** | 257/132/234/19 |
+
+### 🎯 ANA BULGU: İKİ NET AİLE VAR
+```
+KANAL/VOLATİLİTE KIRILIMI  (donchian, close_channel, keltner, bollinger, regression, atr_break)
+    → $1256-1577 dar bandı, PF 1.33-1.45, hepsi 4/4 yıl+
+HAREKETLİ ORTALAMA KESİŞİMİ (supertrend, macd_zero, dual_ma)
+    → $642-726, PF 1.28-1.36, ikisinde 2026 NEGATİF
+```
+**Aile farkı ~2.2×, aile İÇİ fark gürültü mertebesinde.** Mekanik olarak anlamlı: kesişimler
+GECİKMELİ (ortalamalar geçmişi ortalar), kanal kırılımları OLAY-TABANLI (eşik anında tetiklenir).
+→ **Donchian iyi bir ailenin makul bir üyesi. Aileyi değiştirmek KÖTÜ, üyeyi değiştirmek FARKSIZ.**
+
+### ✅ ÖNCEDEN-KAYITLI SEÇİM: RET
+TRAIN argmax (donchian hariç) = **close_channel** (TRAIN +960 vs ref +826).
+TEST: **+539 vs +599 → Δ−$60**, yıl-yıl +170/−36/+19/−79 → **RET.**
+Not: bollinger hem TRAIN (+851>+826) hem TEST (+726>+599, **Δ+127**) hem 4/4 yıl geçiyor —
+**AMA bunu şimdi seçmek TEST'e bakarak seçmek olur.** Kayda geçiyor, uygulanmıyor.
+Yine aynı imza: TRAIN'in en iyisi (close_channel) TEST'in en iyisi (bollinger) DEĞİL.
+
+### 🔬 EN ÖNEMLİ ÖLÇÜM — TETİKLEYİCİ ZAMANLAMASI GERÇEK
+Permütasyon: aynı SAYIDA sinyal, RASTGELE barlarda, EMA200/MTF/çıkış makinesi AYNI.
+```
+donchian_ref : rastgele ort $+567 sd $152 | gerçek $+1424 → z=+5.65
+close_channel: rastgele ort $+690 sd $146 | gerçek $+1499 → z=+5.55
+```
+**Donchian, rastgele zamanlamadan $857 FAZLA kazanıyor (z=+5.65).**
+→ Kurduğum "belki donchian sadece EMA200+MTF kapısından kazanıyordur" hipotezi **ÇÜRÜDÜ.**
+Tetikleyici GERÇEK ve GÜÇLÜ bilgi taşıyor. (p=0.016 = 60 turun tabanı; z gerçek gücü gösteriyor.)
+
+### 🧠 BU, TÜM FİLTRE REDLERİNİ AÇIKLAYAN SON PARÇA
+Tetikleyici zaten z=+5.65'lik bilgi çıkarıyor. Üstüne eklenen her gösterge, **aynı olayı ikinci
+kez ölçüyor** (osilatör totolojisi bunun kanıtı: RSI min 57.7, Aroon hep 100). Bilgi zaten
+alınmış; ikinci ölçüm yeni bilgi getirmiyor, sadece işlem siliyor — ve işlem silmek negatif
+beklentili (permütasyon ortalaması negatif).
+**Sistem zaten "gösterge kullanıyor" ve iyi bir tanesini kullanıyor.**
