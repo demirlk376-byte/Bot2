@@ -2254,3 +2254,126 @@ UYARI: bu bir ÖLÇÜM aracıdır, DEPLOY kararı değil. Koltuk/sermaye kısıt
 ÇOĞU bu düşük güçle yapıldı. Yani "TRAIN seçimi bilgi taşımıyor" doğru — ama sebebi kısmen
 **ölçüm gücünün yetersizliğiydi**, verinin doğasında olan bir şey değil. Aynı sorular 21× güçle
 yeniden sorulabilir. (Bu tur H1 için soruldu ve cevap NET ÇIKTI: fark yok.)
+
+---
+
+# 📕 2026-08-02 — ÇIKIŞ EKSENİ 21× GÜÇLE TARANDI: DÖRT KAPANIŞ, SIFIR DEPLOY
+
+`power_test.py`'nin yöntemi (22 coin × 4 tf = 88 hücre, koltuk seçimi YOK, işlem bazlı)
+bu turda çıkış tarafındaki HER soruya uygulandı. Dört soru kalıcı olarak kapandı.
+Deploy edilen strateji değişikliği: **YOK**. Bu bir başarısızlık değil — dört yanlış
+değişiklik para kaybettirmeden elendi.
+
+## 1. ÖN-KAYIT H2 (%4 sabit stop vs 2×ATR) → **FARK YOK, KAPANDI**
+88 hücre, 26.762 işlem (16×). İşaret testi **41/88** (beklenen 44), p=0.594.
+Havuzlanmış fark −0.0115R, z=−0.67. Ve imza: **TRAIN −0.043R, TEST +0.021R — işaret TERS.**
+Gerçek bir etki dönem değiştirince yön değiştirmez. **2×ATR kalıyor.**
+
+## 2. ÇIKIŞ MEKANİĞİ (`power_exit.py`) → **6 VARYANTIN 6'SI DA RED**
+Giriş sabit, sadece çıkış değişti. Ön-kayıtlı 5 şart: Šidák p<0.0085 + |z|>1.96 +
+TRAIN/TEST aynı işaret + 4 tf'nin ≥3'ünde aynı yön + **R/bar pozitif** (7 koltuk maliyeti).
+
+| varyant | ort R | z | hücre | p | Δ R/bar | hüküm |
+|---|---|---|---|---|---|---|
+| trail 3×ATR | +0.1077 | +1.54 | 51/88 | 0.165 | +0.0027 | ✗ p, z, tf 2/4 |
+| trail 2×ATR | +0.0975 | +1.17 | 53/88 | 0.069 | +0.0076 | ✗ dönem işareti ters |
+| trail 4×ATR | +0.1210 | +2.02 | 52/88 | 0.109 | +0.0020 | ✗ p |
+| breakeven@1R | +0.0836 | +0.31 | 46/88 | 0.749 | +0.0014 | ✗ hepsi |
+
+**TRAILING KAPANDI.** Oturumun en güçlü adayıydı (mekanizması kanıtlıydı: ortalama R +%35,
+maksimum R 2.5→24.6) ve tek engeli "kârın %73'ü 24 işlemde" idi. 88 hücre o kuyruk sorununu
+çözdü: üç ayarın hiçbiri barı geçmiyor, 2×ATR'nin dönem işareti ters. **Karar verilebildi.**
+
+## 3. HEDEF GENİŞLİĞİ (rr) → **ETKİ GERÇEK, AMA PORTFÖYE TAŞINMIYOR → RED**
+Tek yapısal sinyal buydu ve üç sahtelik testini de geçti:
+- **Doz-yanıt 7 noktada MONOTON:** rr1.5 +0.053R (32/88, p=0.014 NEGATİF) → rr2.5 taban →
+  rr3.5 +0.104R (59/88, p=0.0018) → rr4.5 +0.130R (66/88) → rr6.0 +0.136R
+- **Beta tuzağı testini GEÇTİ:** long Δ+0.064R **ve short Δ+0.039R**. Sadece long'da olsaydı
+  bu yükselen piyasada kaldıraçlı yön bahsi olurdu — değil.
+- **TRAIN ve TEST'te aynı işaret** (her rr'de).
+
+**ANKORDA (koltuk + boyut + maxDD dahil, rr2.5 satırı ankorla BİREBİR doğrulandı:
+1579 işlem / $+1420.66):**
+
+| rr | toplam$ | Δ$ | PF | maxDD% | kötü ay% | 2023 | 2024 | 2025 | 2026 |
+|---|---|---|---|---|---|---|---|---|---|
+| **2.5** | **+1421** | — | 1.45 | 24.4 | **−21.0** | +321 | +457 | +447 | +195 |
+| 3.5 | +1474 | +54 | 1.48 | 21.0 | −29.7 | +406 | +513 | +403 | +153 |
+| 4.5 | +1589 | +169 | 1.52 | 19.4 | −29.7 | +467 | +523 | +401 | +200 |
+| 6.0 | +1626 | +206 | 1.53 | 19.1 | −29.7 | +521 | +506 | +419 | +180 |
+
+**RED — üç sebep:**
+1. **Kazanç tamamen 2023/24'te; 2025 HER rr'de kötüleşiyor** (−%6..−%10). Bu, 2026-07-21'de
+   squeeze rr3.0'ın reddedildiği "yıllar kayıyor" deseninin AYNASI. O kuralı şimdi kendi
+   lehime esnetirsem kural değil bahane olur. İşlem-bazlı ölçüm de aynı şeyi söylemişti:
+   TRAIN Δ+0.079R → TEST Δ+0.024R (3× zayıflama); koltuk kısıtı eklenince artı eksiye dönüyor.
+2. **En kötü ay −%21 → −%29.7.** maxDD düşerken AYLIK KUYRUK ağırlaşıyor. Kullanıcı bir ay
+   başında olmayacak — tek aylık kayıp tavanını %40 büyütmek +$206'ya değmez.
+3. **Barı geçen iki değer de sahte geçiyor:** rr3.0 sadece +$21 (büyüklük eşiği ~$28'in
+   altında, gürültü); rr6.0 uç nokta (TP yalnızca %4.3 tetikleniyor = hedef fiilen yok) ve
+   2025/26 kayıpları −%10 sınırının hemen içinde kalıyor — sağlamlık değil, eşik artefaktı.
+%97 diz kuralının işaret ettiği rr4.5 ise yıl kuralından kalıyor.
+
+**DERS (yeni ve önemli):** *işlem-bazlı gerçek bir etki, portföy kısıtı altında ölebilir.*
+88 hücre "hedefler dar" diyor ve HAKLI; ama 7 koltuklu, 12 coinli gerçek portföyde son iki
+yılda bunun bedeli faydasından büyük. **Ölçüm ≠ deploy.** İkisi ayrı ayrı sorulmalı.
+
+## 4. "KOLTUK İŞGALİ" TEŞHİSİ → **ÇÜRÜTÜLDÜ (ters yönde)**
+rr'nin 2025'te neden kaybettirdiğine dair hipotez: geniş hedef tutuşu 15.3→17.9 bara
+çıkarıyor, koltuk sabit 7. Doğruysa maxhold'u kısaltmak 2025'i geri getirmeliydi.
+**Tam tersi oldu** — her rr'de mh20/mh25, 2025'i DAHA DA kötüleştirdi:
+
+| rr | mh20 | mh25 | mh30 | mh40 |
+|---|---|---|---|---|
+| 2.5 | 2025 −%20 | −%13 | taban | **+%11** |
+| 3.5 | −%19 | −%21 | −%10 | −%10 |
+| 4.5 | −%18 | −%26 | −%10 | −%10 |
+| 6.0 | −%18 | −%23 | −%6 | −%6 |
+
+2025 daha UZUN tutuş istiyor. Teşhis yanlış; **rr'nin 2025'te neden kaybettirdiği HÂLÂ
+AÇIKLANMADI** (dürüst boşluk, ledger'a böyle yazılıyor).
+
+## 5. mh40 ("kabul barını geçen" tek hücre) → **21× GÜÇTE ÇÜRÜDÜ**
+Ankorda çok cazipti: +$101, dört yılın hiçbiri kötüleşmiyor, maxDD 24.4→24.7 (sabit),
+**en kötü ay −21.0 → −17.8 İYİLEŞİYOR** — rr'de kaybedilen tam da buydu. mh ekseni rr2.5'te
+monoton görünüyordu (1170→1326→1421→1522).
+
+ŞÜPHE SEBEBİ (teste girmeden önce yazıldı): monotonluk YALNIZCA rr2.5'te; rr3.5/4.5/6.0'ın
+üçünde de eğri mh30'da tepe yapıp düşüyor. Bir etkinin tek bir parametre değerinde belirmesi
+gürültü imzasıdır.
+
+**`power_mh.py` (88 hücre, mh 10→60) üç testin ÜÇÜNÜ de düşürdü:**
+- **Doz-yanıt YOK:** 0.0638 → 0.0656 → 0.0669 → 0.0748 → **0.0784 (mh30)** → 0.0771 → 0.0729
+  → 0.0823. 30'un üstünde zikzak, yapı yok.
+- **İşaret testi mh40 = 39/88** — yarının ALTINDA, yani hücre bazında mh30'dan KÖTÜ (p=0.337,
+  z=−0.07). Ankor hücresiyle doğrudan çelişiyor.
+- **Yön ayrımı ters:** long +0.0030, short −0.0060.
+- **Dönem işareti FARKLI:** TRAIN +0.0020, TEST −0.0048.
+- **R/bar daha kötü:** +0.00448 vs taban +0.00512.
+
+**HÜKÜM: ankordaki +$101 IZGARA GÜRÜLTÜSÜYDÜ** (16 hücreden biri). Ön-kaydım "tek hücrenin
+geçmesi hiçbir şey ifade etmez" diyordu; hücre cazip çıktığında da aynı kurala uyuldu.
+**mh30 kalıyor.** Ayrıca mh ekseni 25-60 arası tamamen düz — burada kazanılacak bir şey yok.
+
+## 🔧 BU TURDA DEPLOY EDİLEN (strateji değil, doğruluk)
+- **`/rapor` bakiye bug'ı (kullanıcı yakaladı):** `/status` $184.53 vs `/rapor` $180.06.
+  Sebep: `_cmd_rapor` `daily_stats.ending_balance`'ı okuyordu — gün BAŞINDA yazılan, gün içinde
+  ESKİYEN snapshot. Bu bayatlığı NEAR'ın +$10.20'lik kapanışında bizzat teşhis etmiştim, sonra
+  kendi komutumda tekrarladım. Fix: `/status` ve `/balance` ile aynı kaynak (`_equity_and_upnl()`).
+  Ham `get_balance()` yetmez — canlıda SERBEST bakiye döner (kilitli marjin hariç), açık pozisyon
+  varken yine ayrışırdı. Borsaya ulaşılamazsa "(DB, bayat olabilir)" etiketiyle DB'ye düşülüyor.
+- **`execution.py` cooldown docstring'i:** "hesap geneli risk-off" yazıyordu; oysa
+  `execute_signal` onu aynı `(strategy:symbol)` anahtarıyla okuyor → yalnızca o kolu o coinde
+  durduruyor. Fren, dokümante edildiğinden ZAYIF. Hesap geneli duruş `is_halted()` (günlük zarar).
+  Düşük-WR bir konfigürasyon değerlendirilirken bu fark doğrudan önemliydi.
+
+## 🧭 ÇIKIŞ EKSENİNİN GENEL HÜKMÜ
+Giriş tarafı zaten kapanmıştı (tetikleyici bilgiyi çıkarıyor; eklenen gösterge aynı olayı
+ikinci kez ölçüp işlem silerek bedel ödetiyor). **Bu turla ÇIKIŞ tarafı da kapandı:** stop
+mesafesi, trailing, breakeven, hedef genişliği ve maxhold — beşi de ya farksız ya da
+portföye taşınamıyor. Mevcut çıkış (2×ATR / rr2.5 / mh30) bu veriyle savunulabilir bir
+optimumda.
+
+**Geriye kalan iki gerçek edge hâlâ FİKİR değil SERMAYE bekliyor:**
+pairs (korr −0.362, +$532, izin permütasyonu p=0.006) → ~$300-400 alt-hesap;
+günlük trend (270 test hücresinin 259'u pozitif) → koltuk-günü başına $0.08 vs tabanın $0.44.
