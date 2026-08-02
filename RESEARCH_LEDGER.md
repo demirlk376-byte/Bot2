@@ -1882,3 +1882,101 @@ Gerekçe:
 **Doğru sıra:** sermaye eşiği geçilene kadar bekle → o gün pairs'i GÜNCEL veriyle yeniden sına
 → hâlâ geçiyorsa alt-hesap aç, paper modda doğrula, küçük sermayeyle canlıya al.
 Şimdi kod yazmak, sınırda bir bulguya 2 ay erken bina kurmak olurdu.
+
+---
+---
+
+# 📍 GÜNCEL DURUM NOTU — 2026-08-02
+*(Önceki "DÖNÜŞ NOTU" eskidi; ankor düzeltmesi, arama ekseninin kapanması, boyutlandırma
+testleri ve pairs'in yeniden sınanması ondan SONRA oldu. Bu not onu GEÇERSİZ KILAR.)*
+
+## 1. CANLIDA NE ÇALIŞIYOR
+```
+donchian  7 coin (SOL ETH ADA NEAR BCH ICP BNB)  4h  ch40 EMA200 SL2×ATR rr2.5 mh30 +MTF
+squeeze   4 coin (XRP DOGE TRX XLM)              1h  KC1.5/coil5 ADX>20 SL2×ATR rr2.5 mh48
+bb        1 coin (LTC) YALNIZ HAFTA SONU         1h  BB20/2 ADX<28 SL3×ATR rr1.667 mh48
+KAPALI: orb · fvg · ifvg · sr_breakout · asia_bo   (fail-safe varsayılan = False)
+.env: LEVERAGE=10 · RISK_SCALE=1.125 · POSITION_CAP_FRACTION=1.25 · MAX_POSITIONS=7
+      FIXED_MARGIN_USDT=0 · CONSECUTIVE_LOSS_LIMIT=2 · COOLDOWN_MINUTES=240
+```
+**Koruma katmanları:** giriş-bağlı sticky SL/TP · orta-ömür koruma nöbetçisi (~20dk, salt-okuma,
+yalnız TEYİTLİ korumasızda müdahale) · dış nöbetçi (30dk, bot ölürse telefona mesaj) ·
+haftalık özet (Pazar 18:00 UTC) · OI toplayıcı (15dk) · dolum-fiyatı koruması · `Restart=always`
+
+## 2. ANKOR (tek doğru referans)
+`deployed_backtest.py local` → **1579 işlem · PF 1.45 · WR %44 · +$1421 · maxDD %24.4 ·
+en kötü ay −%21 · poz-ay %80 · 2023:+321 2024:+457 2025:+447 2026:+195`
+⚠ **Salt-breakout tabanı ($1286) YANLIŞ TABANDIR.** Her yeni aday BU tabana kıyaslanır.
+
+**Ölçülmüş sürtünmeler (beklentiden düşülecek):** donchian giriş kayması −%12 · funding −%2.2 ·
+sunucu ~$50-70/yıl (hesap $181'ken beklenen kârın %46-77'si; hesap büyüdükçe erir).
+**İleriye dönük dürüst tahmin: +%36-60/yıl** (backtest'in +%206'sından bilerek %75 ıskonto).
+
+## 3. ARAMA EKSENİ KAPANDI — VE SEBEBİ YAPISAL
+~260 hipotez reddedildi. Sebep "iyi fikir bulamadık" DEĞİL:
+> **Bu veride "TRAIN'den seç" işleminin KENDİSİ bilgi taşımıyor.** Üç bağımsız ölçüm:
+> parametre taraması 427 komb. → TRAIN'de geçenlerin **%21'i** TEST'te de geçiyor (şans %50) ·
+> günlük trend 270 komb. → sıra korelasyonu **+0.247** · boyutlandırma 102 komb. → TEST'in
+> en iyisi TRAIN'de **28/102**.
+> Darboğaz fikir değil, **3.2 yılın seçim yapmaya yetmemesi.**
+
+**Ek mekanik kapanışlar:**
+- **Filtreleme her koşulda negatif:** permütasyon dağılımlarının ORTALAMASI negatif — sinyallerin
+  %4-7'sini RASTGELE atmak bile para kaybettiriyor.
+- **Osilatörler totoloji:** LONG sinyallerinde RSI minimum **57.7**, AroonUp **her zaman 100**,
+  SuperTrend %99.8 uyumlu. 40-bar kırılımı zaten bunların tanımı.
+- **Sahte kırılım iki taraftan da kapalı:** girişte öngörülemiyor (13 özellik OOS AUC 0.502),
+  çıkışta ucuzlatılamıyor (13 erken-çıkış varyantı, hepsi kaybettirdi).
+- **Kötü aylar:** kaçınmanın tavanı mükemmel kâhinle bile +$231; chop'ta kazanma da kapalı.
+
+## 4. AÇIK OLAN TEK ŞEY: PAIRS (sınırda pozitif)
++$532 · PF 1.63 · 4/4 yıl+ · kitapla korr **−0.362** · permütasyon ham **p=0.006 (z=+2.97)**
+⚠ Šidák(12) p=0.0695 (sınırda) · kârın %77'si en iyi 10 işlemde
+**Engel: ayrı MEXC alt-hesabı gerekiyor** (~$300-400 min-notional). Ayda $150 → **~2 ay**.
+**YAPILACAK SIRA:** sermaye eşiği gel → pairs'i O GÜN güncel veriyle YENİDEN sına (2 ayda ~15
+yeni işlem yoğunlaşma sorusunu cevaplar) → hâlâ geçiyorsa alt-hesap aç → paper doğrula → küçük
+sermayeyle canlıya al. **Şimdi kod yazma.**
+
+## 5. RİSK SEVİYESİ — ÖNCEDEN VERİLMİŞ KARAR
+| RISK_SCALE | toplam$ | maxDD% | en kötü ay (hesabın %'si) |
+|---|---|---|---|
+| **1.125 (ŞU AN)** | +1421 | 26.2 | **−%21.0** |
+| 1.25 | +1545 | 27.2 | −%24.0 |
+| 1.50 | +1775 | 27.9 | −%29.1 |
+| 2.00 | +2155 | 29.0 | −%36.8 |
+**KURAL (şimdi karar verildi, o an değil):**
+1. Bir ay boyunca **hiçbir şey değişmez.**
+2. Temiz konfigürasyonda **~100 kapanmış işlem** + mekanik kontroller geçiyorsa → **1.125→1.25**. Tek adım.
+3. Sonraki adım için ~100 işlem daha. Asla iki basamak birden.
+4. **Kârlı dönem gerekçe DEĞİL** (aylık PnL −0.345 ile ortalamaya döner). Zararlı dönem de değil.
+> Bileşiklenme zaten ölçekliyor: hesap $181→$500 olunca aynı ayarla dolar riskin 2.8 katına çıkar.
+
+## 6. BİR AY BOYUNCA
+**Sessizlik iyi haberdir.** `⚠️ stop kaybolmuş — yeniden kuruluyor` gelirse o mesaj sorunu değil
+**çözüldüğünü** bildirir. **−%20'lik bir ay gelecek** — geldiğinde riski düşürme, sistemi kapatma,
+"bir şeyi düzeltme". Ölçtüğümüz her şey bunun yanlış hamle olduğunu söylüyor.
+Telefondan tek komut: **`/rapor`** (bakiye, sleeve kırılımı, temiz dönem, R:R, açık pozisyonlar).
+
+## 7. YENİDEN AÇMA — bunlar ÖLÇÜLDÜ, tekrar deneme
+giriş filtreleri (hacim/ATR/ADX/seans/gün/yapı/funding/RSI/MACD/StochRSI/Aroon/SuperTrend/
+ER/Choppiness/VHF/Hurst/OBV/VWAP/A-D/kesitsel rvol) · gösterge-tabanlı boyutlandırma ·
+erken çıkış · trailing/TP kaldırma · kısmi TP · piramitleme · cooldown · stop yerleşimi ·
+çekirdek parametre taraması · vol-hedefleme · kesitsel dağılım · kesitsel momentum ·
+sleeve risk tahsisi · coin genişletme (breadth) · chop'ta mean-reversion · günlük trend
+(edge GERÇEK ama koltuk-günü verimi tabanın 1/5'i → ayrı sermaye ister) · PF kill-switch ·
+yön limitleri · fade · serbest-evren pairs · ETH takası
+
+## 8. METODOLOJİ — bu oturumda ÖĞRENİLEN TUZAKLAR
+1. `occ = j` zorunlu (yoksa 2.5× şişme) · 2. lookahead: rolling'de `.shift(1)`, göstergeler
+pencere-yerel · 3. **taban = TAM canlı config** (BB dahil; yanlış taban bir adayı 2.23× şişirdi) ·
+4. **kaldıraç tuzağı**: ort dağıtılan risk sabit tutulmadan yapılan her kıyas yanıltıcı
+(bir testim buna kendisi düştü) · 5. **büyüklük eşiği**: bar büyüklük körüyse $4'lük gürültüyü
+kabul eder · 6. **doz-tepki**: gürültü doz-tepki üretmez, platodan güçlü ayırıcı ·
+7. **plato örneklem gürültüsüne karşı KORUMAZ** (trailing'in dersi) · 8. **seçim zinciri**:
+gösterge/pencere/parametre TEST'e bakılarak seçilirse sonuç OOS değildir (Hurst'te oldu) ·
+9. pandas 3: index `datetime64[us]`, `.astype(int64)` MİKRO verir, `idx[i].value` NANO ·
+10. `seat_select` sort'u stabil → sleeve ekleme sırası (DONCH→SQZ→BB) korunmalı ·
+11. **log FİYAT korelasyonu sahtedir**, pairs seçiminde log GETİRİ kullan (bu hatayı yaptım) ·
+12. canlı DB'ye her sorgu **salt-okunur** (`mode=ro`) açılmalı.
+**BİLİNEN KUSUR:** yıl-yıl barının yanlış-negatif oranı ~%86 (gerçek ama küçük edge'leri eler).
+Beş sahte pozitifi öldürdü; bilinçli takas.
