@@ -33,6 +33,11 @@ import fast_bt
 import deployed_backtest as A
 
 RRS = [2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0]
+# maxhold ekseni: TEŞHİSİ test etmek için. rr sweep'i geniş hedefin işlem başına
+# kazandırdığını AMA 2025'te kaybettirdiğini gösterdi; şüpheli mekanizma KOLTUK
+# İŞGALİ (tutuş 15.3 → 17.9 bar, 7 koltuk sabit). Doğruysa hedefi genişletirken
+# maxhold'u kısaltmak maliyeti geri almalı. Yanlışsa hiçbir kombinasyon kurtarmaz.
+MHS = [20, 25, 30, 40]
 
 
 def precompute_donchian(m):
@@ -64,10 +69,11 @@ def precompute_donchian(m):
     return d, atr_ser, dirs
 
 
-def gen_donch_rr(pre, rr):
+def gen_donch_rr(pre, rr, mh=None):
     """Önceden hesaplanmış yönlerle çıkışı yeniden koştur (A.gen'in 5. adımı, birebir)."""
     d, atr_ser, dirs = pre
-    tf, win, sl_a, _rr, mh = A.CFG["donchian"]
+    tf, win, sl_a, _rr, _mh = A.CFG["donchian"]
+    mh = _mh if mh is None else mh
     hi = d["high"].values; lo = d["low"].values; cl = d["close"].values
     idx = d.index; n = len(cl)
     out = []; occ = -1
@@ -90,13 +96,13 @@ def gen_donch_rr(pre, rr):
     return out
 
 
-def evaluate(rr, pre_d, other):
+def evaluate(rr, pre_d, other, mh=None):
     """Ankoru donchian rr'si değiştirilmiş halde koştur. Diğer her şey aynı."""
     # SLEEVE SIRASI KRİTİK: seat_select'in sıralaması kararlı (stable) → ekleme sırası
     # değişirse eşit-zamanlı sinyallerde koltuk sahibi değişir (~$3 kayar). Ankorla
     # BİREBİR aynı sıra: DONCH → SQZ → BB.
     trades = []
-    for p in pre_d: trades += gen_donch_rr(p, rr)
+    for p in pre_d: trades += gen_donch_rr(p, rr, mh)
     trades += other
 
     taken = A.seat_select(trades)
@@ -199,6 +205,28 @@ def main():
     print(f"\n  --- SEÇİM KURALI (ekstrema overfit'tir) ---")
     print(f"      tepe ${mx:+.0f}; maksimumun %97'sine ulaşan EN KÜÇÜK rr = {knee}")
     print(f"      (rr2.5 de 2026-07-21'de tam bu kuralla seçilmişti — tutarlı kalıyorum)")
+
+    # ── rr × maxhold: TEŞHİS TESTİ ──
+    # rr sweep'i şunu gösterdi: kâr 2023/24'te artıyor, 2025'te HER rr'de azalıyor.
+    # Şüpheli sebep koltuk işgali. Doğruysa maxhold'u kısaltmak 2025'i geri getirmeli.
+    # UYARI: bu 2 boyutlu bir tarama → tek bir hücrenin "geçmesi" HİÇBİR ŞEY ifade etmez.
+    # Aranan şey DÜZGÜNLÜK: maxhold kısaldıkça 2025'in sistematik olarak düzelmesi.
+    print(f"\n{'=' * 100}")
+    print("=== TEŞHİS: rr × maxhold (koltuk işgali hipotezi) ===")
+    print("  Beklenen (hipotez doğruysa): sabit rr'de maxhold ↓ → 2025 düzelir.")
+    print(f"  {'rr':>5s} {'mh':>4s} {'toplam$':>9s} {'Δ$':>7s} {'maxDD%':>7s} {'kötü ay%':>9s} "
+          f"{'poz-ay%':>8s} | " + " ".join(f"{y:>7d}" for y in years) + "   2025 Δ%")
+    for rr in (2.5, 3.5, 4.5, 6.0):
+        for mh in MHS:
+            v = evaluate(rr, pre_d, other, mh)
+            b25 = base["yr"].get(2025, 0.0)
+            r25 = (v["yr"].get(2025, 0.0) - b25) / abs(b25) * 100 if abs(b25) > 1e-9 else 0.0
+            star = "  ← CANLI" if (rr == 2.5 and mh == 30) else ""
+            print(f"  {rr:>5.1f} {mh:>4d} {v['tot']:>+9.0f} {v['tot'] - base['tot']:>+7.0f} "
+                  f"{v['dd']:>7.1f} {v['worst']:>+9.1f} {v['posm']:>8.0f} | " +
+                  " ".join(f"{v['yr'].get(y, 0.0):>+7.0f}" for y in years) +
+                  f"  {r25:>+7.0f}%{star}")
+        print()
 
 
 if __name__ == "__main__":
