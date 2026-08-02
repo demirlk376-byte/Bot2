@@ -2039,3 +2039,74 @@ kez ölçüyor** (osilatör totolojisi bunun kanıtı: RSI min 57.7, Aroon hep 1
 alınmış; ikinci ölçüm yeni bilgi getirmiyor, sadece işlem siliyor — ve işlem silmek negatif
 beklentili (permütasyon ortalaması negatif).
 **Sistem zaten "gösterge kullanıyor" ve iyi bir tanesini kullanıyor.**
+
+---
+
+## 🧩 2026-08-02 — PARÇA DEĞİŞTİRME (devam): TREND KAPISI · STOP · HEDEF — üçü de RET
+
+`trigger_swap_test` tetikleyiciyi değiştirmişti. Ama orada DİĞER HER ŞEY SABİTTİ. Kullanıcı
+ısrarı üzerine kalan üç parça da **yerine koyularak** test edildi (tek değişken kuralı,
+tetikleyici=donchian sabit).
+
+### ❌ TREND KAPISI (6 varyant)
+| varyant | n | PF | TRAIN$ | TEST$ | toplam$ |
+|---|---|---|---|---|---|
+| **ema200 (taban)** | 1579 | **1.45** | **+826** | **+599** | **+1424** |
+| ema100 | 1671 | 1.39 | +801 | +534 | +1335 |
+| sma200 | 1553 | 1.42 | +742 | +556 | +1298 |
+| regresyon eğimi(100) | 1293 | 1.38 | +659 | +304 | +963 |
+| ema50>ema200 | 1301 | 1.33 | +510 | +333 | +843 |
+| **KAPI YOK** | 1671 | 1.39 | +801 | +534 | +1335 |
+**TRAIN'de bile taban geçilemedi → TEST açılmadı. RET.**
+İki bulgu:
+- **`KAPI YOK` ile `ema100` BİREBİR AYNI** (n=1671, aynı $, aynı yıllar). Sebep mekanik:
+  40-bar kanalını yukarı kıran bir kapanış zaten EMA100'ün üstündedir → ema100 kapısı hiç bağlamıyor.
+- **EMA200 gerçekten bağlayan tek kapı** ve katkısı **+$89 (%6)**: kapı olmasa $1335, varken $1424.
+  Yani trend filtresi işe yarıyor ama küçük; asıl işi tetikleyici yapıyor (z=+5.65).
+
+### ❌ STOP TANIMI (5 varyant)
+| varyant | n | WR | PF | TRAIN$ | TEST$ | toplam$ |
+|---|---|---|---|---|---|---|
+| **2×ATR (taban)** | 1579 | %44 | **1.45** | **+826** | +599 | **+1424** |
+| 3×ATR | 1460 | %47 | 1.44 | +664 | +409 | +1073 |
+| swing10 (yapısal) | 1441 | %47 | 1.39 | +611 | +254 | +865 |
+| **%4 sabit** | 1676 | %40 | 1.32 | **+438** | **+685** | +1124 |
+| keltner (ortalamaya çapalı) | 1417 | %48 | 1.40 | +537 | +283 | +820 |
+**TRAIN argmax 3×ATR ($664 < taban $826) → TEST açılmadı. RET.**
+DİKKAT: `%4 sabit` TRAIN'de EN KÖTÜ (+438) ama TEST'te EN İYİ (+685 vs taban +599).
+Bir kez daha **TRAIN↔TEST tersine dönmesi**. Şimdi seçmek TEST'e bakarak seçmek olur → kayda
+geçiyor, uygulanmıyor.
+
+### ❌ HEDEF TANIMI (5 varyant) — *ilk denemem GEÇERSİZDİ, düzeltildi*
+**KENDİ TEST HATAM:** ilk varyantlarım dejenereydi — SL=2×ATR ve rr=2.5 olduğu için `rr×SL`
+zaten **5×ATR'ye eşit**, yani "5×ATR sabit" tabanın kendisiydi; "karşı kanal" da long kırılımında
+her zaman girişin altında kalıp yedeğe düşüyordu. Üç satır birebir aynı çıktı ve bunu "fark yok"
+diye raporlamak yanlış olurdu. SL'e ORANTILI OLMAYAN hedeflerle yeniden kuruldu:
+
+| varyant | n | WR | PF | TRAIN$ | TEST$ | toplam$ |
+|---|---|---|---|---|---|---|
+| **rr×SL (taban)** | 1579 | %44 | 1.45 | +826 | **+599** | +1424 |
+| 3×ATR (dar) | 1737 | %45 | 1.28 | +533 | +388 | +922 |
+| **8×ATR (geniş)** | 1513 | %42 | **1.47** | **+898** | +557 | **+1455** |
+| kanal genişliği (ölçülmüş hareket) | 1584 | %43 | 1.43 | +807 | +557 | +1364 |
+| ½ kanal | 1775 | %47 | 1.31 | +514 | +493 | +1007 |
+**TRAIN argmax 8×ATR (+898) → TEST Δ−$41, yıl-yıl +85/−13/−38/−4 → RET.**
+
+### 📌 "YERİNE KOYMA" EKSENİ TAMAMEN TARANDI
+| değiştirilen parça | varyant | sonuç |
+|---|---|---|
+| giriş tetikleyicisi | 9 | aile önemli (kanal 2.2× > MA-kesişim), üye değil · TRAIN seçimi TEST'te düştü |
+| trend kapısı | 6 | EMA200 en iyi; TRAIN'de bile geçilemedi · kapının katkısı +$89 (%6) |
+| stop tanımı | 5 | 2×ATR en iyi; TRAIN'de bile geçilemedi |
+| hedef tanımı | 5 | rr×SL en iyi; TRAIN argmax TEST'te düştü |
+**Mevcut sistemin HER parçası, denenen alternatifler arasında en iyisi ya da eşdeğeri çıktı.**
+Bu, donchian'ın "eski ve kirli araçlarla seçilmiş olabilir" şüphesini kapatıyor: temiz araçlarla
+yeniden sorulduğunda aynı yere geliyor.
+
+### 🧠 YEDİNCİ BAĞIMSIZ ÖLÇÜM — hep aynı sonuç
+TRAIN↔TEST transferi bu turda da yok: tetikleyicide TRAIN'in en iyisi close_channel, TEST'in en
+iyisi bollinger; stopta TRAIN'in EN KÖTÜSÜ (%4 sabit) TEST'in EN İYİSİ.
+Artık yedi bağımsız aile (filtre · parametre · boyutlandırma · günlük trend · tetikleyici ·
+trend kapısı · stop/hedef) aynı şeyi söylüyor:
+> **3.2 yıllık veride "eğitimden seç" işlemi bilgi taşımıyor.** Aday fikir eksikliği değil,
+> seçim yapacak veri eksikliği.
