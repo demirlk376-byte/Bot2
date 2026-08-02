@@ -2110,3 +2110,51 @@ Artık yedi bağımsız aile (filtre · parametre · boyutlandırma · günlük 
 trend kapısı · stop/hedef) aynı şeyi söylüyor:
 > **3.2 yıllık veride "eğitimden seç" işlemi bilgi taşımıyor.** Aday fikir eksikliği değil,
 > seçim yapacak veri eksikliği.
+
+---
+
+## 📜 ÖNCEDEN KAYIT — İLERİYE DÖNÜK TEK HİPOTEZ (2026-08-02'de yazıldı, henüz test EDİLMEDİ)
+
+**Bugün deploy edilecek bir değişiklik YOK.** Bu bölüm, gelecekte dürüstçe test edilebilsin diye
+şimdiden kayda geçirilmiş TEK bir iddiadır. Kayıt tarihi ÖNEMLİ: bundan sonra üretilecek veri
+bu hipotez için ÖRNEKLEM DIŞIDIR.
+
+### HİPOTEZ H1: "Bollinger kırılımı, donchian kanal kırılımından daha iyi bir tetikleyicidir"
+**Tam tanım (değiştirilemez):** donchian(40) tetikleyicisi yerine
+`close > SMA20 + 2σ` (long) / `close < SMA20 − 2σ` (short), σ = 20-bar kapanış std, `.shift(1)`.
+DİĞER HER ŞEY SABİT: aynı 7 coin · 4h · EMA200 kapısı · günlük-EMA20 MTF · SL 2×ATR · rr 2.5 ·
+maxhold 30 · occ · ortak 7 koltuk · eff = min(RISKF, CAP×sl_pct).
+
+**Bugünkü kanıt (2023-04 → 2026-07, `trigger_swap_test.py`):**
+| | TRAIN | TEST | toplam | yıl-yıl |
+|---|---|---|---|---|
+| donchian | +826 | +599 | +1424 | 325/514/413/172 |
+| **bollinger** | **+851** | **+726** | **+1577** | 429/434/528/185 |
+Her iki dönemde ve 4/4 yılda taban üstü. Toplam farkı **+%10.7**.
+
+**NEDEN BUGÜN ALINMIYOR:** 9 tetikleyici tarandı. Hepsi eşdeğer olsa bile içlerinden 1-2'sinin
+şansla "her yerde iyi" görünmesi BEKLENEN sonuçtur; bollinger tam olarak o beklentiye uyuyor.
+Ayrıca önceden ilan edilen seçim kuralı (TRAIN argmax) bollinger'ı DEĞİL close_channel'ı seçti
+ve o TEST'te düştü. Şimdi bollinger'a geçmek TEST'e bakarak seçmektir — bu oturumda Hurst'te
+aynı hatayı yaptım ve +$150'lik bulgunun yarısının seçim yanlılığı olduğu ortaya çıktı.
+
+**ASİMETRİ (kararın gerçek gerekçesi):** yanılmanın bedeli eşit değil.
+Değiştirip yanılmak = gözetimsiz hesapta, test edilmemiş kod yolunda, gerçek para kaybı
+(gürültüyse tabandan KÖTÜ olabilir). Değiştirmeyip haklı çıkmamak = yılda ~$7-11.
+
+### 🔒 TEST KOŞULU (şimdi sabitlendi, sonradan gevşetilemez)
+H1 ancak şu üç şart BİRLİKTE sağlanırsa deploy edilir:
+1. **YENİ VERİ:** 2026-08-01'den sonraki veriyle ölçülecek (bugünden sonrası = saf OOS).
+   En az **12 ay** yeni veri, ya da canlı+backtest birleşiminde donchian'a karşı **en az 150 işlem**.
+2. **AYNI YÖN:** yeni pencerede bollinger toplamı donchian'ı geçecek **VE** o pencerenin her
+   takvim yılında geçecek.
+3. **BÜYÜKLÜK:** fark, yeni pencere tabanının **en az %5'i** olacak (bugünkü %10.7'nin yarısı;
+   gerçek bir edge küçülse bile bu eşiği geçmeli).
+Üçü sağlanırsa: önce paper modda 1 ay, sonra canlı.
+**Şartlardan biri bile sağlanmazsa H1 KALICI OLARAK KAPANIR** ve bir daha açılmaz.
+
+### 📌 AYNI STATÜDE İKİNCİ KAYIT — H2 (daha zayıf)
+"Sabit %4 stop, 2×ATR stoptan daha iyidir." Bugünkü kanıt: TEST +685 vs +599 **AMA**
+TRAIN +438 vs +826 (ızgaranın EN KÖTÜSÜ). TRAIN↔TEST tam tersine dönüyor → bugünkü kanıt
+H1'den ÇOK daha zayıf. Aynı üç şarta tabidir; ayrıca TRAIN tersliği nedeniyle **öncelik H1'dedir**,
+ikisi aynı anda test edilmez (çoklu-test yükünü artırmamak için).
