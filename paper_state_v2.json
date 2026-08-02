@@ -19,39 +19,19 @@
       "skipped": 16
     },
     "ETH": {
-      "balance": 10347.778930745313,
-      "position": {
-        "direction": 1,
-        "entry": 1836.0,
-        "sl": 1808.386484044605,
-        "tp": 1882.022526592325,
-        "qty": 2.81802258462563,
-        "atr": 9.204505318465015,
-        "entry_ts": "2026-08-01T18:00:00+00:00",
-        "fng_at_entry": 27,
-        "funding_at_entry": 2.3e-05
-      },
-      "n_trades": 11,
-      "n_wins": 7,
-      "total_pnl": 347.77893074531437,
+      "balance": 10475.375955794001,
+      "position": null,
+      "n_trades": 12,
+      "n_wins": 8,
+      "total_pnl": 475.37595579400306,
       "skipped": 21
     },
     "SOL": {
-      "balance": 10155.388800415958,
-      "position": {
-        "direction": 1,
-        "entry": 71.05,
-        "sl": 69.76770609261568,
-        "tp": 73.1871565123072,
-        "qty": 71.4664940212242,
-        "atr": 0.4274313024614398,
-        "entry_ts": "2026-08-01T18:00:00+00:00",
-        "fng_at_entry": 27,
-        "funding_at_entry": -3.3e-05
-      },
-      "n_trades": 9,
-      "n_wins": 4,
-      "total_pnl": 155.38880041595462,
+      "balance": 10306.062258748476,
+      "position": null,
+      "n_trades": 10,
+      "n_wins": 5,
+      "total_pnl": 306.06225874847246,
       "skipped": 12
     },
     "BNB": {
@@ -73,22 +53,12 @@
       "skipped": 7
     },
     "XRP": {
-      "balance": 9966.921203926515,
-      "position": {
-        "direction": 1,
-        "entry": 1.0528,
-        "sl": 1.0398265238567905,
-        "tp": 1.0744224602386823,
-        "qty": 4733.530207031969,
-        "atr": 0.004324492047736474,
-        "entry_ts": "2026-08-01T18:00:00+00:00",
-        "fng_at_entry": 27,
-        "funding_at_entry": -1e-05
-      },
-      "n_trades": 12,
-      "n_wins": 5,
-      "total_pnl": -33.07879607348579,
-      "skipped": 14
+      "balance": 10067.257918262141,
+      "position": null,
+      "n_trades": 13,
+      "n_wins": 6,
+      "total_pnl": 67.25791826214126,
+      "skipped": 15
     }
   }
 }
