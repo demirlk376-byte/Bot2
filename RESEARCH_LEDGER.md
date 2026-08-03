@@ -2485,3 +2485,60 @@ ve soruyu kalıcı olarak kapatır.
 EMA200 kapısının denetimi (çıkarmak kazandırır mı), kanal uzunluğu doz-yanıtı + ters-kanal
 çıkışı, squeeze kolunda bağımsız tekrarlama, stop sonrası yeniden giriş, korelasyon kapısı
 (en kötü ay'ı DÜŞÜRMEYİ hedefleyen tek eksen), CAP/boyutlandırma denetimi.
+
+## 🪙 COIN EVRENİ — YENİDEN AÇILDI, İKİ KEŞİFLE KAPANDI (2026-08-03, pw_coins.py)
+
+**YENİDEN AÇMA GEREKÇESİ:** ledger 2026-07-22'de DOT/AVAX/VET'i "koltuk çekişmesi DD'yi
+şişiriyor (MP=8 DD%73)" diye reddetmişti. pw_seat.py o mekanizmanın bizde olmadığını ölçtü
+(koltuk %3.25 dolu, gerçek seçim anı 6, oracle tavanı +$26). Ret gerekçesi geçersizdi.
+
+### KEŞİF 1 — COIN SEÇME PROSEDÜRÜ ÖLÇÜLDÜ: TRANSFER NEGATİF
+Bu depoda hiç yapılmamış test: seçimi YALNIZCA TRAIN'e (2023-24) bakarak yap (kural önceden
+sabit: her TRAIN yılı pozitif VE PF>1.10 → 8 coin seçildi), sonra TEST'te (2025-26) ölç.
+```
+TRAIN 2023-24:  taban $778 → seçim $1283   (+$505)
+TEST  2025-26:  taban $643 → seçim  $388   (−$254)   ← TRANSFER NEGATİF
+```
+**Coin seçmek işe yaramıyor** — TRAIN'de mükemmel görünen küme TEST'te para kaybettiriyor.
+⚠️ Bu bulgu ledger'daki ICP/BNB seçimini de şüpheli kılıyor: o seçim IN-SAMPLE yapılmıştı
+(kendi notu kabul ediyor: "in-sample seçim (2023-26), gerçek OOS ileriye"). Canlıdalar,
+dokunulmadı — ama "doğrulanmış" sayılmamalılar.
+SEÇİMSİZ test (T1, 15 coinin tamamı) de RED: −$59, en kötü ay −%58.8.
+
+### KEŞİF 2 — DOZ-YANIT MEKANİZMAYI GÖSTERDİ: DUVAR KOLTUK DEĞİL, KORELASYON
+```
+K coin:        kâr      maxDD     en kötü ay
+K=0 (canlı)   +1421     24.4%      −21.0%
+K=4           +1589     20.1%      −45.1%     ← maxDD İYİLEŞİYOR, kuyruk ÇÖKÜYOR
+K=8           +1737     25.4%      −51.3%
+K=15          +1331     27.8%      −58.7%
+```
+Çeşitlendirme drawdown'ı gerçekten iyileştiriyor AMA en kötü ay her coinle MONOTON çöküyor.
+**Kendi hatam:** koltuk bolluğunu "coin eklemek bedava" diye okumuştum. Yanlış. Koltuk
+bolluğu, eşzamanlı korele maruziyeti sınırlayan HİÇBİR ŞEY OLMADIĞI anlamına geliyor.
+Kripto hep birlikte hareket eder; kötü ayda 7 koltuğun 7'si aynı yönde açık olabiliyor.
+Coin eklemek koltuk duvarına değil **KORELASYON DUVARINA** çarpıyor.
+(Ledger'ın kendi uyarısı zaten bunu söylüyordu: "hepsi kripto=korelasyonlu, mutlak $ artar
+ama DD $ kadar çeşitlenmez" — ölçülmüş hali bu.)
+
+## 🔴 OTURUMUN BİRLEŞTİRİCİ DESENİ — "NEDEN HİÇBİR ŞEY GEÇMİYOR"
+Bugün reddedilen HER eksende aynı imza: **2023-24 kazanıyor, 2025-26 kaybediyor.**
+| eksen | 2023-24 | 2025-26 | kuyruk bedeli |
+|---|---|---|---|
+| rr 2.5→6.0 | +%62/+%11 | −%6/−%8 | en kötü ay −21→−29.7 |
+| kısmi çıkış f→0 | +%57/+%13 | −%7/−%10 | −21→−29.7 |
+| coin ekleme K=8 | +%45/+%84 | −%28/−%44 | −21→−51.3 |
+
+Bunların hepsi **maruziyet kaldıracı**. 2023-24 güçlü trendli kripto piyasasıydı ve
+maruziyeti ödüllendirdi; 2025-26 etmiyor. **"Hiçbir şey geçmiyor"un sebebi barın katılığı
+DEĞİL — mevcut sistem zaten son rejime kalibre.** Maruziyeti artıran her değişiklik,
+2023-24 koşullarının geri geleceğine bahis oynamaktır. Bu, aramayı bitiren bir açıklamadır:
+kalan eksenler maruziyeti ARTIRMAYAN eksenler olmalı.
+
+## ⚖️ ÇERÇEVE DÜZELTMESİ — KABUL BARIM TEK HEDEFLİYDİ (kendi kusurum)
+Kullanılan bar yalnızca "daha çok para"yı ödüllendiriyor. Kullanıcı bir ay boyunca sistemin
+başında OLMAYACAK; kârı sabit tutup en kötü ayı −%21'den −%15'e indiren bir değişiklik onun
+için değerlidir ve bu bar onu REDDEDERDİ. Bu bir gevşetme değil AYRI BİR SORU; ön-kayıt:
+  **S2 KUYRUK BARI:** en kötü ay ≥3p iyileşecek · kâr >%5 düşmeyecek · maxDD kötüleşmeyecek
+  · hiçbir yıl >%15 kötüleşmeyecek.
+S1 (kâr barı) GEVŞETİLMEDİ ve ayrı raporlanır. S2'yi geçmek S1'i geçmek değildir.
