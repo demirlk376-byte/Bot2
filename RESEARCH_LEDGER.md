@@ -2377,3 +2377,111 @@ optimumda.
 **Geriye kalan iki gerçek edge hâlâ FİKİR değil SERMAYE bekliyor:**
 pairs (korr −0.362, +$532, izin permütasyonu p=0.006) → ~$300-400 alt-hesap;
 günlük trend (270 test hücresinin 259'u pozitif) → koltuk-günü başına $0.08 vs tabanın $0.44.
+
+---
+
+# 📗 2026-08-03 — PORTFÖY EKSENİ: İKİ KESİN KAPANIŞ (biri ÜST SINIRLA)
+
+Giriş ve çıkış eksenleri kapandıktan sonra portföy/pozisyon-yönetimi tarafı tarandı.
+(8 eksenli paralel tarama planlandı, oturum limiti nedeniyle 2'si tamamlandı — ikisi de
+kesin sonuç verdi. Kalan 6 eksen sırada.)
+
+## 1. KISMİ ÇIKIŞ (scale-out) → **CEBİRSEL OLARAK ARA NOKTA, RED**
+
+Hipotez cazipti: yarısını rr2.5'te bankaya yaz, yarısını koştur → kuyruk faydasını al,
+aylık kuyruk cezasını ödeme. **Cebir bunu daha test etmeden çürüttü ve sayı doğruladı:**
+
+```
+R_kısmi(%50@2.5 + %50@5.0)  ==  0.5 × R_taban  +  0.5 × R_[TAM rr5.0]
+max|fark| = 0.000e+00   (n=12221, 88 hücre, aynı girişler)
+```
+
+**İSPAT:** ilk kademe tabanın hedefiyle AYNI seviyedeyse — (a) 2.5R'ye ulaşmayan
+işlemlerde taban ve koşucu birebir aynı çıkışı verir (aynı stop, aynı maxhold) → kısmi de
+aynıdır; (b) ulaşan işlemlerde f kadarı tam 2.5R'de (=taban), kalan (1−f) koşucunun yolunu
+izler → tanım gereği ağırlıklı ortalama. **Ortalama R, taban ile koşucunun ARASINDA kalmak
+ZORUNDA; ikisini birden geçemez.**
+
+Ölçüm (88 hücre, 134.573 işlem): 11 varyantın hiçbiri ön-kayıtlı barı geçmedi (hepsi z<1.96).
+Doz-yanıt cebri birebir doğruladı: f=0.00 → +0.1315R, f=0.50 → +0.1020R, f=1.00 → +0.0784R.
+- **BAŞABAŞ (BE) kolu özdeşliğin DIŞINDA** (gerçekten yeni bir koşucu politikası) ve
+  **her f değerinde DAHA KÖTÜ** (f=0'da +0.1081 vs düz +0.1315). Stopu girişe çekmek
+  koruma değil, maliyet.
+- "%50 + maxhold" yön ayrımından kaldı: long +0.0558R, short −0.0042R (ters işaret).
+
+**ANKOR (taban $+1420.66 = A.gen ile BİREBİR doğrulandı):** 11 varyantın 11'i de RED.
+En iyisi "%50@2.5 + maxhold" +$47 (bar $28'i geçiyor) ama **en kötü ay −21.0 → −25.4**.
+
+## 2. ÇIKIŞ EKSENİNİN "FİYATI" — bu turun asıl entelektüel sonucu
+
+İki tamamen FARKLI mekanizma (hedefi genişlet vs koşucu ekle) **aynı takas doğrusuna** oturuyor:
+
+| mekanizma | Δkâr | Δen kötü ay | $/puan |
+|---|---|---|---|
+| rr 2.5 → 6.0 (hedefi genişlet) | +$205 | +8.7 puan | **23.6** |
+| kısmi f 1.00 → 0.00 (koşucu ekle) | +$193 | +8.7 puan | **22.2** |
+
+Aynı fiyat. **Bu, çıkış ekseninin TEK BOYUTLU olduğu anlamına gelir:** "kazananları koştur"
+kârı artırır ve aylık kuyruğu tam olarak aynı oranda ağırlaştırır. Hangi mekanizmayla
+yaptığın fark etmiyor — akıllı çıkış mühendisliği bu takastan KAÇAMIYOR, sadece doğru
+üzerinde bir nokta seçiyorsun.
+
+**Ve fayda BÖLÜNEBİLİR DEĞİL.** Ankor doz-yanıtı parça parça:
+```
+f 1.00→0.75:  −$10  / +2.9 puan   (para KAYBI + kuyruk)
+f 0.75→0.50:  +$27  / +1.5 puan   → $18/puan
+f 0.50→0.25:  +$26  / +2.2 puan   → $12/puan
+f 0.25→0.00: +$150  / +2.1 puan   → $71/puan   ← kârın %78'i BURADA
+```
+Kârın neredeyse tamamı, ilk kademenin TAMAMEN kalktığı son adımda. Yani değer "2.5R'de kâr
+almamakta"; herhangi bir miktar erken bankalama faydanın çoğunu yok ederken kuyruk bedelini
+yine de ödetiyor. Ara noktalar her iki dünyanın da kötüsü.
+
+**KARAR: taban (rr2.5, tek parça) korunuyor.** Kullanıcı bir ay boyunca sistemin başında
+olmayacak; +$200 için tek aylık kayıp tavanını −%21'den −%29.7'ye çıkarmak yanlış takas.
+
+## 3. KOLTUK TAHSİS KURALI → **TÜKETİCİ ÜST SINIRLA KAPANDI**
+
+Bu "aradık bulamadık" değil; **tüm nedensel tahsis kurallarının uzayı DFS ile tüketildi**
+(540 yaprak, 838 düğüm):
+
+```
+EN İYİ olası tahsis   $+1447  (Δ +$26)   ← geleceği BİLEREK
+EN KÖTÜ olası tahsis  $+1388  (Δ −$32)
+tüm uzayın genişliği  $58 = ankorun %4.1'i
+```
+**Mutlak tavan +$26, kabul barının ($28) ALTINDA.** Yani mükemmel öngörüyle bile bu eksende
+kazanılacak para yok.
+
+**NEDEN — kritik kavrayış:** sıra yalnızca AYNI `entry_ns`'te gelen adaylar arasında
+değiştirilebilir. Daha iyi bir sinyal beklemek için koltuk boş tutmak **lookahead**'dir.
+Ölçülen:
+- koltuklar zamanın **%3.25**'inde tamamen dolu (boş: %12.5, ortalama açık: 2.70)
+- tüm tarihte koltuk bulamayan sinyal: **24** (havuzun %1.5'i, gerçek değeri $24)
+- **tüm 2023-2026'da gerçek seçim anı: 6** (0 < boş < aday). Diğer her anda "ilk gelen alır"
+  zaten tek nedensel kuraldır.
+
+12 kural denendi (dar/geniş stop, geçmiş PF, günlük trend hizası, yüksek/düşük ADX, sleeve
+önceliği, kısa tutuş, oracle, anti-oracle); **12'si de RED**. Mevcut "ilk gelen alır" kuralı
+300 rastgele tohumun **%75. persentilinde** — ortalama bir kuraldan zaten iyi.
+
+**MEKANİZMA GERÇEK, BİZDE BAĞLAMIYOR — doz-yanıt bunu net gösteriyor:**
+| MAX_POSITIONS | 2 | 3 | 4 | 5 | 6 | **7** | 8 | 10 |
+|---|---|---|---|---|---|---|---|---|
+| çekişmeli an | 659 | 439 | 270 | 159 | 76 | **22** | 4 | 0 |
+| ORACLE avantajı | +$253 | +$349 | +$225 | +$145 | +$73 | **+$26** | +$2 | $0 |
+
+MP=3'te günlük-trend hizası kuralı GERÇEKTEN çalışıyor (+$168, z=+2.77, TRAIN/TEST aynı
+işaret, 4/4 yıl pozitif). Koltuk kıtken kalite sıralaması para kazandırır — bizde kıtlık yok.
+**Bonus bağımsız doğrulama:** MP 7→10 farkı +$24 çıktı; ledger'ın "ihmal edilebilir" notu teyitli.
+
+## 📌 BU TURUN YÖNTEM DERSİ
+İki soru da **koşulmadan önce cebir/kombinatorikle sınırlandı**: kısmi çıkışta özdeşlik
+ispatı, koltukta tüketici DFS üst sınırı. İkisi de "test ettik, çıkmadı" değil **"çıkamaz"**
+diyor. Mümkün olduğunda ÜST SINIR ARA — başarısız bir aramadan çok daha güçlü bir sonuçtur
+ve soruyu kalıcı olarak kapatır.
+
+## ⏭️ SIRADA (tarama tamamlanmadı)
+EMA200 kapısının denetimi (çıkarmak kazandırır mı), kanal uzunluğu doz-yanıtı + ters-kanal
+çıkışı, squeeze kolunda bağımsız tekrarlama, stop sonrası yeniden giriş, korelasyon kapısı
+(en kötü ay'ı DÜŞÜRMEYİ hedefleyen tek eksen), CAP/boyutlandırma denetimi.
