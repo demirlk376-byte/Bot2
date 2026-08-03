@@ -2542,3 +2542,40 @@ için değerlidir ve bu bar onu REDDEDERDİ. Bu bir gevşetme değil AYRI BİR S
   **S2 KUYRUK BARI:** en kötü ay ≥3p iyileşecek · kâr >%5 düşmeyecek · maxDD kötüleşmeyecek
   · hiçbir yıl >%15 kötüleşmeyecek.
 S1 (kâr barı) GEVŞETİLMEDİ ve ayrı raporlanır. S2'yi geçmek S1'i geçmek değildir.
+
+## ⭐ MARUZİYET EKSENİNİN İKİ YÖNLÜ FİYATI — OTURUMUN İLK POZİTİF SONUCU (2026-08-03, pw_expo.py)
+
+Aynı yönde eşzamanlı açık pozisyon tavanı L test edildi (korelasyon TAHMİN EDİLMEDİ —
+kriptoda "aynı yön" tahmin gerektirmeyen sağlam vekil; pencere korelasyonu hem gürültülü
+hem lookahead riskli, bu oturumda pairs_verify.py tam o hatayı yapmıştı).
+Doğrulama: tavan kapalıyken (L=∞) ankorla BİREBİR ($+1420.66 / 1579 işlem).
+
+S1 (kâr barı) ve S2 (kuyruk barı) — **hiçbir varyant ikisinden birini geçmedi.**
+Ama tabloların ölçtüğü şey bir başarısızlık değil, bir FİYAT:
+
+```
+SAĞ — kuyruk SAT (maruziyeti artır):     SOL — kuyruk SATIN AL (maruziyeti azalt):
+  rr 2.5→6.0      $23.6/puan               L=4            $178/puan
+  kısmi f→0       $22.2/puan               L=3             $80/puan  ← en ucuz
+  +8 coin         $10.4/puan               L=2            $144/puan
+  +2 coin          $3.5/puan               L=1            $242/puan
+  en İYİ satış:   $23.6/puan               en UCUZ alış:   $80/puan
+```
+
+**ASİMETRİ 3.4× (tipik olarak 10×+).** Kuyruk riskini satarak puan başına en fazla $23.6
+kazanabiliyoruz; geri satın almak puan başına en az $80'e mal oluyor. Yani canlı config
+keskin bir KIRILMA NOKTASINDA duruyor: **her iki yön de kötü takas.**
+
+**BU, ARANAN "REDDEDİLMEYEN ŞEY"DİR** — bir varyant değil, ölçülmüş bir konum ifadesi:
+mevcut ayarlar rastgele veya "henüz iyileştirilmemiş" değil, iki yönlü olarak savunulabilir
+bir optimumda. Bir ay boyunca sisteme dokunulmayacakken bilinmesi gereken tam olarak budur.
+
+**KULLANICI KARARI OLARAK BIRAKILAN SEÇENEK (benim tavsiyem DEĞİL, ön-kayıtlı barı geçmedi):**
+Gerçekten daha güvenli bir ay isteniyorsa en ucuz seçenek L=3 (aynı yönde en fazla 3 pozisyon):
+  en kötü ay −21.0 → **−16.4** (4.6p iyi) · maxDD 24.4 → **20.1** (4.3p iyi) · kâr **−$366 (−%26)**
+S2 barından KALDI (kâr düşüşü %5 sınırını 5 kat aşıyor). Sayı burada dursun; risk tercihi
+kullanıcınındır, ben barı geçmediği için önermiyorum.
+
+**YAN BULGU:** L tavanı maxDD'yi tutarlı biçimde iyileştiriyor (K=6,L=3 → %14.2; K=4,L=4 →
+%15.4) ama en kötü AY'ı aynı oranda kurtarmıyor. maxDD (işlem-sırası tepe-dip) ile aylık
+kuyruk FARKLI risklerdir ve bu sistemde ayrışıyorlar — tek bir "risk" sayısına bakmak yanıltır.
