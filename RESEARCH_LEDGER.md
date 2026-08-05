@@ -2674,3 +2674,50 @@ yakınında" demek. Tek pozitif hücre (RSI70) yön testinden kaldı (LONG −0.
    ailesinin bu evrende neden yalnızca BB/LTC/hafta-sonu gibi dar bir nişte çalıştığını açıklıyor.
 4. **"BOŞ KOLTUK BEDAVA" YALNIZCA BENZER KADANSTA GEÇERLİ.** Uzun tutan her kol kendi kıtlığını
    yaratır (2.03 gün → 24.3 gün, doluluk %3.25 → %27).
+
+## 🕐 ÇOK ZAMAN DİLİMLİ DONCHIAN (2026-08-05, pw_mtf_sleeve.py) — RED, ve 4h SEÇİMİ DOĞRULANDI
+
+Hipotez: MEXC netted mod (sembol başına tek pozisyon) yüzünden aynı coinlerde farklı zaman
+dilimi eklemek eşzamanlı maruziyeti ARTIRAMAZ → kuyruk duvarına çarpamaz. **Hipotez ÇÜRÜDÜ.**
+
+**ARAÇ İKİ KEZ KENDİ KONTROL TESTİNDE DÜŞTÜ (ve düzeltildi):**
+1. Kanalı elle `rolling(40).max().shift(1)` ile yazmak → 1697 işlem / $1366 (ankor 1579/$1421).
+   `DonchianStrategy.analyze()` pencere-yerel çalışıyor. **Ders: üretim sınıfını taklit etme, ÇAĞIR.**
+2. `one_per_symbol`'de karşılaştırma `<` idi; A.gen'in kuralı `i <= occ ise atla` (çıkış barında
+   giriş YOK) → `<=` olmalı. İki düzeltme sonrası kontrol BİREBİR geçti.
+
+### A+B) 4h'e ekleme — 8 kombinasyonun 8'i de RED
+```
+4h (CANLI)              1579  +1421   PF1.45  maxDD 24.4  en kötü ay −21.0
+4h + 2h                 2454   +970   PF1.18  maxDD 48.7  −55.8
+4h + 6h                 1566  +1340   PF1.43  maxDD 26.2  −29.2
+4h + 8h                 1547  +1309   PF1.42  maxDD 24.8  −23.2
+4h + 12h                1518  +1363   PF1.44  maxDD 24.4  −23.9
+4h + 6h + 12h           1527  +1376   PF1.45  maxDD 26.2  −28.6
+4h + 6h + 8h + 12h      1514  +1335   PF1.44  maxDD 28.1  −28.6
+```
+**İKİ MEKANİZMA:**
+1. Sembol başına tek pozisyon PORTFÖY eşzamanlılığını engellemiyor — 7 coinin hepsi aynı anda
+   pozisyonda olabilir ve zaman dilimi eklemek her coinin pozisyonda geçirdiği SÜREYİ uzatıyor.
+2. **YER DEĞİŞTİRME:** 6h/8h/12h eklemek işlem sayısını AZALTIYOR (1566/1547/1518 < 1579).
+   Yeni sinyal sembolü kapıyor, uzun tutuyor, arkadan gelen daha iyi 4h girişini bloke ediyor.
+   Günlük-trend kolunda ölçülen mekanizmanın aynısı ($442 dışarı / $339 içeri).
+
+### C) TEK BAŞINA zaman dilimleri — 4h TARTIŞMASIZ EN İYİ
+```
+yalnız 4h    1579  +1421  PF1.45  maxDD 24.4  en kötü ay −21.0  | 321 457 447 195
+yalnız 2h    2614  +1135  PF1.21  maxDD 41.1  −58.9             | 217 446 470   2
+yalnız 6h    1243   +790  PF1.33  maxDD 20.0  −25.4             | 271 196 183 140
+yalnız 8h    1073   +672  PF1.34  maxDD 17.7  −24.1             | 252 140 189  92
+yalnız 12h    921   +628  PF1.37  maxDD 15.5  −18.9             | 300  98 152  78
+```
+**4h ikinciden %80 daha kârlı.** power_test işlem-bazında donchian'ın 2h/4h/6h/12h'in dördünde
+de çalıştığını göstermişti — ama koltuk + boyut + portföy eklenince 4h EZİCİ biçimde üstün.
+**4h bir varsayım değil, ölçülmüş optimum.** (12h en iyi maxDD %15.5 ve en iyi kuyruk −%18.9
+veriyor ama yalnızca $628 — aynı takas doğrusu, yine.)
+
+### 📍 BU, ZAMAN DİLİMİ EKSENİNİ DE KAPATIYOR
+Artık kapanmış eksenler: tetikleyici · gösterge/filtre (290) · stop mesafesi · hedef genişliği ·
+trailing · breakeven · maxhold · kısmi çıkış · koltuk tahsisi · MAX_POSITIONS · coin evreni ·
+maruziyet tavanı · **zaman dilimi** · günlük trend kolu · fonlama · kesitsel · aralık kenarı ·
+MTF MA çakışması. Her biri ölçülmüş bir mekanizmayla kapandı, "denedik olmadı" ile değil.
