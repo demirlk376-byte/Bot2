@@ -2579,3 +2579,98 @@ kullanıcınındır, ben barı geçmediği için önermiyorum.
 **YAN BULGU:** L tavanı maxDD'yi tutarlı biçimde iyileştiriyor (K=6,L=3 → %14.2; K=4,L=4 →
 %15.4) ama en kötü AY'ı aynı oranda kurtarmıyor. maxDD (işlem-sırası tepe-dip) ile aylık
 kuyruk FARKLI risklerdir ve bu sistemde ayrışıyorlar — tek bir "risk" sayısına bakmak yanıltır.
+
+---
+
+# 📕 2026-08-04 — YENİ KOL TARAMASI: 5 AİLE, 5 RED — VE BİR MANTIK HATAMIN DÜZELTİLMESİ
+
+Çerçeve: filtre değil YENİ KOL ara. Gerekçe sağlamdı — filtreler işlem SİLEREK zarar veriyor
+(permütasyon: ne silinirse silinsin negatif beklenti), yeni kol ise BOŞ KOLTUKLARI doldurur.
+Beş aile tarandı; hepsi ankor tabanını (1579 / $+1420.66) BİREBİR doğrulayarak koştu.
+
+## ⚠️ ÖNCE: KENDİ ÇIKARIMIMDAKİ HATA (nk_daily.py yakaladı)
+
+Dün "koltuklar zamanın %3.25'inde dolu → koltuk-günü maliyeti sıfıra yakın → koltuk gerekçesiyle
+reddedilen her şey yeniden açıldı" dedim. **Ölçüm doğruydu, çıkarım yanlıştı.**
+
+%3.25 doluluk ANKORUN bir ÖZELLİĞİ, bir SABİT değil. Ankorun ortalama tutuşu **2.03 gün**.
+Günlük trend kolunun ortalama tutuşu **24.3 gün**. Kol eklenir eklenmez doluluk
+**%3.25 → %18.6-27.0**'a fırlıyor. Yani koltuklar boş ÇÜNKÜ hiçbir şey uzun tutmuyor;
+uzun tutan bir şey eklemek kıtlığın KENDİSİNİ yaratıyor. "Boş kapasite bedava" önermesi
+yalnızca ankorla BENZER kadanslı kollar için geçerli.
+
+## 1. GÜNLÜK (1D) TREND KOLU → RED (edge GERÇEK, entegrasyon negatif)
+
+Edge ledger'ın dediğinden GÜÇLÜ, bağımsız olarak yeniden üretildi:
+`519 işlem, ort R +0.4106, z=+4.77, 20/22 coin pozitif (binom p=0.0001), 270/270 kombinasyon
+tüm dönemde pozitif, 259/270 TEST'te pozitif` (ledger'ın 259/270'i birebir çıktı).
+
+Ama ankora üç ayrı tasarımda da NEGATİF:
+```
+12 deploy coin : $+1323  Δ −$97   maxDD %22.9  en kötü ay −%12.9 | 2025:−158
+10 non-deploy  : $+1317  Δ −$104  maxDD %26.0  en kötü ay −%20.3
+22 coin        : $+1126  Δ −$294  maxDD %26.7  en kötü ay −%30.0 | 2024:−98 2025:−229
+```
+**Koltuk-günü metriği yerine DOĞRUDAN DOLAR MUHASEBESİ:** kol, ankorun 459 işlemini dışarı
+itiyor (değeri $442) ve yerine $339 koyuyor → net −$97. Ledger'ın hükmü doğruymuş, ama
+gerekçesi ("koltuk-günü verimi") yanlış metrikti; doğru gerekçe YER DEĞİŞTİRME muhasebesi.
+NOT: 12-deploy varyantı en kötü ayı −%21.0 → **−%12.9** yapıyor (8 puan iyileşme!) ama
+kâr −$97 → kuyruk barından da kalıyor (%5 kâr sınırı).
+
+## 2. FONLAMA ORANI UÇLARINI FADE → VERİ YOK + TAVAN ÖLÇÜLDÜ
+
+Veri denetimi (uydurma yok): `data/*_funding.csv` → 0/22. Repo genelinde 0. Git geçmişinde hiç
+olmamış. Ağ: contract.mexc.com / fapi.binance.com / data.binance.vision → **CONNECT 403**
+(politika reddi). Bu konteynerde fonlama geçmişi YOK ve çekilemiyor.
+Ledger ayrıca gösterdi ki aile ZATEN mühürlü: sinyal olarak `research_funding_window.py` 0/6
+hücre; `funding_bt.py` strateji olarak reddedilmiş. Yani "sinyal olarak denenmedi" varsayımım yanlıştı.
+
+**Veri olmadan TAVAN ölçüldü:** kola ankorun KENDİ edge'i (+0.237R) verilse bile 20 hücrenin
+19'u barı geçmiyor; en kötü ay −%21.0 → **−%59.0** (coin-ekleme çöküşünün −%58.7'siyle AYNI
+büyüklük, bağımsız olarak yeniden üretildi). Barı geçen tek hücre "coin-BAĞIMSIZ tetikleme"
+gerektiriyor — fonlama piyasa-geneli olduğu için o mod fiziksel olarak MEVCUT DEĞİL.
+
+## 3. ARALIK KENARI ORTALAMAYA DÖNÜŞ → RED (ve TERS yönde anlamlı)
+
+14.567 işlem, havuzlanmış **−0.0123R** (z=−1.33), tek başına −$545. Ankorda 6 entegrasyonun
+6'sı da RED (Δ$ −180…−531; en kötü ay HEPSİNDE kötüleşti, −%37.7'ye kadar).
+**ASIL BULGU:** aynı barlarda TERS yön (devam/momentum) **+0.0187R, +$983**; eşleştirilmiş
+işaret testi 23/66 hücre, binom p=0.0187 — **anlamlı AMA ters yönde**. Yani kriptoda aralık
+kenarları DÖNMÜYOR, DEVAM EDİYOR. 32 doz-yanıt hücresinin hiçbirinde z>1 pozitif ortalama yok.
+Kol ayrıca ankorun 309-542 işlemini yerinden ediyor → "boş koltuk bedava" bu kadans için de geçersiz.
+
+## 4. KESİTSEL GÖRECELİ GÜÇ (piyasa-nötr) → RED, ve iddianın MOTORU yok
+
+30 hücre (L{3,7,14,30,60} × K{1,2,3} × RB{1,7}), 48.686 bacak, lookahead'siz (sıralama t'ye
+kadar, giriş t+1 açılışında). Merkezi konfig ÖNCEDEN sabitlendi (L14/K2/RB7 = ızgaranın ortası,
+en iyi hücre DEĞİL). 7 ankor koşusunun 7'si kaybettiriyor (Δ$ −51…−316).
+**TEK SATIRDA ASIL BULGU:**
+```
+LONG  bacak: $+3289  29/30 hücre pozitif  ort +0.0321R  n=23.950  z=+8.09
+SHORT bacak:  $−203  12/30 hücre pozitif  ort −0.0019R  n=24.736  z=−0.78
+```
+Kârın **%100'ü long bacakta**; short bacak ~25 bin bacakla SIFIR edge gösteriyor.
+"Piyasa-nötrlük" iddiasının MOTORU olan bacak çalışmıyor — bu "ölçemedik" değil, "YOK".
+Doğrulama: kolun 22-coin eşit-ağırlıklı piyasa getirisiyle aylık korelasyonu **+0.29…+0.58**
+(gerçekten nötr olsa ≈0 olmalıydı). Yani ATR-stop giydirilmiş KRİPTO BETASI = zaten sahibiz.
+
+## 5. MTF MA ÇAKIŞMASI (kullanıcının BTC grafiğinden) → RED
+
+Ön kontrol: havuz −0.0056 ATR, 6/22 coin pozitif. Kol: −0.0435R, z=−1.76, 4/22 coin, p=0.0043
+(anlamlı NEGATİF). **ASIL KANIT — θ doz-yanıtı DÜMDÜZ:** çakışma sıkılığı 0.002→0.010 arasında
+sonuç neredeyse hiç değişmiyor (−0.0451/−0.0435/−0.0430/−0.0423). Çakışma gerçek olsaydı θ'yı
+sıkmak etkiyi KESKİNLEŞTİRİRDİ. Etmiyor → "çakışma" bilgi taşımıyor, sadece "fiyat bir MA'nın
+yakınında" demek. Tek pozitif hücre (RSI70) yön testinden kaldı (LONG −0.1794 / SHORT +0.1977).
+
+## 🔗 BEŞ REDDİN ORTAK YAPISI — bu turun asıl çıktısı
+
+1. **SHORT TARAFTA EDGE YOK.** Kesitsel short bacak z=−0.78 (n≈25k). Çakışmada long tarafı
+   berbat, short nötr. Bu, "piyasa-nötr çeşitlendirici" fikrinin bu evrende neden kurulamadığını
+   tek başına açıklıyor: nötrlüğün ikinci bacağı boş.
+2. **HER KÂR KAYNAĞI AYNI KUYRUĞA BAĞLI.** Coin ekleme −%58.7, fonlama tavanı −%59.0, aralık
+   kolu −%84.1'e kadar — üç BAĞIMSIZ mekanizma aynı büyüklükte aylık çöküş üretiyor. Bu tesadüf
+   değil: hepsi eşzamanlı korele maruziyeti artırıyor ve bu sistemin tek gerçek risk faktörü bu.
+3. **KRİPTO ARALIK KENARLARI DEVAM EDİYOR, DÖNMÜYOR** (p=0.0187, ters yönde). Ortalamaya dönüş
+   ailesinin bu evrende neden yalnızca BB/LTC/hafta-sonu gibi dar bir nişte çalıştığını açıklıyor.
+4. **"BOŞ KOLTUK BEDAVA" YALNIZCA BENZER KADANSTA GEÇERLİ.** Uzun tutan her kol kendi kıtlığını
+   yaratır (2.03 gün → 24.3 gün, doluluk %3.25 → %27).
