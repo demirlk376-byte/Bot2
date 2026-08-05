@@ -2721,3 +2721,53 @@ Artık kapanmış eksenler: tetikleyici · gösterge/filtre (290) · stop mesafe
 trailing · breakeven · maxhold · kısmi çıkış · koltuk tahsisi · MAX_POSITIONS · coin evreni ·
 maruziyet tavanı · **zaman dilimi** · günlük trend kolu · fonlama · kesitsel · aralık kenarı ·
 MTF MA çakışması. Her biri ölçülmüş bir mekanizmayla kapandı, "denedik olmadı" ile değil.
+
+## 🔒 PAIRS ALT-HESAP ZORUNLULUĞU KANITLANDI (2026-08-05, pairs_collide.py)
+
+Kullanıcı sorusu: "alt hesap olmadan halledemiyor muyuz?" — ölçüldü, cevap HAYIR.
+
+**POLİTİKA: "çakışanı atla"** — pairs aynı hesapta koşar, ama bot o sembolde pozisyondaysa
+çift işlemi alınmaz. Alt hesap yok, bota sıfır dokunuş. Filtre ÜRETİM SIRASINDA (post-hoc değil).
+Doğrulama: kısıtsız sonuç ledger'la BİREBİR ($+532, 260 işlem, PF 1.63, 4/4 yıl+).
+
+```
+ALT HESAP (kısıtsız)         260 işlem  $+532  PF1.63  TRAIN+321 TEST+211 | 179 141  82 129  ✓4/4
+AYNI HESAP (çakışanı atla)   105 işlem    $−4  PF0.99  TRAIN +91 TEST −95 |  94  −3 −75 −20  ✗
+```
+**%−1 hayatta kalıyor. Edge TAMAMEN yok oluyor.**
+
+### ASIL BULGU: ÇAKIŞMA TESADÜFİ DEĞİL, YAPISAL
+```
+semboller zamanın yalnızca %8-31'inde meşgul (ADA %31, XRP %10, XLM %8)
+AMA çift işlemlerinin %89'u çakışma yüzünden atlandı (821/926)
+```
+Rastgele olsaydı ~%20-30 beklenirdi; %89 çıktı. **İki strateji aynı sembolü AYNI ANDA istiyor** —
+ve bu mekanik olarak zorunlu: donchian ADA'yı kırılım yaparken LONG'lar; pairs ADA'yı DOT'a göre
+PAHALI olduğunda SHORT'lar. "ADA DOT'a göre pahalı" ile "ADA yeni yükseldi" büyük ölçüde AYNI OLAY.
+
+**Ve filtre hayatta kalanları KÖTÜLEŞTİRİYOR** (seçilim yanlı): XLM/XRP +$135 → **−$33**;
+ADA/ALGO +$86 → **−$35**. Bot değerli dönemleri kapıyor, pairs'e sessiz dönemler kalıyor.
+
+### ÇİFT BAZINDA
+```
+çift        kısıtsız  aynı hesap  atlanan  kalan%
+ETC/ETH        +59        +28       138      47%
+ATOM/DOT       +42        +42         0     100%   ← bot'ta YOK
+BTC/ETH        −23         +1       176      −5%
+ADA/DOT       +147        +12       129       8%
+XLM/XRP       +135        −33       133     −25%
+ALGO/DOT       −20        −20         0     100%   ← bot'ta YOK
+ADA/ALGO       +86        −35        98     −41%
+ADA/ATOM      +105         +1       147       1%
+```
+Bot'un evreninde OLMAYAN iki çift (ATOM/DOT, ALGO/DOT) toplam **+$22** — 2026-07-25'teki
+"çakışmayan çiftler +$36" bulgusuyla bağımsız olarak uyumlu.
+
+### GERİYE KALAN TEK ALTERNATİF: HEDGE MODE
+MEXC çift-yönlü pozisyon modu açılırsa aynı sembolde long ve short AYRI tutulur, netleşme olmaz →
+alt hesap ihtiyacı ortadan kalkar. **DOĞRULANMADI** (bu konteynerde ağ kapalı). VPS'te
+kontrol edilecek üç şey: (a) MEXC bu hesapta hedge mode'a izin veriyor mu, (b) ccxt + exchange.py
+destekliyor mu (kod şu an tek-yönlü moda göre yazılmış → KOD RİSKİ), (c) iki bacak da ayrı marjin
+yiyeceği için $185'lik hesapta yer kalıyor mu.
+Üçüncü yol — ADA'yı donchian'dan çıkarıp pairs'e vermek — ZATEN REDDEDİLDİ (ETH ile aynı deney:
+−$52, 2025 bozuldu; ADA ETH'nin 2 katı kazandırdığı için daha da kötü olurdu).
