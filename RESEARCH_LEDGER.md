@@ -2827,3 +2827,66 @@ Kıyas: bot tek başına ~$431/yıl. Yani pairs bunun **~%26'sı kadar EK** geti
 **SIRA:** (1) kullanıcı bir aylık seyahatten dönsün, (2) canlı veri ankoru doğrulasın,
 (3) exchange.py'ye pozisyon yönü desteği + paper test, (4) k=0.70 ölçeğinde çok küçük canlı.
 **Seyahat öncesi KOD DEĞİŞİKLİĞİ YAPILMAZ.**
+
+## 🛑 CANLI HEDGE TESTİ İPTAL — DENETİM İKİ GERÇEK KUSUR BULDU (2026-08-06)
+
+`probe_hedge_live.py` yazıldı (LINK'te 1 kontrat, ~1 sent, "ters emir ikinci pozisyon mu açar")
+ve ÇALIŞTIRILMADAN ÖNCE üç bağımsız güvenlik denetimine gönderildi. **Üçü de "çalıştırmayın"
+dedi.** İki bulgu ana ajan tarafından kodu okuyarak DOĞRULANDI. Betik depodan SİLİNDİ.
+
+### S1 — "Güvenlik durdurması" korumaya söz verdiği pozisyonu KAPATIYORDU (doğrulandı)
+Ön kontrol `return`'ü (satır 134) `try:` bloğunun (117) İÇİNDEYDİ. Python `finally`yi (187)
+yine çalıştırır; temizlik döngüsü bulduğu HER pozisyonu reduceOnly market ile kapatır.
+Yani "bu sembolde zaten pozisyon varsa DOKUNMA" kuralı, pratikte **o pozisyonu likide
+ediyordu**. `opened` bayrağı temizliği kapılamıyordu (yalnız mesajda kullanılıyordu).
+Docstring madde 3 kodda YANLIŞTI. → Kendi güvenlik iddiamın tersini yapan bir betik yazmışım.
+
+### S2 — ASIL BULGU: test YANLIŞ SORUYU ölçüyordu (doğrulandı, daha önemli)
+Test "MEXC ters emri nasıl yönlendirir" sorusunu ölçüyor, ekrana "pairs alt hesapsız MÜMKÜN"
+yazıyordu. **Bu çıkarım desteklenmiyor — hedge yönlendirme DOĞRU çıksa bile pairs bot'u bozar**,
+ve engel borsa katmanında değil BİZİM kodumuzda:
+```
+exchange.py:593-608  get_position() → contracts!=0 olan İLK kaydı döner.
+                     Hedge modda iki bacak = iki kayıt; hangisinin geleceği MEXC dizi sırasına kalır.
+main.py:1500         internal_qty = sum(p.quantity for p in positions)   ← sleeve TOPLAMI
+                     exch_qty     = mexc_pos.contracts                    ← TEK BACAK
+                     → pairs short'u varken exch_qty < internal_qty çıkar ve mutabakat döngüsü
+                       gerçekten AÇIK sleeve'leri "dışarıdan kapandı" sayıp UYDURMA PnL ile
+                       defterde kapatır.
+execution.py:948-965 resync stop'ları oransal küçültür → gerçek bacağın koruması eksik kalır.
+execution.py:90 · exchange.py:719  "MEXC nets same-symbol sleeves into one" ← varsayım KODDA YAZILI
+```
+→ Kilit soru "MEXC hedge yönlendiriyor mu" DEĞİL, **"bizim kodumuz aynı sembolde iki pozisyonu
+kaldırabilir mi"**. Cevap kodu okuyarak alındı: **HAYIR.** Canlı emir GEREKMEDİ.
+
+### Diğer bulgular (özet)
+S3 betik `openType:2` (cross) kullanıyordu, üretim `openType:1`+leverage+SL (isolated) — ölçtüğü
+şey bot'un emir yolu DEĞİLDİ (pw_mtf_sleeve'deki "üretim sınıfını taklit etme" hatasının aynısı).
+S4 temizlik asılı emirleri iptal etmiyordu → dolmayan emir sonradan dolup SAHİPSİZ, stopsuz
+pozisyon bırakabilirdi, üstelik ekrana "✓ temiz" yazdıktan sonra.
+S5 `BOT_UNIVERSE` betiğe ELLE yazılmıştı, canlı `.env` okunmuyordu → "LINK bot evreninde değil"
+kontrolü kendi listesine bakıyordu (her zaman geçer).
+S6 nominal hesaplanıp ekrana basılıyor ama hiçbir eşiğe bağlanmıyordu (2700x hatasının tekrar yolu).
+S7 hüküm TEK okumaya dayanıyordu; kapat-ve-aç yarışında yanlış "HEDGE ✓" verebilirdi — bot kendi
+mutabakatında tam bu yüzden iki ardışık teyitli okuma şart koşuyor (main.py:1512-1525).
+S8 temizlik döngüsü ilk hatada duruyordu → hedge çıkarsa ikinci bacak hiç denenmezdi.
+**OLUMLU:** birim hatası TEKRARLANMAMIŞ — `amount=1` gerçekten 1 kontrat olarak gidiyor.
+
+### 📌 SONUÇ — pairs için engel listesi GÜNCEL
+| engel | durum |
+|---|---|
+| borsa hedge desteği | ✅ VAR (hesap zaten hedge modda) |
+| min-notional | ✅ sorun değil ($4.93 marjin) |
+| eşzamanlı marjin | ✅ k=0.70 ile sığıyor (~$113/yıl) |
+| **bot kodu: get_position tek bacak döner** | ⛔ ENGEL |
+| **bot kodu: mutabakat toplam vs tek bacak → uydurma kapanış** | ⛔ ENGEL |
+| **bot kodu: resync stop'ları oransal böler** | ⛔ ENGEL |
+
+Yani pairs, "ayrı hesap açmak" ile de çözülür (bot koduna HİÇ dokunmadan), ya da bu üç yer
+sembol+yön bazlı hale getirilerek. **Alt hesap hâlâ daha güvenli yol** — çünkü canlı mutabakat
+mantığına dokunmak, bir aylık gözetimsiz çalışmada en riskli değişiklik türüdür.
+
+### YÖNTEM NOTU
+Bu, oturumun en iyi getirisi olan denetim oldu: hem riskli bir betiği durdurdu, hem de
+ÇALIŞTIRILSA BİLE yanlış sonuca götüreceğini gösterdi. Canlı para dokunan her betik,
+çalıştırılmadan önce bağımsız çürütmeye gönderilmeli.
