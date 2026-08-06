@@ -2771,3 +2771,59 @@ destekliyor mu (kod şu an tek-yönlü moda göre yazılmış → KOD RİSKİ), 
 yiyeceği için $185'lik hesapta yer kalıyor mu.
 Üçüncü yol — ADA'yı donchian'dan çıkarıp pairs'e vermek — ZATEN REDDEDİLDİ (ETH ile aynı deney:
 −$52, 2025 bozuldu; ADA ETH'nin 2 katı kazandırdığı için daha da kötü olurdu).
+
+## 🔓 HEDGE MODE AÇIK ÇIKTI — PAIRS ENGELİ SERMAYE DEĞİL, KOD (2026-08-06)
+
+VPS yoklaması (probe_hedge.py / probe_hedge2.py, ikisi de SALT OKUNUR) üç şeyi kesinleştirdi:
+
+### 1. Hesap ZATEN HEDGE MODDA
+`contractPrivateGetPositionPositionMode` → `{'success': True, 'code': '0', 'data': '1'}` = **1 = HEDGE**.
+Aynı sembolde long ve short AYRI tutulabiliyor. **Pairs için alt hesap gerekçesinin BORSA
+tarafı düştü.** ccxt 4.5.58; setPositionMode/fetchPositionMode/setMarginMode/setLeverage hepsi VAR.
+
+### 2. ⚠️ ARAÇ HATASI (benim) — min-notional 2700× yanlış hesaplandı
+probe_hedge v1: `limits.amount.min = 1.0` MEXC vadelide "1 coin" DEĞİL **"1 KONTRAT"**.
+Kontrat sayısını coin fiyatıyla çarptım → BTC min notional $64,487 (gerçeği **$6.45**).
+"16 bacak $132,816 gerekir, YETMEZ" hükmü ÇÖPTÜ. Doğrusu `min_kontrat × contractSize × fiyat`:
+```
+ADA 1×1×0.2057=$0.21 · ATOM 1×0.1×1.368=$0.14 · BTC 1×0.0001×64457=$6.45
+ETH 1×0.01×1909=$19.09 · XLM 1×10×0.1624=$1.62 · XRP 1×1×1.04=$1.04
+16 bacak toplam min notional $49.26 → 10x ile MARJİN $4.93 → $183.63 ile YETER ✓
+```
+exchange.py bunu ZATEN doğru yapıyor (`_contract_size`, satır 502-540); hata yalnız yoklamadaydı.
+**İkinci hata:** `"positionSide" in src` kontrolü YANLIŞ POZİTİF verdi — o bir YEREL değişken adı
+(SL/TP yön hesabı, satır 988-1007). Regex API alanı aramaya çevrildi.
+
+### 3. ⛔ ASIL ENGEL: KOD POZİSYON YÖNÜ GÖNDERMİYOR
+```
+API alanı 'positionSide' : YOK      order_params = {"openType": ..., **params}
+API alanı 'positionId'   : YOK      → pozisyon yönü YOK
+```
+Hesap hedge modda olsa BİLE, açık LONG varken gönderilen SELL'in ikinci SHORT mu açacağı yoksa
+mevcut LONG'u mu KAPATACAĞI kodun garantisi altında değil — ccxt varsayılanına kalıyor.
+**Canlı pozisyonu sessizce kapatabilecek belirsizlik.** Backtest'le çözülemez.
+
+### 4. MARJİN SIĞDIRMA ÖLÇÜLDÜ (pairs_margin.py)
+```
+              ortalama   medyan    %95     tepe
+bot            $36.5    $32.8    $79.6   $137.3
+pairs          $58.8    $57.0   $114.0   $152.0
+BİRLEŞİK       $81.5      —        —     $226.1
+$184 aşılan zaman: %0.4 · $147 aşılan: %5.3
+```
+Sığdırma çarpanı (birleşik marjin zamanın %99'unda bakiyenin %80'ini aşmasın): **k = 0.70**.
+Pairs kârı nominalle doğrusal → k=0.70'te **+$372 / 3.3 yıl = ~$113/yıl**.
+Kıyas: bot tek başına ~$431/yıl. Yani pairs bunun **~%26'sı kadar EK** getirir — ve korelasyonu
+−0.362 olduğu için bu ek getiri kuyruğu ağırlaştırmayan TEK kaynak.
+
+### 📌 DURUM ÖZETİ — engel sırası DEĞİŞTİ
+| engel | eski sanılan | ölçülen gerçek |
+|---|---|---|
+| borsa hedge desteği | yok sanılıyordu | **VAR, hesap zaten hedge modda** |
+| min-notional | ~$300-400 gerekir | **$4.93 marjin, sorun değil** |
+| eşzamanlı marjin | bilinmiyordu | **k=0.70 ile sığıyor, ~$113/yıl** |
+| **kod (positionSide)** | gündemde yoktu | **⛔ TEK GERÇEK ENGEL** |
+
+**SIRA:** (1) kullanıcı bir aylık seyahatten dönsün, (2) canlı veri ankoru doğrulasın,
+(3) exchange.py'ye pozisyon yönü desteği + paper test, (4) k=0.70 ölçeğinde çok küçük canlı.
+**Seyahat öncesi KOD DEĞİŞİKLİĞİ YAPILMAZ.**
