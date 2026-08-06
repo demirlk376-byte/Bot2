@@ -35,6 +35,43 @@ from datetime import datetime, timezone
 
 BOT_DIR = os.environ.get("BOT_DIR", "/opt/bot2")
 SERVICE = os.environ.get("BOT_SERVICE", "btc-bot")
+
+
+def _load_env(path):
+    """BOT_DIR/.env dosyasını ortama yükle — YALNIZCA HENÜZ TANIMLI OLMAYAN anahtarları.
+
+    NEDEN GEREKLİ (2026-08-06'da canlıda yakalandı): sentinel yalnız os.environ okuyordu.
+    systemd birimlerinde EnvironmentFile=.env var, ama ELLE çalıştırıldığında
+    (`python3 sentinel.py --report`) hiçbir kimlik bilgisi görünmüyor ve rapor
+    "hiçbir bildirim kanalı çalışmadı" diyor. Bu, gerçek bir arıza ile elle-çalıştırma
+    artefaktını AYIRT EDİLEMEZ hale getiriyordu — nöbetçinin tam olarak yapmaması
+    gereken şey. Ayrıca systemd'nin EnvironmentFile ayrıştırıcısı `export` önekini ve
+    bazı tırnak biçimlerini KABUL ETMEZ; kendi ayrıştırıcımız o tuzağa da düşmez.
+
+    ORTAM DEĞİŞKENİ ÖNCELİKLİDİR: systemd/kabuk tarafından verilen değer EZİLMEZ."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for raw in fh:
+                s = raw.strip()
+                if not s or s.startswith("#"):
+                    continue
+                if s.startswith("export "):
+                    s = s[7:].lstrip()
+                if "=" not in s:
+                    continue
+                k, v = s.split("=", 1)
+                k = k.strip(); v = v.strip()
+                if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
+                    v = v[1:-1]
+                if k and k not in os.environ:
+                    os.environ[k] = v
+    except FileNotFoundError:
+        pass
+    except Exception:
+        pass        # .env okunamazsa sessizce geç — nöbetçi bu yüzden ÇÖKMEMELİ
+
+
+_load_env(os.path.join(BOT_DIR, ".env"))
 ALIVE_FILE = os.environ.get("ALIVE_FILE", "/tmp/bot_alive")
 DB_PATH = os.environ.get("TRADES_DB", os.path.join(BOT_DIR, "trades.db"))
 STATE = os.environ.get("SENTINEL_STATE", "/var/lib/bot2-sentinel.json")
