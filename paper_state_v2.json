@@ -43,21 +43,11 @@
       "skipped": 7
     },
     "XRP": {
-      "balance": 10067.257918262141,
-      "position": {
-        "direction": 1,
-        "entry": 1.0671,
-        "sl": 1.0503369533885905,
-        "tp": 1.095038411019016,
-        "qty": 4717.110822913571,
-        "atr": 0.0055876822038031775,
-        "entry_ts": "2026-08-05T03:00:00+00:00",
-        "fng_at_entry": 27,
-        "funding_at_entry": -1e-05
-      },
-      "n_trades": 13,
+      "balance": 9986.187132712523,
+      "position": null,
+      "n_trades": 14,
       "n_wins": 6,
-      "total_pnl": 67.25791826214126,
+      "total_pnl": -13.812867287476365,
       "skipped": 18
     }
   }
