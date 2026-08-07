@@ -2890,3 +2890,48 @@ mantığına dokunmak, bir aylık gözetimsiz çalışmada en riskli değişikli
 Bu, oturumun en iyi getirisi olan denetim oldu: hem riskli bir betiği durdurdu, hem de
 ÇALIŞTIRILSA BİLE yanlış sonuca götüreceğini gösterdi. Canlı para dokunan her betik,
 çalıştırılmadan önce bağımsız çürütmeye gönderilmeli.
+
+## 📐 "PAIRS'İ ÇÖZERSEK NE OLUR" — SAYISAL CEVAP (2026-08-06, pairs_combined.py)
+
+Bot ve pairs aylık PnL serileri birleştirildi. İki doğrulama da geçti (bot ankorla birebir
+1579/$+1420.66; pairs ledger'la uyumlu $+532). **Aylık korelasyon bağımsız olarak yeniden
+hesaplandı: −0.310** (ledger −0.362 diyordu; fark işlem-bazı vs ay-bazı toplamadan).
+
+```
+senaryo                  toplam$    Δ$   ort ay%  EN KÖTÜ AY%  poz-ay%   maxDD%*
+BOT TEK BAŞINA            +1421     +0     +18.7      −21.0       80      3.9
+bot + pairs (k=0.35)      +1607   +186     +21.1      −24.1       82      2.6
+bot + pairs (k=0.50)      +1687   +266     +22.2      −25.5       82      2.7
+bot + pairs (k=0.70) ←    +1793   +372     +23.6      −27.3       85      2.7
+bot + pairs (k=1.00)      +1952   +532     +25.7      −32.5       85      5.0   (marjin yetmez)
+```
+*maxDD burada AYLIK eşitlik eğrisinden — ankorun %24.4'ü İŞLEM-SIRASI drawdown'dır,
+**bu iki sayı KARŞILAŞTIRILAMAZ.** İki kol farklı kadanslarda çalıştığı için tek bir sıralı
+seri kurmak yanıltıcı olurdu; ay bazı ortak paydadır.
+
+### TAKAS DOĞRUSUNU KIRIYOR MU? — HAYIR, AMA 2.5× DAHA İYİ FİYATLA
+k=0.70: kâr **+$372**, en kötü ay −21.0 → **−27.3** (6.3 puan kötü) = **$59/puan**.
+Bugünkü en iyi satış oranı $23.6/puan'dı (rr genişletme). Pairs **2.5 kat daha iyi takas**
+sunuyor ama YİNE DE aynı doğrunun üzerinde — kuyruk satın almıyor, daha ucuza satıyor.
+
+### NEDEN KIRAMIYOR — mekanizma net
+Negatif korelasyon ORTALAMADA geçerli, HER AYDA değil. Bot'un en kötü 5 ayına bakınca:
+```
+ay        bot%    birleşik%   fark
+2025-12  −21.0      −11.7    +9.3   ← pairs kurtardı
+2026-04  −21.0      −27.3    −6.3   ← İKİSİ DE kaybetti (yeni en kötü ay)
+2025-03  −14.2      +44.3   +58.4   ← pairs kurtardı, hem de fazlasıyla
+2025-01  −11.3      −11.8    −0.5   ← nötr
+2026-07  −11.0       +4.0   +15.1   ← pairs kurtardı
+```
+**5 kötü ayın 4'ünde pairs yardım ediyor** — negatif korelasyon GERÇEKTEN çalışıyor. Ama
+2026-04'te iki kol birlikte kaybediyor ve o ay yeni tavanı belirliyor. Bu yüzden HİÇBİR k
+değerinde en kötü ay korunamıyor (k=0.35'te bile −24.1).
+
+### ÖN-KAYITLI BARA GÖRE HÜKÜM
+S1 kâr barının "en kötü ay kötüleşmeyecek" şartından **KALIYOR.** Bar gevşetilmiyor.
+AMA üç şey bugün test edilen hiçbir eksende görülmedi:
+ · **DÖRT YILIN DÖRDÜ de iyileşiyor** (+126 / +99 / +57 / +91) — hiçbir varyant bunu yapamadı
+ · **pozitif ay oranı %80 → %85**
+ · **puan başına $59** — en yakın alternatifin 2.5 katı
+Karar, canlı veri ankoru doğruladıktan SONRA ve k düşürülerek yeniden değerlendirilmeli.
