@@ -6,7 +6,7 @@
       "n_trades": 17,
       "n_wins": 9,
       "total_pnl": 136.8398324668497,
-      "skipped": 20
+      "skipped": 21
     },
     "ETH": {
       "balance": 10475.375955794001,
@@ -50,7 +50,7 @@
       "n_trades": 17,
       "n_wins": 10,
       "total_pnl": 450.2284237557367,
-      "skipped": 9
+      "skipped": 10
     },
     "XRP": {
       "balance": 9986.187132712523,

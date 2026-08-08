@@ -157,3 +157,5 @@ ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
 2026-08-08T11:00:00+00:00,SOL,SHORT,75.58,76.7152,73.688,0.3784,30,0.0001,True,karma: funding=+0.0100% (long ağırlıklı→short uygun) | F&G=30 (korku ortamında short riskli)
 2026-08-08T11:00:00+00:00,BNB,SHORT,597.4,1.6195,30,2.9e-05,False,çelişki: F&G=30 (korku ortamında short riskli)
 2026-08-08T13:00:00+00:00,BNB,SHORT,599.7,1.7658,30,4.5e-05,False,çelişki: F&G=30 (korku ortamında short riskli)
+2026-08-08T14:00:00+00:00,BTC,SHORT,65100.0,131.7387,30,5.6e-05,False,çelişki: F&G=30 (korku ortamında short riskli)
+2026-08-08T14:00:00+00:00,BNB,SHORT,605.1,2.6397,30,7.4e-05,False,çelişki: F&G=30 (korku ortamında short riskli)
