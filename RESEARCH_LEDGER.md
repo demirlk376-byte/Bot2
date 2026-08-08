@@ -2935,3 +2935,64 @@ AMA üç şey bugün test edilen hiçbir eksende görülmedi:
  · **pozitif ay oranı %80 → %85**
  · **puan başına $59** — en yakın alternatifin 2.5 katı
 Karar, canlı veri ankoru doğruladıktan SONRA ve k düşürülerek yeniden değerlendirilmeli.
+
+## ⚠️ PAIRS YENİDEN DEĞERLENDİRİLDİ — İDDİA ZAYIFLADI (2026-08-06, pairs_cost.py + pairs_robust.py)
+
+Kullanıcı "pairs'e gerek var mı, EMİN OL, ona göre çalışmalara başlayacağız" dedi. Haftalarca
+sürecek kod işine girmeden önce dört ölüm testi koşuldu. **Üçü geçti, biri BULGUYU ZAYIFLATTI.**
+
+### ✅ T0 — GERÇEK İŞLEM MALİYETİ (bu depoda HİÇ sorulmamıştı)
+`pairs_verify.py:105` bir tur için **toplam 4 bp** yazıyordu. Ama bir çift işlemi **DÖRT
+DOLUM** (A giriş, B giriş, A çıkış, B çıkış) ve ölçülen donchian kayması **dolum başına
+13.4 bp** (ledger:1225). Yani maliyet ~13 kat eksik hesaplanmıştı.
+```
+bp/dolum:   1     5    10   13.4    20    25    30
+toplam$: +542  +502  +453  +419  +354  +305  +255     ← hepsinde 4/4 yıl+
+```
+**Edge >30 bp'ye kadar ölmüyor.** Ölçülen maliyette +$419 (iddia edilen $532'nin %77'si),
+PF 1.47, TRAIN+262/TEST+157. Endişe meşruydu ama bulgu GEÇTİ.
+
+### ✅ T1 — ÇOKLU TEST (z ızgarası, 45 hücre)
+**45/45 hücre kârlı (%100)**, 36'sı 4/4 yıl+ (%80). Medyan +$311, ledger'ın seçtiği hücre
++$419 = ızgaranın **67. yüzdeliği** (tepe DEĞİL → kiraz toplanmamış). Edge hücreye özel değil.
+
+### ✅ T2 — ÇİFT SAYISI
+NPAIRS 4 ve 6 → 4/4 yıl KIRILIYOR (2025 negatif). 8/10/12/16 → hepsi geçiyor (12 en iyi, +$502).
+Yani 8 sihirli sayı değil; **yeterli çeşitlendirme** gerekiyor — bu makul bir mekanizma.
+
+### ❌ T3 — YOĞUNLAŞMA: BULGUNUN ZAYIF NOKTASI
+```
+hepsi (260 işlem)          +$419   4/4 yıl ✓
+en iyi  1 işlem çıkarıldı  +$350   4/4 yıl ✗   ← TEK işlem
+en iyi  3 çıkarıldı        +$216   ✗
+en iyi  5 çıkarıldı        +$139   ✗
+en iyi 10 çıkarıldı        + $13   ✗   (kâr fiilen SIFIR)
+```
+**260 işlemin 5'i kârın %67'sini üretiyor.** Ve daha kritiği: ledger'ın pairs'e güvenmesinin
+ANA gerekçesi olan "4/4 yıl pozitif" iddiası **TEK BİR İŞLEM derinliğinde.**
+
+Bu, bu oturumda trailing bulgusunu düşüren desenin AYNISI ("kârın %73'ü 24 işlemde") — burada
+daha da uç: %67'si 5 işlemde.
+
+**T1 bunu KURTARMIYOR:** z eşiği 1.5-2.5 arasında değişse de büyük spread patlamaları HER
+eşikte tetiklenir; yani 45 hücrenin hepsi büyük ölçüde AYNI 5 olayı yakalıyor olabilir.
+
+### 📉 REVİZE EDİLMİŞ BEKLENTİ
+```
+yılda ~1.5 büyük olay · bir ayda yakalama olasılığı ~%13
+→ ayların ~%88'inde pairs neredeyse HİÇBİR ŞEY katmaz, ~%12'sinde büyük katkı yapar
+ölçülen maliyette: +$419/3.3yıl = $127/yıl · k=0.70 ile $89/yıl (botun %21'i)
+```
+**"Yılda +$113 güvenli ek gelir" ifadesi YANLIŞ.** Doğrusu: pozitif beklentili, ÇOK yüksek
+varyanslı, birkaç seyrek olaya bağlı bir akış. 1-2 yıllık ufukta sıfır veya negatif tamamen
+mümkün.
+
+### 🔻 KARAR DEĞİŞİKLİĞİ
+Önceki not "sıra: kod düzeltmesi + küçük canlı" diyordu. **Bu artık erken.**
+Yoğunlaşma, `pairs_paper.py`'yi ZORUNLU ön koşul yapıyor: birkaç seyrek olaya bağlı bir edge
+ancak ileriye dönük gözlemle doğrulanabilir — backtest bu tür bir iddiayı asla kapatamaz.
+Ve kâğıt döneminde muhtemelen HİÇBİR ŞEY olmayacak (%88 olasılıkla) — bu bile bilgidir,
+çünkü beklentiyi doğru kalibre eder.
+
+**Kod işine başlamak için gereken: kâğıt üzerinde en az bir büyük olayın backtest'in
+öngördüğü gibi gerçekleşmesi.** O görülmeden bu, haftalarca kod yazmayı hak etmiyor.
