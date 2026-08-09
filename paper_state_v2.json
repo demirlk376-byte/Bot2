@@ -1,21 +1,11 @@
 {
   "coins": {
     "BTC": {
-      "balance": 10136.839832466849,
-      "position": {
-        "direction": 1,
-        "entry": 64839.8,
-        "sl": 64532.117889598136,
-        "tp": 65352.60351733644,
-        "qty": 0.07816834592693722,
-        "atr": 102.5607034672887,
-        "entry_ts": "2026-08-09T01:00:00+00:00",
-        "fng_at_entry": 31,
-        "funding_at_entry": 4.2e-05
-      },
-      "n_trades": 17,
-      "n_wins": 9,
-      "total_pnl": 136.8398324668497,
+      "balance": 10174.889450235512,
+      "position": null,
+      "n_trades": 18,
+      "n_wins": 10,
+      "total_pnl": 174.88945023551423,
       "skipped": 21
     },
     "ETH": {
