@@ -24,11 +24,21 @@
       "n_trades": 13,
       "n_wins": 9,
       "total_pnl": 512.9931362412639,
-      "skipped": 23
+      "skipped": 24
     },
     "SOL": {
       "balance": 10335.510565889706,
-      "position": null,
+      "position": {
+        "direction": -1,
+        "entry": 76.99,
+        "sl": 78.05348432349408,
+        "tp": 75.21752612750986,
+        "qty": 67.12242217099433,
+        "atr": 0.354494774498028,
+        "entry_ts": "2026-08-09T14:00:00+00:00",
+        "fng_at_entry": 31,
+        "funding_at_entry": 0.0001
+      },
       "n_trades": 12,
       "n_wins": 6,
       "total_pnl": 335.5105658897027,
