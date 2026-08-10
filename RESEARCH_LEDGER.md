@@ -3082,3 +3082,48 @@ bizim tarafı ölçüldü ve tutmadı. Enstrümanın var olup olmadığı bile h
 (`probe_xau2.py` VPS'te koşacak).
 **Yeniden açılma koşulu:** ayrı hesap + altın kolu için ayrı CAP/kaldıraç + `donchian_monthly.csv`
 ile ölçülmüş korelasyon r<+0.4. Üçü olmadan bu eksen kapalı.
+
+## ✅ EMA200 KAPISI DENETLENDİ — KAPI HAK EDİYOR, VE ÇELİŞKİ ÇÖZÜLDÜ (2026-08-08, pw_gate.py)
+
+Canlı bir bileşen, bugüne kadar HİÇ denetlenmemişti. İki bulgu bu testi zorunlu kıldı:
+(a) 290 filtre denemesi çöktü ve mekanizma "filtreler işlem silerek zarar veriyor" idi →
+o genelse EMA200 kapısı da zararlı olabilirdi, KALDIRMAK kazandırabilirdi;
+(b) xau_mech_test çelişkisi: kırılım sonrası sürüklenme yönsüz (yukarı +0.63%, aşağı +0.57%,
+momentum imzası 3/22) AMA üretim kolu iki yönde de kârlı.
+
+88 hücre, 13.201 işlem, filtre ÜRETİM SIRASINDA:
+```
+varyant          işlem    ort R    fark      z    hücre       p |  LONG R  SHORT R |  TRAIN    TEST
+EMA200 (CANLI)   13201  +0.0784       —      —       —       — | +0.0950  +0.0608 | +0.1069 +0.0492
+kapı YOK         14943  +0.0651  −0.0133  −0.78   29/88  0.0018 | +0.0691  +0.0605 | +0.1101 +0.0198
+EMA100           14640  +0.0687  −0.0097  −0.57   35/88  0.0693 | +0.0751  +0.0614 | +0.1118 +0.0250
+EMA50            14941  +0.0652  −0.0132  −0.77   30/88  0.0037 | +0.0693  +0.0605 | +0.1102 +0.0199
+```
+**KAPI HAK EDİYOR.** Kaldırmak ortalama R'yi düşürüyor; işaret testi 29/88 (p=0.0018) —
+yani NEGATİF yönde anlamlı. EMA100/EMA50 de tabandan kötü. 200 doğru seçim.
+
+**ÜÇ AYRINTI, hepsi öğretici:**
+1. **Kapı ucuz:** işlemlerin yalnız **%12'sini** eliyor (14943→13201). Bugün çöken 290
+   filtrenin çoğu çok daha fazla siliyordu — "silmenin bedeli" mekanizmasıyla tutarlı:
+   az silen bir filtre bedeli düşük ödüyor.
+2. **Etki neredeyse TAMAMEN LONG tarafında:** LONG +0.0950 → +0.0691 (kapı kalkınca −%27),
+   SHORT +0.0608 → +0.0605 (**değişmiyor**). Kapı short'lara hiçbir şey katmıyor.
+3. **Değeri TEST döneminde yoğunlaşıyor:** TRAIN +0.1069→+0.1101 (kapı kalkınca hafif İYİ),
+   TEST +0.0492→+0.0198 (**−%60**). Yani kapı asıl işini 2025+ döneminde yapıyor.
+
+**xau_mech ÇELİŞKİSİ BÖYLECE ÇÖZÜLDÜ:** koşulsuz kırılımlarda momentum imzası yok (T2),
+ama EMA200 kapısı LONG tarafında kârlı alt kümeyi seçiyor. Kolumuzun edge'i "ham kırılım
+momentumu" DEĞİL; kapı + asimetrik ödeme yapısı (rr2.5 / 2×ATR, başabaş WR ~%29, gerçekleşen %43).
+
+### ⚠️ DÖRDÜNCÜ DEJENERE VARYANT YAKALANDI (bu oturumda üçüncü kez)
+"EMA200 EĞİMİ" varyantı tabanla **BİREBİR aynı** çıktı (13201 işlem, +0.0784R, tüm kırılımlar
+aynı). Bug değil — **cebirsel özdeşlik**:
+```
+EMA_t = EMA_{t-1} + α(P_t − EMA_{t-1}),  α>0
+  EMA yükseliyor  ⟺  EMA_t − EMA_{t-1} > 0  ⟺  P_t > EMA_{t-1}
+  P_t > EMA_t     ⟺  P_t(1−α) > EMA_{t-1}(1−α)  ⟺  P_t > EMA_{t-1}
+→ İKİSİ DE AYNI KOŞUL.
+```
+Sayısal doğrulama (SOL/4h, 7200 bar): uyuşmazlık **0 bar**.
+Aracın iki varyant için birebir aynı sayı üretmesi bunu ele verdi — kontrol satırı olmasa
+"eğim kapısı da aynı sonucu veriyor, ilginç" diye YANLIŞ bir gözlem raporlanacaktı.
