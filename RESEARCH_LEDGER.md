@@ -3127,3 +3127,47 @@ EMA_t = EMA_{t-1} + α(P_t − EMA_{t-1}),  α>0
 Sayısal doğrulama (SOL/4h, 7200 bar): uyuşmazlık **0 bar**.
 Aracın iki varyant için birebir aynı sayı üretmesi bunu ele verdi — kontrol satırı olmasa
 "eğim kapısı da aynı sonucu veriyor, ilginç" diye YANLIŞ bir gözlem raporlanacaktı.
+
+## 🛑 PAIRS ARA-DÖNEM RİSKİ ÖLÇÜLDÜ — EDGE, KORUMASIZ BEKLEMEKTEN GELİYOR (2026-08-10, pairs_mae.py)
+
+Pairs kolunu YAZMADAN ÖNCE ölçüldü. Backtest'te görünmeyen bir boşluk vardı: pairs çıkışı
+GÜNLÜK KAPANIŞTA kontrol edilir (|z|<0.5, |z|>3.5, 20 gün). İki kapanış ARASINDA pozisyonda
+**hiçbir koruma yoktur**. Donchian'da her pozisyonun borsada duran SL emri var; pairs'te yok —
+"stop" bir spread koşulu ve günde bir bakılıyor. Kriptoda bir bacak saatler içinde %20 oynayabilir.
+
+Saatlik barlarla ölçülen MAE (ömür boyu en kötü ara-dönem zararı), 260 işlem, nominal $190:
+```
+medyan   −$3.85   ·  %90 −$12.36  ·  %99 −$24.56  ·  EN KÖTÜ −$30.67 (nominalin %16.1'i)
+```
+**Tek bir çift işlemi, hiçbir koruma olmadan $30 ekside gezebiliyor** — $215'lik hesapta %14.
+
+### GERİ GELME: strateji "beklemek" üzerine kurulu
+MAE < −$5 olan 102 işlemde: ortalama MAE −$10.34 → kapanış −$2.10 (toparlanma +$8.24).
+Ama bunların yalnız **%35'i artıda kapanmış** — çoğu yine zararla, sadece daha az zararla.
+
+### ⛔ ASIL BULGU: KORUMA KOYMAK EDGE'İ ÖLDÜRÜYOR
+```
+bacak stopu:   YOK     %3     %5     %8    %12    %20
+toplam:       +$213   −$46   −$45  +$126  +$145  +$213
+tetiklenen:     —      84     46     11      4      0
+```
+**Herhangi bir koruyucu stop kârı yok ediyor.** %5'lik bir bacak stopu +$213'ü −$45'e çeviriyor.
+Yani pairs'in edge'i tam da **o dalgalanmaya katlanmaktan** geliyor.
+(Not: buradaki taban +$213, günlük-kapanış hesabındaki +$419'dan farklı — bu tablo saatlik
+yoldan ölçülen kapanış değerini ve yalnız saatlik verisi olan işlemleri kullanıyor. MUTLAK
+değer değil, GÖRECELİ etki okunmalı.)
+
+### 📌 KARARA ETKİSİ
+Pairs'i canlıya almak şunu kabul etmek demek:
+ · pozisyonlar **20 güne kadar korumasız** duracak (borsada SL emri YOK)
+ · tek işlemde **−%16 nominal** ara-dönem zarar normal aralıkta
+ · koruma eklenirse **edge kayboluyor** → backtest geçersiz hale gelir
+ · üstelik kârın **%67'si 5 işlemde** ve doğrulama **36 ay** sürüyor
+
+Donchian kitabıyla kıyas: orada her pozisyonun borsada duran stop'u var, kâr 260 değil 1579
+işleme yayılı, en iyi 10 işlem kârın yalnız %10'u. **İki kolun risk profili aynı cinsten değil.**
+
+**HÜKÜM: pairs, $215'lik ve gözetimsiz çalışan bir hesap için uygun DEĞİL.** Reddedildiği için
+değil — risk biçimi bu hesaba uymadığı için. Sermaye büyüdüğünde ve başında olunduğunda
+yeniden değerlendirilebilir. Mutabakat kodu (HEDGE_AWARE_RECON) yazıldı ve test edildi;
+kapalı duruyor, o gün geldiğinde hazır.
