@@ -2,12 +2,26 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Optional, Protocol
 
 logger = logging.getLogger(__name__)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HEDGE-FARKINDA MOD — TEK KAYNAK. VARSAYILAN KAPALI.
+#
+# Burada tanımlı çünkü hem main.py hem execution.py `exchange`i import ediyor;
+# bayrağı iki yerde ayrı ayrı okumak, ileride birinin değişip diğerinin unutulması
+# ve YARIM bir hedge modunda çalışılması demektir — yarım hedge modu, hiç olmamasından
+# daha tehlikelidir (bir yer yön-bazlı okurken diğeri toplam kıyaslar).
+#
+# Kapalıyken tüm kod yolları BUGÜNKÜYLE BİT BİT AYNI → `git pull` canlıyı değiştirmez.
+HEDGE_AWARE_RECON = os.environ.get("HEDGE_AWARE_RECON", "false").strip().lower() in (
+    "1", "true", "yes", "on"
+)
 
 
 @dataclass
@@ -590,7 +604,37 @@ class LiveExchange:
                 continue
         return False if determined else None
 
-    async def get_position(self, symbol: str) -> Optional[Position]:
+    def _mk_position(self, symbol: str, p: dict) -> Position:
+        """ccxt pozisyon sözlüğünü iç Position'a çevir. get_position ve
+        get_positions_by_side AYNI dönüşümü kullansın diye ayrıldı — iki yerde
+        kopyalanmış dönüşüm, ileride birinin düzeltilip diğerinin unutulması demektir."""
+        return Position(
+            symbol=symbol,
+            side="long" if p["side"] == "long" else "short",
+            # ccxt reports `contracts` as the contract count; convert to
+            # base-currency units so it matches the bot's internal
+            # quantity (which is always base) — the reconciliation loop
+            # compares the two directly.
+            contracts=self._to_base(symbol, float(p.get("contracts") or 0)),
+            entry_price=float(p.get("entryPrice") or 0),
+            unrealized_pnl=float(p.get("unrealizedPnl") or 0),
+            leverage=int(p.get("leverage") or self._leverage),
+        )
+
+    async def get_position(
+        self, symbol: str, side: Optional[str] = None
+    ) -> Optional[Position]:
+        """side=None → BUGÜNKÜ DAVRANIŞ AYNEN: contracts!=0 olan İLK kaydı döner.
+
+        side="long"/"short" → yalnız o bacağı döner (hedge modda iki bacak ayrı
+        kayıttır). Bu parametre pairs için eklendi: netted modda sembol başına tek
+        pozisyon olduğu için side=None güvenliydi, ama aynı sembolde ters yönde
+        ikinci bir pozisyon açılırsa hangi bacağın döneceği MEXC'in dizi sırasına
+        kalıyordu — mutabakat döngüsü o belirsizlik üzerine kuruluydu.
+
+        GERİYE UYUMLULUK KASITLI: mevcut 6 çağrının hepsi side vermiyor ve
+        davranışları BİT BİT aynı kalıyor. Yeni davranış YALNIZCA side verilince
+        veya HEDGE_AWARE_RECON açıkken devreye girer."""
         positions = await self._exchange.fetch_positions([symbol])
         for p in positions:
             # MEXC can return any numeric field as None inside an otherwise-valid
@@ -599,21 +643,46 @@ class LiveExchange:
             # so float(None) would crash get_position, which the reconciliation
             # loop, restore, and safety checks all depend on. Use `or 0` to treat
             # missing AND None alike.
-            if float(p.get("contracts") or 0) != 0:
-                side = "long" if p["side"] == "long" else "short"
-                return Position(
-                    symbol=symbol,
-                    side=side,
-                    # ccxt reports `contracts` as the contract count; convert to
-                    # base-currency units so it matches the bot's internal
-                    # quantity (which is always base) — the reconciliation loop
-                    # compares the two directly.
-                    contracts=self._to_base(symbol, float(p.get("contracts") or 0)),
-                    entry_price=float(p.get("entryPrice") or 0),
-                    unrealized_pnl=float(p.get("unrealizedPnl") or 0),
-                    leverage=int(p.get("leverage") or self._leverage),
-                )
+            if float(p.get("contracts") or 0) == 0:
+                continue
+            if side is not None and p.get("side") != side:
+                continue
+            return self._mk_position(symbol, p)
         return None
+
+    async def get_positions_by_side(self, symbol: str) -> dict:
+        """{"long": Position|None, "short": Position|None} — TEK fetch ile.
+
+        Neden ayrı bir metot: mutabakat döngüsünün iki bacağı da AYNI ANDA görmesi
+        gerekiyor. İki kez get_position(side=...) çağırmak iki ayrı ağ okuması demek
+        ve arada pozisyon değişirse tutarsız bir çift okunur — mutabakat tam da o
+        tutarsızlıkta sahte kapanış yazar.
+
+        Aynı yönde birden fazla kayıt gelirse (beklenmedik) miktarlar TOPLANIR;
+        sessizce ilkini almak, bugün düzeltmeye çalıştığımız hatanın aynısı olurdu."""
+        out: dict = {"long": None, "short": None}
+        try:
+            positions = await self._exchange.fetch_positions([symbol])
+        except Exception:
+            positions = await self._exchange.fetch_positions()
+            positions = [p for p in positions if p.get("symbol") == symbol]
+        for p in positions:
+            if float(p.get("contracts") or 0) == 0:
+                continue
+            s = "long" if p.get("side") == "long" else "short"
+            pos = self._mk_position(symbol, p)
+            if out[s] is None:
+                out[s] = pos
+            else:
+                prev = out[s]
+                out[s] = Position(
+                    symbol=symbol, side=s,
+                    contracts=prev.contracts + pos.contracts,
+                    entry_price=prev.entry_price or pos.entry_price,
+                    unrealized_pnl=prev.unrealized_pnl + pos.unrealized_pnl,
+                    leverage=prev.leverage,
+                )
+        return out
 
     async def has_attached_protection(self, symbol: str) -> bool:
         """True if the MEXC position already carries entry-attached SL/TP — the

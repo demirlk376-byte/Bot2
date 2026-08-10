@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import sys
 from dataclasses import dataclass
 from datetime import datetime, date, timezone
@@ -1411,6 +1412,25 @@ async def heartbeat_loop() -> None:
 # and MEXC rate-limits (code 510) the order endpoints this shares a budget with.
 PROTECTION_CHECK_EVERY = 10
 
+# ─────────────────────────────────────────────────────────────────────────────
+# HEDGE-FARKINDA MUTABAKAT — VARSAYILAN KAPALI (HEDGE_AWARE_RECON=false)
+#
+# NEDEN VAR: mutabakat döngüsü bugüne kadar "sembol başına TEK pozisyon" varsayımıyla
+# çalışıyordu (MEXC netted mod). O varsayım altında doğruydu ve kodun yorumlarında
+# açıkça yazılı: "MEXC nets same-symbol sleeves into one".
+# Pairs kolu bu varsayımı İHLAL EDER: aynı coinde ters yönde ikinci bir pozisyon açar.
+# O durumda:
+#   · get_position() iki bacaktan hangisini döndüreceği MEXC'in dizi sırasına kalır
+#   · internal_qty (sleeve TOPLAMI) tek bacakla karşılaştırılır → eksik görünür
+#   · döngü GERÇEKTEN AÇIK sleeve'leri "dışarıdan kapandı" sayıp UYDURMA PnL ile
+#     deftere kapatır  ← sessiz bozulma, haftalar sonra fark edilir
+#
+# NEDEN VARSAYILAN KAPALI: bu kod canlı parayla çalışan bir sistemde mutabakat
+# mantığına dokunuyor. Bayrak kapalıyken kod yolu BUGÜNKÜYLE BİT BİT AYNI kalır,
+# yani `git pull` yapmak canlı davranışı DEĞİŞTİRMEZ. Açmak ayrı ve bilinçli bir karar
+# (.env'de HEDGE_AWARE_RECON=true) ve ancak pairs gerçekten devreye alınırken gerekir.
+from exchange import HEDGE_AWARE_RECON   # TEK KAYNAK — exchange.py'de tanımlı
+
 
 async def _verify_protection(symbol: str) -> None:
     """Confirm a still-open position's exchange-side SL/TP is actually resting.
@@ -1486,16 +1506,29 @@ async def position_reconciliation_loop() -> None:
             # detects a single sleeve closing even while siblings stay open.
             by_symbol: dict[str, list] = defaultdict(list)
             for pos in portfolio.get_open_positions():
-                by_symbol[pos.symbol].append(pos)
+                # HEDGE-FARKINDA MOD: gruplama anahtarı sembol DEĞİL (sembol, yön).
+                # Bayrak kapalıyken anahtar eskisi gibi düz sembol → davranış BİT BİT AYNI.
+                # Açıkken her yön KENDİ borsa bacağıyla karşılaştırılır; aksi halde
+                # sleeve TOPLAMI tek bacakla kıyaslanır ve açık sleeve'ler "kapandı"
+                # sayılıp uydurma PnL yazılır (bu değişikliğin varlık sebebi).
+                key = (pos.symbol, pos.side) if HEDGE_AWARE_RECON else pos.symbol
+                by_symbol[key].append(pos)
 
-            for symbol, positions in by_symbol.items():
+            for _key, positions in by_symbol.items():
+                symbol = _key[0] if HEDGE_AWARE_RECON else _key
+                want_side = _key[1] if HEDGE_AWARE_RECON else None
                 try:
                     # Hold the per-symbol lock across the whole detect→close→resync
                     # sequence so a concurrent entry/close/trailing on this netted
                     # symbol can't interleave (read stale exchange state, or have
                     # its just-placed stop cancelled before we re-place siblings').
                     async with executor._symbol_lock(symbol):
-                        mexc_pos = await exchange.get_position(symbol)
+                        # want_side None (bayrak kapalı) → get_position eski imzayla
+                        # çağrılır ve İLK kaydı döner: bugünkü davranış AYNEN.
+                        # want_side dolu → yalnız o bacak okunur, karşılaştırma
+                        # yön-bazında yapılır.
+                        mexc_pos = await exchange.get_position(symbol, want_side) \
+                            if want_side else await exchange.get_position(symbol)
                         exch_qty = float(mexc_pos.contracts) if mexc_pos else 0.0
                         internal_qty = sum(p.quantity for p in positions)
                         tol = max(internal_qty * 0.01, 1e-9)
@@ -1514,7 +1547,12 @@ async def position_reconciliation_loop() -> None:
                         # trigger a phantom close that books fabricated PnL. Require
                         # TWO consecutive reads to both show the shortfall.
                         await asyncio.sleep(2)
-                        confirm = await exchange.get_position(symbol)
+                        # TEYİT OKUMASI DA AYNI BACAĞA BAKMALI. İlk okuma yön-bazlı
+                        # yapılıp teyit okuması sembol-bazlı yapılırsa iki farklı
+                        # bacak karşılaştırılır ve teyit mekanizması — sahte kapanışı
+                        # önlemek için VAR OLAN mekanizma — kendisi sahte sonuç üretir.
+                        confirm = await exchange.get_position(symbol, want_side) \
+                            if want_side else await exchange.get_position(symbol)
                         confirm_qty = float(confirm.contracts) if confirm else 0.0
                         if confirm_qty + tol >= internal_qty:
                             logger.info(

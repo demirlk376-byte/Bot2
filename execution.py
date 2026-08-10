@@ -8,7 +8,7 @@ from typing import Optional, Callable, Awaitable
 
 from config import AppConfig
 from database import Database, TradeRecord
-from exchange import PaperExchange, LiveExchange, OrderResult
+from exchange import PaperExchange, LiveExchange, OrderResult, HEDGE_AWARE_RECON
 from portfolio import Portfolio, Position
 from risk import RiskManager, TradeSetup
 from strategies.signal_combiner import CombinedSignal
@@ -891,8 +891,26 @@ class ExecutionEngine:
         # After a partial external close the portfolio qty may exceed the real
         # exchange qty, causing a reduce-only plan order to be silently rejected
         # (MEXC returns 200 with all-None fields when the requested size > position).
+        # HEDGE-FARKINDA MOD: aynı sembolde iki bacak varsa borsa miktarı YÖN BAZINDA
+        # okunmalı. Aksi halde aşağıdaki oranlama şunu yapar:
+        #   exch_qty = tek bacak (long 10) · total_portfolio_qty = long 10 + short 5 = 15
+        #   10 < 15  →  HER sleeve'in stop'u 10/15 = %67'ye kırpılır
+        #   → long bacak 10 yerine 6.67, short bacak 5 yerine 3.33 ile korunur
+        #   → İKİ BACAK DA EKSİK KORUMALI kalır (pozisyonun bir kısmı stopsuz)
+        # Bayrak kapalıyken tek okuma yapılır: bugünkü davranış AYNEN.
         exch_qty: float | None = None
-        if hasattr(self._exchange, "get_position"):
+        exch_by_side: dict | None = None
+        if HEDGE_AWARE_RECON and hasattr(self._exchange, "get_positions_by_side"):
+            try:
+                d = await self._exchange.get_positions_by_side(symbol)
+                exch_by_side = {
+                    s: (float(p.contracts) if p and p.contracts else 0.0)
+                    for s, p in d.items()
+                }
+                exch_qty = sum(exch_by_side.values())
+            except Exception as e:
+                logger.debug("resync: yön-bazlı okuma başarısız %s: %s", symbol, e)
+        if exch_by_side is None and hasattr(self._exchange, "get_position"):
             try:
                 exch_pos = await self._exchange.get_position(symbol)
                 if exch_pos and exch_pos.contracts:
@@ -956,16 +974,28 @@ class ExecutionEngine:
             total_portfolio_qty = sum(p.quantity for p in portfolio_positions)
 
             for pos in portfolio_positions:
-                if exch_qty is not None and total_portfolio_qty > 0 and exch_qty < total_portfolio_qty:
+                # Oranlama TABANI: hedge-farkında modda sleeve'in KENDİ YÖNÜNDEKİ
+                # borsa bacağı ve yine KENDİ YÖNÜNDEKİ portföy toplamı kullanılır.
+                # Bayrak kapalıyken ikisi de sembol geneli → bugünkü davranış AYNEN.
+                if exch_by_side is not None:
+                    _eq = exch_by_side.get(pos.side, 0.0)
+                    _tot = sum(q.quantity for q in portfolio_positions
+                               if q.side == pos.side)
+                else:
+                    _eq, _tot = exch_qty, total_portfolio_qty
+                if _eq is not None and _tot > 0 and _eq < _tot:
                     # Prorate this sleeve's share of the real position
-                    stop_qty = pos.quantity * (exch_qty / total_portfolio_qty)
+                    stop_qty = pos.quantity * (_eq / _tot)
                     stop_qty = round(stop_qty, 6)
                     if stop_qty <= 0:
                         continue
+                    # Günlükte de ORANLAMADA KULLANILAN sayılar yazılmalı; sembol
+                    # geneli toplamı yazmak, hedge modda yanlış teşhise yol açardı.
                     logger.warning(
-                        "resync %s: capping stop from %.6f → %.6f "
-                        "(MEXC position %.6f < portfolio %.6f — partial external close)",
-                        symbol, pos.quantity, stop_qty, exch_qty, total_portfolio_qty,
+                        "resync %s%s: capping stop from %.6f → %.6f "
+                        "(MEXC %.6f < portfolio %.6f — partial external close)",
+                        symbol, f" [{pos.side}]" if exch_by_side is not None else "",
+                        pos.quantity, stop_qty, _eq, _tot,
                     )
                 else:
                     stop_qty = pos.quantity
