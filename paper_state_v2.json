@@ -10,7 +10,17 @@
     },
     "ETH": {
       "balance": 10512.993136241263,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 1905.04,
+        "sl": 1877.1471162366813,
+        "tp": 1951.528139605531,
+        "qty": 2.759257846617725,
+        "atr": 9.29762792110619,
+        "entry_ts": "2026-08-10T12:00:00+00:00",
+        "fng_at_entry": 30,
+        "funding_at_entry": 3e-05
+      },
       "n_trades": 13,
       "n_wins": 9,
       "total_pnl": 512.9931362412639,
