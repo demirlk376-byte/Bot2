@@ -2996,3 +2996,89 @@ Ve kâğıt döneminde muhtemelen HİÇBİR ŞEY olmayacak (%88 olasılıkla) �
 
 **Kod işine başlamak için gereken: kâğıt üzerinde en az bir büyük olayın backtest'in
 öngördüğü gibi gerçekleşmesi.** O görülmeden bu, haftalarca kod yazmayı hak etmiyor.
+
+# 🥇 2026-08-08 — XAU (ALTIN) FİZİBİLİTESİ: ÜÇ ÖLÇÜM, İKİ CİDDİ ENGEL
+
+Kullanıcı altında strateji sordu. Ağ kapalı (tüm veri kaynakları 403), altın verisi YOK —
+ama altına geçmeden ölçülebilecek her şey KENDİ verimizden ölçüldü.
+Araçlar: `probe_xau.py` (v1, hatalıydı) → `probe_xau2.py`, `xau_prior_test.py`, `xau_mech_test.py`.
+
+## ⚠️ ÖNCE: probe_xau.py'de ÜÇ HATA (denetim yakaladı, v2 düzeltti)
+ E1 **min-notional hiç hesaplanmıyordu** — oysa bu TEK BİNARY kapı: `exchange.py:679`
+    `contracts <= 0` → ValueError → `execution.py:625` hatayı yutuyor → kol SESSİZCE hiç
+    işlem açmaz. Depo bu hatayı bugün zaten bir kez yaptı (min-notional 2700× yanlış).
+ E2 **volatilite ölçülmüyordu** — docstring vol uyumsuzluğunu anlatıyor ama kod ATR'ye hiç
+    bakmıyordu, üstelik OHLCV elde.
+ E3 **fonlama yıllıklandırması yanlış** — `r*3*365` günde 3 kez varsayıyor; MEXC'te aralık
+    kontrata göre 8sa/4sa/1sa olabilir.
+
+## 1️⃣ ENGEL — CAP, ALTINDA MATEMATİKSEL OLARAK BAĞLIYOR
+22 coinden ölçülen ölçek yasası (**r=0.982**): `2×ATR%(4h) ≈ 0.060 × yıllık_vol`.
+Sizing: `eff = min(RISKF=0.0225, CAP=1.25 × sl_pct)` → CAP ancak **sl_pct > %1.80** iken gevşer
+→ yani **yıllık vol > %33** gerekir.
+```
+yıllık vol   2×ATR SL%   efektif risk   hedefin %
+      12%       0.65%         0.82%        36%   ← altın bandı
+      15%       0.82%         1.02%        45%   ← altın bandı
+      22%       1.20%         1.49%        66%
+      45%       2.45%         2.25%       100%   ← kripto
+```
+Altın hedeflenen riskin **%36-54'ünü** alabilir → getiri oransal olarak yarıya iner.
+(Altın vol'ü ölçülemedi; %12-16 bandı EĞİTİM VERİSİNDEN HATIRLANAN, ölçüm değil.)
+
+## 2️⃣ ENGEL — MARJİN, VE BU BAKİYEYLE ÇÖZÜLMÜYOR
+Düşük SL% → yüksek nominal → yüksek marjin. Altın pozisyonu kriptonun **1.73×** marjinini tutar.
+```
+mevcut tepe eşzamanlı marjin: $155 (bakiyenin %72'si)
++1 altın → %85 ⚠   +2 altın → %97 ⚠   +3 altın → %110 ⚠
+```
+**KRİTİK:** hem kripto tepe marjini hem altın marjini bakiyeyle ORANTILI → kullanım oranı
+**bakiyeden bağımsız %85'te sabit kalıyor.** "Para biriksin" bu sorunu ÇÖZMÜYOR.
+Çözüm ancak: altın kolu için AYRI (düşük) CAP · ya da altında daha yüksek kaldıraç ·
+ya da AYRI HESAP.
+
+## 3️⃣ VE ASIL SÜRPRİZ — TRANSFER GEREKÇEMİZ ÇÜRÜDÜ
+"Donchian+ATR = Turtle = belgelenmiş emtia trend primi → altına taşınır" iddiası İKİ ayağa
+dayanıyordu; ikincisi (bizim edge'imizin DE o trend primi olduğu) **ölçüldü ve tutmadı**:
+
+**T1 varyans oranı (Lo-MacKinlay, 4h):** medyan VR **0.948-0.980 — hepsi 1'in ALTINDA**.
+z>+1.96 olan coin **0/22**. Yani kriptoda istatistiksel olarak saptanabilir pozitif
+otokorelasyon YOK.
+
+**T2 kırılım sonrası sürüklenme (H=30 bar = maxhold ile aynı):**
+```
+koşulsuz            −0.08%
+YUKARI kırılım      +0.63%   (fazla +0.71%)
+AŞAĞI  kırılım      +0.57%   (fazla +0.65%)  ← AYNI İŞARET
+momentum imzası (yukarı+ VE aşağı−) gösteren coin: 3/22
+hiç momentum imzası olmayan: 19/22
+```
+Yukarı ve aşağı fazla sürüklenmeler AYNI işaretliyse bu **yönsüz** bir etkidir (oynaklık
+genişlemesi), zaman-serisi momentumu DEĞİL.
+
+**AMA T3 — üretim kolu İKİ YÖNDE DE kârlı:**
+```
+LONG  n=530 ort +0.288R PF 1.52  $+650 (%63)
+SHORT n=487 ort +0.185R PF 1.37  $+377 (%37)
+```
+Short'lar da kazanıyor → edge saf boğa betası DEĞİL.
+**Çelişkinin çözümü muhtemelen KAPILAR:** T2 TÜM kırılımları ölçüyor, T3 ise EMA200 + günlük
+MTF kapısından GEÇEN alt kümeyi. Yani kapılar gerçek iş yapıyor olabilir — ki bu, bugün
+"eklenen filtreler işe yaramıyor" bulgusuyla ilginç bir gerilim oluşturuyor ve
+**EMA200 kapısı denetimi hâlâ yapılmamış bir eksen** (workflow oturum limitinde ölmüştü).
+
+## ✅ TEK GÜZEL HABER: DONCHIAN KOLU YOĞUNLAŞMA TESTİNDEN PARLAK GEÇİYOR
+```
+en iyi  1 işlem = kârın %1'i · en iyi 10 = %10'u · en iyi 20 = %21'i
+en iyi 10 çıkarılırsa: $+1027 → $+920
+```
+Pairs ile kıyas: pairs'te **5 işlem = kârın %67'si**. Mevcut donchian kolu son derece
+**dağıtık** — bu, canlı sistemimize güvenmek için bugün bulunan en iyi sebep.
+
+## 📌 HÜKÜM
+Altın **şu an kovalanmaya değmez**, üç sebeple: (a) CAP matematiksel olarak bağlıyor ve riski
+yarıya indiriyor, (b) marjin bakiyeden bağımsız %85'te tıkanıyor, (c) transfer gerekçesinin
+bizim tarafı ölçüldü ve tutmadı. Enstrümanın var olup olmadığı bile henüz doğrulanmadı
+(`probe_xau2.py` VPS'te koşacak).
+**Yeniden açılma koşulu:** ayrı hesap + altın kolu için ayrı CAP/kaldıraç + `donchian_monthly.csv`
+ile ölçülmüş korelasyon r<+0.4. Üçü olmadan bu eksen kapalı.
