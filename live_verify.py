@@ -48,6 +48,15 @@ ANK_SLIP_BP = 13.4     # ölçülen donchian giriş kayması
 TAKER_FEE = float(os.environ.get("TAKER_FEE", "0.0002"))
 ANK_EXIT = {"sl": 0.561, "tp": 0.213, "mh": 0.226}   # power_test taban dağılımı
 
+# ⚠️ ANKOR YALNIZ BU ÜÇ KOLUN BACKTESTİ. Defterde KAPALI kolların da işlemleri var
+# (asia_bo/orb/fvg/sr_breakout — 2026-07-16 öncesi). Onları ortalamaya katmak ANKORLA
+# KIYASLANAMAZ bir sayı üretir: 2026-08-10 koşusunda tam bu oldu — 72 işlemin 33'ü kapalı
+# kollardandı, ort R'yi +0.11'den −0.10'a çekti ve araç "ankorun ALTINDA" uyarısı verdi.
+# Kapalı kollar çok daha KÜÇÜK boyutla açıldığı için R'yi aşağı çekerken dolarda neredeyse
+# hiç iz bırakmıyor ($-6.06). Ortalama R her işleme EŞİT ağırlık verir, dolar ise BOYUTA
+# göre — bu ikisini karıştırmak yanlış teşhis üretir.
+DEPLOY_SLEEVES = ("donchian", "squeeze", "bb")
+
 
 def wilson(k, n, z=1.96):
     """Oran için Wilson güven aralığı — küçük n'de normal yaklaşımdan ÇOK daha dürüst."""
@@ -105,7 +114,7 @@ def main():
         return
 
     # ── 1) R DAĞILIMI ──
-    Rs = []; wins = 0; gp = 0.0; gl = 0.0; slip_bp = []; exits = {"sl": 0, "tp": 0, "mh": 0}
+    Rs = []; Rs_act = []; wins = 0; wins_act = 0; gp = 0.0; gl = 0.0; slip_bp = []; exits = {"sl": 0, "tp": 0, "mh": 0}
     by_sleeve = {}
     pnl_err = []; fees_est = []
     for (sym, side, ep, xp, qty, slp, tpp, et, xt, pnl, sc) in closed:
@@ -124,6 +133,9 @@ def main():
         else: exits["mh"] += 1
         sl_name = sleeve_of(sc)
         by_sleeve.setdefault(sl_name, []).append((R, pnl))
+        if sl_name in DEPLOY_SLEEVES:
+            Rs_act.append(R)
+            if pnl > 0: wins_act += 1
         # Beklenen dolar: R × risk$ ; risk$ = |giriş−sl| × miktar.
         # ⚠ BU BRÜT — ücret HARİÇ. Defterdeki pnl_usdt ise NET (ücret dahil).
         # İkisini çıplak karşılaştırmak, ücret kadar bir farkı "sistematik sapma"
@@ -140,10 +152,20 @@ def main():
             fees_est.append(fee_rt)
 
     n = len(Rs)
+    na = len(Rs_act)
     m, lo, hi = tconf(Rs)
     print(f"\n[1] ORTALAMA R — 'edge hâlâ var mı' sorusunun DOĞRUDAN cevabı")
-    print(f"    canlı  {m:+.4f}R   %95 aralık [{lo:+.4f}, {hi:+.4f}]   n={n}")
-    print(f"    ankor  {ANK_R:+.4f}R")
+    if na >= 20 and na < n:
+        ma, loa, hia = tconf(Rs_act)
+        print(f"    AKTİF KOLLAR (ankorla kıyaslanabilir TEK sayı — {', '.join(DEPLOY_SLEEVES)})")
+        print(f"      canlı  {ma:+.4f}R   %95 aralık [{loa:+.4f}, {hia:+.4f}]   n={na}")
+        print(f"      ankor  {ANK_R:+.4f}R")
+        print(f"    tüm defter (kapalı kollar DAHİL, ankorla KIYASLANAMAZ)")
+        print(f"      canlı  {m:+.4f}R   n={n}   ← {n-na} işlem kapalı kollardan")
+        m, lo, hi, n = ma, loa, hia, na          # hüküm AKTİF üzerinden verilir
+    else:
+        print(f"    canlı  {m:+.4f}R   %95 aralık [{lo:+.4f}, {hi:+.4f}]   n={n}")
+        print(f"    ankor  {ANK_R:+.4f}R")
     if lo > 0:
         print(f"    ✓ aralık SIFIRIN ÜSTÜNDE → edge canlıda da POZİTİF (istatistiksel olarak)")
     elif hi < 0:
@@ -157,8 +179,10 @@ def main():
         print(f"    ⚠ ankor aralığın {yon} → gerçek sapma olabilir (n arttıkça netleşir)")
 
     # ── 2) KAZANMA ORANI ──
+    if len(Rs_act) >= 20 and len(Rs_act) < len(Rs):
+        wins, n = wins_act, len(Rs_act)          # aktif kollar üzerinden
     wl, wh = wilson(wins, n)
-    print(f"\n[2] KAZANMA ORANI")
+    print(f"\n[2] KAZANMA ORANI (aktif kollar)")
     print(f"    canlı %{wins/n*100:.1f}  %95 aralık [%{wl*100:.1f}, %{wh*100:.1f}]  ankor %{ANK_WR*100:.1f}")
     print(f"    {'✓ ankor aralık içinde — sapma yok' if wl <= ANK_WR <= wh else '⚠ ankor aralık DIŞINDA'}")
     pf = gp / gl if gl > 0 else float("inf")
