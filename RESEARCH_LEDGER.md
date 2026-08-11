@@ -3218,3 +3218,31 @@ netleşecek; şimdilik alarm değil, **izleme kalemi**.
 
 **DERS: ölçüm aracına, sisteme gösterdiğimiz kadar şüphe göster — özellikle araç UYARI
 verdiğinde.** Bugün iki kez "araç bunu doğru mu ölçüyor" sorusu doğru hamle oldu.
+
+### 🔚 PAIRS — NİHAİ KARAR VE EŞİK (2026-08-10)
+
+"Sermaye büyüsün yeter" YANLIŞ bir çerçeveydi: MAE nominalin %16.1'i ve bu ORAN sabit —
+bakiye büyüyüp pairs de aynı oranda büyürse risk yüzdesi değişmez. Doğru soru **pairs'i
+ne kadar KÜÇÜK tutmak gerektiği.**
+
+Tek işlemin en kötü salınımı hesabın ≤%X'i olsun kuralıyla ($215 bakiye):
+```
+tolerans   maks nominal      k     pairs katkısı
+   %2          $27         0.14      ~$18/yıl
+   %3          $40         0.21      ~$27/yıl
+   %5          $67         0.35      ~$45/yıl
+```
+Bot tek başına **~$431/yıl**. Yani tolere edilebilir boyutta pairs **botun %4-10'u**.
+
+**Bunun karşılığında istenen:** mutabakat kodunu açmak · pairs motorunu yazmak ·
+20 güne kadar korumasız pozisyon taşımak · 36 ay doğrulanamayan bir edge'e güvenmek ·
+kârın %67'sinin 5 işlemde toplandığını kabul etmek.
+
+**TAKAS ORANTISIZ → PAIRS RAFA KALDIRILDI.** Çürütüldüğü için değil; getirisi, taşıdığı
+karmaşıklık ve riskle orantısız olduğu için.
+
+**YENİDEN AÇILMA KOŞULU** (ikisi birden):
+ 1. bakiye ≥ ~$1000 (pairs'i sabit tutup oransal küçültmek mümkün olsun)
+ 2. `pairs_paper.py` en az bir BÜYÜK olayı backtest'in öngördüğü gibi yakalamış olsun
+Hazır bekleyen: `HEDGE_AWARE_RECON` kodu (yazıldı, 10/10 test, KAPALI) · `pairs_paper.py` ·
+`pairs_cost/robust/mae/combined` ölçüm araçları. O gün geldiğinde sıfırdan başlanmayacak.
