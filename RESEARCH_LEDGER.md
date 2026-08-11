@@ -3246,3 +3246,47 @@ karmaşıklık ve riskle orantısız olduğu için.
  2. `pairs_paper.py` en az bir BÜYÜK olayı backtest'in öngördüğü gibi yakalamış olsun
 Hazır bekleyen: `HEDGE_AWARE_RECON` kodu (yazıldı, 10/10 test, KAPALI) · `pairs_paper.py` ·
 `pairs_cost/robust/mae/combined` ölçüm araçları. O gün geldiğinde sıfırdan başlanmayacak.
+
+## ❌ GENİŞ EVREN + KALİTE FİLTRESİ (2026-08-10, pw_wide_filter.py) — RED, ve WR SORUSU KAPANDI
+
+Kullanıcı hipotezi: "daha yüksek WR olacak şekilde filtreleyip daha fazla coin kullansak?"
+Bu TEKRAR DEĞİLDİ — filtre ve coin-ekleme ayrı ayrı düşmüştü ama BİRLEŞİM hiç denenmemişti.
+Mantık sağlamdı: geniş evren BOLLUK yaratır, filtre SEÇER (silme değil seçme). Ve bugünkü iki
+ölçüm destekliyordu: koltuk kıtken kalite sıralaması kazandırıyor (MP=3'te +$168, z=+2.77);
+EMA200 kapısı işlemlerin %12'sini eleyip KAZANDIRIYOR (yani sorun "filtre" değil "çok silmek").
+
+KONTROL: eşikler işlem sayısını ankora (1579) yakın tutacak şekilde sınırlandı → "daha çok
+işlem" ile "aynı sayıda ama seçilmiş işlem" karışmasın. 4 ölçü × 4 eşik × 2 evren = 19 varyant.
+
+### CEVAP 1 — FİLTRE WR'Yİ YÜKSELTMİYOR
+```
+ankor WR %43.5  ·  19 varyantın EN İYİSİ %43.1  ·  ankoru geçen: 0
+```
+**Hiçbir filtre, hiçbir evren büyüklüğünde WR'yi yükseltmedi.** Üstelik filtresiz coin ekleme
+WR'yi DÜŞÜRÜYOR (43.5 → 42.6 → 42.0 → 40.6): geniş evren kaliteyi seyreltiyor, filtre de o
+seyrelmeyi ancak kısmen telafi ediyor — hiç aşamıyor.
+
+### CEVAP 2 — KABUL BARINI GEÇEN YOK
+19 varyantın **0'ı** (kâr>+28 · maxDD +2p içinde · en kötü ay kötüleşmesin).
+
+### CEVAP 3 — EN KÖTÜ AYI İYİLEŞTİREN İKİ VARYANT VAR, İKİSİ DE PAHALI
+```
+17c adx≥30   en kötü ay −21.0 → −15.0 (+6.0p)  kâr −$328  maxDD 24.4→15.1  PF 1.45  WR 43.1
+22c adx≥30   en kötü ay −21.0 → −18.9 (+2.1p)  kâr −$383  maxDD 24.4→19.8  PF 1.38  WR 41.7
+```
+`17c adx≥30` dikkat çekici: **PF ankorla AYNI (1.45), maxDD neredeyse YARIYA iniyor (24.4→15.1),
+en kötü ay 6 puan İYİLEŞİYOR** — ama kâr −$328 ve **2025 çöküyor (447→133)**. Yani filtre
+kaliteyi koruyor (PF sabit) ama HACMİ kesiyor; kâr hacimle birlikte gidiyor.
+Puan başına maliyet **$55** — bugün ölçülen "kuyruk satın alma" fiyat aralığında ($80'in biraz
+altı), yani bu doğrunun üzerinde bir nokta, onu kıran bir bulgu DEĞİL.
+
+### 📌 MEKANİZMA — neden birleşim de çalışmadı
+Filtre "kötü işlemleri ayıklamıyor", **işlem sayısını azaltıyor**. PF'nin sabit kalması bunun
+kanıtı: eğer filtre gerçekten kaliteyi artırsaydı PF YÜKSELİRDİ. Yükselmiyor, sadece hacim
+düşüyor ve kâr onunla gidiyor. Bu, 290 filtre denemesinin permütasyon bulgusuyla birebir aynı:
+**NE silinirse silinsin, silmek negatif beklentidir.** Geniş evren bunu değiştirmiyor çünkü
+eklenen coinler ortalama kalitede — seçilecek "daha iyi" bir alt küme yaratmıyorlar.
+
+### ⚠️ YOL BOYUNCA: KENDİ KONTROL BETİĞİMDE SÜTUN KAYMASI
+İlk hüküm betiğim `r[4]`'ü maxDD, `r[5]`'i en kötü ay sanmıştı (doğrusu 5 ve 6) ve **2 varyant
+"barı geçti" dedi**. Düzeltilince gerçek sayı **0**. Bugün araçta bulunan yedinci hata.
