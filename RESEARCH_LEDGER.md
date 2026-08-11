@@ -3171,3 +3171,50 @@ işleme yayılı, en iyi 10 işlem kârın yalnız %10'u. **İki kolun risk prof
 değil — risk biçimi bu hesaba uymadığı için. Sermaye büyüdüğünde ve başında olunduğunda
 yeniden değerlendirilebilir. Mutabakat kodu (HEDGE_AWARE_RECON) yazıldı ve test edildi;
 kapalı duruyor, o gün geldiğinde hazır.
+
+## 📊 İLK CANLI DOĞRULAMA — ankorla kıyas (2026-08-10, live_verify.py)
+
+72 kapanan / 3 açık, 53 gün. **Açık pozisyonlar ortalamaya KATILMADI** (hayatta kalma yanlılığı).
+
+### ⚠️ İLK OKUMA YANLIŞTI — araç kusuru (düzeltildi)
+Araç önce "canlı −0.0966R vs ankor +0.2370R, ankorun ALTINDA" dedi. **Sayı doğru, kıyas yanlış:**
+72 işlemin **33'ü KAPALI kollardan** (asia_bo/orb/fvg/sr_breakout, 2026-07-16 öncesi) ve ankor
+yalnız aktif üç kolun backtesti. Ayrılınca:
+```
+TÜM DEFTER    n=72  −0.0966R   ← ankorla KIYASLANAMAZ
+AKTİF KOLLAR  n=39  +0.1096R   ← kıyaslanabilir tek sayı ·  $+20.06
+```
+Kapalı kollar −0.3403R ama dolar etkisi yalnız −$6.06 — çok daha KÜÇÜK boyutla açılmışlar.
+**Ortalama R her işleme EŞİT, dolar ise BOYUTA göre ağırlık verir**; karıştırmak yanlış teşhis üretir.
+
+### GÜNCEL TABLO (aktif kollar)
+```
+                canlı              ankor      hüküm
+ort R          +0.1096 (n=39)     +0.237     altında ama POZİTİF; aralık çok geniş
+kazanma %       34.7 [24.8-46.2]   43.5      ✓ ankor aralık İÇİNDE — sapma yok
+PF              1.18               1.45      n<200'de tek başına okunmaz
+işlem hızı      1.4/gün            1.3/gün   ✓ tutuyor
+kol bazında     donchian +$14.83 · bb +$9.01 · squeeze −$3.78
+```
+**Hüküm: sistem para kazanıyor, ankorun biraz altında bir hızla. n=39 ile "bozuldu" da
+"tutuyor" da denemez.** Ay sonunda tekrar koşulacak.
+
+### 🔎 İZLENECEK TEK DESEN: çıkış dağılımı
+```
+          canlı   ankor
+stop      52.8%   56.1
+hedef     16.7%   21.3   ← daha AZ hedef
+süre      30.6%   22.6   ← daha ÇOK süre çıkışı
+```
+Hedefe daha az ulaşılıyor, maxhold'a daha çok takılıyor. `/rapor`'un R:R satırıyla tutarlı
+(donchian gerçekleşen 2.29 vs hedef 2.5). Gerçekse ort R açığını DOĞRUDAN açıklar. n arttıkça
+netleşecek; şimdilik alarm değil, **izleme kalemi**.
+
+### 🧰 BUGÜN ARAÇTA BULUNAN İKİ YANLIŞ ALARM (ikisi de düzeltildi)
+1. **Ücret tanımı:** beklenen BRÜT, defter NET → ücret kadar fark "sistematik sapma" diye
+   işaretleniyordu (−$0.0196/işlem). Artık beklenene ücret düşülüyor ve hüküm kalan farkı
+   ÜCRET ÖLÇEĞİYLE kıyaslıyor.
+2. **Kapsam:** kapalı kollar ankor kıyasına giriyordu (yukarıda).
+
+**DERS: ölçüm aracına, sisteme gösterdiğimiz kadar şüphe göster — özellikle araç UYARI
+verdiğinde.** Bugün iki kez "araç bunu doğru mu ölçüyor" sorusu doğru hamle oldu.
