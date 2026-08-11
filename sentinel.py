@@ -276,6 +276,18 @@ def main():
         ok = notify(f"✅ Nöbetçi bildirim testi · {stamp}\n\n" + summary_text())
         sys.exit(0 if ok else 1)
 
+    if arg == "--dogrula":
+        # AYLIK CANLI DOĞRULAMA — live_verify'ın KOMPAKT hükmünü Telegram'a gönderir.
+        # Neden nöbetçiye bağlandı: bildirim yolu ZATEN kurulu ve test edilmiş; ikinci bir
+        # gönderme mekanizması yazmak, ikinci bir arıza noktası demekti.
+        try:
+            sys.path.insert(0, BOT_DIR)
+            import live_verify
+            ok = notify(f"📉 Aylık canlı doğrulama · {stamp}\n\n" + live_verify.kisa_ozet())
+        except Exception as e:
+            ok = notify(f"⚠️ Aylık doğrulama ÇALIŞMADI · {stamp}\n{type(e).__name__}: {e}")
+        sys.exit(0 if ok else 1)
+
     if arg == "--report":
         # TÜM kontroller listelenir, sorunlular dahil. Yalnız sağlıklıları
         # göstermek, servis ölüyken "iyi görünen" bir rapor üretirdi — bir ay

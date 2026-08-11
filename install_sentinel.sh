@@ -113,3 +113,40 @@ echo
 echo "Elle çalıştırmak istersen:"
 echo "  $PY $BOT_DIR/sentinel.py            # sağlık kontrolü (temizse sessiz)"
 echo "  $PY $BOT_DIR/sentinel.py --report   # özet gönder"
+
+# ── AYLIK CANLI DOĞRULAMA ────────────────────────────────────────────────────
+# Neden ayrı bir timer: live_verify'ın asıl değeri n BÜYÜDÜKÇE ortaya çıkıyor.
+# Elle koşmayı hatırlamak gerekmesin diye ayın 1'inde otomatik çalışıp Telegram'a
+# düşüyor. Nöbetçinin bildirim yolunu kullanır — ikinci bir gönderme mekanizması
+# yazmak ikinci bir arıza noktası demekti.
+echo "→ btc-bot-verify (aylık canlı doğrulama)..."
+cat > /etc/systemd/system/btc-bot-verify.service << EOF2
+[Unit]
+Description=Aylik canli dogrulama (live_verify -> Telegram)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=$BOT_DIR
+EnvironmentFile=$BOT_DIR/.env
+Environment=BOT_DIR=$BOT_DIR
+Environment=BOT_SERVICE=$SERVICE
+ExecStart=$PY $BOT_DIR/sentinel.py --dogrula
+EOF2
+
+cat > /etc/systemd/system/btc-bot-verify.timer << EOF2
+[Unit]
+Description=Aylik canli dogrulama - ayin 1'i 09:00 UTC
+
+[Timer]
+OnCalendar=*-*-01 09:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF2
+
+systemctl daemon-reload
+systemctl enable --now btc-bot-verify.timer
+echo "   ✓ aylık doğrulama kuruldu (ayın 1'i 09:00 UTC)"
+echo "   elle denemek için:  python3 $BOT_DIR/sentinel.py --dogrula"

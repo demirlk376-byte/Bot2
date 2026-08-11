@@ -249,9 +249,42 @@ def main():
     print("=" * 84)
 
 
+def kisa_ozet():
+    """Telegram'a sığacak KOMPAKT hüküm. Nöbetçinin aylık doğrulama mesajı bunu gönderir.
+
+    Neden ayrı: tam çıktı ~60 satır ve Telegram'da okunmaz hale gelir. Burada YALNIZ
+    karar satırları var — ortalama R aralığı (edge duruyor mu), kazanma oranı, kapsam.
+    Ayrıntı gerekirse VPS'te tam sürüm koşulur."""
+    import io, contextlib, re
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        try:
+            main()
+        except Exception as e:
+            return f"live_verify hatası: {type(e).__name__}: {e}"
+    tam = buf.getvalue()
+    # DİKKAT: "n<20" alt-dizesini aramak YANLIŞ EŞLEŞİR — çıktıda "n<200'de PF çok
+    # oynak" ve "(n<20 → gürültü)" satırları da var. İlk yazdığımda tam bu oldu:
+    # 40 işlemlik sentetik veri "n<20, anlamlı değil" döndü. Erken-çıkış cümlesinin
+    # KENDİSİ aranıyor; o cümle yalnız gerçekten n<20 iken basılıyor.
+    if "hiçbir karşılaştırma anlamlı değil" in tam:
+        return "📉 Canlı doğrulama: n<20, henüz anlamlı değil."
+    al = []
+    for blok, kac in (("[1]", 6), ("[2]", 4), ("[6]", 3)):
+        i = tam.find(blok)
+        if i >= 0:
+            al += [x.rstrip() for x in tam[i:].split("\n")[:kac] if x.strip()]
+    kap = re.search(r"kapanan (\d+) · açık (\d+)", tam)
+    bas = f"📉 CANLI DOĞRULAMA · kapanan {kap.group(1)} açık {kap.group(2)}" if kap else "📉 CANLI DOĞRULAMA"
+    return bas + "\n\n" + "\n".join(al)
+
+
 if __name__ == "__main__":
     try:
-        main()
+        if "--kisa" in sys.argv:
+            print(kisa_ozet())
+        else:
+            main()
     except Exception as e:
         print(f"✗ hata: {type(e).__name__}: {e}")
         sys.exit(1)
