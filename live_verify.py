@@ -42,6 +42,10 @@ ANK_R = 0.237          # ortalama R
 ANK_WR = 0.435         # kazanma oranı
 ANK_PF = 1.45
 ANK_SLIP_BP = 13.4     # ölçülen donchian giriş kayması
+# MEXC taker ücreti (taraf başına). Beklenen-PnL karşılaştırmasını NET-NET
+# yapmak için gerekli; brüt beklenen ile net gerçekleşeni kıyaslamak ücret
+# kadar sahte "sistematik sapma" üretiyordu.
+TAKER_FEE = float(os.environ.get("TAKER_FEE", "0.0002"))
 ANK_EXIT = {"sl": 0.561, "tp": 0.213, "mh": 0.226}   # power_test taban dağılımı
 
 
@@ -103,7 +107,7 @@ def main():
     # ── 1) R DAĞILIMI ──
     Rs = []; wins = 0; gp = 0.0; gl = 0.0; slip_bp = []; exits = {"sl": 0, "tp": 0, "mh": 0}
     by_sleeve = {}
-    pnl_err = []
+    pnl_err = []; fees_est = []
     for (sym, side, ep, xp, qty, slp, tpp, et, xt, pnl, sc) in closed:
         d_ = 1 if str(side).lower() in ("long", "buy", "1") else -1
         risk = abs(ep - slp)
@@ -120,10 +124,20 @@ def main():
         else: exits["mh"] += 1
         sl_name = sleeve_of(sc)
         by_sleeve.setdefault(sl_name, []).append((R, pnl))
-        # beklenen dolar: R × risk$ ; risk$ = |giriş−sl| × miktar
-        exp_usd = R * risk * qty
+        # Beklenen dolar: R × risk$ ; risk$ = |giriş−sl| × miktar.
+        # ⚠ BU BRÜT — ücret HARİÇ. Defterdeki pnl_usdt ise NET (ücret dahil).
+        # İkisini çıplak karşılaştırmak, ücret kadar bir farkı "sistematik sapma"
+        # diye işaretler: 2026-08-10 canlı koşusunda tam bu oldu (−$0.0196/işlem,
+        # aralık [−0.0231,−0.0161], "⚠ sistematik fark VAR"). Sayı doğruydu ama
+        # TEŞHİS yanlıştı — bot hatası değil, benim 'beklenen' tanımım eksikti.
+        # Düzeltme: beklenene gidiş-dönüş ücreti EKLENİR, böylece karşılaştırma
+        # net-net olur ve alarm yalnız GERÇEK bir sapmada çalar.
+        notional = ep * qty
+        fee_rt = 2 * TAKER_FEE * notional
+        exp_usd = R * risk * qty - fee_rt
         if pnl is not None:
             pnl_err.append(pnl - exp_usd)
+            fees_est.append(fee_rt)
 
     n = len(Rs)
     m, lo, hi = tconf(Rs)
@@ -172,12 +186,24 @@ def main():
     # ── 5) MUHASEBE TUTARLILIĞI ──
     if pnl_err:
         me, elo, ehi = tconf(pnl_err)
+        ort_fee = sum(fees_est) / len(fees_est) if fees_est else 0.0
         print(f"\n[5] BEKLENEN vs GERÇEKLEŞEN PnL (boyutlandırma/muhasebe kontrolü)")
+        print(f"    beklenen NET (ücret ${TAKER_FEE*1e4:.0f}bp/taraf düşülmüş, "
+              f"ort ${ort_fee:.4f}/işlem)")
         print(f"    ortalama fark ${me:+.4f}  %95 [{elo:+.4f}, {ehi:+.4f}] · toplam ${sum(pnl_err):+.2f}")
         if elo <= 0 <= ehi:
             print(f"    ✓ sıfır aralık içinde → sistematik sapma YOK")
         else:
-            print(f"    ⚠ sistematik fark VAR — ücret/kayma/boyut hesabı gözden geçirilmeli")
+            # Kalan farkı ücret ölçeğiyle kıyasla: ücretin bir kısmı kadarsa
+            # ücret varsayımı (TAKER_FEE) hafif yanlış demektir — bot hatası değil.
+            oran = abs(me) / ort_fee if ort_fee > 0 else float("inf")
+            if oran < 1.5:
+                print(f"    ~ fark ücret ölçeğinde (ücretin {oran:.1f} katı) → büyük ihtimalle")
+                print(f"      TAKER_FEE varsayımı hafif yanlış. Gerçek ücreti MEXC'ten teyit edip")
+                print(f"      TAKER_FEE=<oran> ile yeniden koşun. Bot hatası DEĞİL.")
+            else:
+                print(f"    ⚠ fark ücretin {oran:.1f} KATI — bu ücretle açıklanamaz.")
+                print(f"      Boyutlandırma veya muhasebe gözden geçirilmeli.")
 
     # ── 6) SÜRE ──
     try:
