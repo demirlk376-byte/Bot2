@@ -90,6 +90,36 @@ Modellemediğim için ölçüm geçersizdi. **DAILY_MAX_LOSS_PCT değiştirilmez
 
 **XAU.** MEXC'te uygun enstrüman yok.
 
+**ARAŞTIRMA KURALI (2026-08-12'de deneyle doğrulandı):**
+Bir filtre ancak kestiği alt kümenin ortalama R'si **NEGATİF** ise para kazandırır.
+Sinyalin ne kadar güçlü ya da tutarlı olduğu önemli değil.
+
+Kanıt — aynı koşuda iki kapı:
+| kapı | sinyal | negatif alt küme | walk-forward |
+|---|---|---|---|
+| donchian atr_orani | z=+2.15, iki dönem tutarlı | **yok** (en kötü +0.072) | **−$41** |
+| squeeze govde | z=−2.10, daha zayıf | **var** (Q5 = −0.243) | **+$21**, 3/3 yıl artı |
+
+Güçlü sinyal + negatif küme yok = para kaybı. Zayıf sinyal + negatif küme var = kazanç.
+Yeni bir filtre fikri gelirse ÖNCE bunu sor: kesilecek grubun R'si negatif mi?
+
+---
+
+## 4b. Rafta bekleyen tek bulgu: sq_govde
+
+**Ne:** squeeze kolunda, giriş mumunun gövde oranı `|close-open|/(high-low)` en üst
+%20'deyse işlemi atla. Mekanizma: squeeze sıkışmadan çıkıştır; dev gövdeli mumda
+girmek hareketin ZATEN olduğu anlamına gelir — tükenişe giriliyor.
+
+**Ölçüm:** tam dönem +$76 · out-of-sample +$18 · walk-forward +$21 (3/3 yıl artı).
+maxDD 26.4→24.7, en kötü ay hiçbir dilimde kötüleşmiyor.
+
+**Neden uygulanmadı:** yılda ~$7 (kârın %1.8'i) ve `.env` değil KOD değişikliği
+gerektiriyor. $203'lük hesapta bu takas kötü.
+
+**Yeniden bakma koşulu:** bakiye $1000'i geçerse (aynı oran ~$37/yıl) ya da canlıda
+yeterli squeeze işlemi birikip desen teyit edilirse.
+
 ---
 
 ## 5. Riski ne zaman artıracağız
