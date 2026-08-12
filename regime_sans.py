@@ -35,6 +35,33 @@ yönü de verecek şekilde çoğaltıldı. DAHA ÖNCE STRATEJİ TAKLİT EDİP YA
 döngünün ürettiği HER İŞLEM ankorunkiyle BİREBİR karşılaştırılıyor; tek bir sapma
 varsa betik hiçbir sayı yazmadan DURUR.
 
+── SONUÇ (2026-08-12) — REJİM EKSENİ MATEMATİKSEL OLARAK KAPANDI ────────────────────
+Eşdeğerlik kanıtı geçti (11 coinin hepsinde birebir), kontrol geçti (1579/$1420.66).
+
+[A] KARIŞTIRMA TESTİ — 10.000 permütasyon:
+      ölçüt               GERÇEK   karışık medyan   karışık %5-%95   p
+      negatif ay sayısı        8               7           4 … 10    0.316
+      en kötü ay %         -20.5           -21.1   -36.8 … -10.2     0.534
+    Gerçek en kötü ay (-20.5), rastgele medyandan (-21.1) HAFİFÇE İYİ.
+    → Kötü aylar şanstan AYIRT EDİLEMİYOR. Kayıplar zamanda KÜMELENMİYOR.
+    → Kapı / günlük fren / koşullu koltuk denemelerinin ÜÇÜNÜN DE çökme sebebi bu:
+      içinde rejim bilgisi OLMAYAN bir şeyi filtrelemeye çalışıyorduk.
+    KAPSAM: bu test ALINAN işlemler üzerinde koşulludur. "Bu işlemleri girişte
+    bilinen bir kurala göre elemek kötü aylardan kaçınamaz" der. Bambaşka enstrüman
+    /strateji eklemek hakkında bir şey söylemez.
+
+[B] NET YÖN YOĞUNLAŞMASI — gerçek ama KULLANILAMAZ:
+      Q1 tek-yanlılık 0.239  214 gün  ort +0.52$  std  8.27  en kötü -17.21$
+      Q2               0.719   99 gün  ort +5.12$  std 18.27  en kötü -21.51$
+      Q3               0.999  465 gün  ort +1.84$  std 11.22  en kötü -30.04$
+    Yayılma oranı 1.84 · TRAIN 1.71 · TEST 1.99 → dönem ayrımını GEÇTİ (korelasyon
+    geçememişti). Yani tek yanlı defterde oynaklık gerçekten ~1.8 kat.
+    AMA KULLANILAMAZ, iki sebepten:
+     1. Kârın çoğu O GÜNLERDEN geliyor: Q3 465 gün x +1.84$ = +$856; Q1 214 x +0.52 = +$111.
+        Tek yanlı günleri kısmak stratejinin kendisini kısmak demek.
+     2. Risk-ayarlı getiri DENGELİ günlerde EN KÖTÜ: getiri/std oranı Q1 0.063,
+        Q2 0.280, Q3 0.164. Hipotezin TERSİ — dengeli defter daha iyi değil, daha kötü.
+
 Kullanım:  py regime_sans.py local
 """
 import heapq
