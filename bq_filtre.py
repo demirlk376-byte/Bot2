@@ -140,8 +140,17 @@ def donch_ham(m, source_tag=""):
                 R2 = d_ * (ep2 - e2) / sld2 - 2 * A.FEE * e2 / sld2
                 alt = (idx[k].value, idx[j2].value, R2, sld2 / e2)
 
+        # ── v3 ERKEN ÇIKIŞ: giriş DEĞİŞMEZ (cl[i]), ama i+1 kanala döndüyse
+        # o barın kapanışında çık. Giriş fiyatı korunur → iyi işlemler zarar görmez;
+        # yalnız teyit edilmeyenler tam stopa kadar taşınmaz. Koltuk da erken boşalır.
+        if iceri:
+            R3 = d_ * (cl[k] - e) / sld - 2 * A.FEE * e / sld
+            v3 = (idx[i].value, idx[k].value, R3, sld / e)
+        else:
+            v3 = (idx[i].value, idx[j].value, R, sld / e)
         out.append(dict(e=idx[i].value, x=idx[j].value, R=R, slp=sld / e,
-                        iceri=bool(iceri), dokundu=bool(dokundu), alt=alt, **oz))
+                        iceri=bool(iceri), dokundu=bool(dokundu), alt=alt,
+                        v3=v3, **oz))
         occ = j
     return out
 
@@ -319,18 +328,28 @@ def main():
           if r.alt is not None and r.dokundu]
     yaz("v2 yalnız retest edenler", portfoy(v2), taban,
         f"   atlanan {len(df)-len(v2)}")
+    # v3: hiç işlem atılmaz, yalnız teyit edilmeyenin ÇIKIŞI erkene alınır
+    v3 = [tuple(r.v3) for r in df.itertuples()]
+    yaz("v3 erken çıkış (giriş aynı)", portfoy(v3), taban, "   atlanan 0")
+    ic3 = np.array([r.v3[2] for r in df.itertuples() if r.iceri])
+    ic0 = df[df["iceri"]]["R"].values
+    print(f"\n    v3 etkisi yalnız {len(ic3)} teyitsiz işlemde:")
+    print(f"      tam stopa taşınınca ort R {ic0.mean():+.4f} → erken çıkışta {ic3.mean():+.4f}"
+          f"  (fark {ic3.mean()-ic0.mean():+.4f}R)")
 
     # ── OUT-OF-SAMPLE + WALK-FORWARD (v1 için) ──
     print(f"\n[C] v1 TEYİT — out-of-sample ve walk-forward")
     te_t = [(r.e, r.x, r.R, r.slp) for r in df.itertuples() if r.giris >= BOL]
     te_v = [(r.alt[0], r.alt[1], r.alt[2], r.alt[3]) for r in df.itertuples()
             if r.giris >= BOL and r.alt is not None]
+    te_v3 = [tuple(r.v3) for r in df.itertuples() if r.giris >= BOL]
     print(BAS)
     yaz("TEST kapısız", portfoy(te_t))
     yaz("TEST v1 teyit", portfoy(te_v), portfoy(te_t))
-    print(f"\n    {'yıl':>6s} {'taban$':>9s} {'v1$':>9s} {'Δ$':>7s} {'atlanan':>8s} "
-          f"{'kötü ay(t)':>11s} {'kötü ay(v1)':>12s}")
-    tk = tp = 0.0
+    yaz("TEST v3 erken çıkış", portfoy(te_v3), portfoy(te_t))
+    print(f"\n    {'yıl':>6s} {'taban$':>9s} {'v1$':>9s} {'Δv1':>7s} {'v3$':>9s} {'Δv3':>7s} "
+          f"{'kötüay(t)':>9s} {'kötüay(v3)':>10s}")
+    tk = tp = t3k = 0.0
     for yil in (2023, 2024, 2025, 2026):
         b = pd.Timestamp(f"{yil}-01-01"); s2 = pd.Timestamp(f"{yil+1}-01-01")
         sub = df[(df["giris"] >= b) & (df["giris"] < s2)]
@@ -339,12 +358,14 @@ def main():
         t0 = [(r.e, r.x, r.R, r.slp) for r in sub.itertuples()]
         t1 = [(r.alt[0], r.alt[1], r.alt[2], r.alt[3]) for r in sub.itertuples()
               if r.alt is not None]
-        a_ = portfoy(t0); b_ = portfoy(t1)
-        tk += a_["tot"]; tp += b_["tot"]
+        t3 = [tuple(r.v3) for r in sub.itertuples()]
+        a_ = portfoy(t0); b_ = portfoy(t1); c_ = portfoy(t3)
+        tk += a_["tot"]; tp += b_["tot"]; t3k += c_["tot"]
         print(f"    {yil:>6d} {a_['tot']:>+9.0f} {b_['tot']:>+9.0f} "
-              f"{b_['tot']-a_['tot']:>+7.0f} {len(t0)-len(t1):>8d} "
-              f"{a_['worst']:>+11.1f} {b_['worst']:>+12.1f}")
-    print(f"    {'TOPLAM':>6s} {tk:>+9.0f} {tp:>+9.0f} {tp-tk:>+7.0f}")
+              f"{b_['tot']-a_['tot']:>+7.0f} {c_['tot']:>+9.0f} "
+              f"{c_['tot']-a_['tot']:>+7.0f} {a_['worst']:>+9.1f} {c_['worst']:>+10.1f}")
+    print(f"    {'TOPLAM':>6s} {tk:>+9.0f} {tp:>+9.0f} {tp-tk:>+7.0f} "
+          f"{t3k:>+9.0f} {t3k-tk:>+7.0f}")
 
     print(f"\n{'=' * 122}\n=== NASIL OKUNUR ===")
     print("  · [A] negatif dilim YOKSA kapı kaybettirir (bugün deneyle doğrulandı).")
