@@ -3290,3 +3290,58 @@ eklenen coinler ortalama kalitede — seçilecek "daha iyi" bir alt küme yaratm
 ### ⚠️ YOL BOYUNCA: KENDİ KONTROL BETİĞİMDE SÜTUN KAYMASI
 İlk hüküm betiğim `r[4]`'ü maxDD, `r[5]`'i en kötü ay sanmıştı (doğrusu 5 ve 6) ve **2 varyant
 "barı geçti" dedi**. Düzeltilince gerçek sayı **0**. Bugün araçta bulunan yedinci hata.
+
+## ⭐⭐ CAP=1.5 — BUGÜNÜN TEK GEÇEN BULGUSU (2026-08-10, pw_cap.py + pw_cap_margin.py)
+
+Bugün test edilen her şey "hangi işlemi alalım" ya da "nasıl çıkalım"dı. **SIZING eksenine
+hiç dokunulmamıştı** — ve boşluk oradaydı.
+
+### MEKANİZMA: CAP bir risk kontrolü DEĞİL, bir ARTEFAKT
+`risk.py:64-68`: `qty = min(risk$/sl%, CAP×bakiye/fiyat)`. Stop DAR olduğunda hedef risk
+daha büyük nominal ister, CAP keser ve o işlem hedeflenen **%2.25'ten AZ risk alır**.
+İşlemlerin **%19'u** (294 adet) bu şekilde kırpılıyor; ortalama sl% onlarda **1.27** vs
+diğerlerinde **4.54**.
+
+**Tavanı gevşetmek riski hedefin ÜSTÜNE çıkarmıyor** — ortalama gerçekleşen risk
+%2.13 → %2.17 → %2.25 (=RISKF) yolunu izliyor. Yani sadece kırpılma duruyor. Bu, bugün
+reddedilen yedi "daha çok maruziyet" değişikliğinden YAPISAL OLARAK farklı.
+
+### SONUÇ (ankor +$1421, doz-yanıt MONOTON, zikzak yok)
+```
+CAP    toplam$    Δ$   ort risk%  maxDD%  en kötü ay%  poz-ay | 2023 2024 2025 2026
+0.75    +1244   −176      1.90     19.0      −20.8      68   |  273  389  402  180
+1.00    +1353    −68      2.05     22.2      −22.0      75   |  302  431  430  190
+1.25    +1421     +0      2.13     24.4      −21.0      80   |  321  457  447  195  ← CANLI
+1.50    +1476    +55      2.17     24.8      −20.5      80   |  341  475  460  200  ★
+2.00    +1532   +112      2.21     25.0      −20.3      78   |  372  490  472  198
+3.00    +1583   +162      2.24     25.3      −20.3      75   |  397  504  481  200
+```
+**DÖRT YILIN DÖRDÜ DE İYİLEŞİYOR** ve **EN KÖTÜ AY İYİLEŞİYOR** (−21.0 → −20.5).
+Bugün bunu başaran başka hiçbir şey olmadı — tüm diğer kâr artışları kuyruğu kötüleştiriyordu.
+
+### RİSK VERİMLİLİĞİ: kâr riskten HIZLI artıyor
+```
+CAP=1.5 → kâr +%3.9 · risk +%1.9 → verim 2.06×
+```
+Verim >1 olduğu için bu "sadece daha çok kaldıraç" DEĞİL, gerçek verimlilik kazancı.
+Teşhis bunu destekliyor: kırpılan işlemlerin ort R'si **+0.3888** vs kırpılmayan **+0.2026**
+(z=+1.85 — anlamlı değil ama YÖN doğru). Yani en iyi işlemlerimize en küçük bahsi koyuyoruz.
+
+### ⛔ MARJİN ÖLÜM TESTİ — CAP'i NEDEN 1.5'te KESİYORUZ
+Backtest marjini modellemiyor. Olay-bazlı eşzamanlı marjin hesaplandı ($190, 10x):
+```
+CAP=1.5 → tepe $156.3 = bakiyenin %82 · tampon $34  ✓ GÜVENLİ
+CAP=2.0 → tepe $184.2 = %97 · tampon $6   ⚠ fonlama/ücret/uPnL için YER YOK
+CAP=3.0 → tepe $203.6 = %107 ⛔ BAKİYEYİ AŞIYOR → o işlem canlıda AÇILAMAZ, kâr FANTEZİ
+```
+CAP 2 ve 3'ün backtest kârı gerçek değil. **Uygulanabilir tek değer CAP=1.5.**
+
+### 📋 DEPLOY
+`.env` içinde `POSITION_CAP_FRACTION=1.25` → **`1.5`**. KOD YOK, tek satır, anında geri alınabilir.
+Beklenen: +$55/3.3yıl ≈ **+$17/yıl** (~%4). Mütevazı ama gerçek, ve bugünkü tek geçen bulgu.
+Yalnız 294 işlem (%19) büyüyor, ortalama **1.16×** — cerrahi bir değişiklik.
+
+**AÇIK KALAN BELİRSİZLİK:** kırpılan işlemlerin daha iyi olduğu z=+1.85 ile GÖSTERİLEMEDİ
+(sınırda). Etki gerçekse +$55, kalite farkı yoksa yaklaşık nötr-pozitif (hedef riske
+yaklaşmak). Zarar senaryosu: kırpılanlar aslında daha KÖTÜ olsaydı — veri bunun tersini
+söylüyor ama kesinlikle dışlamıyor.
