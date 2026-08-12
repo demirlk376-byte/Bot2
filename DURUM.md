@@ -90,6 +90,14 @@ Modellemediğim için ölçüm geçersizdi. **DAILY_MAX_LOSS_PCT değiştirilmez
 
 **XAU.** MEXC'te uygun enstrüman yok.
 
+**Sahte kırılım (Breakout Quality Filter).** Kullanıcının 7 kriteri tek tek ölçüldü.
+Beşi zaten sistemde vardı ya da ayrım gücü yoktu (kapanis_yeri z=−0.00 — tam sıfır).
+Kalite skoru (6 özellik, eşit ağırlık) GERÇEKTEN ayırdı (Q1 +0.092R vs Q5 +0.314R,
+WR %38.7→%47.3) ama negatif dilim üretmedi → kapı %10/%20/%30'da −$21/−$106/−$211.
+DİKKAT: PF ve WR yükselirken net PnL düştü — kalite metriği tuzağı.
+Kırılım sonrası teyit gerçek ve çok güçlü çıktı (yukarıdaki inceltilmiş kurala bakın)
+ama üç uygulama yolu da kaybettirdi.
+
 **ARAŞTIRMA KURALI (2026-08-12'de deneyle doğrulandı):**
 Bir filtre ancak kestiği alt kümenin ortalama R'si **NEGATİF** ise para kazandırır.
 Sinyalin ne kadar güçlü ya da tutarlı olduğu önemli değil.
@@ -101,7 +109,24 @@ Kanıt — aynı koşuda iki kapı:
 | squeeze govde | z=−2.10, daha zayıf | **var** (Q5 = −0.243) | **+$21**, 3/3 yıl artı |
 
 Güçlü sinyal + negatif küme yok = para kaybı. Zayıf sinyal + negatif küme var = kazanç.
-Yeni bir filtre fikri gelirse ÖNCE bunu sor: kesilecek grubun R'si negatif mi?
+
+**AYNI GÜN İNCELTİLDİ — negatif küme GEREKLİ ama YETERLİ DEĞİL:**
+Sahte kırılım testi bunu gösterdi. Sinyal muazzam (z=+6.39, TRAIN/TEST birebir),
+negatif alt küme net (−0.2488R, 234 işlem). Kuralın istediği her şey vardı.
+Yine de üç uygulama yolunun üçü de kaybettirdi:
+| yol | mantık | sonuç | neden |
+|---|---|---|---|
+| teyit bekle | kötüyü hiç alma | −$335 | 783 iyi işleme 1 bar geç giriliyor |
+| retest şartı | daha seçici | −$878 | aynı, daha ağır |
+| erken çık | girişi koru | −$120 | −0.2488 → −0.3925: toparlananlar ölüyor |
+
+**Tam kural:** kesilecek grubun R'si negatif OLMALI **ve** o gruptan çıkmanın
+bedeli grubun zararından KÜÇÜK olmalı. İkinci şart genelde tutmuyor: bilgiyi almak
+için ya giriş fiyatı feda ediliyor ya toparlanma ihtimali.
+
+Yeni bir filtre fikrinde İKİ soruyu birden sor:
+ 1. Kesilecek grubun ortalama R'si negatif mi?
+ 2. O gruptan çıkmanın bedeli (geç giriş / erken çıkış / kaçan toparlanma) zarardan az mı?
 
 ---
 
