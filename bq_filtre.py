@@ -275,6 +275,10 @@ def main():
         print(f"      KAYBETTİRİR (dn_atr kanıtı: güçlü sinyal, negatif küme yok, −$41).")
         print(f"      Yine de ölçülüyor — kural yanlışsa burada görünsün.")
 
+    # `tr` yukarıda skor HESAPLANMADAN önce alınmıştı (df'in kopyası) → 'skor' sütunu
+    # yok, KeyError. TRAIN dilimi skor eklendikten SONRA yeniden alınmalı.
+    tr = df[df["giris"] < BOL]
+
     print(f"\n    KAPI: skor eşiğin ALTINDAysa işlem YOK (eşik yalnız TRAIN'den)")
     print(BAS); yaz("kapısız (taban)", taban)
     for kes in (0.10, 0.20, 0.30):
