@@ -253,12 +253,25 @@ def summary_text():
                          ).fetchone()[0] or 0.0
         gl = con.execute("SELECT SUM(pnl_usdt) FROM trades WHERE is_paper=0 AND pnl_usdt<0"
                          ).fetchone()[0] or 0.0
-        bal = con.execute("SELECT ending_balance FROM daily_stats WHERE is_paper=0 "
-                          "ORDER BY date DESC LIMIT 1").fetchone()
+        # daily_stats.ending_balance GÜVENİLİR DEĞİL: main.py:1242 onu gün başında
+        # starting_balance ile AYNI yazıyor ve gün sonunda GÜNCELLEMİYOR. Yani bu alan
+        # her zaman "o günün BAŞLANGIÇ öz sermayesi"dir; günün kârı/zararı görünmez.
+        # (Aynı hata /rapor'da da vardı ve canlı öz sermaye okumasıyla düzeltilmişti.)
+        # Burada borsa bağlantısı yok, o yüzden DEFTERDEN yeniden kuruluyor:
+        #   bakiye ≈ son günün başlangıç bakiyesi + o tarihten sonra KAPANAN işlemlerin net PnL'i
+        _row = con.execute("SELECT date, starting_balance FROM daily_stats WHERE is_paper=0 "
+                           "AND starting_balance>0 ORDER BY date DESC LIMIT 1").fetchone()
+        bal = None
+        if _row and _row[1]:
+            _sonra = con.execute(
+                "SELECT COALESCE(SUM(pnl_usdt),0) FROM trades WHERE is_paper=0 "
+                "AND exit_time IS NOT NULL AND substr(exit_time,1,10) >= ?",
+                (str(_row[0])[:10],)).fetchone()[0] or 0.0
+            bal = (float(_row[1]) + float(_sonra),)
         con.close()
         pf = (gp / abs(gl)) if gl else float("inf")
         wr = (wins / n_cl * 100) if n_cl else 0.0
-        if bal and bal[0]: lines.append(f"bakiye ${float(bal[0]):,.2f}")
+        if bal and bal[0]: lines.append(f"bakiye ~${float(bal[0]):,.2f} (defterden)")
         lines.append(f"açık {n_open} · kapanan {n_cl}")
         if n_cl:
             lines.append(f"PnL ${pnl:+.2f} · WR %{wr:.0f} · PF {pf:.2f}")
