@@ -115,6 +115,10 @@ def main():
 
     # ── 1) R DAĞILIMI ──
     Rs = []; Rs_act = []; wins = 0; wins_act = 0; gp = 0.0; gl = 0.0; slip_bp = []; exits = {"sl": 0, "tp": 0, "mh": 0}
+    # AKTİF kollar için AYRI sayaç. Eskiden tek sayaç vardı: TÜM işlemlerden
+    # toplanıp AKTİF sayısına bölünüyordu (74/41) -> yüzdeler %180 çıkıyor ve
+    # "aralık dışı" SAHTE alarmı veriyordu.
+    exits_act = {"sl": 0, "tp": 0, "mh": 0}
     by_sleeve = {}
     pnl_err = []; fees_est = []
     for (sym, side, ep, xp, qty, slp, tpp, et, xt, pnl, sc) in closed:
@@ -128,10 +132,12 @@ def main():
         else: gl += -pnl
         # çıkış türü: hangi seviyeye daha yakın kapandı
         d_sl = abs(xp - slp); d_tp = abs(xp - tpp)
-        if d_sl < risk * 0.10: exits["sl"] += 1
-        elif d_tp < abs(tpp - ep) * 0.10: exits["tp"] += 1
-        else: exits["mh"] += 1
+        if d_sl < risk * 0.10: _bucket = "sl"
+        elif d_tp < abs(tpp - ep) * 0.10: _bucket = "tp"
+        else: _bucket = "mh"
+        exits[_bucket] += 1
         sl_name = sleeve_of(sc)
+        if sl_name in DEPLOY_SLEEVES: exits_act[_bucket] += 1
         by_sleeve.setdefault(sl_name, []).append((R, pnl))
         if sl_name in DEPLOY_SLEEVES:
             Rs_act.append(R)
@@ -163,6 +169,7 @@ def main():
         print(f"    tüm defter (kapalı kollar DAHİL, ankorla KIYASLANAMAZ)")
         print(f"      canlı  {m:+.4f}R   n={n}   ← {n-na} işlem kapalı kollardan")
         m, lo, hi, n = ma, loa, hia, na          # hüküm AKTİF üzerinden verilir
+        exits = exits_act                        # ÇIKIŞ dağılımı da AKTİF üzerinden
     else:
         print(f"    canlı  {m:+.4f}R   %95 aralık [{lo:+.4f}, {hi:+.4f}]   n={n}")
         print(f"    ankor  {ANK_R:+.4f}R")

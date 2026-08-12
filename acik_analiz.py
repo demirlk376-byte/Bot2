@@ -67,10 +67,13 @@ def kacirilan():
             top[k] += 1
             if not ok:
                 sebep = (row.get("reason") or "?").strip()
-                # sayısal ayrıntıyı sil ki gruplansın ("Cooldown active (37m ...)" → "Cooldown active")
-                for kes in ("(", " — ", ":"):
-                    if kes in sebep:
-                        sebep = sebep.split(kes)[0].strip()
+                # HAM BIRAK. İlk sürüm "(", " — " ve ":" karakterlerinden kesiyordu;
+                # ama execution.py:417 sebebi "Slot 'ADA/USDT:USDT' already occupied"
+                # biçiminde yazıyor ve ":" kesimi geriye SEMBOLÜ bırakıyordu →
+                # tabloda red sebebi yerine coin adları görünüyordu.
+                # Yalnız sayısal ayrıntıyı normalize et, metni koru.
+                import re as _re
+                sebep = _re.sub(r"\d+", "N", sebep)
                 red[k][sebep or "?"] += 1
     return top, red, n
 
@@ -151,6 +154,51 @@ def main():
                 print(f"    {ad:>8s} {0:>5d} {'—':>14s}")
         if len(sl_bp) < 10:
             print(f"    ⚠ n={len(sl_bp)} — yön göstergesi, kanıt değil.")
+        tumu = sl_bp + tp_bp
+        if tumu and all(abs(v) < 1e-9 for v in tumu):
+            print(f"\n    ⛔ {len(tumu)}/{len(tumu)} çıkışta kayma TAM SIFIR.")
+            print(f"    Bu 'kayma yok' DEMEK DEĞİLDİR — gerçek dolumlar hep tam seviyede")
+            print(f"    olmaz. Defterin exit_price alanı muhtemelen GERÇEK DOLUM değil")
+            print(f"    STOP SEVİYESİ yazıyor (borsa tetiklemeli çıkışlar mutabakattan")
+            print(f"    geçiyor). Yani çıkış kayması bu veriden ÖLÇÜLEMEZ ve aşağıdaki")
+            print(f"    ayrıştırmada 0 sayılması ALT SINIRDIR — gerçek kayıp daha büyük olabilir.")
+            print(f"    Yer gerçeği [2b]'de: defterdeki PnL ile bakiye değişimi karşılaştırması.")
+
+    # ── [2b] YER GERÇEĞİ: defter PnL'i gerçek bakiye değişimini tutuyor mu? ──
+    print(f"\n[2b] YER GERÇEĞİ — defterdeki pnl_usdt, GERÇEK bakiye değişimini tutuyor mu?")
+    print(f"     (exit_price seviye yazıyorsa kayıp burada görünür: defter kârlı görünür,")
+    print(f"      bakiye o kadar artmaz.)")
+    try:
+        con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=15)
+        gun_pnl = dict(con.execute(
+            "SELECT substr(exit_time,1,10), SUM(pnl_usdt) FROM trades"
+            " WHERE is_paper=0 AND exit_time IS NOT NULL GROUP BY 1"))
+        gun_bal = list(con.execute(
+            "SELECT date, starting_balance, ending_balance FROM daily_stats"
+            " WHERE is_paper=0 AND starting_balance>0 AND ending_balance>0 ORDER BY date"))
+        con.close()
+        n_ok = 0; fark_top = 0.0; defter_top = 0.0; satirlar = []
+        for d, sb, eb in gun_bal:
+            d10 = str(d)[:10]
+            if d10 not in gun_pnl:
+                continue
+            defter = float(gun_pnl[d10]); gercek = float(eb) - float(sb)
+            fark = gercek - defter
+            n_ok += 1; fark_top += fark; defter_top += defter
+            satirlar.append((d10, defter, gercek, fark))
+        if n_ok == 0:
+            print(f"     daily_stats ile eşleşen işlem günü yok — kontrol yapılamadı.")
+        else:
+            print(f"     {n_ok} gün eşleşti · defter toplam ${defter_top:+.2f} · "
+                  f"bakiye-defter farkı ${fark_top:+.2f}")
+            kotu = sorted(satirlar, key=lambda x: x[3])[:5]
+            print(f"     {'gün':<12s} {'defter$':>9s} {'bakiye$':>9s} {'fark$':>8s}")
+            for d10, de, ge, fa in kotu:
+                print(f"     {d10:<12s} {de:>+9.2f} {ge:>+9.2f} {fa:>+8.2f}")
+            print(f"     ⚠ PARA YATIRMA/ÇEKME bu farkı bozar — büyük tek günlük farklar")
+            print(f"       transfer olabilir. Sistematik KÜÇÜK negatif fark ise kaymadır.")
+    except Exception as e:
+        print(f"     kontrol yapılamadı: {type(e).__name__}: {e}")
 
     # ── [3] R AYRIŞTIRMASI ──
     print(f"\n[3] R AYRIŞTIRMASI — açığın {acik:.4f}R'si nereye gidiyor?")
