@@ -117,10 +117,12 @@ def olc(taken, cap=CAP_YENI):
     ex = [pd.Timestamp(t[0]) for t in taken]
     mon = pd.Series(pnl).groupby([x.tz_localize(None).to_period("M") for x in ex]).sum() / A.BAL0 * 100
     yr = pd.Series(pnl).groupby([x.year for x in ex]).sum()
+    dip = mon.nsmallest(3)
     return dict(n=len(taken), tot=float(pnl.sum()),
                 dd=float(A.maxdd(np.concatenate([[A.BAL0], eq]))),
                 worst=float(mon.min()), posm=float((mon > 0).mean() * 100),
-                yr={int(k): float(v) for k, v in yr.items()})
+                yr={int(k): float(v) for k, v in yr.items()},
+                dip=[(str(k), float(v)) for k, v in dip.items()])
 
 
 def main():
@@ -145,8 +147,14 @@ def main():
           f"{taban['dd']:>7.1f} {taban['worst']:>+9.1f} {0:>+9.1f} {taban['posm']:>7.0f} | " +
           " ".join(f"{taban['yr'].get(y, 0.0):>+7.0f}" for y in years) + "   ← FREN YOK")
 
+    # İNCE IZGARA: kaba taramada %6 tek başına iyi göründü ama eğri ZIGZAG (%4 kötü,
+    # %6 iyi, %8-10 nötr). Gerçek mekanizma doz-yanıt verir. Komşuları da ölçüp
+    # %6'nın bir bıçak sırtı mı yoksa gerçek bir eşik mi olduğunu ayırt ediyoruz.
+    ince = len(sys.argv) > 2 and sys.argv[2] == "ince"
+    izgara = ((0.045, 0.050, 0.055, 0.060, 0.065, 0.070, 0.075, 0.080) if ince
+              else (0.04, 0.06, 0.08, 0.10, 0.12, 0.15, 0.20))
     sonuc = {}
-    for esik in (0.04, 0.06, 0.08, 0.10, 0.12, 0.15, 0.20):
+    for esik in izgara:
         t, atl, gn = calistir(ev, esik)
         v = olc(t); sonuc[esik] = (v, atl, gn)
         print(f"  {esik*100:>5.0f}% {v['n']:>6d} {atl:>8d} {gn:>11d} {v['tot']:>+9.0f} "
@@ -187,7 +195,16 @@ def main():
             print(f"      {esik*100:>5.0f}% {d_worst:>+9.1f} {d_tot:>+8.0f} "
                   f"{'—':>10s}   (kuyruk iyileşmedi)")
 
-    print(f"\n  [3] KIRILGANLIK UYARISI")
+    print(f"\n  [3] EN KÖTÜ ÜÇ AY — 'iyileşme' gerçek mi, yoksa sıralama mı değişti?")
+    print(f"      Kuyruk gerçekten kısılıyorsa EN KÖTÜ ÜÇ AYIN HEPSİ iyileşmeli. Yalnız")
+    print(f"      birincisi iyileşip ikincisi yerine geçiyorsa o iyileşme SAHTEDİR.")
+    print(f"      {'eşik':>6s}  " + "  ".join(f"{'dip-'+str(i+1):>16s}" for i in range(3)))
+    print(f"      {'—':>6s}  " + "  ".join(f"{a+' '+f'{b:+.1f}':>16s}" for a, b in taban["dip"]))
+    for esik, (v, atl, gn) in sonuc.items():
+        print(f"      {esik*100:>5.0f}%  " +
+              "  ".join(f"{a+' '+f'{b:+.1f}':>16s}" for a, b in v["dip"]))
+
+    print(f"\n  [4] KIRILGANLIK UYARISI")
     for esik, (v, atl, gn) in sonuc.items():
         if v["worst"] - taban["worst"] > 0.5 and gn <= 5:
             print(f"      ⚠ eşik %{esik*100:.0f}: kuyruk {v['worst']-taban['worst']:+.1f} puan "
