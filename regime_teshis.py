@@ -57,6 +57,16 @@ TUM = A.DONCH + A.SQZ + A.BB_COINS
 BOL = pd.Timestamp("2025-01-01")
 
 
+def _naive(idx):
+    """SAAT DİLİMİNİ DÜŞÜR — ilk sürümdeki SESSİZ HATA buydu.
+    CSV indeksi tz-aware UTC; A.gen ise entry'yi HAM NANOSANİYE (int) döndürüyor ve
+    pd.Timestamp(int) tz-NAIVE oluyor. `gun in rej.index` bu yüzden HER ZAMAN False
+    dönüyordu → bütün rejim değerleri NaN → araç "sinyal yok" hükmü basıyordu.
+    Veriyi bağlayamamayı 'sinyal yok' diye raporlamak, bulunabilecek en tehlikeli
+    hata türü: eksen yanlışlıkla kapanır ve bir daha bakılmaz."""
+    return idx.tz_localize(None) if getattr(idx, "tz", None) is not None else idx
+
+
 def gunluk_panel(source):
     """Coin bazında günlük kapanış paneli — portföy rejim değişkenleri buradan."""
     ser = {}
@@ -64,6 +74,7 @@ def gunluk_panel(source):
         m = fast_bt.load(c, source=source)
         ser[c] = m["close"].resample("1D").last()
     px = pd.DataFrame(ser).dropna(how="all").ffill()
+    px.index = _naive(px.index)
     return px
 
 
@@ -106,7 +117,9 @@ def coin_rejim(m, tf):
     d = fast_bt.resample(m, tf)
     a = adx_fn(d["high"], d["low"], d["close"], 14)
     at = atr_fn(d["high"], d["low"], d["close"], 14) / d["close"]
-    return pd.DataFrame({"adx": a.values, "atr_pct": at.values}, index=d.index).shift(1)
+    out = pd.DataFrame({"adx": a.values, "atr_pct": at.values}, index=d.index).shift(1)
+    out.index = _naive(out.index)
+    return out
 
 
 def islemler(source, rej):
@@ -138,7 +151,9 @@ def islemler(source, rej):
     satir = []
     for kol, c, e_ns, x_ts, R, slp, cr in alinan:
         ts = pd.Timestamp(e_ns)
-        d = {"kol": kol, "coin": c, "giris": ts, "cikis": pd.Timestamp(x_ts),
+        d = {"kol": kol, "coin": c, "giris": ts,
+             "cikis": pd.Timestamp(x_ts).tz_localize(None)
+                      if pd.Timestamp(x_ts).tz is not None else pd.Timestamp(x_ts),
              "R": R, "slp": slp}
         gun = ts.normalize()
         if gun in rej.index:
@@ -211,6 +226,27 @@ def main():
     print(f"  KONTROL: {len(df)} işlem / ${tot:+.2f} → "
           f"{'✓ BİREBİR (ankor yeniden üretildi)' if ok else '✗ SAPMA — betik BOZUK'}")
     if not ok:
+        return
+
+    # ── BAĞLANMA KONTROLÜ — İLK SÜRÜMÜN SESSİZ HATASINI BİR DAHA YAPMAMAK İÇİN ──
+    # İlk sürümde saat dilimi uyuşmazlığı yüzünden rejim değerlerinin TAMAMI NaN'dı
+    # ve araç bunu "ayrıştırıcı sinyal yok" diye raporladı. Veri bağlanamamasını
+    # "sinyal yok" sanmak, ekseni yanlışlıkla kapatır ve bir daha bakılmaz.
+    # Bundan sonra araç bu durumda HÜKÜM VERMEZ, hata verir.
+    kolonlar = ["vol20", "korel20", "trend_pay", "dagilim", "pyt20", "pyt_dd",
+                "adx", "atr_pct"]
+    print(f"\n  BAĞLANMA KONTROLÜ (rejim değerleri işlemlere iliştirilebildi mi?)")
+    bozuk = False
+    for k in kolonlar:
+        dolu = df[k].notna().mean() * 100
+        if dolu < 80:
+            bozuk = True
+        print(f"    {k:<10s} %{dolu:5.1f} dolu {'✗ EKSİK' if dolu < 80 else '✓'}")
+    if bozuk:
+        print(f"\n  ✗ DURDURULDU: rejim değerleri işlemlere BAĞLANAMADI.")
+        print(f"    Bu bir VERİ HATASIDIR, 'sinyal yok' DEĞİLDİR. Hüküm verilmiyor.")
+        print(f"    (İlk sürümdeki sebep: CSV indeksi tz-aware UTC, A.gen'in entry'si")
+        print(f"     ham nanosaniye → tz-naive; eşleşme her zaman başarısızdı.)")
         return
 
     # ── AY SEVİYESİ (bağlam, KANIT DEĞİL) ──
