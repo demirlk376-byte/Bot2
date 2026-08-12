@@ -69,6 +69,7 @@ class ExecutionEngine:
         # kill switch + emergency close (audit fix). None = lazily captured on
         # the first check after a baseline (re)set.
         self._deposits_at_baseline: Optional[float] = None
+        self._halt_reason: Optional[str] = None
         # Strong refs to fire-and-forget alert tasks so they aren't GC'd mid-send
         # and their exceptions are retrieved (not silently dropped).
         self._bg_tasks: set = set()
@@ -130,6 +131,11 @@ class ExecutionEngine:
 
     def halt_trading(self, reason: str) -> None:
         logger.warning("Trading HALTED: %s", reason)
+        # Sebebi SAKLA. Eskiden saklanmıyordu ve execution.py'deki red mesajı
+        # halt'ın sebebi ne olursa olsun "daily loss limit" yazıyordu. Telegram'dan
+        # elle duraklatıldığında bile loglar "daily loss limit" diyordu; bu, bir
+        # log incelemesinde var olmayan bir günlük-zarar olayı aranmasına yol açtı.
+        self._halt_reason = reason
         self._trading_halted.set()
 
     def is_halted(self) -> bool:
@@ -216,6 +222,7 @@ class ExecutionEngine:
 
     def reset_daily(self) -> None:
         self._trading_halted.clear()
+        self._halt_reason = None
 
     async def enforce_daily_loss(self) -> None:
         """Periodic daily-loss check (audit finding: the limit only ran on NEW
@@ -244,6 +251,7 @@ class ExecutionEngine:
     def resume_trading(self) -> None:
         """Manually clear a halt (e.g. via Telegram /resume)."""
         self._trading_halted.clear()
+        self._halt_reason = None
         logger.info("Trading RESUMED (manual)")
 
     def _record_trade_outcome(
@@ -338,7 +346,9 @@ class ExecutionEngine:
         # still run concurrently across different slots.
         async with self._entry_gate:
             if self.is_halted():
-                return ExecutionResult(False, error="Trading halted (daily loss limit)")
+                return ExecutionResult(
+                    False,
+                    error=f"Trading halted ({getattr(self, '_halt_reason', None) or 'reason unknown'})")
 
             # Per-(strategy:symbol) cooldown — only this sleeve is paused after its
             # own loss streak; other coins/strategies keep trading.
