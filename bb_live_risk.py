@@ -19,32 +19,28 @@ Eğer bb de %2.25 çıkarsa kod okumam YANLIŞ demektir ve CAP kararı ankora g�
 
 Kullanım (VPS'te):  cd /opt/bot2 && python3 bb_live_risk.py
 """
-import json
 import os
 import sqlite3
 import sys
 from collections import defaultdict
 
+# Kol tespitini TAKLİT ETME, ÇAĞIR. (Bu betiğin ilk sürümü strategy_scores'u
+# {ad: skor} sözlüğü sandı ve argmax aldı; gerçek biçim {"strategy": "..."} —
+# yani her satıra "strategy" etiketi basıyordu. live_verify.sleeve_of zaten
+# doğru ayrıştırıcı; tek kaynak o olsun.)
+from live_verify import sleeve_of
+
 DB = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "trades.db")
-
-
-def kol(scores_raw, sym):
-    """strategy_scores JSON'undan baskın kolu çıkar (live_verify ile aynı mantık)."""
-    try:
-        d = json.loads(scores_raw) if scores_raw else {}
-    except Exception:
-        return "?"
-    if not isinstance(d, dict) or not d:
-        return "?"
-    return max(d.items(), key=lambda kv: (kv[1] if isinstance(kv[1], (int, float)) else 0))[0]
 
 
 def main():
     if not os.path.exists(DB):
         print(f"trades.db bulunamadı: {DB}")
         return
-    con = sqlite3.connect(DB)
+    # SALT-OKUNUR: bot canlıda bu dosyaya YAZIYOR. Normal connect() yazma kilidi
+    # alabilir ve botun işlem kaydını engelleyebilir. live_verify.py da böyle açıyor.
+    con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=15)
     rows = con.execute(
         "SELECT symbol, entry_price, sl_price, quantity, entry_time, strategy_scores"
         " FROM trades WHERE is_paper=0 AND quantity>0 AND sl_price>0 AND entry_price>0"
@@ -60,7 +56,7 @@ def main():
         risk_usd = qty * abs(ep - slp)
         sl_pct = abs(ep - slp) / ep
         nominal = qty * ep
-        grup[kol(sc, sym)].append((risk_usd, sl_pct, nominal, et, sym))
+        grup[sleeve_of(sc)].append((risk_usd, sl_pct, nominal, et, sym))
 
     # Bakiye: ortalama risk%'i çıkarmak için gerekli. .env'den değil, kullanıcıdan
     # gelen tek sayı — yanlışsa TÜM kollar aynı oranda kayar, KOLLAR ARASI FARK bozulmaz.
