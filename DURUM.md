@@ -130,6 +130,40 @@ Yeni bir filtre fikrinde İKİ soruyu birden sor:
 
 ---
 
+## 4c. KÖK NEDEN ANALİZİ — "bot hangi koşulda kaybediyor?" (2026-08-12)
+
+**CEVAP: hiçbirinde sistematik olarak kaybetmiyor.** Ölçülen HER koşulun beklentisi
+pozitif. Dört şartı (ort R negatif · n≥30 · TRAIN ve TEST'te ikisinde de negatif ·
+Bonferroni |z|) birden geçen tek bir hücre YOK.
+
+**Negatif ayların kol dağılımı** (8 ay, toplam −$181.8):
+donchian −$192 (%106) · squeeze **+$50** (−%27) · bb −$40 (%22)
+→ squeeze kötü aylarda POZİTİF; zararın kaynağı değil YASTIĞI (8 ayın 5'inde kârlı).
+→ bb payı oransız: zararın %22'si, kârın %9'u. n=161, aksiyon için yetersiz.
+
+**En önemli tek gözlem:** sekiz negatif ayın hepsinde "en büyük kayıp" AYNI: −$4.3
+(= 1R tam stop). Kötü aylar birkaç büyük kayıptan değil, çok sayıda KÜÇÜK kayıptan
+oluşuyor. Kesilecek aykırı grup yok — filtrelerin neden çöktüğünün somut açıklaması.
+
+**Rejim — yaygın varsayımın TERSİ:** dokuz hücrenin hepsi pozitif ve en iyisi
+**range/düşük vol +0.391R** (z=3.23, iki dönem de artı). "Yatay ve sakin piyasada
+sahte kırılım üretiyor" varsayımı ÖLÇÜMLE YANLIŞ. En zayıfı ara/orta vol +0.166R.
+
+**Yön:** donchian long +0.290 / short +0.190, squeeze long +0.221 / short +0.251.
+Shortlar da kazanıyor → sadece kripto betası değil, gerçek edge.
+
+**Saat:** donchian'ın 6 saatinin hepsi pozitif. squeeze 02:00 dikkat çekti
+(n=17, ort R −0.916, z=−9.50) AMA TEST'te yalnız 2 işlem var → pratikte TRAIN-only.
+Ön-kayıtlı n≥30 barı tam bunun için vardı. Canlıda squeeze birikince yeniden bakılacak.
+
+**Ardışık kayıplar:** 1./2-3./4+ kayıp ve kazanç-sonrası gruplarının rejim
+ortalamaları birebir aynı (vol20 0.0355-0.0374, adx 23.4-25.9). En uzun seri 14 işlem
+— %56.5 kayıp oranıyla 1579 işlemde beklenen. Özel bir koşulun ürünü DEĞİL.
+
+→ **YENİ FİLTRE EKLENMEZ.** Bu, karıştırma testinin (p=0.32) bağımsız üçüncü teyidi.
+
+---
+
 ## 4b. Rafta bekleyen tek bulgu: sq_govde
 
 **Ne:** squeeze kolunda, giriş mumunun gövde oranı `|close-open|/(high-low)` en üst
