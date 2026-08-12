@@ -35,6 +35,41 @@ bir işlem o koltuğu kullanabilir. Sonradan filtrelemek yanlış olurdu.
 METRİKLER (kullanıcının istediği tam liste): PF · Net PnL · MaxDD · WR · ort R · işlem sayısı
 Ek olarak en kötü ay ve yıl kırılımı, çünkü amaç negatif ayları azaltmak.
 
+── SONUÇ (2026-08-12) — KAPI REDDEDİLDİ. Sinyal GERÇEK ama KESİLECEK ŞEY YOK. ────────
+Kontrol geçti (1579 / +$1420.66 birebir), yani tablolar okunabilir.
+
+OUT-OF-SAMPLE (TEST tabanı: 734 işlem, +$672, PF 1.42, maxDD 23.5, en kötü ay −20.5, 6/19 neg):
+  squeeze_atr %10   +$17  maxDD 22.5  en kötü ay −20.5  6/19   ← en iyi hücre
+  squeeze_atr %20    +$4  maxDD 19.7  en kötü ay −25.7  4/19   ← ay sayısı azalıyor AMA derinleşiyor
+  squeeze_atr %30   −$33              en kötü ay −29.1  6/19
+  bb_dagilim  %30   +$13              en kötü ay −19.9  6/19
+  üçü birden  %10  −$153              en kötü ay −33.3  4/19   ← donchian kapısı YIKICI
+
+WALK-FORWARD (squeeze_atr+bb_dagilim): %10 → +$39 (üç yıl da artı) · %20 → +$2 · %30 → −$9
+
+ÜÇ RED GEREKÇESİ:
+ 1. AMAÇ TUTMADI. Hedef negatif ayları azaltmaktı; en kötü ay çoğu hücrede KÖTÜLEŞİYOR
+    (−20.5 → −25.7 → −29.1). Negatif ay SAYISI bazen düşüyor (6/19 → 4/19) ama aynı anda
+    kalanlar DERİNLEŞİYOR. Bu risk azaltmak değil, riski yeniden dağıtmak.
+ 2. DOZ-YANITI MONOTON DEĞİL. Walk-forward: 0 → +$39 → +$2 → −$9. Tepe en HAFİF ayarda
+    ve hızla çöküyor. Gerçek bir "kötü kuyruğu kes" etkisi kesme arttıkça önce artar.
+    Tepenin en hafif ayarda olması gürültü imzasıdır.
+ 3. ÖN-KAYITLI BAR: hiçbir hücre Δ$ > +28 ile en-kötü-ay-kötüleşmeme şartını BİRLİKTE
+    sağlamıyor.
+
+MEKANİZMA — NEDEN İŞE YARAMADI (asıl öğrenilen şey):
+Teşhisteki sinyal GERÇEKTİ, ama en kötü dilimin ortalama R'si HÂLÂ POZİTİF:
+squeeze atr_pct Q5 = +0.058. Yani kapı zarar eden işlemleri değil, AZ KAZANAN işlemleri
+kesiyor. Kesince kâr düşüyor, kuyruk ise korunmuyor çünkü kötü ayları yaratan işlemler
+o dilimde toplanmıyor.
+Açıkça negatif olan tek dilim BB dagilim Q5 (−0.410) — ama BB tüm defterin %10'u
+(161/1579) ve yalnız hafta sonu çalışıyor, dolayısıyla portföy etkisi ~sıfır.
+"Edge zayıflıyor" ile "edge negatife dönüyor" farklı şeyler; kapı ancak ikincisinde işe yarar.
+
+AYRICA ÖĞRENİLDİ: donchian trend_pay kapısı (teşhiste z=+1.43, iki dönemde tutarlı)
+out-of-sample YIKICI: −$153/−$187/−$240 ve en kötü ay −33.3. Eşik altı bir "tutarlı"
+sinyali kapıya çevirmek performansı yok ediyor. Teşhisteki tutarlılık YETMEZ.
+
 Kullanım:  py regime_kapi.py local
 """
 import heapq
