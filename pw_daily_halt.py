@@ -36,7 +36,43 @@ maxDD +2 puandan fazla artmayacak · EN KÖTÜ AY KÖTÜLEŞMEYECEK.
 AMA BU EKSENDE ASIL SORU FARKLI: en kötü ay ÇOK iyileşirken kâr az kaybediyorsa
 bu bir TAKAS adayıdır ve ayrıca raporlanıyor (puan başına kaç dolar).
 
-Kullanım:  py pw_daily_halt.py local
+── SONUÇ (2026-08-12) — BULGU GEÇERLİ DEĞİL, MODEL MEKANİZMAYI YANLIŞ KURMUŞ ────────
+Ölçüm iki falsifikasyon testini de GEÇTİ:
+  · ince ızgara: %5.0–%6.5 arası DÖRT eşik de aynı sonucu veriyor (+2.3 puan, −$12/−$16).
+    Bıçak sırtı değil, 1.5 puan genişliğinde PLATO.
+  · en kötü üç ay: dip-1 −20.5→−18.2, dip-2 −19.9→−17.6, dip-3 −14.5→−12.9. ÜÇÜ DE
+    iyileşiyor → sıralama değişimi (sahte iyileşme) değil.
+Fiyat: puan başına ~$5.2 — ölçülen $80/puan piyasa fiyatının 15'te biri.
+
+AMA SONRA execution.py:438-470 OKUNDU VE MODEL ÇÖKTÜ. İki fark var:
+
+ 1) TETİKLEYİCİ. Gerçek kontrol `current_equity()` kullanıyor — AÇIK pozisyonların
+    gerçekleşmemiş zararı dahil — ve HER GİRİŞ DENEMESİNDE değerlendiriliyor.
+    Bu betik yalnız KAPANMIŞ işlemlerin zararını görüyor. Gerçek fren çok daha erken
+    ve çok daha sık tetiklenir.
+
+ 2) EYLEM — ASIL SORUN BU. Bu betik "günün geri kalanında yeni giriş yok" modelledi.
+    Gerçek kod ise:
+        self.halt_trading("Daily loss limit reached")
+        await self.emergency_close_all("daily_loss_limit")
+    yani AÇIK BÜTÜN POZİSYONLARI PİYASA EMRİYLE KAPATIYOR (execution.py:1092).
+    Kazananlar dahil, taker ücreti ve kayma ödeyerek, hem de panik anında.
+
+Yani ölçülen +2.3 puan, botun DAILY_MAX_LOSS_PCT=0.06 ile yapacağı şeyi TARİF ETMİYOR.
+Kripto içi gün fitilleri düşünüldüğünde %6'lık bir eşik, bir anlık işaretle yedi
+pozisyonu birden piyasadan kapatabilir — gerçekleşmemiş bir düşüşü, toparlanmadan
+hemen önce gerçekleşmiş zarara çevirir.
+
+HÜKÜM: **DAILY_MAX_LOSS_PCT DEĞİŞTİRİLMEZ.** Mevcut %35'in pratikte ölü olması,
+eylemin bu kadar sert olduğu düşünülürse bir kusur değil koruma.
+
+EKSENİ AÇMAK İÇİN GEREKENLER (ikisi de yapılmadan bu sayılar kullanılamaz):
+  a) execution.py'de fren eyleminin "yeni giriş yok"a indirilmesi (emergency_close_all
+     yalnız gerçekten felaket eşiğinde kalmalı) — KOD değişikliği.
+  b) Öz sermaye bazlı tetiklemeyi modelleyebilmek için işlem içi fiyat yolu; A.gen
+     yalnız çıkıştaki R'yi veriyor, bu veri elimizde YOK.
+
+Kullanım:  py pw_daily_halt.py local [ince]
 """
 import heapq
 import sys
