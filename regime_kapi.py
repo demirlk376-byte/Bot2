@@ -109,7 +109,14 @@ def havuz(source, rej):
         d["adx"] = cr["adx"].values[pos] if pos >= 0 else np.nan
         d["atr_pct"] = cr["atr_pct"].values[pos] if pos >= 0 else np.nan
         satir.append(d)
-    return pd.DataFrame(satir).sort_values("e_ns").reset_index(drop=True)
+    # KARARLI SIRALAMA ŞART: A.seat_select Python'un `sorted`'ını kullanıyor (kararlı),
+    # yani AYNI entry_ns'e sahip sinyaller EKLENME sırasını korur (donchian coinleri →
+    # squeeze → bb). pandas'ın varsayılan quicksort'u kararsız; eşit anahtarlarda sırayı
+    # bozunca koltuk yarışını farklı sinyal kazanıyor ve işlem SAYISI aynı kalsa bile
+    # KÜME değişiyor (kontrol testi: 1579 işlem ama $1409.71 ≠ $1420.66).
+    return (pd.DataFrame(satir)
+            .sort_values("e_ns", kind="mergesort")      # ← kararlı
+            .reset_index(drop=True))
 
 
 def koltuk(df):
@@ -204,6 +211,11 @@ def main():
     print(f"  KONTROL (kapısız, CAP=1.25): {len(tam)} işlem / ${kon['tot']:+.2f} → "
           f"{'✓ BİREBİR' if ok else '✗ SAPMA — betik BOZUK'}")
     if not ok:
+        # Kontrol düşerse hiçbir satır okunmaz. Teşhis için sapmanın türünü yaz:
+        # sayı tutup TUTAR tutmuyorsa seçilen KÜME farklıdır (sıralama/koltuk yarışı).
+        print(f"    sayı {'tutuyor' if len(tam) == 1579 else 'TUTMUYOR'}, "
+              f"tutar farkı {kon['tot']-1420.66:+.2f}$ → "
+              f"{'KÜME farklı (sıralama/koltuk)' if len(tam) == 1579 else 'üretim farklı'}")
         return
     print(f"  (aşağıdaki tüm ölçümler CAP={CAP_YENI} tabanında — paket sonrası hâl)")
 
