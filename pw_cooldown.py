@@ -32,6 +32,24 @@ KONTROL TESTİ: limit=∞ (fren kapalı) → 1579 işlem / $1420.66 BİREBİR ç
 ÖN-KAYITLI BAR (değişmedi): Δ$ > +28 · hiçbir yıl >%10 kötüleşmeyecek ·
 maxDD +2 puandan fazla artmayacak · EN KÖTÜ AY KÖTÜLEŞMEYECEK.
 
+── SONUÇ (2026-08-12, local) ──────────────────────────────────────────────────────────
+KONTROL geçti: fren kapalı → 1579 işlem / $+1420.66 BİREBİR.
+
+1603 aday sinyalin yalnızca 24'ü koltuk yüzünden, 6'sı cooldown yüzünden düşüyor.
+Canlı ayar (2/240) ankora göre +$14 — 3.6 yılda, yani GÜRÜLTÜ. Taranan dokuz ayarın
+hiçbiri ön-kayıtlı barı geçmedi. **Cooldown ayarı olduğu gibi kalır.**
+
+ASIL DEĞERLİ ÇIKTI: ankorun cooldown'u modellememesi onu bozmuyor. 1603'te 6 işlem =
+%0.4. Yani ankor ile canlı arasındaki bu fark ihmal edilebilir ve ankor bu yönden
+temiz kalıyor.
+
+⚠ METODOLOJİK UYARI — bu tabloda öğrenildi: 2/240 satırında SADECE 6 işlem çıkınca
+"en kötü ay" −21.0'dan −19.1'e (1.9 puan!) ve maxDD 26.2'den 24.7'ye atlıyor. Yani
+İŞLEM KÜMESİNİ DEĞİŞTİREN testlerde kuyruk metrikleri bir avuç işleme duyarlı ve
+o kadarlık iyileşmeler bulgu sayılmaz. Buna karşılık SADECE BOYUT değiştiren testler
+(pw_cap, pw_bb_risk) aynı 1579 işlem üzerinde çalışır; oradaki kuyruk farkları
+elmayla elma karşılaştırmasıdır ve bu kırılganlığı taşımaz.
+
 Kullanım:  py pw_cooldown.py local
 """
 import heapq
