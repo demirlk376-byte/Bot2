@@ -100,6 +100,69 @@ Risk: limit dolmazsa işlem kaçar. ÖLÇÜLMEDİ — sıradaki iş bu.
 
 ---
 
+## 2c. MAKER GİRİŞ (2026-08-13) — KARARSIZ, ve kararı canlı defter verecek
+
+`maker_giris.py` · `gecikme_olc.py` · `kayma_denetim.py`
+
+**Önce fikrin düzeltilmesi:** 2b'de "limit dolmazsa işlem kaçar" yazmışım. Kodu
+okuyunca ortaya çıktı ki bu **zaten denenmiş ve 2026-07-16'da geri alınmış**
+(main.py:640-647): *"the former limit+no-fallback path adversely selected: runaway
+releases never retraced and were skipped."* Geri alınan şey "maker giriş" değil,
+**YEDEKSİZ** maker girişti. `exchange.place_limit_order` piyasa yedeğiyle geliyor ve
+BB/MR kolu canlıda ZATEN bu yolu kullanıyor. Yedekli sürümde **hiçbir işlem kaçmaz**;
+değişen tek şey ödenen fiyattır. Ayrım execution.py:611'de `sl_price > 0` bakışında —
+donchian/squeeze sl_price DOLDURUYOR ama SL'i yapıya değil KAPANIŞA çapalıyor, yani
+bayrak yanlış kolu yakalıyor.
+
+**Gecikme elendi (gecikme_olc.py).** data.py:88 `REST_POLL_INTERVAL=30` ve bar sınırına
+hizalı değil — "kayma aslında geç fark etmedir, hizalama bedava kazanç" hipotezi
+makuldü. ÖLÇÜLDÜ (BTC+ETH 1dk, n=133 donchian sinyali): bar kapanışından **1dk sonra
+aleyhe sürüklenme +0.12bp** (squeeze +1.35bp), medyan NEGATİF, %95 aralık 0'ı içeriyor.
+→ **Anket hizalaması boşa iş.** 13.4bp gecikmeden gelmiyor; geriye spread/etki kalıyor.
+(Yan bulgu: 1dk'da fiyatın kaçmaması maker girişi GÜÇLENDİRİR — beklemenin bedeli ~0.)
+
+**Dolum oranı ölçüldü ve KURALA ÇOK DUYARLI çıktı.** İlk kuralım (`low <= L → doldu`)
+%98.4 verdi; o sayı gerçek değil, kural neredeyse totolojiydi (1dk barının açılışı ≈ L).
+Fiziksel gerçek: limitimiz kuyruğun arkasında, fiyatın seviyeyi GEÇMESİ gerekir. Tek
+sayı yerine bant üretildi (W=1dk, ön-kayıtlı):
+
+| dolum kuralı | dolum% | başabaş p* | portföy Δ$ | ters-seçim modellenince Δ$ |
+|---|---|---|---|---|
+| seviyeyi geçsin (0bp) | 89% | 47% | **+179** | **+192** |
+| 2bp geçsin | 68% | 42% | **+103** | **+66** |
+| 5bp geçsin | 41% | 32% | +22 | −3 |
+| 10bp geçsin (tam spread) | 21% | 26% | −30 | **−74** |
+
+**Ters-seçim GERÇEK ve ölçüldü:** en katı kuralda limit KAZANAN işlemlerde %9,
+KAYBEDENlerde %27 doluyor — fiyat kazananlarda kaçtığı için. Yedek olduğundan işlem
+kaçmıyor, ama indirim ağırlıkla kaybedenlere düşüyor. Modellenince her satır
+kötüleşiyor (düz ortalama model İYİMSERMİŞ). Karar bu satırlardan verilmeli.
+
+**HÜKÜM: KARARSIZ.** İşaret 2bp ile 5bp arasında dönüyor, yani soru tek bir şeye
+iniyor: *~$285'lik emrimiz, fiyat seviyeyi 2-5bp geçtiğinde dolar mı?* Bunu 1 dakikalık
+BAR verisi bilemez — emir defteri sorusudur. Ön-kayıtlı bar en kötümser satırdan
+verildiği için **bugün üretime ALINMAZ.**
+
+**AMA cevap bedava ve hazır:** BB/MR kolu canlıda ZATEN maker yolunda, donchian/squeeze
+market. Defterde hazır doğal deney var. `kayma_denetim.py` (self-test'li) her işlemin
+sinyal barı kapanışını bulup gerçekleşen girişle farkını ölçüyor, kol bazında ayırıyor.
+
+**AYRICA — 13.4bp'nin KENDİSİ DENETLENMEMİŞ.** live_verify.py:44'te
+`ANK_SLIP_BP = 13.4  # ölçülen` yazıyor ama **ölçüm kodu hiçbir dosyada yok**. Bu sabit
+2b'nin $251'ini, "dürüst ankor $1177"i ve buradaki tüm $ rakamlarını belirliyor.
+Ankorda yaptığımız hatanın aynısı: herkesin güvendiği, kimsenin denetlemediği sayı.
+`kayma_denetim.py` onu da defterden yeniden ölçüyor.
+
+**VPS'te çalıştırılacak (sıradaki iş):**
+```
+cd /opt/bot2 && git pull
+python3 kayma_denetim.py --self-test     # önce araç doğrulanır
+python3 kayma_denetim.py                 # 13.4bp denetimi + maker/taker doğal deneyi
+python3 ucret_olc.py                     # gerçek ücret oranı (hâlâ çalıştırılmadı)
+```
+
+---
+
 ## 3. Kanıtlanmış olan
 
 **Kötü aylar rejim değil, şans.** 10.000 permütasyon: gerçek 8 negatif ay
