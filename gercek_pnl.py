@@ -93,12 +93,59 @@ async def main():
 
     kaynak_ok = {}
 
+    # ── 0) YATIRIM DOĞRULAMASI — boşluğun en güçlü adayı, ve OTOMATİK ölçülebilir ──
+    print(f"\n{'=' * 100}\n=== [0] YATIRIM/TRANSFER GEÇMİŞİ — defterin $149.39'u doğru mu? ===")
+    print("  Boşluğun en güçlü adayı buydu ve 'sen elle bak' demiştim. Gereksizmiş:")
+    print("  borsa bunu da veriyor. MEXC'te vadeliye para SPOT'tan TRANSFER ile gelir,")
+    print("  o yüzden hem deposits hem transfers denenir.")
+    yatirim = {}
+    for ad, fn in (
+        ("fetch_deposits", lambda: ex.fetch_deposits(None, since_ms, 200)),
+        ("fetch_transfers", lambda: ex.fetch_transfers(None, since_ms, 200)),
+        ("fetch_withdrawals", lambda: ex.fetch_withdrawals(None, since_ms, 200)),
+    ):
+        if not hasattr(ex, ad):
+            print(f"  {ad:<20s} — ccxt'de YOK")
+            continue
+        ok, r, err = await dene(ad, fn())
+        if not ok:
+            print(f"  {ad:<20s} — HATA: {err}")
+            continue
+        tot = 0.0
+        n = 0
+        for x in r or []:
+            if not isinstance(x, dict):
+                continue
+            if (x.get("currency") or "USDT") != "USDT":
+                continue
+            try:
+                a = float(x.get("amount") or 0.0)
+            except (TypeError, ValueError):
+                continue
+            # transfers: yalnız SWAP hesabına GİRENLER sayılır
+            if ad == "fetch_transfers":
+                to_ = str(x.get("toAccount") or "").lower()
+                fr_ = str(x.get("fromAccount") or "").lower()
+                if "swap" in to_ or "future" in to_ or "contract" in to_:
+                    pass
+                elif "swap" in fr_ or "future" in fr_ or "contract" in fr_:
+                    a = -a
+                else:
+                    continue
+            tot += a
+            n += 1
+        yatirim[ad] = (n, tot)
+        print(f"  {ad:<20s} — {n} kayıt · toplam ${tot:+.2f}")
+    if yatirim:
+        kaynak_ok["yatirim"] = list(yatirim)
+
     # ── 1) KAPANMIŞ POZİSYON GEÇMİŞİ (borsanın kendi realized PnL'i) ──
     print(f"\n{'=' * 100}\n=== [1] BORSANIN KENDİ GERÇEKLEŞMİŞ PnL'i ===")
     toplam_rpnl = None
+    n_rpnl = 0
     for ad, fn in (
-        ("fetch_positions_history", lambda: ex.fetch_positions_history(syms, since_ms, None)),
-        ("fetchPositionsHistory", lambda: ex.fetchPositionsHistory(syms, since_ms, None)),
+        ("fetch_positions_history", lambda: ex.fetch_positions_history(syms, since_ms, 1000)),
+        ("fetchPositionsHistory", lambda: ex.fetchPositionsHistory(syms, since_ms, 1000)),
     ):
         if not hasattr(ex, ad):
             print(f"  {ad:<26s} — ccxt'de YOK")
@@ -118,8 +165,10 @@ async def main():
             print(f"  {ad:<26s} — {len(r or [])} kayıt, PnL alanı okunan {len(vals)}")
             if vals:
                 toplam_rpnl = sum(vals)
+                n_rpnl = len(vals)
                 kaynak_ok["realized"] = ad
-                print(f"      → BORSA GERÇEKLEŞMİŞ PnL: ${toplam_rpnl:+.2f}")
+                print(f"      → BORSA GERÇEKLEŞMİŞ PnL: ${toplam_rpnl:+.2f} ({n_rpnl} pozisyon)")
+                break
         except Exception as e:
             print(f"  {ad:<26s} — ayrıştırılamadı: {e}")
     if toplam_rpnl is None:
@@ -215,20 +264,49 @@ async def main():
     print(f"\n{'=' * 100}\n=== HÜKÜM ===")
     print(f"  okunabilen kaynaklar: {kaynak_ok or 'HİÇBİRİ'}")
     if toplam_rpnl is not None:
-        fark = toplam_rpnl - d_pnl
-        print(f"\n  BORSA gerçekleşmiş PnL : ${toplam_rpnl:+.2f}")
-        print(f"  DEFTER PnL             : ${d_pnl:+.2f}")
-        print(f"  FARK                   : ${fark:+.2f}")
-        if fark < -1.0:
-            print(f"\n  ⛔ DEFTER KÂRI OLDUĞUNDAN İYİ GÖSTERİYOR (${abs(fark):.2f}).")
-            print(f"     Sebep main.py:1619: çıkışlar seviye fiyatından kaydediliyor,")
-            print(f"     gerçek dolum stop'un ALTINDA oluyor. Düzeltilmeli.")
-        elif abs(fark) <= 1.0:
-            print(f"\n  ✓ Defter ile borsa uyuşuyor → çıkış kayması DOLAR olarak")
-            print(f"    önemsiz. O halde defter_gercek'teki $56.83 boşluğun sebebi")
-            print(f"    ÇIKIŞ KAYMASI DEĞİL → en güçlü aday YATIRIM KAYDI.")
+        # ⛔ ÖRNEKLEM GUARD'I — bunu ilk sürümde ATLADIM ve geçersiz bir hüküm
+        # bastım: borsadan 20 pozisyon okunmuştu, defterde 77 işlem vardı, ben
+        # ikisini çıplak karşılaştırıp "defter $2.66 iyi gösteriyor" dedim.
+        # Farklı örneklem = geçersiz kıyas. Artık sayı tutmuyorsa hüküm YOK.
+        oran = n_rpnl / max(len(dr), 1)
+        print(f"\n  borsa {n_rpnl} pozisyon · defter {len(dr)} işlem  (kapsama %{oran*100:.0f})")
+        if oran < 0.80:
+            print(f"\n  ⛔ ÖRNEKLEMLER EŞLEŞMİYOR — borsa geçmişi defterin ancak")
+            print(f"     %{oran*100:.0f}'ini kapsıyor (API sayfalama/zaman sınırı). Bu iki")
+            print(f"     toplamı karşılaştırmak GEÇERSİZDİR; PnL kıyası YAPILMIYOR.")
+            print(f"     (MEXC pozisyon geçmişi genelde son N kaydı verir. Daha uzun")
+            print(f"      geçmiş için sayfalama gerekir — ayrı iş.)")
+        else:
+            fark = toplam_rpnl - d_pnl
+            print(f"  BORSA gerçekleşmiş PnL : ${toplam_rpnl:+.2f}")
+            print(f"  DEFTER PnL             : ${d_pnl:+.2f}")
+            print(f"  FARK                   : ${fark:+.2f}")
+            if fark < -1.0:
+                print(f"\n  ⛔ DEFTER KÂRI OLDUĞUNDAN İYİ GÖSTERİYOR (${abs(fark):.2f}).")
+                print(f"     Sebep main.py:1619 — çıkışlar seviye fiyatından kaydediliyor.")
+            elif abs(fark) <= 1.0:
+                print(f"\n  ✓ Defter ile borsa uyuşuyor → çıkış kayması dolar olarak önemsiz.")
     else:
         print(f"\n  Borsa realized PnL okunamadığı için defterle kıyas YAPILAMADI.")
+
+    # ── ÜCRET: bu kıyas ÖRNEKLEMDEN BAĞIMSIZ olarak geçerli (oran kıyası) ──
+    print(f"\n  ÜCRET — bu bulgu örneklem sorunundan ETKİLENMİYOR:")
+    print(f"    Defterdeki ücret, botun KENDİ hesabı: nominal × 0.0001 (1bp/taraf).")
+    print(f"    Gerçek dolumlardan okunan ücret bunun KATI çıkıyorsa, bot ücreti")
+    print(f"    sistematik olarak DÜŞÜK kaydediyor demektir — kaç işlem okunduğundan")
+    print(f"    bağımsız bir ORAN bulgusudur.")
+
+    # ── YATIRIM: boşluğun en güçlü adayı ──
+    print(f"\n  YATIRIM KARŞILAŞTIRMASI:")
+    if yatirim:
+        for ad, (n, tot) in yatirim.items():
+            print(f"    {ad:<20s} {n:>3d} kayıt · ${tot:+.2f}")
+        print(f"    DEFTER (meta.total_deposits)      · $+149.39")
+        print(f"    → Borsa toplamı defterle TUTMUYORSA $56.83'lük boşluğun kaynağı")
+        print(f"      budur ve 'kaçak' değildir. Tutuyorsa boşluk GERÇEKTİR.")
+    else:
+        print(f"    ⚠ Hiçbir yatırım kaynağı okunamadı — elle doğrulama gerekiyor:")
+        print(f"      MEXC → Varlıklar → Para Yatırma / Transfer geçmişi.")
     if fon is not None:
         print(f"\n  FONLAMA ${fon:+.2f} — defterde hiç yok, doğrudan boşluğa gider.")
         if abs(fon) > 5:
