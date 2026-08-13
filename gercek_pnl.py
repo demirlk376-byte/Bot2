@@ -106,6 +106,7 @@ async def main():
     print("  o yüzden hem deposits hem transfers denenir.")
     print(f"  (varlık uç noktaları 90 günle sınırlı → {gun_varlik} gün soruluyor)")
     yatirim = {}
+    bill_satir = []
     for ad, fn in (
         ("fetch_deposits", lambda: ex.fetch_deposits(None, since_varlik, 200)),
         # fetchTransfers fromAccountType İSTİYOR (ilk koşuda ArgumentsRequired
@@ -113,9 +114,10 @@ async def main():
         ("fetch_transfers", lambda: ex.fetch_transfers(
             "USDT", since_varlik, 200,
             {"fromAccountType": "SPOT", "toAccountType": "FUTURES"})),
-        ("fetch_transfers(ters)", lambda: ex.fetch_transfers(
-            "USDT", since_varlik, 200,
-            {"fromAccountType": "FUTURES", "toAccountType": "SPOT"})),
+        # NOT: ters yön sorgusu KALDIRILDI. MEXC fromAccountType/toAccountType'ı
+        # yok sayıp AYNI 5 kaydı döndürdü; ben de onları negatifleyip "net $0.00"
+        # diye YANLIŞ bir hüküm bastım. Yön bilgisi kaydın kendi 'type' alanında
+        # (IN/OUT) — aşağıdaki kalem kalem döküm onu okuyor.
         ("fetch_withdrawals", lambda: ex.fetch_withdrawals(None, since_varlik, 200)),
     ):
         base = ad.split("(")[0]
@@ -160,20 +162,37 @@ async def main():
             data = (r or {}).get("data") or {}
             kayit = data.get("resultList") if isinstance(data, dict) else data
             kayit = kayit or []
+            # ⚠ TOPLAMA DEĞİL, KALEM KALEM DÖK. Önceki sürüm yalnız türe göre
+            # topluyordu ve "IN $209.05" diyordu — ama hangi tarihte, hangi tutar
+            # görünmüyordu. Köken bakiyeden ÖNCEKİ bir transfer varsa o tutar
+            # $93.52'nin İÇİNDE demektir ve ayrıca eklenirse ÇİFT SAYILIR.
+            # Sermaye denklemini ancak tarihler görünürse doğru kurabiliriz.
+            print(f"  {ad:<38s} — {len(kayit)} kayıt (kalem kalem):")
+            import datetime as _dt
             tur = {}
+            satirlar = []
             for x in kayit:
                 if not isinstance(x, dict):
                     continue
                 t = str(x.get("type") or x.get("state") or "?")
                 try:
-                    tur[t] = tur.get(t, 0.0) + float(x.get("amount") or 0.0)
+                    a = float(x.get("amount") or 0.0)
                 except (TypeError, ValueError):
-                    pass
-            print(f"  {ad:<38s} — {len(kayit)} kayıt")
-            for t, v in sorted(tur.items(), key=lambda z: -abs(z[1])):
-                print(f"      tür {t:<20s} ${v:+.2f}")
+                    a = 0.0
+                ts = x.get("createTime") or x.get("updateTime") or x.get("timestamp")
+                try:
+                    gts = _dt.datetime.utcfromtimestamp(float(ts) / 1000).strftime("%Y-%m-%d %H:%M")
+                except Exception:
+                    gts = str(ts)
+                satirlar.append((gts, t, a, x.get("currency") or "?"))
+                tur[t] = tur.get(t, 0.0) + a
+            for gts, t, a, cur in sorted(satirlar):
+                print(f"      {gts}  {t:<8s} {cur:<6s} ${a:>+10.2f}")
+            print(f"    tür toplamları: " + " · ".join(
+                f"{t} ${v:+.2f}" for t, v in sorted(tur.items(), key=lambda z: -abs(z[1]))))
             if kayit:
                 kaynak_ok["bill"] = ad
+                bill_satir = satirlar
                 break
         except Exception as e:
             print(f"  {ad:<38s} — ayrıştırılamadı: {e}")
@@ -356,13 +375,35 @@ async def main():
     con.close()
     kok = float(ilk[1]) if ilk else 0.0
     d_dep = float(dep[0]) if dep and dep[0] else 0.0
-    y_borsa = sum(t for _, t in yatirim.values()) if yatirim else None
-    print(f"  köken bakiye ({ilk[0] if ilk else '?'})      ${kok:>8.2f}")
-    print(f"  + defterin yatırım kaydı            ${d_dep:>+8.2f}")
+    # ⚠ ÇİFT SAYIM TUZAĞI: köken bakiye ($93.52, ilk daily_stats günü) muhtemelen
+    # ZATEN bir transferin sonucudur. O transferi ayrıca eklemek sermayeyi ŞİŞİRİR
+    # ve sahte bir "kayıp" üretir. Bu yüzden yalnız KÖKEN GÜNÜNDEN SONRAKİ
+    # transferler sayılır; köken günü ve öncesi $93.52'nin içinde kabul edilir.
+    kok_gun = str(ilk[0]) if ilk else "0000-00-00"
+    y_sonra = y_once = 0.0
+    n_sonra = n_once = 0
+    for gts, t, a, _cur in bill_satir:
+        isaret = -1.0 if str(t).upper().startswith("OUT") else 1.0
+        if str(gts)[:10] > kok_gun:
+            y_sonra += isaret * a; n_sonra += 1
+        else:
+            y_once += isaret * a; n_once += 1
+    y_borsa = y_sonra if bill_satir else None
+    if bill_satir:
+        print(f"  transferler köken gününe göre ayrıldı ({kok_gun}):")
+        print(f"    köken günü ve ÖNCESİ : {n_once} kayıt ${y_once:+.2f}  "
+              f"← ${kok:.2f}'nin İÇİNDE kabul edildi, TEKRAR EKLENMEZ")
+        print(f"    köken gününden SONRA : {n_sonra} kayıt ${y_sonra:+.2f}  ← sermayeye eklenir")
+    print(f"\n  köken bakiye ({ilk[0] if ilk else '?'})      ${kok:>8.2f}")
+    if bill_satir:
+        print(f"  + BORSA transferi (köken sonrası)   ${y_sonra:>+8.2f}   ← GERÇEK")
+        print(f"    (defterin kaydı ${d_dep:+.2f} — kıyas aşağıda)")
+    else:
+        print(f"  + defterin yatırım kaydı            ${d_dep:>+8.2f}")
     if toplam_rpnl is not None:
         print(f"  + BORSANIN kendi realized PnL'i     ${toplam_rpnl:>+8.2f}   ← trading'in GERÇEK katkısı")
     print(f"  + fonlama                           ${(fon or 0.0):>+8.2f}")
-    bekl = kok + d_dep + (toplam_rpnl or 0.0) + (fon or 0.0)
+    bekl = kok + (y_sonra if bill_satir else d_dep) + (toplam_rpnl or 0.0) + (fon or 0.0)
     print(f"  {'─'*46}\n  = beklenen bakiye                   ${bekl:>8.2f}")
     if eq_now:
         print(f"    gerçek equity                     ${eq_now:>8.2f}")
@@ -375,14 +416,20 @@ async def main():
         for ad, (n, tot) in yatirim.items():
             print(f"    {ad:<22s} {n:>3d} kayıt · ${tot:+.2f}")
         if y_borsa is not None:
-            print(f"    BORSA net toplam ................. ${y_borsa:+.2f}")
+            print(f"    BORSA (köken sonrası, net) ....... ${y_borsa:+.2f}")
             print(f"    DEFTER (meta.total_deposits) ..... ${d_dep:+.2f}")
             print(f"    FARK ............................. ${d_dep - y_borsa:+.2f}")
             if abs(d_dep - y_borsa) > 5:
-                print(f"    ⛔ DEFTERİN YATIRIM KAYDI YANLIŞ. Boşluğun kaynağı bu —")
-                print(f"       kaçak DEĞİL. meta.total_deposits düzeltilmeli.")
+                print(f"    ⛔ DEFTERİN YATIRIM KAYDI BORSAYLA TUTMUYOR.")
+                print(f"       meta.total_deposits düzeltilmeli — ama önce yukarıdaki")
+                print(f"       kalem kalem dökümü oku: hangi transfer köken bakiyenin")
+                print(f"       içinde, hangisi sonradan geldi?")
             else:
-                print(f"    ✓ Yatırım kaydı doğru → boşluk GERÇEK, aramaya devam.")
+                print(f"    ✓ Yatırım kaydı borsayla tutuyor.")
+        else:
+            print(f"    ⚠ fetch_transfers'ın yön parametresi MEXC tarafından yok")
+            print(f"      sayılıyor (aynı kayıtlar iki yönde de dönüyor). Yön bilgisi")
+            print(f"      yalnız bill kaydının 'type' alanında güvenilir.")
     else:
         print(f"    ⚠ Hiçbir yatırım kaynağı okunamadı — elle doğrulama gerekiyor:")
         print(f"      MEXC → Varlıklar → Para Yatırma / Transfer geçmişi.")
