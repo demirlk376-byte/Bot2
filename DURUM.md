@@ -108,6 +108,27 @@ Modellemediğim için ölçüm geçersizdi. **DAILY_MAX_LOSS_PCT değiştirilmez
 
 **XAU.** MEXC'te uygun enstrüman yok.
 
+**"Boşta parayı kullanalım" (marjin / kaldıraç / koltuk).** Üç kol da ölçüldü, üçü de
+reddedildi. ÖNCE KAVRAM: `marjin = nominal / kaldıraç`. Kaldıraç sabitken daha çok
+marjin ancak daha büyük nominal ile olur; stop sabitken bu doğrudan işlem başına daha
+çok DOLAR RİSKİ demektir. Marjin bağımsız bir ayar DEĞİL, sonuçtur.
+| kol | ölçüm | hüküm |
+|---|---|---|
+| CAP 1.5→2.0 | +$60/3.6yıl, tepe marjin %82→%97 | tampon %3'e iner; bakiye düşünce kötü dönemde işlem reddi başlar |
+| kaldıraç 10x→20x | kazanç YOK (marjin zaten hiçbir işlemi engellemiyor, red=0) | işlemlerin %35'inin stopu likidasyonun ötesine geçer |
+| MAX_POSITIONS 7→10 | +$28/3.6yıl ($8/yıl) | en kötü ay −20.5 → −22.7; barı geçmiyor |
+
+**ASIL BULGU — para neden boşta:** ortalama aynı anda açık pozisyon **1.75 / 7 koltuk**
+(doluluk %25), ortalama marjin bakiyenin **%10'u**, tepe **%82**. 1603 sinyalin yalnız
+24'ü (%1.5) koltuk yüzünden engelleniyor. MAX_POSITIONS 10'un üstünde HİÇBİR ŞEY
+değişmiyor (1603 toplam sinyal arzı).
+→ Para boşta çünkü koltuk yetmiyor değil, **YETERLİ SİNYAL YOK**.
+→ Ortalama %10 ile tepe %82 arasındaki fark İSRAF DEĞİL, sinyal kümelenmesi için
+  tutulan REZERV. Ortalamayı doldurmaya kalkmak, tepe anında (sinyallerin bol olduğu,
+  yani en kazançlı dönemde) işlem reddine yol açar.
+→ Boşta parayı kullanmanın tek yolu daha çok sinyal üretmektir (yeni coin / strateji)
+  — ki bu "her şey sabit kalsın" değildir.
+
 **Sahte kırılım (Breakout Quality Filter).** Kullanıcının 7 kriteri tek tek ölçüldü.
 Beşi zaten sistemde vardı ya da ayrım gücü yoktu (kapanis_yeri z=−0.00 — tam sıfır).
 Kalite skoru (6 özellik, eşit ağırlık) GERÇEKTEN ayırdı (Q1 +0.092R vs Q5 +0.314R,
