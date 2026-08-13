@@ -67,6 +67,39 @@ Kâr, riski artırarak değil **bakiye büyüyerek** artar. $203 → $400 olduğ
 
 ---
 
+## 2b. ANKOR DENETİMİ (2026-08-12) — TABAN %20 ŞİŞKİNMİŞ
+
+Bütün gün araçlar ankoru YENİDEN ÜRETTİ ama ankorun DOĞRU olduğu hiç denetlenmedi.
+Denetlendi:
+
+| kademe | işlem | toplam$ | Δ% | PF | ort R | maxDD |
+|---|---|---|---|---|---|---|
+| A0 ANKOR (eski taban) | 1579 | +1476 | +0% | 1.43 | +0.237 | 26.4 |
+| A1 +giriş kayması 13.4bp | 1581 | +1225 | −17% | 1.35 | +0.192 | 28.9 |
+| A2 **sonraki barın açılışı** | 1580 | +1462 | **−1%** | 1.42 | +0.236 | 21.6 |
+| A3 A2+kayma+fonlama | 1582 | **+1177** | **−20%** | 1.33 | **+0.190** | 29.8 |
+
+**A2 GEÇTİ — ankorun temeli SAĞLAM.** Giriş bir sonraki barın açılışına (canlıda
+gerçekten olan yere) kaydırılınca kayıp yalnız %1. Ankorun kârı "kapanış fiyatına
+erişebilmekten" GELMİYOR; edge zamana duyarlı değil.
+
+**AMA %20 ŞİŞKİN:** ankor giriş kaymasını (13.4bp) ve fonlamayı (%2.2/yıl) hiç
+düşmüyor. **Dürüst ankor $1177 ve ort R +0.190** — $1476 / +0.237 değil.
+→ Bugün verilen TÜM projeksiyonlarda 0.237 kullanıldı; doğrusu 0.190'dı.
+→ Hatırlanan "aylık %15" gerçekte **~%12** olmalıydı.
+→ A3'ün +0.190'ı canlıda ölçülen +0.0555'in güven aralığının ([−0.357, +0.468])
+  İÇİNDE — dürüst ankor ile canlı arası uçurum sanılandan DAR.
+
+**BUNDAN DOĞAN TEK UYGULANABİLİR FİKİR (bugünün en iyisi):**
+Kayma tek başına **$251** yiyor (3.6 yılda, ~$70/yıl) — bugün bulunan hiçbir filtre
+buna yaklaşamadı. A2 gösterdi ki **edge bir tam bar gecikmeye dayanıyor (−%1)**.
+Şu an donchian/squeeze `force_market` ile giriyor (koddaki gerekçe: "araştırmaları
+kapanışta garanti taker dolum varsayıyor") — ama A2 o varsayımın GEREKLİ OLMADIĞINI
+gösterdi. Maker limit girişi hem kaymayı hem taker ücretini kurtarabilir.
+Risk: limit dolmazsa işlem kaçar. ÖLÇÜLMEDİ — sıradaki iş bu.
+
+---
+
 ## 3. Kanıtlanmış olan
 
 **Kötü aylar rejim değil, şans.** 10.000 permütasyon: gerçek 8 negatif ay
