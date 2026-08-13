@@ -153,12 +153,60 @@ sinyal barı kapanışını bulup gerçekleşen girişle farkını ölçüyor, k
 Ankorda yaptığımız hatanın aynısı: herkesin güvendiği, kimsenin denetlemediği sayı.
 `kayma_denetim.py` onu da defterden yeniden ölçüyor.
 
+## 2d. ÜCRET ÖLÇÜLDÜ (2026-08-13) — ve defter dolum oranını ELE VERDİ
+
+`ucret_olc.py` nihayet çalıştırıldı (aylardır bekliyordu). Ankor taraf başına 1.00bp
+varsayıyor; **gerçek 0.751bp**. Ankor bu kalemde $10.51 AZ gösteriyor (%0.74) —
+kayda değer ama aksiyon gerektirmiyor. Asıl değer kol bazındaki dağılımda:
+
+| kol | yürütme yolu | ölçülen bp/taraf | teorik beklenti |
+|---|---|---|---|
+| `?` (kapalı kollar) | limit, **YEDEKSİZ** → dolmazsa işlem atlanır, kitaba giren her işlemin girişi ZORUNLU maker | **0.508** | 0.500 |
+| donchian | `force_market` → iki bacak da taker | **0.985** | 1.000 |
+| squeeze | `force_market` | **0.945** | 1.000 |
+| bb/mean_rev | **maker limit + 45sn piyasa yedeği** | **0.668** | ? |
+
+**İki uç da teoriyi TAM tutturdu** (0.508 ≈ 0.500 · 0.985/0.945 ≈ 1.000). Bu, "MEXC
+vadelide maker %0, taker 1bp" modelinin doğrulanmasıdır — ve o model doğruysa
+aradaki BB satırı **dolum oranını doğrudan verir**: 0.668 = (2−p)/2 → **p ≈ %66**.
+
+Yani `maker_giris.py`'nin 1dk bar verisiyle cevaplayamadığı soruyu **canlı defter
+cevaplıyor**: donchian için önerilen kurgunun (maker limit + 45sn yedek) gerçek dolum
+oranı, o kurguyu zaten kullanan kolda **~%66**. Başabaş ~%42 (2bp kuralı). Bandımızda
+%68 satırı **+$103** (ters-seçim modellenince +$66) veriyordu — bar geçiyor.
+
+**AMA ÜST SINIR, TAHMİN DEĞİL — iki sebeple:**
+1. **n=11.** %95 aralık kabaca %38–%94; alt uç başabaşın altında.
+2. **BB ortalamaya dönüş kolu.** Limitini fiyatın GERİ GELDİĞİ yere koyuyor → dolum
+   lehine yanlı. donchian/squeeze momentum; fiyat limitten KAÇAR. 2026-07-16
+   denetiminin tespit ettiği mekanizma tam bu. `maker_giris.py` de aynı yönde ölçtü:
+   limit kazanan işlemlerde %9, kaybedenlerde %27 doluyor.
+
+→ **Hâlâ üretime alınmıyor.** Ama artık eksen "ölçülemez" değil, "n yetersiz".
+`kayma_denetim.py` [4] bölümü bu çıkarımı her koşuda işlem-başına sınıflandırmayla
+(gerçek Bernoulli + güven aralığı) ve iki-uç kalibrasyon kontrolüyle yeniden yapıyor.
+**BB işlem sayısı büyüdükçe aralık daralacak — bu ekseni ay sonunda tekrar bak.**
+
+### Yan bulgu (düzeltilmeli)
+`live_verify.py` `TAKER_FEE` varsayılanı **0.0002**, ölçülen ise **~0.0001**. İki kat
+şişkin; beklenen-vs-gerçekleşen PnL karşılaştırmasını kaydırıyor.
+
+---
+
+## 2e. Bugün aracın kendi guard'ının yakaladığı hata
+
+`kayma_denetim.py` ilk koşuda **hüküm vermeyi reddetti**: "işlemlerin %44'ü sinyal
+barına eşleşmedi". Guard doğru çalıştı, hatalı olan benim paydamdı: 79 işlemin 33'ü
+kapalı kollardan (`?`) ve onların timeframe'i `TF` sözlüğünde yok — hiçbir zaman
+eşleşemezlerdi. Kapsam dışına alınınca eşleşme 44/46 (%96). *Bu, regime_teshis'in
+sessiz tz hatasının tersi: orada araç yanlış hükmü SESSİZCE basmıştı, burada guard
+doğru hükmü basmayı ENGELLEDİ. İkincisi doğru davranış.*
+
 **VPS'te çalıştırılacak (sıradaki iş):**
 ```
 cd /opt/bot2 && git pull
 python3 kayma_denetim.py --self-test     # önce araç doğrulanır
-python3 kayma_denetim.py                 # 13.4bp denetimi + maker/taker doğal deneyi
-python3 ucret_olc.py                     # gerçek ücret oranı (hâlâ çalıştırılmadı)
+python3 kayma_denetim.py                 # 13.4bp denetimi + [4] ücretten dolum oranı
 ```
 
 ---

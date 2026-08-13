@@ -135,6 +135,82 @@ def ozet(v, ad):
                 gec=float(np.median(g)), b=b)
 
 
+def fee_row(raw, dis_rows):
+    """İşlem BAŞINA maker/taker sınıflandırması. Ortalamadan çıkarım yapmak yerine
+    her işlemi tek tek etiketler → gerçek Bernoulli, gerçek güven aralığı.
+
+    KALİBRASYON iki BİLİNEN uçla yapılır (bu, çıkarımın doğruluk kanıtıdır):
+      • '?' kolu = kapalı kollar. YEDEKSİZ limit yolu kullanıyorlardı: dolmazsa
+        işlem ATLANIR, yani BOOK'A GİREN her işlemin girişi ZORUNLU OLARAK maker.
+        → beklenen tam 0.50bp/taraf.
+      • donchian+squeeze = force_market, her iki bacak taker → beklenen 1.00bp.
+    İki uç tuttuyla model doğrudur ve ARADAKİ BB gerçek dolum oranını verir."""
+    v = []
+    for r in raw:
+        sym, side, ep, et, qty, fee, sc = r[0], r[1], r[2], r[3], r[4], r[5], r[6]
+        kol = sleeve_of(sc)
+        nom = float(ep) * float(qty) if ep and qty else 0.0
+        if not fee or nom <= 0:
+            continue
+        v.append((kol, float(fee) / (2.0 * nom) * 10000.0))
+    if len(v) < 10:
+        print(f"  ⚠ ücret kaydı olan işlem {len(v)} — çok az, çıkarım yapılmaz.")
+        return
+    print(f"\n  {'kol':<12s} {'n':>4s} {'bp/taraf':>9s} {'maker giriş':>12s} "
+          f"{'oran':>7s} {'%95 aralık':>16s}")
+    ozetler = {}
+    for kol in sorted({x[0] for x in v}):
+        b = np.array([x[1] for x in v if x[0] == kol])
+        mk = int((b < 0.75).sum())          # 0.50 ile 1.00'ın tam ortası
+        p = mk / len(b)
+        se = np.sqrt(max(p * (1 - p), 1e-9) / len(b))
+        ad = {"?": "? (kapalı)", "bb": "bb [MAKER+yedek]"}.get(kol, kol)
+        print(f"  {ad:<12s} {len(b):>4d} {b.mean():>9.3f} {mk:>7d}/{len(b):<4d} "
+              f"{p*100:>6.0f}% [{max(p-1.96*se,0)*100:>5.0f}%,{min(p+1.96*se,1)*100:>5.0f}%]")
+        ozetler[kol] = (len(b), b.mean(), p, se)
+    # kalibrasyon kontrolü
+    print(f"\n  KALİBRASYON:")
+    ok = True
+    if "?" in ozetler:
+        n_, m_, p_, _ = ozetler["?"]
+        iyi = abs(m_ - 0.50) < 0.10
+        ok &= iyi
+        print(f"    '?' (zorunlu maker giriş): beklenen 0.500 · ölçülen {m_:.3f} "
+              f"{'✓' if iyi else '✗ model tutmuyor'}")
+    tk = np.array([x[1] for x in v if x[0] in ("donchian", "squeeze")])
+    if len(tk) >= 10:
+        iyi = abs(tk.mean() - 1.00) < 0.15
+        ok &= iyi
+        print(f"    donchian+squeeze (zorunlu taker): beklenen 1.000 · ölçülen "
+              f"{tk.mean():.3f} {'✓' if iyi else '✗ model tutmuyor'}")
+    if not ok:
+        print(f"    ⛔ İKİ UÇ TUTMUYOR — maker ücreti %0 varsayımı yanlış olabilir.")
+        print(f"       BB'den çıkarılan dolum oranı OKUNMAZ.")
+        return
+    print(f"    ✓ Her iki uç da tuttu → 'maker=%0, taker=1bp' modeli DOĞRULANDI,")
+    print(f"      dolayısıyla BB'den okunan dolum oranı GERÇEK bir ölçümdür.")
+    if "bb" in ozetler:
+        n_, m_, p_, se_ = ozetler["bb"]
+        lo, hi = max(p_ - 1.96 * se_, 0) * 100, min(p_ + 1.96 * se_, 1) * 100
+        print(f"\n  ★ BB/MR — donchian için ÖNERİLEN KURGUNUN TA KENDİSİ")
+        print(f"    (maker limit + 45sn piyasa yedeği, execution.py:623-627):")
+        print(f"    DOLUM ORANI %{p_*100:.0f}  [%95: %{lo:.0f}–%{hi:.0f}]  n={n_}")
+        print(f"    maker_giris.py başabaş oranı: ~%42 (2bp kuralı) – ~%26 (10bp kuralı)")
+        if lo > 42:
+            print(f"    → Güven aralığının ALT UCU bile başabaşın üstünde.")
+        elif p_ * 100 > 42:
+            print(f"    → Nokta tahmini başabaşın üstünde ama aralığın alt ucu ({lo:.0f}%)")
+            print(f"      altında kalıyor — n={n_} ile kesin konuşulamaz.")
+        else:
+            print(f"    → Başabaşın ALTINDA: maker giriş bu veriyle desteklenmiyor.")
+        print(f"\n    ⚠⚠ EN ÖNEMLİ ÇEKİNCE: BB bir ORTALAMAYA DÖNÜŞ kolu. Limiti fiyatın")
+        print(f"    GERİ GELDİĞİ yere koyuyor → dolum lehine yanlı. donchian/squeeze")
+        print(f"    MOMENTUM kolları; fiyat limitten KAÇAR. 2026-07-16 denetiminin")
+        print(f"    tespit ettiği mekanizma tam buydu. Yani BB'nin oranı donchian için")
+        print(f"    bir ÜST SINIRDIR, tahmin değil. maker_giris.py da bunu ölçtü:")
+        print(f"    limit kazanan işlemlerde %9, kaybedenlerde %27 doluyor.")
+
+
 def self_test():
     """Sentetik defter + sentetik mumla aracı DOĞRULA. Bilinen kayma enjekte edilir;
     araç onu geri okumalı. (bb_live_risk.py bu testle bir hata yakalamıştı — üretime
@@ -197,10 +273,20 @@ def main():
         " strategy_scores FROM trades WHERE is_paper=0"
     ).fetchall()
     con.close()
-    rows = [(r[0], r[1], r[2], r[3], r[4], r[5], sleeve_of(r[6])) for r in raw]
-    kollar = sorted({r[6] for r in rows})
-    print(f"\n  defterde {len(rows)} gerçek işlem · kollar: {kollar}")
+    rows_all = [(r[0], r[1], r[2], r[3], r[4], r[5], sleeve_of(r[6])) for r in raw]
+    kollar = sorted({r[6] for r in rows_all})
+    print(f"\n  defterde {len(rows_all)} gerçek işlem · kollar: {kollar}")
     print(f"  (AÇIK işlemler DAHİL — giriş kayması çıkıştan bağımsız, yanlılık yok)")
+    # KAPALI KOLLAR ('?') KAPSAM DIŞI: 2026-07-16'da kapatılan asia_bo/orb/fvg/sr
+    # işlemleri. Bunların timeframe'i TF sözlüğünde yok → hiçbir zaman eşleşemezler.
+    # İlk koşuda bu 33 işlem "eşleşmedi" sayıldı ve BAĞLANTI GUARD'I %44 ile hüküm
+    # vermeyi reddetti. Guard DOĞRU çalıştı — hatalı olan benim paydamdı.
+    dis = [r for r in rows_all if r[6] == "?"]
+    rows = [r for r in rows_all if r[6] != "?"]
+    if dis:
+        print(f"  ⓘ {len(dis)} işlem KAPSAM DIŞI (kapalı kollar, '?') — bunların")
+        print(f"    timeframe'i bilinmiyor, eşleşme paydasına KATILMIYOR.")
+    print(f"  kapsamdaki işlem: {len(rows)}")
 
     # ── mumları çek ──
     import fast_bt
@@ -265,6 +351,14 @@ def main():
     print(f"   ortalama anket gecikmesi + on_candle_close işi bekleniyor)")
     print(f"  gecikme_olc.py: bar kapanışından 1dk sonra aleyhe sürüklenme ~0bp.")
     print(f"  → Bu gecikmede sürüklenmeden gelen kayma İHMAL EDİLEBİLİR olmalı.")
+
+    print(f"\n{'=' * 108}\n=== [4] ÜCRETTEN DOLUM ORANI — maker_giris.py'nin cevaplayamadığı soru ===")
+    print(f"  maker_giris.py KARARSIZ kaldı çünkü 1dk BAR verisi 'limitimiz kuyrukta")
+    print(f"  dolar mı' sorusunu bilemez. Ama DEFTER biliyor: ödenen ÜCRET dolumun")
+    print(f"  maker mı taker mı olduğunu ele veriyor. MEXC vadeli: maker %0, taker ~1bp.")
+    print(f"    giriş maker + çıkış taker → taraf başına 0.50bp")
+    print(f"    giriş taker + çıkış taker → taraf başına 1.00bp")
+    fee_row(raw, dis)
 
     print(f"\n{'=' * 108}\n=== HÜKÜM ===")
     d = [x for x in v if x["kol"] == "donchian"]
