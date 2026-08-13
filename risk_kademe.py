@@ -40,10 +40,14 @@ YOL = 20000
 
 
 def aylik(taken, kaydirma, olcek):
-    """Aylık getiri ORANI, verilen risk ölçeğinde. Doğrusal ölçekleme YOK."""
+    """Aylık getiri ORANI, verilen risk ölçeğinde. Doğrusal ölçekleme YOK.
+
+    ⚠️ DÜZELTİLDİ: ilk sürüm `A.RISKF * olcek` yazıyordu. Ama A.RISKF = 0.02 × 1.125
+    yani RISK_SCALE'i ZATEN İÇERİYOR → 1.125 İKİ KEZ uygulanıyordu ve "sabit 1.125
+    (bugün)" satırı aslında 1.266'yı simüle ediyordu. Doğrusu ham tabandan çarpmak."""
     r = np.array([R for _, R, _ in taken]) + kaydirma
     sp = np.array([s for _, _, s in taken])
-    eff = np.minimum(A.RISKF * olcek, CAP * sp)
+    eff = np.minimum(0.02 * olcek, CAP * sp)          # 0.02 = RISK_SCALE'siz taban
     pnl = r * eff
     ay = [pd.Timestamp(x).tz_localize(None).to_period("M") for x, _, _ in taken]
     return pd.Series(pnl).groupby(ay).sum().values
@@ -100,8 +104,23 @@ def main():
     g_taban = aylik(taken, kay, 1.125)
     seri = {1.125: g_taban, 1.25: aylik(taken, kay, 1.25), 1.50: aylik(taken, kay, 1.50)}
     print(f"\n[B] KADEMELİ RİSK — canlı edge senaryosu, ayda ${KATKI:.0f} katkı")
-    print(f"    (medyan aylık getiri: " +
-          " · ".join(f"{k}→%{np.median(v)*100:.1f}" for k, v in seri.items()) + ")")
+    print(f"    {'ölçek':>7s} {'ort eff':>9s} {'CAP bağlı%':>11s} {'ay ORT%':>9s} "
+          f"{'ay MEDYAN%':>11s}")
+    for k_, v in seri.items():
+        e_ = np.minimum(0.02 * k_, CAP * np.array([s for _, _, s in taken]))
+        print(f"    {k_:>7.3f} {e_.mean():>9.5f} "
+              f"{(e_ < 0.02*k_-1e-12).mean()*100:>10.0f}% {v.mean()*100:>8.2f}% "
+              f"{np.median(v)*100:>10.2f}%")
+    # MEKANİZMA: ölçek artınca ORTALAMA yükselirken MEDYAN düşüyor. Sebep CAP.
+    r_ = np.array([R for _, R, _ in taken]); sp_ = np.array([s for _, _, s in taken])
+    for k_ in (1.125, 1.50):
+        bagli = (CAP * sp_) < (0.02 * k_)
+        if bagli.any() and (~bagli).any():
+            print(f"    ölçek {k_}: CAP'e takılanların ort R {r_[bagli].mean():+.4f} · "
+                  f"takılmayanların {r_[~bagli].mean():+.4f} "
+                  f"(takılan {bagli.sum()} işlem)")
+    print(f"    → Ölçek artınca CAP daha çok işlemi kesiyor; kesilenler farklı kalitede")
+    print(f"      ise bileşim değişiyor ve MEDYAN ay ORTALAMA ile aynı yönde gitmiyor.")
 
     for ay in (12, 24):
         yat = BAS + KATKI * ay
