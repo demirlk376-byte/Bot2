@@ -387,17 +387,27 @@ def dolum_ozet(kayit, W):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-def havuz(source, kayma_bp, ucret_carp, kesme, cache, kayma_kayb=None, ucret_kayb=None):
+def havuz(source, kayma_bp, ucret_carp, kesme, cache, kayma_kayb=None, ucret_kayb=None,
+          maker_kollar=("donchian", "squeeze")):
     """kesme: BB'ye uygulanan kayma. BB HER İKİ KOLDA DA AYNI tutulur (canlıda BB
-    zaten maker yolunu kullanıyor; farkı ona yazmak çifte sayım olur)."""
+    zaten maker yolunu kullanıyor; farkı ona yazmak çifte sayım olur).
+
+    maker_kollar: maker muamelesi GÖREN kollar. Geri kalanlar TAKER temelinde
+    kalır. KARARIMIZ yalnız donchian'ı açmak (squeeze kontrol grubu olarak taker
+    kalıyor) — o yüzden beklenen kâr artışı ('donchian',) ile hesaplanmalı.
+    Her ikisini birden açık varsaymak kazancı ŞİŞİRİR."""
     ham = []
     for kol, coins in (("donchian", A.DONCH), ("squeeze", A.SQZ)):
         tf, win, sl_a, rr, mh = A.CFG[kol]
+        maker = kol in maker_kollar
         for c in coins:
             d, sig = cache[(kol, c)]
-            r0 = R0CACHE.get((kol, c)) if kayma_kayb is not None else None
-            ham += sim_maliyet(d, sig, sl_a, rr, mh, kayma_bp, ucret_carp,
-                               kayma_kayb, ucret_kayb, r0)
+            r0 = R0CACHE.get((kol, c)) if (maker and kayma_kayb is not None) else None
+            if maker:
+                ham += sim_maliyet(d, sig, sl_a, rr, mh, kayma_bp, ucret_carp,
+                                   kayma_kayb, ucret_kayb, r0)
+            else:
+                ham += sim_maliyet(d, sig, sl_a, rr, mh, kesme, 1.0)
     for c in A.BB_COINS:
         d, sig = cache[("bb", c)]
         ham += sim_maliyet(d, sig, A.BB_SL_ATR, A.BB_RR, A.BB_MH, kesme, 1.0)
@@ -578,6 +588,39 @@ def main():
             kazanan = (ad, M, dtot, gecti)
 
     # ══════════════════════════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════════════════════════
+    print(f"\n{'=' * 118}")
+    print("=== [3] KAPSAM: yalnız DONCHIAN açılırsa ne kazanılır? ===")
+    print("  KARAR yalnız donchian'ı açmak; squeeze KONTROL GRUBU olarak taker kalıyor.")
+    print("  Yukarıdaki tablo İKİSİNİ birden açık varsayıyordu → beklenen kârı ŞİŞİRİR.")
+    don_pay = sum(len(cache[("donchian", c)][1]) for c in A.DONCH)
+    sqz_pay = sum(len(cache[("squeeze", c)][1]) for c in A.SQZ)
+    print(f"  ham sinyal payı: donchian {don_pay} · squeeze {sqz_pay}")
+    print(f"\n  {'dolum kuralı':<22s} {'HER İKİSİ Δ$':>13s} {'YALNIZ donchian Δ$':>19s} "
+          f"{'$/yıl':>7s} {'ankor kârının %':>16s}")
+    don_sonuc = {}
+    for der, od_, os_, _ in band:
+        if od_ is None:
+            continue
+        p_ = od_["p"]; dl = od_["delta"]
+        dz = od_["doldu"]; RR = od_["R"]
+        pw = float(dz[RR > 0].mean()); pl = float(dz[RR <= 0].mean())
+        kb = (1 - pw) * (KAYMA_BP + dl); uc = (1 - pw)
+        kbk = (1 - pl) * (KAYMA_BP + dl); uck = (1 - pl)
+        ikisi = olc(koltuk(havuz(source, kb, uc, KAYMA_BP, cache, kbk, uck)),
+                    CAP, fonlama=True)
+        tek = olc(koltuk(havuz(source, kb, uc, KAYMA_BP, cache, kbk, uck,
+                               maker_kollar=("donchian",))), CAP, fonlama=True)
+        d1 = ikisi["tot"] - T["tot"]; d2 = tek["tot"] - T["tot"]
+        print(f"  {der:>3.0f}bp geçiş · p=%{p_*100:<3.0f} {d1:>+13.0f} {d2:>+19.0f} "
+              f"{d2/3.6:>+7.0f} {d2/T['tot']*100:>+15.1f}%")
+        don_sonuc[der] = d2
+    print(f"\n  (hepsi TERS-SEÇİMLİ modelle — kazanan/kaybeden dolum oranı AYRI)")
+    if don_sonuc:
+        iyi = don_sonuc[min(DERINLIKLER)]; kotu = don_sonuc[max(DERINLIKLER)]
+        print(f"\n  ARALIK: en iyi ${iyi:+.0f} · en kötü ${kotu:+.0f} (3.6 yıl)")
+        print(f"          yılda ${iyi/3.6:+.0f} ile ${kotu/3.6:+.0f} arası")
+
     print(f"\n{'=' * 118}\n=== HÜKÜM ===")
     if od is None:
         print("  Dolum oranı ölçülemedi (1dk veri yok). Duyarlılık tablosuna bak:")
