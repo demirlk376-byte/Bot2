@@ -108,6 +108,39 @@ Modellemediğim için ölçüm geçersizdi. **DAILY_MAX_LOSS_PCT değiştirilmez
 
 **XAU.** MEXC'te uygun enstrüman yok.
 
+**COIN EVRENİ GENİŞLETME (2026-08-12).** Eksen yeniden açıldı ve KESİN kapandı.
+Gerekçe sağlamdı: para boşta çünkü SİNYAL yok (1.75/7 koltuk); coin eklemek sinyal ekler;
+yeni parametre uydurulmuyor, aynı kural daha çok yere uygulanıyor; deploy .env.
+
+**T1 — SEÇİMSİZ (10 adayın hepsi, sıfır seçim yanlılığı):**
+| küme | işlem | toplam$ | PF | maxDD% | en kötü ay |
+|---|---|---|---|---|---|
+| taban (7 coin) | 1579 | +1421 | 1.45 | 24.4 | −21.0 |
+| +hepsi (15 coin) | 2331 | **+1361** | 1.27 | 28.1 | **−58.8** |
+İşlem %48 arttı, kâr AZALDI, en kötü ay neredeyse ÜÇ KATINA çıktı.
+
+**T2 — TRAIN'de seç (2023-24), TEST'te ölç (2025-26):**
+Kural önceden sabit (her TRAIN yılı pozitif VE PF>1.10) → 8 coin seçildi.
+```
+TRAIN 2023-24:  taban +$778 → seçim +$1283   (+$505)
+TEST  2025-26:  taban +$643 → seçim  +$388   (−$254)
+```
+**Seçim prosedürü TRAIN'de muhteşem, TEST'te para kaybediyor.** Başarısız olan
+herhangi bir coin değil, "geçmişte iyi gideni seç" PROSEDÜRÜNÜN KENDİSİ.
+→ "Hangi coinleri ekleyelim" sorusunun cevabı YOK; soru yanlış.
+
+**T3 — doz-yanıt:** K=1 (+TRX) kârı +$87 artırırken en kötü ayı −21.0 → **−32.2**
+taşıyor. Daha İLK adımda ön-kayıtlı bar düşüyor.
+
+**DÜZELTİLEN AKIL YÜRÜTME — bugünün en değerli mekanizması:**
+Bu testi açarken "eski ret gerekçesi koltuk çekişmesiydi ama koltuklar %3.25 dolu,
+o mekanizma bizde yok" demiştim. **YANLIŞTI.** Koltuklar ORTALAMADA boş ama korele
+bir çöküşte hepsi birden doluyor — ve 15 coinle hepsi birbirinin aynı kaybeden
+pozisyonuyla doluyor. En kötü ayın −21'den −58.8'e fırlaması tam olarak budur.
+Eski gerekçe doğruymuş; ben yanlış yerde (ortalamada) ölçmüşüm. Önemli olan
+KUYRUKTAKİ doluluk. Bu, "boşta duran para israf değil REZERV" tespitinin bağımsız
+teyidi.
+
 **"Boşta parayı kullanalım" (marjin / kaldıraç / koltuk).** Üç kol da ölçüldü, üçü de
 reddedildi. ÖNCE KAVRAM: `marjin = nominal / kaldıraç`. Kaldıraç sabitken daha çok
 marjin ancak daha büyük nominal ile olur; stop sabitken bu doğrudan işlem başına daha
