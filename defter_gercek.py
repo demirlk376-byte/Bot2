@@ -134,42 +134,78 @@ async def main():
         await ex.initialize(syms[0])
     except Exception as e:
         print(f"  ⚠ initialize uyarısı: {e}")
+    # ⚠ get_balance() YALNIZ SERBEST bakiyeyi döndürüyor (exchange.py: usdt["free"]).
+    # Açık pozisyon varsa KİLİTLİ MARJİN dışarıda kalır ve defterle kıyaslanınca
+    # sahte bir "kaçak" üretir. İlk sürümüm tam bu hatayı yaptı: 2 pozisyon açıkken
+    # −$98.96 raporladı. Doğru sayı get_equity() — nakit + kilitli marjin + uPnL,
+    # ki günlük zarar durdurucusu da onu kullanıyor (exchange.py: get_equity).
+    serbest = eq = None
     try:
-        bakiye = await ex.get_balance()
+        serbest = float(await ex.get_balance())
     except Exception as e:
-        print(f"  ✗ bakiye okunamadı: {e}"); return
+        print(f"  ⚠ serbest bakiye okunamadı: {e}")
+    try:
+        eq = float(await ex.get_equity())
+    except Exception as e:
+        print(f"  ✗ equity okunamadı: {e}")
     upnl = 0.0
     n_acik = 0
+    okunamadi = []
     for sym, side, ep, qty in d["acik"]:
         try:
             p = await ex.get_position(sym)
-        except Exception:
+        except Exception as e:
             p = None
-        if p is not None:
-            n_acik += 1
-            upnl += float(getattr(p, "unrealized_pnl", 0.0) or 0.0)
+        if p is None:
+            okunamadi.append(sym)
+            continue
+        n_acik += 1
+        u = getattr(p, "unrealized_pnl", None)
+        if u is None:
+            okunamadi.append(sym)
+        else:
+            upnl += float(u)
     try:
         await ex.close()
     except Exception:
         pass
+    if eq is None or eq <= 0:
+        print(f"\n  ⛔ GERÇEK EQUITY OKUNAMADI. Serbest bakiye ile kıyas YAPILMAZ —")
+        print(f"     açık pozisyonların kilitli marjini dışarıda kalır ve sahte bir")
+        print(f"     kaçak üretir. Hüküm verilmiyor.")
+        return
+    if okunamadi:
+        print(f"\n  ⚠ {len(okunamadi)} açık pozisyonun uPnL'i OKUNAMADI: {okunamadi}")
+        print(f"     Bu tutar farka karışıyor; sonuç o kadar belirsiz.")
 
     bas = float(d["ilk"][1])
     defter = bas + d["pnl"] + d["dep"]
-    gercek = float(bakiye)
-    fark = gercek - defter
+    # Defter YALNIZ gerçekleşmiş PnL'i taşır; borsa equity'si açık pozisyonların
+    # uPnL'ini de içerir. Elmayla elmayı kıyaslamak için uPnL çıkarılır.
+    gercek_realize = eq - upnl
+    fark = gercek_realize - defter
     print(f"\n  köken (ilk gün {d['ilk'][0]} başlangıç bakiyesi):  ${bas:>10.2f}")
     print(f"  + defterdeki kapanmış PnL ({d['n']} işlem):        ${d['pnl']:>+10.2f}")
     print(f"  + yatırılan/çekilen para:                         ${d['dep']:>+10.2f}")
     print(f"  {'─'*58}")
-    print(f"  = DEFTERE GÖRE olması gereken bakiye:             ${defter:>10.2f}")
-    print(f"    BORSADAKİ gerçek bakiye:                        ${gercek:>10.2f}")
-    if n_acik:
-        print(f"    (açık {n_acik} pozisyonun uPnL'i: ${upnl:+.2f} — bakiyeye dahil")
-        print(f"     olup olmadığı MEXC alanına bağlı, aşağıda İKİ senaryo verildi)")
+    print(f"  = DEFTERE GÖRE olması gereken (gerçekleşmiş):     ${defter:>10.2f}")
+    print(f"\n  BORSA — doğru alan hangisi:")
+    if serbest is not None:
+        print(f"    serbest bakiye (free) ................... ${serbest:>10.2f}   "
+              f"← kilitli marjin HARİÇ, KIYASA UYGUN DEĞİL")
+    print(f"    GERÇEK EQUITY (nakit+marjin+uPnL) ...... ${eq:>10.2f}   ← doğru olan")
+    if n_acik or okunamadi:
+        print(f"    − açık {n_acik} pozisyonun uPnL'i ............ ${upnl:>+10.2f}")
+        print(f"    = borsanın GERÇEKLEŞMİŞ kısmı .......... ${gercek_realize:>10.2f}")
+    if serbest is not None and eq > 0:
+        print(f"\n    (kilitli marjin ≈ ${eq - serbest - upnl:.2f} — ilk sürümüm bunu")
+        print(f"     'kaçak' sanmıştı; o yüzden −$98.96 raporlamıştı)")
     print(f"  {'─'*58}")
-    print(f"  FARK (borsa − defter):                            ${fark:>+10.2f}")
-    if n_acik:
-        print(f"  FARK (açık uPnL düşülürse):                       ${fark-upnl:>+10.2f}")
+    print(f"  FARK (borsa gerçekleşmiş − defter):               ${fark:>+10.2f}")
+    print(f"\n  ⚠ SEN DOĞRULA: defter {d['ilk'][0]}'den beri toplam "
+          f"${d['dep']:+.2f} yatırım/çekim kaydetmiş.")
+    print(f"    Gerçekte yatırdığın tutar bu DEĞİLSE fark buradan gelir, kaçaktan")
+    print(f"    değil. (Eksik kaydedilen yatırım = sahte 'kaçak'.)")
 
     # ── R'ye çevir ──
     print(f"\n{'=' * 96}\n=== [3] KAÇAK BÜTÇESİNE BAĞLA ===")
@@ -189,9 +225,11 @@ async def main():
     print(f"\n{'=' * 96}\n=== HÜKÜM ===")
     if fark < -1.0:
         print(f"\n  ⛔ BORSA DEFTERDEN ${abs(fark):.2f} DAHA AZ.")
-        print(f"     Defterin görmediği bir maliyet var. En güçlü aday: çıkış kayması")
-        print(f"     (çıkışların %{tv/tot*100:.0f}'i seviye fiyatından kaydediliyor).")
-        print(f"     Diğer adaylar: fonlama, eksik hesaplanan ücret.")
+        print(f"     ÜÇ OLASI SEBEP — sırayla elenmeli, ATLAMA:")
+        print(f"      (a) YATIRIM KAYDI EKSİK — defter ${d['dep']:+.2f} diyor. Gerçek")
+        print(f"          rakam farklıysa 'kaçak' sahtedir. ÖNCE BUNU DOĞRULA.")
+        print(f"      (b) Çıkış kayması (çıkışların %{tv/tot*100:.0f}'i seviyeden kaydediliyor)")
+        print(f"      (c) Fonlama + eksik hesaplanan ücret")
         print(f"\n  YAPILACAK (sırayla):")
         print(f"   1. main.py:1619 — mutabakatta GERÇEK dolum fiyatı çekilsin")
         print(f"      (fetch_my_trades / closed orders), seviye yalnız YEDEK olsun.")
