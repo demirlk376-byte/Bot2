@@ -108,6 +108,28 @@ Modellemediğim için ölçüm geçersizdi. **DAILY_MAX_LOSS_PCT değiştirilmez
 
 **XAU.** MEXC'te uygun enstrüman yok.
 
+**KAPALI KOLLAR (2026-08-12).** Kodda .env ile açılan 5 kol (SR/FVG/IFVG/ASIA/ORB)
+ölçüldü — hepsi REDDEDİLDİ. Taban: +$1476, maxDD 26.4, en kötü ay −20.5.
+| kol | kendi n | kendi ortR | kendi PF | portföy Δ$ | maxDD% | en kötü ay |
+|---|---|---|---|---|---|---|
+| sr | 1967 | +0.0489 | 1.08 | +32 | **86.5** | −51.9 |
+| fvg | 7672 | +0.0091 | 1.02 | −245 | **125.4** | −120.2 |
+| ifvg | 1866 | +0.0231 | 1.00 | +127 | 25.8 | −48.2 |
+| asia | 12376 | **−0.0206** | 0.94 | **−1438** | **142.1** | −77.9 |
+
+**KESİN ÖLDÜREN ARGÜMAN — yürütme maliyeti:** ölçülmüş giriş kayması 13.4bp ≈ **0.037R**
+(donchian sl% 3.57 üzerinden). Donchian 0.243 − 0.037 = 0.206R sorunsuz. Ama
+sr 0.049 − 0.037 = 0.012R (sıfıra yakın), ifvg 0.023 − 0.037 = **NEGATİF**.
+Bu kollar backtest'te bile zar zor kâr ederken gerçek yürütme maliyetini ödeyemiyor.
+
+**MEKANİZMA — bugünü tamamlıyor:** bu kollar binlerce sinyal üretiyor (asia 12.376) ve
+koltukları sürekli dolduruyor — ama +0.24R'lik işlemler yerine +0.05R'liklerle.
+`asia` tek başına portföyü +$1476'dan **+$38**'e düşürüyor.
+→ **BOŞ KOLTUK, DOLDURULMAYI BEKLEYEN KAPASİTE DEĞİLDİR.** İyi sinyal nadir olduğu için
+boş. Vasat sinyalle doldurmak para eklemez, İYİLERİ KOVAR.
+Bu, "boşta para = rezerv" ve "coin ekleme kuyruğu patlatıyor" bulgularının üçüncü ayağı:
+kapasiteyi doldurmanın ÜÇ yolu da (coin, kol, koltuk) ölçüldü ve üçü de zarar veriyor.
+
 **COIN EVRENİ GENİŞLETME (2026-08-12).** Eksen yeniden açıldı ve KESİN kapandı.
 Gerekçe sağlamdı: para boşta çünkü SİNYAL yok (1.75/7 koltuk); coin eklemek sinyal ekler;
 yeni parametre uydurulmuyor, aynı kural daha çok yere uygulanıyor; deploy .env.
