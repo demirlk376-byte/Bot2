@@ -202,12 +202,97 @@ eşleşemezlerdi. Kapsam dışına alınınca eşleşme 44/46 (%96). *Bu, regime
 sessiz tz hatasının tersi: orada araç yanlış hükmü SESSİZCE basmıştı, burada guard
 doğru hükmü basmayı ENGELLEDİ. İkincisi doğru davranış.*
 
-**VPS'te çalıştırılacak (sıradaki iş):**
+---
+
+## 2f. KAYMA DENETİMİ ÇALIŞTI (2026-08-13) — sabit doğrulandı, maker CANLI KANIT aldı
+
+`kayma_denetim.py`, canlı defter, n=44, **%100 bar eşleşmesi**.
+
+### [1] 13.4bp DENETLENDİ ve GEÇTİ
+donchian ölçülen giriş kayması **+15.32bp** [%95: +0.26, +30.38] · n=21.
+**13.4 aralığın içinde → sabit DOĞRULANDI.** Ankor denetiminin A1/A3 satırları
+($251 düzeltme, "dürüst taban $1177") **geçerli**. Aralık geniş, sabit değiştirilmedi.
+
+### [2] DOĞAL DENEY — maker kol vs taker kollar
+
+| kol | yürütme yolu | giriş kayması | aleyhe% | n |
+|---|---|---|---|---|
+| **bb/mean_rev** | **maker limit + 45sn yedek** | **−2.95bp** [−6.37, +0.47] | 18% | 11 |
+| donchian | `force_market` | **+15.32bp** [+0.26, +30.38] | 67% | 21 |
+| squeeze | `force_market` | +4.18bp [+0.45, +7.91] | 67% | 12 |
+
+**FARK +14.22bp [%95: +3.87, +24.57] — sıfırı DIŞLIYOR.** Maker kolu sinyal
+fiyatından **daha İYİ** giriyor (negatif kayma), taker kollar aleyhe.
+
+### [3] GECİKME — hipotez kesin olarak elendi
+medyan **24sn**, %90 42sn (ort 123sn'yi 3638sn'lik tek outlier şişiriyor —
+muhtemelen restart). `gecikme_olc.py` 1dk'da ~0bp sürüklenme ölçmüştü.
+→ **24sn'de sürüklenmeden gelen kayma ihmal edilebilir. Kayma spread/etki.**
+Ve spread/etki maker girişin tam olarak kurtardığı şey.
+
+### [4] DOLUM ORANI — iki uç kalibrasyonu TUTTU
+
+| kol | bp/taraf | maker giriş | oran | beklenen |
+|---|---|---|---|---|
+| `?` (kapalı, yedeksiz limit) | 0.547 | 30/33 | %91 | ~%100 |
+| **bb [maker+yedek]** | 0.638 | **8/11** | **%73** [%46–%99] | ? |
+| donchian (force_market) | 0.975 | 1/19 | %5 | ~%0 |
+| squeeze (force_market) | 0.872 | 3/12 | %25 | ~%0 |
+
+İki uç teoriyi tutturdu (0.547≈0.500 · 0.935≈1.000) → "maker %0 / taker 1bp"
+modeli doğrulandı → **BB'nin %73'ü gerçek bir ölçüm.** Başabaş ~%42;
+**güven aralığının ALT UCU (%46) bile başabaşın üstünde.**
+
+*(Not: squeeze'in 3/12'si ve `?`'nin 30/33'ü teoriden sapıyor. Sebep sistematik:
+nominal'i yalnız GİRİŞ fiyatından hesaplıyorum, ücret ise giriş+çıkış nominali
+üzerinden → ~+%5 yukarı kayma. Sınıflandırma eşiğini etkiliyor ama BB'nin 0.638'i
+eşiğe uzak, o okuma sağlam.)*
+
+### HÜKÜM: eksen "kararsız"dan "GÜÇLÜ ADAY"a geçti — ama hâlâ ÜST SINIR
+Çekince değişmedi: **BB ortalamaya dönüş** (limit lehine yanlı), donchian
+**momentum** (fiyat limitten kaçar). BB'nin %73'ü donchian için **üst sınır**.
+
+---
+
+## 2g. UYGULAMA — deney olarak kodlandı, VARSAYILAN KAPALI
+
+Kod hazır ve testli, **ama canlı davranış DEĞİŞMEDİ.**
+
+`DONCHIAN_MAKER_ENTRY=false` (varsayılan) → `git pull` tek başına hiçbir şeyi
+değiştirmez. Bu bilinçli: bulgu güçlü ama BB üst sınır olduğu için açmak bir KARAR.
+
+**Neden tek satır yetmiyordu:** `execution.py:611` yolu `sl_price > 0` ile seçiyordu.
+donchian sl_price'ı DOLDURUYOR ama SL'i seviyeye değil GİRİŞ FİYATINA ATR ile
+çapalıyor → çıkarım onu "yapı-tabanlı" sayıp **piyasa yedeğini kapatıyordu**.
+Sadece `force_market=False` yapmak, 2026-07-16'da geri alınan **yedeksiz** yola
+düşürürdü. Açık bayrak eklendi: `CombinedSignal.anchor_is_level`
+(`None` = eski çıkarım → mevcut kolların hiçbiri etkilenmez).
+
+`tests/test_maker_routing.py` (suite'e eklendi, 4/4 dosya geçiyor) altı şeyi kanıtlıyor;
+en önemlisi **bayrak kapalıyken yolun `market` kaldığı**.
+
+### DENEY TASARIMI — squeeze KONTROL GRUBU olarak kalır
+Sadece donchian açılır. squeeze `force_market` kalır. İkisi de **momentum** kolu,
+aynı dönem, aynı piyasa → BB'nin ortalamaya-dönüş yanlılığı ortadan kalkar.
+Kazanç potansiyeli de donchian'da (+15.32bp vs squeeze +4.18bp).
+
+**Açmak için** (`.env`, sonra `systemctl restart btc-bot`):
 ```
-cd /opt/bot2 && git pull
-python3 kayma_denetim.py --self-test     # önce araç doğrulanır
-python3 kayma_denetim.py                 # 13.4bp denetimi + [4] ücretten dolum oranı
+DONCHIAN_MAKER_ENTRY=true
 ```
+**4–6 hafta sonra** `python3 kayma_denetim.py` → donchian'ın kayması ve dolum oranı
+squeeze'inkiyle karşılaştırılır.
+**GERİ ALMA ÖLÇÜTÜ (ön-kayıtlı):** donchian dolum oranı **%42'nin altına** düşerse
+veya kayması squeeze'e göre iyileşmezse → bayrak kapatılır.
+
+### Modellenmemiş tek risk
+**KISMİ DOLUM.** `place_limit_order` kısmi dolumu booklar ve üstüne piyasa yedeği
+ATMAZ (bilinçli — çift maruziyeti önlüyor). Pozisyon hedeflenenden küçük kalır;
+küçük emirlerde nadir ama backtest'te modellenmedi.
+
+### Yan bulgu (ayrı iş)
+`live_verify.py` `TAKER_FEE` varsayılanı **0.0002**, ölçülen **~0.0001**. İki kat
+şişkin; beklenen-vs-gerçekleşen PnL kıyasını kaydırıyor.
 
 ---
 

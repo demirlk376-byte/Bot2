@@ -735,7 +735,14 @@ def make_on_candle_close(ctx: "SymbolContext"):
                                     tp_price=dch_sig.tp_price,
                                     symbol=ctx.symbol,
                                     position_slot=f"{ctx.symbol}:donchian",
-                                    force_market=True,
+                                    # DENEY BAYRAĞI (varsayılan KAPALI, .env ile açılır).
+                                    # Kapalıyken force_market=True → bugünkü davranış
+                                    # BİT BİT AYNI. Açıkken maker limit + 45sn PİYASA
+                                    # YEDEĞİ: hiçbir işlem kaçmaz, sadece ödenen fiyat
+                                    # değişir. anchor_is_level=False olmasa yedeksiz yola
+                                    # düşerdi — 2026-07-16'da geri alınan felaket buydu.
+                                    force_market=not config.exchange.donchian_maker_entry,
+                                    anchor_is_level=False,
                                 )
                                 result = await executor.execute_signal(dch_combined, float(atr_4h))
                                 if result.success and result.position:

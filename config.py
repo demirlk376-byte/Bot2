@@ -68,6 +68,19 @@ class ExchangeConfig:
     symbols: list[str] | None = None  # full list when trading multiple coins
     base_currency: str = "USDT"
     maker_entry: bool = True   # use post-only limit entries (0% maker fee vs 0.01% taker)
+    # DONCHIAN kolunu maker limit + 45sn PİYASA YEDEĞİ yoluna alır. VARSAYILAN
+    # KAPALI — `git pull` tek başına canlı davranışı DEĞİŞTİRMESİN diye.
+    #
+    # Kanıt (2026-08-13, kayma_denetim.py, canlı defter n=44, %100 bar eşleşmesi):
+    #   BB/MR  (maker limit + yedek) giriş kayması  −2.95bp  (LEHTE giriyor)
+    #   donchian (force_market)      giriş kayması +15.32bp
+    #   FARK +14.22bp  [%95: +3.87, +24.57]  → sıfırı DIŞLIYOR
+    #   BB'nin gerçekleşen dolum oranı %73 [%95: %46–%99]; başabaş ~%42.
+    # ÇEKİNCE: BB ortalamaya dönüş kolu (limit lehine yanlı), donchian momentum
+    # (fiyat limitten kaçar) → BB'nin oranı donchian için ÜST SINIR, tahmin değil.
+    # Bu yüzden AÇMAK bir DENEY: squeeze taker kalır ve aynı dönemde KONTROL
+    # GRUBU olur. 4-6 hafta sonra kayma_denetim.py iki kolu karşılaştırır.
+    donchian_maker_entry: bool = False
     # Live mid-life stop moves (BE/trailing) require MEXC's plan-order PLACE
     # endpoint to work reliably. It has a history of silent rejects, so this
     # ships OFF: run check_mexc_stopmove.py on the VPS first; only set
@@ -369,6 +382,7 @@ def load_config() -> AppConfig:
         symbol=symbols[0],
         symbols=symbols,
         maker_entry=_getbool("MAKER_ENTRY", True),
+        donchian_maker_entry=_getbool("DONCHIAN_MAKER_ENTRY", False),
         stop_move_enabled=_getbool("STOP_MOVE_ENABLED", False),
     )
 

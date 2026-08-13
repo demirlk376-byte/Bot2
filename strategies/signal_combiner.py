@@ -56,6 +56,17 @@ class CombinedSignal:
     # would sit/retrace and defeat the breakout). Price is already at the level, so
     # the taker fill is ~level with only a few ticks of slippage.
     force_market: bool = False
+    # SL/TP nereye ÇAPALI? True = yapı/seviye (ORB, Asia BO, FVG): piyasa yedeği
+    # seviyeden uzağa dolar ve R/R'yi <1'e çökertir → yedek YOK, dolmazsa atla.
+    # False = ATR ile GİRİŞ FİYATINA çapalı (donchian, squeeze, BB/MR): yedek
+    # güvenli, çünkü SL/TP dolum fiyatından yeniden hesaplanır, R/R korunur.
+    # None = eski davranış (sl_price>0 ise yapı sayılır).
+    #
+    # ⚠ BU ALAN NEDEN VAR: execution.py bu ayrımı `sl_price > 0` ile yapıyordu.
+    # donchian/squeeze sl_price'ı DOLDURUYOR ama seviyeye değil kapanışa çapalı —
+    # yani bayrak onları YANLIŞ tarafa koyuyordu. Sonuç: maker açılsa bile yedeksiz
+    # yola düşüyorlardı (2026-07-16'da denenip haklı olarak geri alınan yol).
+    anchor_is_level: Optional[bool] = None
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
 

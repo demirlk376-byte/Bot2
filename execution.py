@@ -608,7 +608,13 @@ class ExecutionEngine:
         # research assumes a guaranteed taker fill at that close → they arrive
         # here with force_market=True (audit 2026-07-16) and never take the
         # limit path at all.
-        is_structure_based = getattr(signal, "sl_price", 0.0) > 0
+        # AÇIK BAYRAK varsa ona uy; yoksa eski çıkarım (sl_price>0). Eski çıkarım
+        # donchian/squeeze'i YANLIŞ tarafa koyuyordu: sl_price doluydu ama SL
+        # seviyeye değil GİRİŞ FİYATINA ATR ile çapalı — piyasa yedeği R/R'yi
+        # bozmaz. Bayrak açıkça verilmedikçe davranış BİT BİT AYNI kalır.
+        is_structure_based = getattr(signal, "anchor_is_level", None)
+        if is_structure_based is None:
+            is_structure_based = getattr(signal, "sl_price", 0.0) > 0
         # Acquire per-symbol lock before touching the exchange so no concurrent
         # resync can cancel a stop we just placed before the position is in the
         # portfolio (at which point resync correctly re-places it).
