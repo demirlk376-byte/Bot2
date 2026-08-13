@@ -211,13 +211,21 @@ def main():
     kat["saat"] = pd.cut(df["saat"], [-1, 5, 11, 17, 23],
                          labels=["saat:00-05", "saat:06-11", "saat:12-17", "saat:18-23"])
     kat["uyum1h"] = df["uyum1h"].map({1: "1h:uyumlu", 0: "1h:ters", -1: "1h:yok"})
+    # ⚠️ geri_donus GİRİŞ ANINDA BİLİNMİYOR: bir SONRAKİ barın kapanışından geliyor.
+    # Filtre değişkeni olarak kullanmak LOOKAHEAD'dir. Ayrı tutulup işaretleniyor.
     kat["geri_donus"] = df["geri_donus"].map({1: "gd:döndü", 0: "gd:dönmedi", -1: "gd:yok"})
     K = pd.DataFrame(kat).astype("object")
-    ozellikler = list(K.columns)
+    LOOKAHEAD = {"geri_donus"}
+    ozellikler = [c for c in K.columns if c not in LOOKAHEAD]
+    print(f"  ⚠ LOOKAHEAD olduğu için TARAMADAN ÇIKARILDI: {sorted(LOOKAHEAD)}")
+    print(f"    (geri_donus = kırılım sonrası bar kanala döndü mü — giriş anında BİLİNMEZ.")
+    print(f"     Gerçek zamanda kullanmak bir bar beklemeyi gerektirir; bu bugün üç yoldan")
+    print(f"     denendi: teyit −$335 · retest −$878 · erken çıkış −$120.)")
     print(f"  {len(ozellikler)} özellik ayrıklaştırıldı (sınırlar YALNIZ TRAIN'den)")
 
     # ── K1: ADAY ARAMA (yalnız TRAIN) ──
     sigma = float(df["R"].std(ddof=1))
+    genel_ort = float(df["R"].mean())
     hucreler = []
     for k in (1, 2, 3):
         for kombo in itertools.combinations(ozellikler, k):
@@ -232,13 +240,25 @@ def main():
                 hucreler.append((kombo, anahtar if isinstance(anahtar, tuple) else (anahtar,),
                                  len(grp), float(grp["R"].mean()), float(z)))
     toplam = len(hucreler)
-    p_gecme = NormalDist().cdf(Z_ESIK)          # tek hücrenin şansla geçme olasılığı
+    # ⚠️ DÜZELTİLDİ: ilk sürüm p = Phi(Z_ESIK) yazıyordu, yani hücrenin gerçek
+    # ortalamasını SIFIR varsayıyordu. Doğru null "bu hücre popülasyondan farksız",
+    # yani gerçek ortalama = +0.237. O zaman z<-2 çok daha NADİRDİR.
+    #   eşik ortalama = Z_ESIK*se ; P(örnek ort < eşik | gerçek ort = genel_ort)
+    p_list = []
+    for _, _, nn, _, _ in hucreler:
+        se_ = sigma / np.sqrt(nn)
+        p_list.append(NormalDist().cdf((Z_ESIK * se_ - genel_ort) / se_))
+    p_bekleniyor = float(np.sum(p_list))
+    p_yanlis_null = NormalDist().cdf(Z_ESIK) * toplam
     adaylar = [h for h in hucreler if h[4] < Z_ESIK]
     print(f"\n[K1] ADAY ARAMA — yalnız TRAIN, n≥{MIN_N_TR} ve z<{Z_ESIK}")
     print(f"     taranan hücre: {toplam}")
-    print(f"     ŞANSLA geçmesi beklenen: ~{toplam*p_gecme:.1f}")
+    print(f"     ŞANSLA geçmesi beklenen: ~{p_bekleniyor:.1f}   "
+          f"(null: hücre popülasyondan farksız, gerçek ort R = {genel_ort:+.3f})")
+    print(f"     [yanlış null ile — ort R=0 varsayımı — ~{p_yanlis_null:.1f} çıkardı; "
+          f"ilk sürümün hatası buydu]")
     print(f"     GERÇEKTE geçen: {len(adaylar)}")
-    if len(adaylar) <= toplam * p_gecme * 1.5:
+    if len(adaylar) <= p_bekleniyor * 1.5:
         print(f"     → Bulunan aday sayısı ŞANS BEKLENTİSİYLE AYNI DÜZEYDE.")
         print(f"       Yani ortada gerçek bir desen olduğuna dair kanıt YOK.")
 
