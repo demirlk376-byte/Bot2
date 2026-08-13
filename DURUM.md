@@ -108,6 +108,28 @@ Modellemediğim için ölçüm geçersizdi. **DAILY_MAX_LOSS_PCT değiştirilmez
 
 **XAU.** MEXC'te uygun enstrüman yok.
 
+**KISA VADELİ DÖNÜŞ / FADE (2026-08-12).** Bugünün TEK "ekleyen" denemesi (diğer 13'ü
+mevcut işlemleri buduyordu). Hipotez kendi ölçümlerimizden çıkmıştı: en iyi rejim
+`range/düşük vol` (+0.391R) ve tek mean-reversion kolumuz (bb) yalnız LTC+hafta sonu.
+| k (aşırılık) | kendi n | kendi ortR | kayma sonrası | portföy Δ$ |
+|---|---|---|---|---|
+| 1.0 | 13006 | −0.0159 | −0.0529 | −130 |
+| 1.5 | 7052 | −0.0481 | −0.0851 | −708 |
+| 2.0 | 3162 | −0.0553 | −0.0923 | −463 |
+| 2.5 | 1385 | −0.0279 | −0.0649 | −194 |
+| 3.0 | 649 | −0.0182 | −0.0552 | −97 |
+
+**BEŞ EŞİĞİN BEŞİ DE KAYMA ÖNCESİNDE BİLE NEGATİF.** Yani "arbitrajlanmış, sıfıra
+inmiş" değil — AKTİF OLARAK ZARAR ETTİRİYOR.
+
+**MEKANİZMA — sistemi açıklıyor:** aşırı hareketi ters oynamak para kaybettiriyorsa
+o hareket DEVAM ediyor demektir. Bu tam olarak donchian'ın sömürdüğü şey. Bu piyasa
+bu zaman ölçeğinde MOMENTUM piyasası; fade etmek donchian'ın kâr ettiği etkiye karşı
+bahis oynamaktır.
+→ bb kolunun neden yalnız HAFTA SONU ve TEK coinde olduğu da anlaşıldı: hafta sonu
+hacim düşük, momentum zayıf — ortalamaya dönüşün çalıştığı tek yer orası.
+Kısıtlaması keyfi değil, DOĞRU YERDE.
+
 **KAPALI KOLLAR (2026-08-12).** Kodda .env ile açılan 5 kol (SR/FVG/IFVG/ASIA/ORB)
 ölçüldü — hepsi REDDEDİLDİ. Taban: +$1476, maxDD 26.4, en kötü ay −20.5.
 | kol | kendi n | kendi ortR | kendi PF | portföy Δ$ | maxDD% | en kötü ay |
