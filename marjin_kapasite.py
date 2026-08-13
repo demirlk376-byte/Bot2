@@ -150,9 +150,10 @@ def main():
         _, _, tepe, _ = calistir(ham, 1.50, float(lev), bal)
         bay = ""
         if tehlike > 1.0:
-            bay = f"  ⛔ işlemlerin %{tehlike:.1f}'i STOP ÇALIŞMADAN LİKİDE OLUR"
+            bay = (f"  ⚠ işlemlerin %{tehlike:.1f}'i stop çalışmadan likide olur "
+                   f"(kayıp 1R'den KÜÇÜK, ama toparlanma ölür)")
         elif tehlike > 0:
-            bay = f"  ⚠ %{tehlike:.2f}"
+            bay = f"  · %{tehlike:.2f}"
         mark = "  ← ŞU AN" if lev == 10 else ""
         print(f"  {lev:>8d}x {lik*100:>19.2f}% {tehlike:>18.2f}% "
               f"{tepe:>21.1f}{mark}{bay}")
