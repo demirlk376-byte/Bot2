@@ -62,7 +62,13 @@ async def dene(ad, coro):
 
 async def main():
     gun = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 120
+    # MEXC varlık uç noktaları 90 GÜNDEN uzun sorguyu REDDEDİYOR:
+    #   {"code":33333,"msg":"query time cannot exceed 90 days"}
+    # İlk koşuda 120 gün istendi ve yatırım geçmişinin TAMAMI okunamadı. Defter
+    # 2026-06-18'de başlıyor (~57 gün), yani 89 gün fazlasıyla yetiyor.
+    gun_varlik = min(gun, 89)
     since_ms = int((time.time() - gun * 86400) * 1000)
+    since_varlik = int((time.time() - gun_varlik * 86400) * 1000)
     print("=" * 100)
     print(f"=== GERÇEK PnL — borsadan doğrudan (son {gun} gün) ===")
     print("  Defter çıkışların %68'ini SEVİYE fiyatından kaydediyor (main.py:1619).")
@@ -98,18 +104,27 @@ async def main():
     print("  Boşluğun en güçlü adayı buydu ve 'sen elle bak' demiştim. Gereksizmiş:")
     print("  borsa bunu da veriyor. MEXC'te vadeliye para SPOT'tan TRANSFER ile gelir,")
     print("  o yüzden hem deposits hem transfers denenir.")
+    print(f"  (varlık uç noktaları 90 günle sınırlı → {gun_varlik} gün soruluyor)")
     yatirim = {}
     for ad, fn in (
-        ("fetch_deposits", lambda: ex.fetch_deposits(None, since_ms, 200)),
-        ("fetch_transfers", lambda: ex.fetch_transfers(None, since_ms, 200)),
-        ("fetch_withdrawals", lambda: ex.fetch_withdrawals(None, since_ms, 200)),
+        ("fetch_deposits", lambda: ex.fetch_deposits(None, since_varlik, 200)),
+        # fetchTransfers fromAccountType İSTİYOR (ilk koşuda ArgumentsRequired
+        # hatası verdi). MEXC'te vadeliye para SPOT→FUTURES transferiyle gelir.
+        ("fetch_transfers", lambda: ex.fetch_transfers(
+            "USDT", since_varlik, 200,
+            {"fromAccountType": "SPOT", "toAccountType": "FUTURES"})),
+        ("fetch_transfers(ters)", lambda: ex.fetch_transfers(
+            "USDT", since_varlik, 200,
+            {"fromAccountType": "FUTURES", "toAccountType": "SPOT"})),
+        ("fetch_withdrawals", lambda: ex.fetch_withdrawals(None, since_varlik, 200)),
     ):
-        if not hasattr(ex, ad):
-            print(f"  {ad:<20s} — ccxt'de YOK")
+        base = ad.split("(")[0]
+        if not hasattr(ex, base):
+            print(f"  {ad:<22s} — ccxt'de YOK")
             continue
         ok, r, err = await dene(ad, fn())
         if not ok:
-            print(f"  {ad:<20s} — HATA: {err}")
+            print(f"  {ad:<22s} — HATA: {err}")
             continue
         tot = 0.0
         n = 0
@@ -122,20 +137,46 @@ async def main():
                 a = float(x.get("amount") or 0.0)
             except (TypeError, ValueError):
                 continue
-            # transfers: yalnız SWAP hesabına GİRENLER sayılır
-            if ad == "fetch_transfers":
-                to_ = str(x.get("toAccount") or "").lower()
-                fr_ = str(x.get("fromAccount") or "").lower()
-                if "swap" in to_ or "future" in to_ or "contract" in to_:
-                    pass
-                elif "swap" in fr_ or "future" in fr_ or "contract" in fr_:
-                    a = -a
-                else:
-                    continue
+            if "ters" in ad:
+                a = -a          # vadeliden ÇIKAN para
             tot += a
             n += 1
         yatirim[ad] = (n, tot)
-        print(f"  {ad:<20s} — {n} kayıt · toplam ${tot:+.2f}")
+        print(f"  {ad:<22s} — {n} kayıt · toplam ${tot:+.2f}")
+        await asyncio.sleep(0.25)
+
+    # YEDEK: MEXC kontrat "varlık hareketi / bill" kaydı — bakiyeyi değiştiren
+    # HER kalemi tür etiketiyle verir (transfer, realized PnL, fonlama, ücret).
+    # Bu okunursa boşluk KALEM KALEM kapanır, tahmin gerekmez.
+    adaylar = [a for a in dir(ex) if a.lower().startswith("contract")
+               and any(k in a.lower() for k in ("assettransfer", "transferrecord",
+                                                "bill", "assetrecord", "fundflow"))]
+    for ad in adaylar[:4]:
+        ok, r, err = await dene(ad, getattr(ex, ad)({"page_size": 200}))
+        if not ok:
+            print(f"  {ad:<38s} — HATA: {err}")
+            continue
+        try:
+            data = (r or {}).get("data") or {}
+            kayit = data.get("resultList") if isinstance(data, dict) else data
+            kayit = kayit or []
+            tur = {}
+            for x in kayit:
+                if not isinstance(x, dict):
+                    continue
+                t = str(x.get("type") or x.get("state") or "?")
+                try:
+                    tur[t] = tur.get(t, 0.0) + float(x.get("amount") or 0.0)
+                except (TypeError, ValueError):
+                    pass
+            print(f"  {ad:<38s} — {len(kayit)} kayıt")
+            for t, v in sorted(tur.items(), key=lambda z: -abs(z[1])):
+                print(f"      tür {t:<20s} ${v:+.2f}")
+            if kayit:
+                kaynak_ok["bill"] = ad
+                break
+        except Exception as e:
+            print(f"  {ad:<38s} — ayrıştırılamadı: {e}")
     if yatirim:
         kaynak_ok["yatirim"] = list(yatirim)
 
@@ -255,6 +296,12 @@ async def main():
     else:
         print("  fetch_funding_history — ccxt'de YOK")
 
+    # equity KAPATMADAN ÖNCE okunur — sermaye denklemi aşağıda buna ihtiyaç duyuyor.
+    try:
+        eq_now = float(await lx.get_equity())
+    except Exception as e:
+        print(f"  ⚠ equity okunamadı: {e}")
+        eq_now = None
     try:
         await lx.close()
     except Exception:
@@ -297,13 +344,45 @@ async def main():
     print(f"    bağımsız bir ORAN bulgusudur.")
 
     # ── YATIRIM: boşluğun en güçlü adayı ──
+    # ── SERMAYE DENKLEMİ: boşluk artık TRADING'den gelemez, çünkü borsanın
+    #    KENDİ realized PnL'i elimizde. Denklem kalem kalem kurulur.
+    print(f"\n{'=' * 100}\n=== SERMAYE DENKLEMİ — boşluk trading'den GELMİYOR ===")
+    con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=15)
+    ilk = con.execute(
+        "SELECT date, starting_balance FROM daily_stats WHERE is_paper=0"
+        " AND starting_balance IS NOT NULL AND starting_balance>0"
+        " ORDER BY date LIMIT 1").fetchone()
+    dep = con.execute("SELECT value FROM meta WHERE key='total_deposits'").fetchone()
+    con.close()
+    kok = float(ilk[1]) if ilk else 0.0
+    d_dep = float(dep[0]) if dep and dep[0] else 0.0
+    y_borsa = sum(t for _, t in yatirim.values()) if yatirim else None
+    print(f"  köken bakiye ({ilk[0] if ilk else '?'})      ${kok:>8.2f}")
+    print(f"  + defterin yatırım kaydı            ${d_dep:>+8.2f}")
+    if toplam_rpnl is not None:
+        print(f"  + BORSANIN kendi realized PnL'i     ${toplam_rpnl:>+8.2f}   ← trading'in GERÇEK katkısı")
+    print(f"  + fonlama                           ${(fon or 0.0):>+8.2f}")
+    bekl = kok + d_dep + (toplam_rpnl or 0.0) + (fon or 0.0)
+    print(f"  {'─'*46}\n  = beklenen bakiye                   ${bekl:>8.2f}")
+    if eq_now:
+        print(f"    gerçek equity                     ${eq_now:>8.2f}")
+        acik_fark = eq_now - bekl
+        print(f"    AÇIK FARK                         ${acik_fark:>+8.2f}")
+        print(f"\n  Trading artık DENKLEMDE (borsanın kendi rakamıyla). Kalan fark")
+        print(f"  trading'den GELEMEZ. Tek makul aday: YATIRIM KAYDI yanlış.")
     print(f"\n  YATIRIM KARŞILAŞTIRMASI:")
     if yatirim:
         for ad, (n, tot) in yatirim.items():
-            print(f"    {ad:<20s} {n:>3d} kayıt · ${tot:+.2f}")
-        print(f"    DEFTER (meta.total_deposits)      · $+149.39")
-        print(f"    → Borsa toplamı defterle TUTMUYORSA $56.83'lük boşluğun kaynağı")
-        print(f"      budur ve 'kaçak' değildir. Tutuyorsa boşluk GERÇEKTİR.")
+            print(f"    {ad:<22s} {n:>3d} kayıt · ${tot:+.2f}")
+        if y_borsa is not None:
+            print(f"    BORSA net toplam ................. ${y_borsa:+.2f}")
+            print(f"    DEFTER (meta.total_deposits) ..... ${d_dep:+.2f}")
+            print(f"    FARK ............................. ${d_dep - y_borsa:+.2f}")
+            if abs(d_dep - y_borsa) > 5:
+                print(f"    ⛔ DEFTERİN YATIRIM KAYDI YANLIŞ. Boşluğun kaynağı bu —")
+                print(f"       kaçak DEĞİL. meta.total_deposits düzeltilmeli.")
+            else:
+                print(f"    ✓ Yatırım kaydı doğru → boşluk GERÇEK, aramaya devam.")
     else:
         print(f"    ⚠ Hiçbir yatırım kaynağı okunamadı — elle doğrulama gerekiyor:")
         print(f"      MEXC → Varlıklar → Para Yatırma / Transfer geçmişi.")
