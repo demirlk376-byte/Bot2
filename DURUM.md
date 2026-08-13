@@ -203,6 +203,41 @@ ortalamaları birebir aynı (vol20 0.0355-0.0374, adx 23.4-25.9). En uzun seri 1
 
 ---
 
+## 4d. KOMBİNASYON TARAMASI — ikili/üçlü birleşimler (2026-08-12)
+
+Tek tek özellikler kapanmıştı; **birleşimler** hiç taranmamıştı. 1276 tekli/ikili/üçlü
+hücre, sınırlar yalnız TRAIN üçlük diliminden, aday şartı n≥30 ve TRAIN z<−2.
+
+```
+ŞANSLA beklenen: ~1.0   ·   GERÇEKTE geçen: 2
+```
+**Şans düzeyinde.** Birleşimlerde de desen YOK.
+
+Tek hayatta kalan: `adx:yüksek + yon:short + saat:00-05`
+TRAIN n=30 R=−0.553 z=−2.86 → **TEST n=28 R=−0.003 (SIFIR, negatif değil)**.
+Filtrenin öncülü örneklem dışında çürüdü. Walk-forward +$60 gösteriyor ama yılda ~16
+işlem × σ_R 1.465 → üç yılda gürültünün σ'sı ~$46; **+$60 = 1.3σ**, yani gürültü.
+1276 hücreden örneklem dışında doğrulanmayan birini seçmek overfitting'in tanımıdır.
+REDDEDİLDİ.
+
+**İKİ ARAÇ HATASI BULUNDU — ikisi de "bulgu yok" derken:**
+1. `geri_donus` (kırılım sonrası kanala dönüş) taramaya sokulmuştu; o bilgi GİRİŞ
+   ANINDA YOK, sonraki barın kapanışından geliyor → LOOKAHEAD. İlk taramanın 15
+   adayının 8'i bu özelliği içeriyordu; çıkarılınca 2'ye düştü. Çıkarıldı.
+2. "Şansla beklenen" sayısı hücrelerin gerçek ortalamasını SIFIR varsayarak
+   hesaplanmıştı (~29). Doğru null "hücre popülasyondan farksız" (ort=+0.237) →
+   beklenen ~1. Yanlış null, gerçek bir sinyali "gürültü" diye eleyecekti.
+
+**DERS:** bugün bulunan araç hatalarının çoğu "bulgu var" değil **"bulgu yok"**
+derken çıktı (tz uyuşmazlığı, yanlış null, çifte ölçek). Bir araç "yok" dediğinde de
+gerçekten aradı mı diye bakmak gerekiyor.
+
+**SORUNUN CEVABI:** giriş anında bilinebilen hiçbir koşul birleşiminde sistem negatif
+beklenti üretmiyor. Gerçek zamanda tespit edilebilen tek aday (`gd:döndü`) giriş anında
+bilinmiyor; bilgiyi almak bir bar beklemeyi gerektiriyor ve o üç yoldan da kaybettiriyor.
+
+---
+
 ## 4b. Rafta bekleyen tek bulgu: sq_govde
 
 **Ne:** squeeze kolunda, giriş mumunun gövde oranı `|close-open|/(high-low)` en üst
