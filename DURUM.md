@@ -201,14 +201,44 @@ yeterli squeeze işlemi birikip desen teyit edilirse.
 
 ## 5. Riski ne zaman artıracağız
 
-**Şimdi değil.** RISK_SCALE 1.125 → 2.0 kârı %56 artırıyor ama en kötü ayı %86
-kötüleştiriyor. Takas aleyhine.
+**CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
 
-Ön-kayıtlı tetik — üçü birden sağlanmadan değiştirilmez:
+**(a) Eski tetik ULAŞILAMAZDI — geri alındı.**
+Önce şöyle yazılmıştı: "200 işlem VE alt güven sınırı 0.15'in üstünde."
+İki şartın birlikte sağlanabilirliği hiç hesaplanmamıştı. Ölçüldü: **σ_R = 1.465**,
+ort R 0.237 → gürültü sinyalin ~6 katı. n=200'de, gerçek edge ankor kadar iyi olsa
+bile alt sınır **+0.034** (0.15'in çok altında).
+Gereken n: ort R 0.237 → **1,089 işlem (35 ay)** · 0.20 → 3,298 (106 ay) ·
+0.18 → 9,161 (296 ay) · 0.1096 (canlıda görülen) → **ASLA**.
+Ulaşılamaz bir tetik, "asla artırma"nın süslü hâlidir.
 
-1. Aktif kollardan **en az 200 kapanmış işlem** (şu an ~41)
-2. O örneklemde canlı ortalama R'nin **alt güven sınırı 0.15'in üstünde**
-3. Ancak o zaman RISK_SCALE 1.125 → **1.25**. Daha ötesi yok.
+**(b) Artırmak MEDYANI DEĞİŞTİRMİYOR, sadece kumarı büyütüyor.**
+24 ay, ayda $100 katkı, canlı edge senaryosu:
+
+| yapılandırma | %10 | MEDYAN | %90 | en kötü ay | zarar riski |
+|---|---|---|---|---|---|
+| sabit 1.125 (bugün) | $2,506 | **$6,377** | $18,414 | −%29.5 | **%11** |
+| 6. aydan sonra 1.25 | $2,322 | **$6,488** | $20,555 | −%32.9 | %13 |
+| 6. aydan sonra 1.50 | $1,940 | **$6,481** | $25,304 | −%40.7 | **%17** |
+| 12. aydan sonra 1.50 | $1,990 | **$6,411** | $23,663 | −%34.2 | %17 |
+
+Medyanlar aynı. Alt uç düşüyor, üst uç yükseliyor, en kötü ay ağırlaşıyor,
+zarar riski %11 → %17. Kademeyi geciktirmek de değiştirmiyor (6. ay ≈ 12. ay).
+
+**MEKANİZMA:** CAP'e takılanların ort R **+0.4597**, takılmayanların **+0.2056**.
+Dar stoplu işlemler iki kat iyi. Risk arttıkça CAP bu İYİ işlemleri daha çok kesiyor
+(%12 → %23); büyüyen şey ortalama kaliteli işlemler, kısıtlanan en iyileri.
+(Aynı mekanizma CAP 1.25→1.5'in neden işe yaradığını da açıklıyor: kırpmayı azalttı.)
+
+**YERİNE GEÇEN KURAL — kanıt beklemek yerine bozulma izle:**
+1. `live_verify` her ay çalışsın (sentinel otomatik yapıyor).
+2. Canlı R, ankor güven aralığının İÇİNDE kaldığı sürece sistem sağlıklı → dokunma.
+3. Alt sınır sıfırın ALTINA düşer ve orada kalırsa → dur ve incele.
+4. Risk artışı istatistikle değil **bakiye eşiğiyle** değerlendirilsin: bakiye
+   **$1,000'i geçtiğinde** yeniden bakılır. Gerekçe: küçük hesapta artırmanın tek
+   gerekçesi "edge kanıtlandı" olurdu ve o kanıt 35 ay sürüyor; bakiye eşiği ise
+   ulaşılabilir ve kuyruğu mutlak dolar cinsinden anlamlı kılıyor
+   (−%35'lik bir ay $203'te $71, $1,000'de $350).
 
 ---
 
