@@ -37,12 +37,30 @@ Bakiye ~$203. Ankor (2023-2026 backtest) tipik ayı **%+15.3**, en kötü ayı *
 **Ama ankor iyimserdir** — parametreler o veriye bakılarak seçildi. Canlıda gerçekleşen
 R şu an ankorun altında (n=41, güven aralığı hem ankoru hem sıfırı içeriyor).
 
-Gerçekçi tipik ay: **$15 – $31**.
+Gerçekçi tipik ay: **$9 – $31**.
+(⚠ DÜZELTİLDİ: önce "$15–31" yazıyordu. O sayı ankorun %15.3'ünü R oranıyla
+DOĞRUSAL ölçekleyerek tahmin edilmişti. Simülasyon R'yi gerçek şekilde kaydırınca
+medyan ay %4.3 çıkıyor, %7 değil: edge düşüşü ayda ~39 işlemin HEPSİNE uygulanıyor,
+yani aylık getiriden sabit ~11 puan iniyor. 15.3 − 11.0 = 4.3.)
 
-Ayda $100 katkıyla 12 ay sonunda (yatırılan $1403):
-- beklenen ~**$2,500**
-- kötü senaryo (%10) ~$1,150
-- yatırdığından az çıkma ihtimali ~**%19**
+**PROJEKSİYON — ayda $100 katkıyla** (canlı edge senaryosu, sim_katki.py):
+
+| | 12 ay (yatırılan $1403) | 24 ay (yatırılan $2603) |
+|---|---|---|
+| kötü (%10) | $1,142 → ay ~$49 | $2,477 → ay ~$106 |
+| **medyan** | **$2,266 → ay ~$97** | **$6,420 → ay ~$276** |
+| iyi (%90) | $4,728 → ay ~$203 | $18,781 → ay ~$807 |
+| yatırdığından az çıkma | %19 | %11 |
+
+**Kullanılacak aralık: 1 yıl ~$100/ay · 2 yıl $150–400/ay (merkez $275).**
+
+⚠ ANKOR senaryosu 24 ayda medyan $38,474 / ayda $5,897 veriyor — SAÇMA, kullanma.
+%15.3'ü 24 ay bileşiklendirmek 30 kat demek; hiçbir strateji iki yıl aynı verimde kalmaz.
+
+⚠ ÜST UÇ AYRICA KIRPILMALI, üç modellenmemiş etki: (a) edge 24 ay sabit varsayılıyor,
+(b) ölçek — %90 senaryoda tek pozisyon $28,000 nominal, ICP/NEAR/XLM gibi ince
+defterlerde ölçülen 13.4bp kayma büyür, (c) simülasyonda ücret/çekim yok, katkı ayın
+başında tam çalışıyor, kötü dönemler kümelenmiyor.
 
 Kâr, riski artırarak değil **bakiye büyüyerek** artar. $203 → $400 olduğunda aynı
 %2.25 riskle aylık kâr ikiye katlanır.
