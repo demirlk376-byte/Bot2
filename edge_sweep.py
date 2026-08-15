@@ -179,14 +179,15 @@ def main() -> None:
     print(f"    aşırı vol) brief'te stratejinin TANIMI sayıldığı için içeride.")
     tum = []
     for c in coins:
+        print(f"  {c:<5s} ...", end="", flush=True)
         v = EL.yukle(c, cfg)
         if v is None:
-            print(f"  {c:<5s} veri YOK — veri_binance.py ile çek"); continue
+            print(f"  {c:<5s} veri YOK — veri_binance.py ile çek", flush=True); continue
         tr = EL.kos(c, v, cfg, strateji)
         tum += tr
         m = EL.metrik(tr)
-        print(f"  {c:<5s} n={m.get('n',0):>4d}  toplam {m.get('toplamR',0):>+7.1f}R  "
-              f"ort {m.get('ortR',0):>+7.4f}  PF {m.get('pf',0):>5.2f}")
+        print(f"\r  {c:<5s} n={m.get('n',0):>4d}  toplam {m.get('toplamR',0):>+7.1f}R  "
+              f"ort {m.get('ortR',0):>+7.4f}  PF {m.get('pf',0):>5.2f}", flush=True)
     EL.rapor("SWEEP+RECLAIM · BASELINE" + (" · LOOK-AHEAD KOLU" if la else ""),
              tum, cfg)
 

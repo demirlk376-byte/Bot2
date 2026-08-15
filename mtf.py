@@ -89,24 +89,37 @@ def dogrula(alt_idx: pd.DatetimeIndex, ust_idx: pd.DatetimeIndex,
 
     İki yönlü kontrol — sadece 'ileri bakmıyor mu' yetmez, 'gereksiz geride mi
     kalmış' da sınanır. Yoksa `pos = 0` döndüren bozuk bir fonksiyon testi geçer."""
-    alt_kapanis = alt_idx + TF_TD[tf_alt]
-    for i in range(len(alt_idx)):
-        p = int(pos[i])
-        if p < 0:
-            # görülebilir bar yoksa: İLK üst bar gerçekten sonra kapanmalı
-            assert ust_idx[0] + TF_TD[tf_ust] > alt_kapanis[i], (
-                f"[{i}] pos=-1 ama {ust_idx[0]} barı zaten kapanmış")
-            continue
-        assert 0 <= p < len(ust_idx), f"[{i}] konum aralık dışı: {p}"
+    # VEKTÖREL. Önceki sürüm saf Python döngüsüydü ve 306k barlık gerçek veride
+    # coin başına ~5sn yiyordu (× 2 dilim × 13 coin ≈ 2 dakika SAF DENETİM).
+    # Kontrollerin MANTIĞI birebir aynı; yalnız numpy'a taşındı.
+    alt_kapanis = (alt_idx + TF_TD[tf_alt]).values
+    ust_kapanis = (ust_idx + TF_TD[tf_ust]).values
+    pos = np.asarray(pos)
+    assert (pos < len(ust_idx)).all(), "konum aralık dışı"
+    var = pos >= 0
+    if var.any():
+        p = pos[var]
         # (1) LOOK-AHEAD YOK: seçilen bar alt barın kapanışında KAPANMIŞ olmalı
-        assert ust_idx[p] + TF_TD[tf_ust] <= alt_kapanis[i], (
-            f"⛔ LOOK-AHEAD: alt bar {alt_idx[i]} (kapanış {alt_kapanis[i]}) "
-            f"→ üst bar {ust_idx[p]} (kapanış {ust_idx[p] + TF_TD[tf_ust]})")
+        kotu = ust_kapanis[p] > alt_kapanis[var]
+        if kotu.any():
+            i = int(np.where(var)[0][np.argmax(kotu)])
+            raise AssertionError(
+                f"⛔ LOOK-AHEAD: alt bar {alt_idx[i]} (kapanış {alt_kapanis[i]}) "
+                f"→ üst bar {ust_idx[pos[i]]} (kapanış {ust_kapanis[pos[i]]})")
         # (2) GEREKSİZ GECİKME YOK: bir SONRAKİ üst bar henüz kapanmamış olmalı
-        if p + 1 < len(ust_idx):
-            assert ust_idx[p + 1] + TF_TD[tf_ust] > alt_kapanis[i], (
-                f"⛔ ESKİ VERİ: alt bar {alt_idx[i]} için {ust_idx[p+1]} barı da "
-                f"kapanmıştı ama {ust_idx[p]} seçildi")
+        sonraki = p + 1 < len(ust_idx)
+        if sonraki.any():
+            q = p[sonraki]
+            eski = ust_kapanis[q + 1] <= alt_kapanis[var][sonraki]
+            if eski.any():
+                i = int(np.where(var)[0][sonraki][np.argmax(eski)])
+                raise AssertionError(
+                    f"⛔ ESKİ VERİ: alt bar {alt_idx[i]} için {ust_idx[pos[i]+1]} "
+                    f"barı da kapanmıştı ama {ust_idx[pos[i]]} seçildi")
+    if (~var).any():
+        # görülebilir bar yoksa: İLK üst bar gerçekten SONRA kapanmalı
+        assert (ust_kapanis[0] > alt_kapanis[~var]).all(), (
+            f"pos=-1 ama {ust_idx[0]} barı zaten kapanmış")
 
 
 def hizala(alt: pd.DataFrame, ust: pd.DataFrame, tf_alt: str, tf_ust: str,
