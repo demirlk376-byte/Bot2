@@ -180,6 +180,15 @@ def kos(coin: str, veri: dict, cfg: Cfg, strateji) -> list[dict]:
             continue
         rr = abs(s.tp - e) / risk
         if rr < cfg.rr_min:                              # brief: min RR şartı
+            # ⚠ SESSİZ ELEME SAYILIYOR. edge_squeeze'in ilk sürümünde bu kapı
+            # sinyallerin %100'ünü eliyordu ve strateji "hiç sinyal üretmiyor"
+            # gibi görünüyordu. Sebep aritmetikti: yapısal SL sıkışma aralığının
+            # KARŞI ucundaysa risk ≈ aralık yüksekliği olur, TP 1× yükseklikse
+            # RR ≈ 1.0 çıkar ve rr_min=1.5'i ASLA geçemez. Bu sayaç olmasaydı
+            # yine koda bakıp tahmin yürütecektim.
+            ctx.setdefault("_rr_red", [0, 0.0])
+            ctx["_rr_red"][0] += 1
+            ctx["_rr_red"][1] += rr
             continue
         ep = None; j = i
         for j in range(i + 1, min(i + 1 + cfg.max_hold_bar, n)):
@@ -198,6 +207,11 @@ def kos(coin: str, veri: dict, cfg: Cfg, strateji) -> list[dict]:
                         maliyet_R=float((cfg.slip_bp / 1e4 * e + ucret) / risk),
                         etiket=s.etiket, bar=j - i))
         kapali_kadar = j
+    red = ctx.get("_rr_red")
+    if red and red[0]:
+        pay = red[0] / max(red[0] + len(out), 1) * 100
+        print(f"\n    ⓘ {coin}: rr_min={cfg.rr_min} kapısı {red[0]} sinyali eledi "
+              f"(%{pay:.0f}), elenenlerin ort RR'si {red[1]/red[0]:.2f}", flush=True)
     return out
 
 
