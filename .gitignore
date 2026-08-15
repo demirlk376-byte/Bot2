@@ -15,3 +15,8 @@ funding_log.csv
 orderflow_log.csv
 whale_log.csv
 signals_log.csv
+
+# İntraday araştırma verisi — 250MB+, repoya girmez (veri_cek.py ile VPS'te üretilir)
+data/*_fut_5m.csv
+data/*_fut_15m.csv
+data/*_fut_1m.csv
