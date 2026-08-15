@@ -682,6 +682,58 @@ kanıtı. Filtreyle iyileştirilememesinin sebebi de bu.
 
 ---
 
+## 4h. 5dk ÇIKIŞ TESTİ (2026-08-14) — kapandı, ama İKİ KALICI BULGUYLA
+
+`cikis_5dk.py` — ic_bar girişte filtrelemeyi kapatınca kalan varyant: 5dk'yı
+ÇIKIŞTA kullan. n=946 donchian işlemi, ankor kontrolü birebir geçti.
+
+### BULGU 1 — ANKOR ÇÖZÜNÜRLÜKTEN DE İYİMSER (kalıcı, çıkış testinden bağımsız)
+| | n | ort R |
+|---|---|---|
+| ankor (4 SAATLİK barlarla) | 946 | +0.2360 |
+| **aynı işlemler 5dk yolunda** | 946 | **+0.2117** |
+| **fark** | | **−0.0243R/işlem** |
+
+4 saatlik bar, bar-içi fitilleri göremiyor; 5dk çözünürlükte stoplar daha gerçekçi
+tetikleniyor. Bu, ankorun 2b'de ölçülen şişkinliğinin ÜSTÜNE gelen ayrı bir kalem.
+→ **Dürüst ankor tahmini: +0.190R (A3) − 0.024 ≈ +0.166R.**
+
+### BULGU 2 — GEREK ŞART SAĞLANDI, YETER ŞART DÜŞTÜ
+İlk kez gerçek zamanlı tanınabilen NEGATİF bir alt grup bulundu:
+| grup | n | ort R | PF | WR |
+|---|---|---|---|---|
+| seviyeyi KAYBEDEN | 721 | **−0.1422** [−0.2309,−0.0535] | 0.77 | %33.0 |
+| seviyeyi KORUYAN | 225 | **+1.3456** [+1.2052,+1.4859] | 11.42 | %84.0 |
+| ayrışma | | **z = +17.56** | | |
+
+Ama kuralı UYGULAYINCA her tamponda ZARAR:
+| tampon | kesilen | toplam ort R | Δ vs taban |
+|---|---|---|---|
+| 0.00 | 721 | +0.1171 | **−0.0946** |
+| 0.25 | 645 | +0.1307 | −0.0810 |
+| 0.50 | 563 | +0.1637 | −0.0480 |
+
+Monoton: kural ne kadar az keserse o kadar az zarar → tamponsuz limitte Δ→0.
+Yani kuralın KENDİSİ zararlı, eşiği değil.
+
+**NEDEN — ve bu bugünün en önemli dersi:** z=17.56'lık ayrışma bir ÖNGÖRÜ değil,
+**DURUM TESPİTİ**. "Seviyeyi kaybetti" = "şu an ~0.44 ATR aleyhte" demek. Bir
+işlemin ŞU AN zararda olduğunu bilmek, SONUNDA zarar edeceğini bilmek değildir.
+Kaybeden grubun içinde seviyeyi kaybedip GERİ DÖNEN büyük kazananlar var; onları
+kayıp anında kesmek 946 işlemde toplam −89.5R'ye mal oluyor.
+KORUYAN grubun +1.3456 / WR %84'ü de bunu ele veriyor: "hiç aleyhe gitmemiş
+işlem" zaten kazanan işlemdir — ölçüm büyük ölçüde totolojiyi ölçüyor.
+
+**Tetik mesafesi 0.44±0.37 ATR** (ankor stopu 2.00 ATR) → bu kural sabit stoptan
+farklı, gerçekten daha dar ve yapısal bir stop. Ve zararlı. sl_sweep.py'nin dar
+stopları elemesiyle tutarlı.
+
+→ Bugünkü iki parçalı kural en temiz kanıtını burada buldu: **negatif alt grup
+GEREK ama YETER DEĞİL — o gruptan çıkmanın maliyeti grubun kaybından az olmalı.**
+Burada grup −0.1422R kaybediyor, çıkmak −0.0946R/işlem (tüm portföye) mal oluyor.
+
+---
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
