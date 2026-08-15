@@ -64,6 +64,61 @@ def durum(tf: str) -> None:
               f"%{eksik*100:>4.1f}{'  ⚠ BÜYÜK BOŞLUK' if eksik > 0.05 else ''}")
 
 
+def probe(coin: str = "SOL") -> None:
+    """TEŞHİS: MEXC bu zaman dilimini NE KADAR GERİYE veriyor?
+
+    İlk koşuda 13 coin'in hepsi boş döndü ama 1 SAATLİK veri (data/*_fut_1h.csv,
+    28.800 bar / 3.3 yıl) sorunsuz çekilmişti. Demek ki sorun venue veya kimlik
+    değil — küçük zaman dilimlerinde SAKLAMA SÜRESİ. Bu fonksiyon onu ölçer:
+    tahmin yürütmek yerine borsaya tek tek sorar ve HAM cevabı basar."""
+    import ccxt
+    ex = ccxt.mexc({"options": {"defaultType": "swap"}, "enableRateLimit": True})
+    sym = f"{coin}/USDT:USDT"
+    print(f"=== TEŞHİS: {sym} — MEXC hangi dilimi ne kadar geriye veriyor? ===\n")
+
+    print("[A] since VERMEDEN (borsa en son ne veriyorsa):")
+    for tf in ("1m", "5m", "15m", "1h"):
+        try:
+            b = ex.fetch_ohlcv(sym, tf, since=None, limit=500)
+            if b:
+                i0 = pd.to_datetime(b[0][0], unit="ms", utc=True)
+                i1 = pd.to_datetime(b[-1][0], unit="ms", utc=True)
+                span = (i1 - i0).total_seconds() / 86400
+                print(f"  {tf:<4s} {len(b):>4d} bar · {str(i0)[:16]} → {str(i1)[:16]}"
+                      f" ({span:.1f} gün)")
+            else:
+                print(f"  {tf:<4s} BOŞ")
+        except Exception as e:
+            print(f"  {tf:<4s} HATA: {type(e).__name__}: {e}")
+        time.sleep(0.3)
+
+    print("\n[B] since VEREREK — ne kadar geriye gidebiliyoruz?")
+    print(f"  {'tf':<5s} {'istenen':>9s}  {'gelen':>6s}  ilk bar")
+    for tf in ("5m", "15m"):
+        for g in (7, 30, 90, 180, 365, 730, 1095):
+            since = int((time.time() - g * 86400) * 1000)
+            try:
+                b = ex.fetch_ohlcv(sym, tf, since=since, limit=500)
+                if b:
+                    i0 = pd.to_datetime(b[0][0], unit="ms", utc=True)
+                    yas = (time.time() * 1000 - b[0][0]) / 86400000
+                    isaret = "" if abs(yas - g) < g * 0.2 else "  ← İSTENENDEN YENİ"
+                    print(f"  {tf:<5s} {g:>7d}g  {len(b):>6d}  {str(i0)[:16]}"
+                          f" ({yas:.0f}g önce){isaret}")
+                else:
+                    print(f"  {tf:<5s} {g:>7d}g  {'BOŞ':>6s}  ← bu kadar geriye VERİ YOK")
+            except Exception as e:
+                print(f"  {tf:<5s} {g:>7d}g  HATA: {type(e).__name__}: {str(e)[:70]}")
+            time.sleep(0.3)
+
+    print("\n[C] HÜKÜM: yukarıda 'BOŞ' başlayan ilk satır saklama sınırıdır.")
+    print("  MEXC 5dk'yı yalnız yakın geçmişte tutuyorsa üç seçenek var:")
+    print("   1. Araştırmayı o pencereyle sınırla (kısa → istatistik zayıf)")
+    print("   2. 15dk kullan (daha uzun saklanıyorsa) — 5M teyit katmanı düşer")
+    print("   3. Araştırmayı BINANCE verisiyle yap, MEXC'te ÖRTÜŞEN pencerede doğrula")
+    print("  Venue farkı strateji KEŞFİ için kabul edilebilir, KARAR için değil.")
+
+
 def cek(coin: str, tf: str, gun: int) -> pd.DataFrame | None:
     import ccxt
     ex = ccxt.mexc({"options": {"defaultType": "swap"}, "enableRateLimit": True})
@@ -72,11 +127,14 @@ def cek(coin: str, tf: str, gun: int) -> pd.DataFrame | None:
     step = TF_MS[tf]
     rows: list = []
     bos = 0
+    ilk = True
     while True:
         try:
             b = ex.fetch_ohlcv(sym, tf, since=since, limit=500)
         except Exception as e:
-            print(f"    ⚠ {coin}: {type(e).__name__} — 3sn bekle, tekrar dene")
+            # SEBEBİ BAS. İlk sürüm yalnız tip yazıyordu; 13 coin sessizce boş
+            # döndü ve neden olduğu loglardan anlaşılmadı.
+            print(f"\n    ⚠ {coin}: {type(e).__name__}: {str(e)[:120]}")
             time.sleep(3)
             bos += 1
             if bos > 5:
@@ -84,6 +142,13 @@ def cek(coin: str, tf: str, gun: int) -> pd.DataFrame | None:
                 break
             continue
         bos = 0
+        if ilk:
+            ilk = False
+            if not b:
+                print(f"\n    ✗ {coin}: İLK istek BOŞ döndü "
+                      f"(since={pd.to_datetime(since, unit='ms', utc=True).date()}). "
+                      f"Borsa {tf} verisini bu kadar geriye TUTMUYOR olabilir "
+                      f"→ 'python3 veri_cek.py --probe' ile ölç.")
         if not b:
             break
         rows += b
@@ -113,6 +178,9 @@ def main() -> None:
     coins = args[2:] if len(args) > 2 else COINS
     if "--durum" in sys.argv:
         durum(tf)
+        return
+    if "--probe" in sys.argv:
+        probe(args[0] if args and args[0] not in TF_MS else "SOL")
         return
     os.makedirs(CACHE, exist_ok=True)
     print(f"=== {tf} veri çekiliyor · {gun} gün · {len(coins)} coin ===")
