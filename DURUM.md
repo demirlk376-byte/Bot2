@@ -652,6 +652,36 @@ Etkilenen tek koşu ic_bar'dı, o da guard sayesinde sonuç basmadan durdu.
 
 ---
 
+## 4g. BAR İÇİ 5dk TEŞHİSİ (2026-08-14) — EKSEN KAPANDI
+
+Kullanıcının fikri: 5dk veriyi yeni strateji değil, MEVCUT donchian'a FİLTRE olarak
+kullan. `fake_kirilim` negatif alt grubu (−0.2488R) bulmuştu ama karar anında
+tanıyamıyordu; 4 saatlik bar kapanırken içindeki 48 adet 5dk barı ZATEN kapanmış
+olduğu için bar içi yapı karar anında BİLİNİR. Look-ahead yok, gerçekten yeni bilgi.
+
+**n=943 donchian sinyali · 5dk kapsama %93 · bu sinyallerin ort R'si +0.2367**
+
+| özellik | Q1 | Q2 | Q3 | Q4 | Q5 | z(uç) | negatif dilim |
+|---|---|---|---|---|---|---|---|
+| tepe_konum | +0.3615 | +0.1680 | +0.2245 | +0.2273 | +0.2018 | −1.05 | YOK |
+| kirilim_ani | +0.2758 | +0.2198 | +0.2605 | +0.1778 | +0.2492 | −0.18 | YOK |
+| ustunde | +0.1700 | +0.2676 | +0.4304 | +0.1895 | +0.1259 | −0.30 | YOK |
+| geri_cekilme | +0.2055 | +0.1450 | +0.2585 | +0.3038 | +0.2706 | +0.44 | YOK |
+| hacim_sonra | +0.2064 | +0.2186 | +0.0531 | +0.4107 | +0.2955 | +0.59 | YOK |
+| son_ceyrek | +0.1818 | +0.2171 | +0.3890 | +0.1632 | +0.2319 | +0.34 | YOK |
+
+**HÜKÜM: 30 hücrenin 30'u da POZİTİF. Tek bir negatif dilim yok, hiçbir z 1.05'i
+geçmiyor.** Bar içi 5dk yapısı donchian sinyalinin kalitesini AYRIŞTIRMIYOR.
+Bugünkü kurala göre (negatif alt grup = gerek şart) bu eksende filtre para
+kazandıramaz. Bonferroni'ye bile gerek kalmadı — kesilecek aday yok.
+
+**ASIL OKUMA — bu bir başarısızlık raporu değil:** kesilecek kötü grup YOK çünkü
+KÖTÜ GRUP YOK. Donchian sinyalleri her dilimde pozitif; edge sinyalin KENDİSİNDE,
+sinyaller arasında ayrım yapmakta değil. Bu, edge'in homojen ve sağlam olduğunun
+kanıtı. Filtreyle iyileştirilememesinin sebebi de bu.
+
+---
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
