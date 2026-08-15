@@ -17,6 +17,7 @@ TESTS = [
     "tests/test_multicoin.py",   # çoklu coin: coin başına fiyat + izole SL/TP
     "tests/test_maker_routing.py",  # giriş emri yönlendirmesi + bayrak KAPALIYKEN aynılık
     "mtf.py",                    # çok-zaman-dilimi hizalama: look-ahead SERT kilit
+    "edge_lab.py",               # yeni strateji iskeleti: swing onayı, maliyet, kötümser çıkış
 ]
 
 
