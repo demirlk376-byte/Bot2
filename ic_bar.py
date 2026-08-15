@@ -157,8 +157,32 @@ def main() -> None:
     tot = (r * np.minimum(A.RISKF, A.CAP * sp) * A.BAL0).sum()
     ok = len(taken) == 1579 and abs(tot - 1420.66) < 1.0
     print(f"\n  DOĞRULAMA (ankor): {len(taken)} işlem / ${tot:+.2f} → "
-          f"{'✓ BİREBİR' if ok else '✗ SAPMA — durduruldu'}")
+          f"{'✓ BİREBİR' if ok else '✗ SAPMA'}")
     if not ok:
+        # ÇIPLAK "SAPMA" DEMEK YETMEZ — sebebi söyle. 2026-08-14'te bu tam olarak
+        # oldu: kayma_denetim.py MEXC'ten çekip data/*_fut_1h.csv'yi EZMİŞTİ.
+        # MEXC penceresi KAYAN (now−1200 gün) → bar sayısı aynı, DÖNEM farklı.
+        # Bar sayısına bakmak yeterli değil; TARİH ARALIĞI kontrol edilmeli.
+        import subprocess
+        print(f"\n  ⛔ ANKOR ÜRETİLEMEDİ — hüküm verilmez. Sebep TEŞHİSİ:")
+        d0 = fast_bt.load("SOL", source="local")
+        print(f"    diskteki SOL verisi : {d0.index[0]} → {d0.index[-1]}")
+        print(f"    ankorun beklediği   : 2023-04-06 02:00 → 2026-07-19 00:00")
+        try:
+            deg = subprocess.run(["git", "status", "--short", "data/"],
+                                 capture_output=True, text=True, timeout=20).stdout.strip()
+        except Exception:
+            deg = ""
+        if deg:
+            print(f"\n    git: data/ altında DEĞİŞMİŞ dosyalar var →\n{deg[:500]}")
+            print(f"\n    SEBEP: MEXC'ten veri çeken bir araç (kayma_denetim.py,")
+            print(f"    ucret_olc.py ...) önbelleği EZDİ. MEXC penceresi kayan")
+            print(f"    (now−1200 gün), o yüzden bar SAYISI aynı kalıp DÖNEM kaydı.")
+            print(f"\n    ÇÖZÜM (tek satır):   git checkout -- data/")
+            print(f"    Sonra bu aracı yeniden çalıştır.")
+        else:
+            print(f"\n    git data/ temiz görünüyor — sapma başka bir sebepten.")
+            print(f"    Ankoru elle koştur: python3 deployed_backtest.py local")
         return
 
     # ── donchian işlemleri + bar içi özellikler ──

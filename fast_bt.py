@@ -28,10 +28,33 @@ def _cache_path(coin):
 
 
 def _save_cache(coin, m):
-    """VPS MEXC'ten çekince otomatik kaydeder → PC (MEXC engelli) çevrimdışı okur."""
+    """VPS MEXC'ten çekince kaydeder → PC (MEXC engelli) çevrimdışı okur.
+
+    ⚠⚠ ARTIK MEVCUT DOSYANIN ÜZERİNE SESSİZCE YAZMIYOR. Sebebi bir kaza:
+
+    MEXC penceresi KAYAN — `since = now − 1200 gün` (aşağıda). Yani her fetch
+    FARKLI bir dönem getirir ama bar SAYISI hep ~28.799 kalır. 2026-08-14'te
+    kayma_denetim.py çalıştırıldı; o araç fast_bt.load(source="mexc_futures")
+    çağırıyor ve bu fonksiyon ankorun veri dosyalarını sessizce EZDİ.
+    Repodaki veri 2023-04-06→2026-07-19 iken diskteki 2023-05-02→2026-08-14 oldu.
+    Bar sayısı aynı olduğu için fark FARK EDİLMEDİ; yalnız ankor 1579/$1420.66
+    yerine 1564/$1365.35 verince ortaya çıktı.
+
+    Ankorun verisi git'te TAKİPLİ (data/*_fut_1h.csv .gitignore'da DEĞİL). Yani
+    bu ezme, araştırma tabanını değiştiren sessiz bir mutasyondu. Bir teşhis
+    aracının yan etkisi olarak ölçüm tabanının değişmesi kabul edilemez.
+
+    Bilerek tazelemek için:  VERI_TAZELE=1 python3 ...
+    """
     os.makedirs(CACHE_DIR, exist_ok=True)
-    m.to_csv(_cache_path(coin))
-    print(f"  önbellek yazıldı: {_cache_path(coin)} ({len(m)} bar) — commit+push et, PC bunu okur")
+    p = _cache_path(coin)
+    if os.path.exists(p) and os.environ.get("VERI_TAZELE") != "1":
+        print(f"  ⓘ önbellek KORUNDU: {p} zaten var, üzerine YAZILMADI.\n"
+              f"    (MEXC penceresi kayan → ezmek ankoru değiştirir. Bilerek\n"
+              f"     tazelemek için: VERI_TAZELE=1)")
+        return
+    m.to_csv(p)
+    print(f"  önbellek yazıldı: {p} ({len(m)} bar) — commit+push et, PC bunu okur")
 
 
 def load(coin: str, source: str = "mexc_futures") -> pd.DataFrame:
