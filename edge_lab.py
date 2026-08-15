@@ -202,6 +202,66 @@ def kos(coin: str, veri: dict, cfg: Cfg, strateji) -> list[dict]:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+def sentetik(n: int, tohum: int = 1, vol: float = 0.0008) -> pd.DataFrame:
+    """GERÇEKÇİ sentetik OHLCV — duman testleri için.
+
+    ⚠ NEDEN AYRI BİR FONKSİYON: ilk duman testlerimde bar şöyle üretiliyordu:
+        high = c + w · low = c - w · close = c
+    Kapanış HER ZAMAN barın TAM ORTASINDA kalıyordu. Mum ŞEKLİNE bakan her filtre
+    (rejection, gövde, pin bar) böyle bir veride %100 eleniyor ve strateji "sinyal
+    üretmiyor" gibi görünüyor — oysa hata veridedir. edge_vwap tam buna takıldı.
+
+    Burada kapanış bar aralığı İÇİNDE rastgele konumlanıyor, açılış bir önceki
+    kapanışa zincirleniyor, high/low ikisini de kapsıyor."""
+    rng = np.random.default_rng(tohum)
+    c = 100 * np.exp(np.cumsum(rng.normal(0, vol, n)))
+    o = np.empty(n); o[0] = c[0]; o[1:] = c[:-1]
+    tas = np.abs(rng.normal(0, vol * 1.5, n)) * c
+    h = np.maximum(o, c) + tas * rng.random(n)
+    l = np.minimum(o, c) - tas * rng.random(n)
+    idx = pd.date_range("2024-01-01", periods=n, freq="5min", tz="UTC")
+    return pd.DataFrame({"open": o, "high": h, "low": l, "close": c,
+                         "volume": np.abs(rng.normal(100, 25, n))}, index=idx)
+
+
+def veri_paketi(df: pd.DataFrame, cfg: Cfg) -> dict:
+    """Bir DataFrame'i motorun beklediği çok-dilimli pakete çevirir (test/üretim ortak)."""
+    out = {"base": df}
+    for ad, tf in (("setup", cfg.tf_setup), ("regime", cfg.tf_regime)):
+        u = mtf.resample_tf(df, tf)
+        out[ad] = u
+        p = mtf.mtf_pos(df.index, u.index, cfg.tf_base, tf)
+        mtf.dogrula(df.index, u.index, cfg.tf_base, tf, p)
+        out[f"{ad}_pos"] = p
+    return out
+
+
+def cli_maliyet(cfg: Cfg, argv: list[str]) -> Cfg:
+    """--slip X / --fee X ile maliyet devreye alınır.
+
+    ⚠ NEDEN BU VAR — ve neden 'parametre oynatmak' DEĞİL:
+    Varsayılan 15.3bp kayma, canlı defterde DONCHIAN için ölçüldü (kayma_denetim.py).
+    Donchian bir MOMENTUM kolu: piyasa emriyle, kaçan fiyatın peşinden giriyor.
+    Buradaki üç strateji ise TERSİ profilde — sweep-reclaim ve VWAP dönüşü,
+    zayıflığa KARŞI alım yapar. Aynı denetimde BB/MR kolu (ortalamaya dönüş,
+    maker limit + piyasa yedeği) **−2.95bp** ölçüldü: sinyal fiyatından DAHA İYİ.
+
+    Yani bu stratejilerin gerçek kayması 15.3bp ile −3bp ARASINDA bir yerde ve
+    hangisi olduğu stratejiye göre değişir. Tek bir sayı seçip "işte cevap" demek
+    yerine İKİ UÇ da koşulur ve sonuç BANT olarak raporlanır.
+      --slip 15.3  → taker senaryosu (kötümser, momentum gibi girildiği varsayımı)
+      --slip 0     → maker dolumu (BB/MR'ın canlıda başardığı şey)
+    Karar KÖTÜMSER uçtan verilir; iyimser uç yalnız "ne kadarı yürütmeye bağlı"
+    sorusunu yanıtlar."""
+    for bayrak, alan in (("--slip", "slip_bp"), ("--fee", "fee_bp")):
+        if bayrak in argv:
+            i = argv.index(bayrak)
+            if i + 1 < len(argv):
+                setattr(cfg, alan, float(argv[i + 1]))
+                print(f"  ⚠ {alan} = {getattr(cfg, alan)} (komut satırından)")
+    return cfg
+
+
 def _dd(r: np.ndarray) -> float:
     eq = np.cumsum(r); return float((np.maximum.accumulate(eq) - eq).max()) if len(eq) else 0.0
 

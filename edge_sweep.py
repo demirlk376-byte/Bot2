@@ -165,8 +165,9 @@ def strateji(i: int, veri: dict, cfg: Cfg, ctx: dict):
 # ══════════════════════════════════════════════════════════════════════════════
 def main() -> None:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    args = [a for a in args if a in EL.COINS]   # --slip 0 gibi sayılar coin değil
     coins = args or EL.COINS
-    cfg = varsayilan_cfg()
+    cfg = EL.cli_maliyet(varsayilan_cfg(), sys.argv)
     la = "--lookahead-testi" in sys.argv
     if la:
         cfg.swing_k = 0        # onay gecikmesini KALDIR → bilerek hile
