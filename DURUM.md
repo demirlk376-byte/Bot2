@@ -1,6 +1,6 @@
 # Sistem Durumu
 
-*Son güncelleme: 2026-08-12*
+*Son güncelleme: 2026-08-14*
 
 Bu dosya tek doğruluk kaynağı. "Ne yapıyorduk, neyi kanıtladık, ne zaman ne
 değiştireceğiz" sorularının cevabı burada. Yeni bir şey yapmadan önce buraya bak.
@@ -558,6 +558,97 @@ gerektiriyor. $203'lük hesapta bu takas kötü.
 
 **Yeniden bakma koşulu:** bakiye $1000'i geçerse (aynı oran ~$37/yıl) ya da canlıda
 yeterli squeeze işlemi birikip desen teyit edilirse.
+
+---
+
+## 4e. YENİ STRATEJİ ARAŞTIRMASI (2026-08-14) — ÜÇÜ DE REDDEDİLDİ
+
+Kullanıcının detaylı brief'i: Liquidity Sweep+Reclaim · VWAP Mean Reversion ·
+BB/Keltner Volatility Expansion. 1H rejim / 15M setup / 5M teyit / 1M timing,
+walk-forward + OOS zorunlu, filtre A/B zorunlu.
+
+### Önce VERİ (repoda yoktu)
+Canlı coinler için yalnız 1 SAATLİK veri vardı; 15M/5M hiç yok. MEXC 5dk'yı derin
+geçmişe TUTMUYOR (`veri_cek.py --probe`). Çözüm: Binance aylık dökümleri
+(`veri_binance.py`) — 13 coin × 306.719 bar × 1065 gün, boşluk %0.
+**Venue hipotezi SINANDI:** SOL Binance-vs-MEXC kapanış farkı |ort| 0.83bp,
+%95 2.60bp, saatlik getiri korelasyonu **0.99976** → keşif için aynı seri.
+Dosya adına venue gömüldü: `_bnc_` (Binance/keşif) vs `_fut_` (MEXC/karar).
+
+### Sonuçlar (filtresiz baseline, ön-kayıtlı parametreler)
+| strateji | n | ort R | **brüt edge** | maliyet/R | stop% |
+|---|---|---|---|---|---|
+| Sweep+Reclaim | 24.307 | −0.3283 | **−0.0103** | 0.318 | %0.81 |
+| VWAP Reversion | 29.991 | −0.3920 | **−0.0105** | 0.381 | %0.64 |
+| BB/Keltner | 9.824 | −0.5207 | **−0.0026** | 0.518 | %0.56 |
+
+TRAIN/TEST/OOS üçünde de tutarlı · 13 coin ve 4 yıl homojen negatif.
+**ÜÇÜNÜN DE BRÜT EDGE'İ SIFIR** (aralıklar sıfırı içeriyor). Maliyet iyi
+stratejileri öldürmedi — edge yoktu. Sweep'te maker dolumu (kayma 0) varsayılsa
+bile net −0.072R. Opsiyonel filtrelere GEÇİLMEDİ: popülasyon homojen sıfır,
+kesilecek negatif alt grup yok (bugünkü kuralın gerek şartı sağlanmıyor).
+
+### MOTOR DOĞRULANDI — bu olmadan yukarıdaki hükümler geçersizdi
+Üç farklı strateji de tam sıfır verince asıl soru: "edge yok" mu, "motor kör" mü?
+`edge_oracle.py`: KÂHİN kolu ileri barlara DOĞRUDAN bakıp TP'ye mi SL'e mi önce
+değeceğini bilerek yön seçiyor. Sonuç **+1.3447R / WR %100**; kontrol grubu
+(kör kâhin) **−0.7761R**. → Hat gerçek edge'i GÖRÜYOR, sıfırlar ölçüm hatası değil.
+
+### YAPISAL BULGU — MALİYET DUVARI
+15dk/5dk ölçekte yapısal stoplar %0.56-0.81 çıkıyor. 20.3bp gidiş-dönüş maliyet
+bunun **0.32-0.52R**'si. Gerçek +0.2R'lik bir brüt edge bile NET NEGATİF olurdu.
+Squeeze'in vol rejimi ayrımı mekanik kanıt:
+| rejim | n | ort R | maliyet/R |
+|---|---|---|---|
+| çok DÜŞÜK vol | 466 | −1.1841 | **1.379** ← maliyet TEK BAŞINA risk biriminden büyük |
+| normal vol | 9.358 | −0.4876 | 0.475 |
+→ **Üretimdeki 1h/4h sistem kısmen bu yüzden çalışıyor: stopları %2-3,
+maliyeti 0.10R.** Aynı fikirler alt dilime inince duvara çarpıyor.
+→ Brief'in "regime-based switching" aşamasına GEÇİLMEDİ: kanıtlanmamış üç şeyi
+birleştirmek dördüncü bir kanıtlanmamış şey üretir.
+
+### Bugün araçlarda yakalanan üç hata (hepsi ÜRETİME ÇIKMADAN)
+1. **Sentetik veri üreticim bozuktu** — bar `high=c+w, low=c-w, close=c` idi,
+   yani kapanış HER ZAMAN barın tam ortasında (konum std=0). Mum ŞEKLİNE bakan
+   her filtre böyle veride %100 elenir. edge_vwap "0 sinyal" verdi ve sebep
+   stratejide sanıldı. Düzeltildi (`EL.sentetik`, konum std 0.296).
+2. **rr_min kapısı SESSİZCE eliyordu** — edge_squeeze 217 adayı sessizce atıyordu.
+   Sayaç eklendi; sebep aritmetik çıktı (yapısal SL aralığın karşı ucundaysa
+   RR≈1.0, rr_min=1.5'i asla geçemez).
+3. **İlk look-ahead testim GEÇERSİZDİ** — `swing_k=0` fractal penceresini tek
+   elemana indiriyor, seviye "son 40 barın en düşüğü"ne dönüşüyor: GELECEĞE HİÇ
+   BAKMIYOR. Hile sandığım şey hile değildi. Doğrusu `edge_oracle.py`.
+
+---
+
+## 4f. ANKOR VERİSİ SESSİZCE EZİLDİ (2026-08-14) — yapısal olarak kapatıldı
+
+`ic_bar.py` kontrol testi ankoru üretemedi (1564/$1365.35 vs 1579/$1420.66).
+Guard durdurdu; sebep ARAÇLARDA çıktı:
+
+`fast_bt.load(source="mexc_futures")` penceresi **KAYAN**: `since = now − 1200 gün`.
+Ve çektiğini `_save_cache` ile `data/{COIN}_fut_1h.csv`'ye **SESSİZCE YAZIYORDU**.
+`kayma_denetim.py` MEXC verisi gerektirdiği için çalıştırılınca ankorun bütün veri
+dosyalarını ezdi:
+```
+repodaki : 2023-04-06 → 2026-07-19
+diskteki : 2023-05-02 → 2026-08-14      ≈1 ay kaymış
+```
+**Bar SAYISI ikisinde de ~28.799** olduğu için fark görünmedi. "Bar sayıları
+eşleşiyor, veri aynı" çıkarımı YANLIŞTI — sayıya değil TARİH ARALIĞINA bakılmalı.
+`data/*_fut_1h.csv` git'te TAKİPLİ, yani ankorun tanımı diskte değişmişti.
+
+**DÜZELTMELER:**
+1. `fast_bt._save_cache` artık mevcut dosyanın üzerine YAZMIYOR.
+   Bilerek tazelemek için `VERI_TAZELE=1`. (Test edildi: koruma + tazeleme.)
+2. `ic_bar.py` sapmada çıplak "SAPMA" demiyor; tarih aralığını ankorun
+   beklediğiyle yan yana basıyor, `git status data/` gösteriyor, çözümü veriyor.
+
+**Geri alma:** `git checkout -- data/`
+
+⚠ Bugün ankor üzerine kurulan diğer sonuçlar ETKİLENMEDİ — hepsi ezmeden ÖNCE
+koştu ve kontrol testini geçti (maker_giris, ankor_denetim, kombinasyon...).
+Etkilenen tek koşu ic_bar'dı, o da guard sayesinde sonuç basmadan durdu.
 
 ---
 
