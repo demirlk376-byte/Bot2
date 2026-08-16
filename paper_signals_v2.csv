@@ -180,3 +180,5 @@ ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
 2026-08-14T18:00:00+00:00,SOL,LONG,74.92,73.8492,76.7046,0.3569,29,-0.000177,True,F&G=29 (korku→long uygun) | funding=-0.0177% (short ağırlıklı→long uygun)
 2026-08-14T22:00:00+00:00,XRP,LONG,0.9921,0.9768,1.0176,0.0051,29,-0.000187,True,F&G=29 (korku→long uygun) | funding=-0.0187% (short ağırlıklı→long uygun)
 2026-08-16T09:00:00+00:00,BTC,LONG,62957.9,62730.8912,63336.2481,75.6696,34,3e-05,True,F&G=34 (korku→long uygun)
+2026-08-16T16:00:00+00:00,BTC,SHORT,63232.7,78.097,34,4.9e-05,False,çelişki: F&G=34 (korku ortamında short riskli)
+2026-08-16T16:00:00+00:00,ETH,SHORT,1888.59,3.3281,34,4.8e-05,False,çelişki: F&G=34 (korku ortamında short riskli)
