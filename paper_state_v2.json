@@ -18,7 +18,17 @@
     },
     "SOL": {
       "balance": 10596.15784823892,
-      "position": null,
+      "position": {
+        "direction": 1,
+        "entry": 74.99,
+        "sl": 74.32301879372744,
+        "tp": 76.10163534378759,
+        "qty": 70.65047238457741,
+        "atr": 0.2223270687575194,
+        "entry_ts": "2026-08-16T20:00:00+00:00",
+        "fng_at_entry": 34,
+        "funding_at_entry": 3.1e-05
+      },
       "n_trades": 16,
       "n_wins": 9,
       "total_pnl": 596.1578482389149,
