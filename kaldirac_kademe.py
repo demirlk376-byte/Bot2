@@ -116,12 +116,24 @@ def calistir(ham, cap, kademeler, bal, guvenlik=GUVENLIK, onkontrol=True):
             ihlal, lev_say)
 
 
-def olc(al, bal):
+def olc(al, bal, buyuk_kayma_bp: float = 0.0, taban_cap: float = 1.5):
+    """buyuk_kayma_bp: TABANDAN BÜYÜK nominal alan işlemlere eklenen EK kayma (bp).
+
+    ⚠ NEDEN GEREKLİ — bu bulgunun en zayıf noktası:
+    Kazanç, CAP'i 1.5→3.0 yapmaktan geliyor; yani bazı pozisyonlar İKİ KAT
+    büyüyor. Ölçülmüş 15.3bp kayma (kayma_denetim.py) ~$267 nominalde ölçüldü.
+    $570 nominalde ince defterlerde (ICP/NEAR/XLM) kayma DAHA BÜYÜK olabilir ve
+    bu backtest'te modellenmiyor. Büyüyen her işleme X bp ek maliyet yükleyip
+    "kaç bp'de kazanç sıfırlanır" sorusunu yanıtlıyoruz — yanılma payının ölçüsü."""
     if not al:
         return dict(n=0)
     r = np.array([a[1] for a in al]); nom = np.array([a[3] for a in al])
     slp = np.array([a[2] for a in al])
     pnl = r * (nom * slp)                       # risk$ = nominal × stop mesafesi
+    if buyuk_kayma_bp:
+        nom_taban = np.minimum(A.RISKF * bal / slp, taban_cap * bal)
+        buyudu = nom > nom_taban + 1e-9
+        pnl = pnl - buyudu * (buyuk_kayma_bp / 1e4) * nom
     ex = [pd.Timestamp(a[0]) for a in al]
     eq = bal + np.cumsum(pnl)
     mon = pd.Series(pnl).groupby([x.to_period("M") for x in ex]).sum() / bal * 100
@@ -224,6 +236,27 @@ def main() -> None:
     print(f"    Δ ${d:+.0f} / 3.6 yıl = yılda ~${d/3.6:+.0f} (bakiye ${bal:.0f} tabanında)")
     print(f"    maxDD {M['dd']:.1f} · en kötü ay {M['worst']:+.1f} · tepe marjin %{tp2:.0f}")
     print(f"    kaldıraç dağılımı: " + " · ".join(f"{k}x:{v}" for k, v in sorted(lv.items())))
+    # ── DAYANIKLILIK: büyüyen pozisyonların kayması artarsa kazanç ne zaman biter? ──
+    kad_kaz = [int(k) for k in ad.split("·")[1].strip().rstrip("x").split("/")]
+    cap_kaz = float(ad.split("·")[0].replace("CAP", "").strip())
+    al_k, _, _, _, _, _ = calistir(ham, cap_kaz, kad_kaz, bal)
+    print(f"\n    DAYANIKLILIK — büyüyen pozisyonlara EK kayma yüklenirse:")
+    print(f"    (kazanç CAP 1.5→{cap_kaz} ile pozisyonları büyütmekten geliyor; ölçülen")
+    print(f"     15.3bp kayma ~$267 nominalde ölçüldü, ince defterlerde daha büyük olabilir)")
+    print(f"      {'ek kayma':>9s} {'Δ$':>8s}   hüküm")
+    kirilma = None
+    for ek in (0, 5, 10, 15, 20, 30, 50):
+        Mk = olc(al_k, bal, buyuk_kayma_bp=ek)
+        dk = Mk["tot"] - T["tot"]
+        if kirilma is None and dk <= BAR_DOLAR:
+            kirilma = ek
+        print(f"      {ek:>7.0f}bp {dk:>+8.0f}   {'✓ bar geçiyor' if dk > BAR_DOLAR else '✗ bar düştü'}")
+    if kirilma is not None:
+        print(f"    → Kazanç {kirilma}bp EK kaymada bariyerin altına iniyor.")
+        print(f"      Yani ölçülen 15.3bp'nin üstüne {kirilma}bp daha binerse bu iş biter.")
+    else:
+        print(f"    → 50bp ek kaymada BİLE bar geçiyor. Bulgu bu riske dayanıklı.")
+
     print(f"\n    YIL YIL (taban → aday, bakiyenin %'si):")
     for y in sorted(set(T["yil"].index) | set(M["yil"].index)):
         t0v = T["yil"].get(y, 0.0); m0v = M["yil"].get(y, 0.0)
