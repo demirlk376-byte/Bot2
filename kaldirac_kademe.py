@@ -184,18 +184,34 @@ def main() -> None:
                 continue
             d = M["tot"] - T["tot"]; dd = M["dd"] - T["dd"]; day = M["worst"] - T["worst"]
             kotu_yil = any(y < -10.0 for y in M["yil"].values)
-            gecti = (d > BAR_DOLAR and not kotu_yil and dd <= 2.0 and day >= -0.05
-                     and red2 == 0 and ih2 == 0)
+            # ⚠ İHL ŞARTI DÜZELTİLDİ. Önce "ih2 == 0" yazıyordu ve TÜM satırlar
+            # düşüyordu — çünkü İHL=36 TABANDA da var, yani mevcut canlı sistemin
+            # zaten sahip olduğu bir durum (2×ATR stopu %9.5'i geçen işlemler).
+            # Adayı, kendisinin SEBEP OLMADIĞI bir sorunu çözmeye mecbur etmek
+            # yanlış bir bar. Doğru şart: İHL ARTMASIN.
+            neden = []
+            if d <= BAR_DOLAR: neden.append(f"Δ${d:+.0f}≤{BAR_DOLAR:.0f}")
+            if kotu_yil: neden.append("yıl<−%10")
+            if dd > 2.0: neden.append(f"maxDD+{dd:.1f}")
+            if day < -0.05: neden.append(f"ay{day:+.1f}")
+            if red2 > 0: neden.append(f"RED{red2}")
+            if ih2 > ihl0: neden.append(f"İHL↑{ih2-ihl0}")
+            gecti = not neden
             ad = f"CAP{cap} · {'/'.join(str(k) for k in kad)}x"
             print(f"  {ad:<30s} {M['n']:>6d} {M['tot']:>+9.0f} {d:>+7.0f} {M['pf']:>6.2f} "
                   f"{M['dd']:>7.1f} {dd:>+6.1f} {M['worst']:>+8.1f} {day:>+6.1f} "
-                  f"{tp2:>6.0f} {red2:>4d} {ih2:>4d}  {'✓ GEÇTİ' if gecti else '✗'}")
+                  f"{tp2:>6.0f} {red2:>4d} {ih2:>4d}  "
+                  f"{'✓ GEÇTİ' if gecti else '✗ ' + ','.join(neden)}")
             if gecti and (en_iyi is None or d > en_iyi[1]):
                 en_iyi = (ad, d, M, tp2, lv)
 
     print(f"\n{'='*118}\n=== HÜKÜM ===")
-    print(f"  ⚠ GÜVENLİK ÖNCE: İHL>0 olan hiçbir satır, kârı ne olursa olsun 'geçti'")
-    print(f"    alamaz. Stop likidasyonun ötesindeyse stop ÇALIŞMADAN likide olursun.")
+    print(f"  ⚠ İHL={ihl0} TABANDA DA VAR — yani MEVCUT canlı sistemin durumu.")
+    print(f"    2×ATR stopu likidasyon mesafesini (%{(1/10-BAKIM)*100:.1f} @10x) aşan")
+    print(f"    {ihl0} işlem var ({ihl0/max(T['n'],1)*100:.1f}%). Bunlarda stop çalışmadan")
+    print(f"    likide olunur. AYRI BİR BULGU — bu taramanın konusu değil, ama kayda geçti.")
+    print(f"    Bar şartı: İHL ARTMASIN (sıfır olsun DEĞİL — aday kendi sebep olmadığı")
+    print(f"    bir sorunu çözmek zorunda değil).")
     print(f"  ⚠ RED>0 olan satırın kârı FANTEZİDİR: canlı ön-kontrol (execution.py:559)")
     print(f"    o işlemleri gerçekte açmaz.")
     if en_iyi is None:
@@ -208,6 +224,11 @@ def main() -> None:
     print(f"    Δ ${d:+.0f} / 3.6 yıl = yılda ~${d/3.6:+.0f} (bakiye ${bal:.0f} tabanında)")
     print(f"    maxDD {M['dd']:.1f} · en kötü ay {M['worst']:+.1f} · tepe marjin %{tp2:.0f}")
     print(f"    kaldıraç dağılımı: " + " · ".join(f"{k}x:{v}" for k, v in sorted(lv.items())))
+    print(f"\n    YIL YIL (taban → aday, bakiyenin %'si):")
+    for y in sorted(set(T["yil"].index) | set(M["yil"].index)):
+        t0v = T["yil"].get(y, 0.0); m0v = M["yil"].get(y, 0.0)
+        print(f"      {y}: {t0v:>+7.1f}% → {m0v:>+7.1f}%  ({m0v-t0v:>+6.1f})"
+              f"{'  ⚠ kötüleşti' if m0v < t0v - 1e-9 else ''}")
     print(f"\n  ⚠ CANLIYA ALMADAN ÖNCE — bu bir BACKTEST sonucu:")
     print(f"    1. MEXC'te işlem bazında kaldıraç DEĞİŞTİRİLEBİLİR mi? (aynı sembolde")
     print(f"       açık pozisyon varken set_leverage reddedilebilir — ÖNCE test et)")
