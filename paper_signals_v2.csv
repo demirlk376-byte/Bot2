@@ -219,3 +219,6 @@ ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
 2026-08-19T15:00:00+00:00,SOL,SHORT,81.81,83.9606,78.2256,0.7169,46,6.2e-05,True,"nötr makro, geç"
 2026-08-19T15:00:00+00:00,BNB,SHORT,617.3,624.6513,605.0478,2.4504,46,1.4e-05,True,"nötr makro, geç"
 2026-08-19T15:00:00+00:00,XRP,SHORT,1.0674,1.0932,1.0244,0.0086,46,4.5e-05,True,"nötr makro, geç"
+2026-08-19T20:00:00+00:00,ETH,SHORT,2218.06,2309.6192,2065.4613,30.5197,46,0.0001,True,funding=+0.0100% (long ağırlıklı→short uygun)
+2026-08-19T20:00:00+00:00,BNB,SHORT,625.6,635.1781,609.6365,3.1927,46,8.7e-05,True,"nötr makro, geç"
+2026-08-19T20:00:00+00:00,XRP,SHORT,1.0987,1.1316,1.0439,0.011,46,0.0001,True,funding=+0.0100% (long ağırlıklı→short uygun)
