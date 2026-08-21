@@ -46,14 +46,25 @@ from yon_kapi import gen_yonlu, gen_bb_yonlu, koltuk_yonlu
 
 
 def piyasa_aylik(source):
-    """12 coinin AYLIK getirisinin ortalaması = 'piyasa'. Eşit ağırlık."""
-    ser = {}
+    """Aylık piyasa ölçüleri (12 coin eşit ağırlık):
+      getiri : İŞARETLİ aylık getiri ortalaması  → beta'yı ölçer (yön bağımlılığı)
+      mutlak : |aylık getiri| ortalaması          → BÜYÜKLÜK (yönden bağımsız)
+      vol    : saatlik getirilerin aylık std'si   → oynaklık rejimi
+    ⚠ 'mutlak' ile 'getiri' AYRI şeyler ve ayrı hipotezleri sınıyorlar:
+      'piyasa yükselirse kazanır' (beta) ≠ 'sert hareket olursa kazanır' (büyüklük).
+      Trend takipçisinden BÜYÜKLÜĞE bağımlılık beklenir; beta'ya değil."""
+    g, mu, vo = {}, {}, {}
     for c in sorted(set(A.DONCH) | set(A.SQZ) | set(A.BB_COINS)):
         m = fast_bt.load(c, source=source)
         ay = m["close"].resample("MS").last().dropna()
-        ser[c] = ay.pct_change()
-    df = pd.DataFrame(ser)
-    return df.mean(axis=1) * 100.0        # % cinsinden
+        r = ay.pct_change()
+        g[c] = r
+        mu[c] = r.abs()
+        sa = m["close"].pct_change()
+        vo[c] = sa.resample("MS").std()
+    return (pd.DataFrame(g).mean(axis=1) * 100.0,
+            pd.DataFrame(mu).mean(axis=1) * 100.0,
+            pd.DataFrame(vo).mean(axis=1) * 100.0)
 
 
 def main():
@@ -82,11 +93,13 @@ def main():
 
     ex = pd.to_datetime([a[0] for a in al], utc=True)
     sis = pd.Series(pnl, index=ex).groupby(pd.Grouper(freq="MS")).sum() / A.BAL0 * 100
-    pi = piyasa_aylik(source)
+    pi, pmut, pvol = piyasa_aylik(source)
     ort = sis.index.intersection(pi.index)
     sis = sis.loc[ort]; pi = pi.loc[ort].fillna(0.0)
-    msk = np.isfinite(sis.values) & np.isfinite(pi.values)
+    pmut = pmut.loc[ort].fillna(0.0); pvol = pvol.loc[ort].fillna(0.0)
+    msk = np.isfinite(sis.values) & np.isfinite(pi.values) & np.isfinite(pmut.values)
     x = pi.values[msk]; y = sis.values[msk]
+    xm = pmut.values[msk]; xv = pvol.values[msk]
     print(f"  eşleşen ay sayısı: {len(x)}")
 
     # ── [1] REGRESYON ──
@@ -133,6 +146,54 @@ def main():
     tp = y.sum()
     print(f"  toplam {tp:+.1f}% · piyasa yukarı aylardan {up.sum():+.1f}% "
           f"(%{up.sum()/tp*100 if tp else 0:.0f}) · aşağı aylardan {dn.sum():+.1f}%")
+
+    # ── [5] BÜYÜKLÜK: yön değil, HAREKET ŞİDDETİ ──
+    print(f"\n{'='*104}\n=== [5] 'SERT HAREKET' HİPOTEZİ — yönden BAĞIMSIZ büyüklük ===")
+    print(f"  Trend takipçisinden beklenen profil: yön ne olursa olsun BÜYÜK hareket")
+    print(f"  iyi, yatay piyasa kötü. Beta bunu ölçmez — |getiri| ölçer.")
+    for ad, xx in (("|piyasa getirisi|", xm), ("piyasa oynaklığı", xv)):
+        b2, a2 = np.polyfit(xx, y, 1)
+        t2 = a2 + b2*xx
+        r22 = 1 - ((y-t2)**2).sum()/((y-y.mean())**2).sum()
+        k2 = np.corrcoef(xx, y)[0,1]
+        print(f"  {ad:<20s} eğim {b2:>+7.3f} · R² {r22*100:>5.1f}% · kor {k2:>+.3f}")
+    q = np.median(xm)
+    print(f"\n  {'hareket':<22s} {'ay':>4s} {'sistem ort':>12s} {'poz ay':>8s} {'toplam':>9s}")
+    for ad, v in ((f"BÜYÜK (|ret|>{q:.1f}%)", y[xm > q]), (f"KÜÇÜK (|ret|<={q:.1f}%)", y[xm <= q])):
+        if len(v):
+            print(f"  {ad:<22s} {len(v):>4d} {v.mean():>+11.2f}% {(v>0).mean()*100:>7.0f}% "
+                  f"{v.sum():>+8.1f}%")
+
+    # ── [6] 2×2: YÖN × BÜYÜKLÜK ──
+    print(f"\n{'='*104}\n=== [6] YÖN × BÜYÜKLÜK (sorunun tam cevabı) ===")
+    print(f"  {'':<14s} {'BÜYÜK hareket':>18s} {'KÜÇÜK hareket':>18s}")
+    for ad, ym in (("piyasa YUKARI", x > 0), ("piyasa AŞAĞI", x <= 0)):
+        h = []
+        for bm in (xm > q, xm <= q):
+            v = y[ym & bm]
+            h.append(f"{v.mean():+7.2f}% (n{len(v)})" if len(v) else "     — (n0)")
+        print(f"  {ad:<14s} {h[0]:>18s} {h[1]:>18s}")
+    print(f"\n  → Aynı satırda büyük/küçük FARKLIYSA: hareket şiddeti belirleyici.")
+    print(f"    Aynı sütunda yukarı/aşağı FARKLIYSA: yön belirleyici (beta).")
+
+    # ── [7] YALNIZ DONCHIAN ──
+    dset = set(A.DONCH)
+    dal = [(t[1], t[2], t[3]) for t in ham if t[5] in dset
+           and (t[1], round(t[2], 9)) in alset]
+    if len(dal) > 50:
+        dp = np.array([a[1] for a in dal]) * np.minimum(
+            A.RISKF, A.CAP*np.array([a[2] for a in dal])) * A.BAL0
+        dex = pd.to_datetime([a[0] for a in dal], utc=True)
+        dsis = pd.Series(dp, index=dex).groupby(pd.Grouper(freq="MS")).sum()/A.BAL0*100
+        dsis = dsis.reindex(ort).fillna(0.0)
+        yd = dsis.values[msk]
+        bd, ad_ = np.polyfit(x, yd, 1)
+        bmd, _ = np.polyfit(xm, yd, 1)
+        print(f"\n{'='*104}\n=== [7] YALNIZ DONCHIAN (n={len(dal)}) ===")
+        print(f"  işaretli getiriye beta : {bd:>+7.3f}")
+        print(f"  |getiri|'ye eğim       : {bmd:>+7.3f}")
+        print(f"  BÜYÜK hareket aylarında {yd[xm>q].mean():+.2f}% · "
+              f"KÜÇÜK aylarda {yd[xm<=q].mean():+.2f}%")
 
     # ── HÜKÜM ──
     print(f"\n{'='*104}\n=== HÜKÜM ===")
