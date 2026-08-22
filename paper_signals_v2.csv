@@ -239,3 +239,5 @@ ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
 2026-08-21T08:00:00+00:00,BNB,SHORT,686.7,706.657,653.4384,6.6523,72,0.000183,True,F&G=72 (açgözlülük→short uygun) | funding=+0.0183% (long ağırlıklı→short uygun)
 2026-08-21T08:00:00+00:00,XRP,SHORT,1.3994,1.489,1.2501,0.0299,72,0.0001,True,F&G=72 (açgözlülük→short uygun) | funding=+0.0100% (long ağırlıklı→short uygun)
 2026-08-21T22:00:00+00:00,ETH,SHORT,2521.92,2629.6428,2342.3821,35.9076,72,0.0001,True,F&G=72 (açgözlülük→short uygun) | funding=+0.0100% (long ağırlıklı→short uygun)
+2026-08-22T02:00:00+00:00,BNB,SHORT,715.0,741.0225,671.6291,8.6742,71,0.000398,True,F&G=71 (açgözlülük→short uygun) | funding=+0.0398% (long ağırlıklı→short uygun)
+2026-08-22T02:00:00+00:00,XRP,SHORT,1.5493,1.6753,1.3393,0.042,71,0.0001,True,F&G=71 (açgözlülük→short uygun) | funding=+0.0100% (long ağırlıklı→short uygun)
