@@ -734,6 +734,94 @@ Burada grup −0.1422R kaybediyor, çıkmak −0.0946R/işlem (tüm portföye) m
 
 ---
 
+## 4i. ⭐ CANLI OLAY KAYDI (2026-08-17) — +%100 koşu ve −%27 geri veriş
+
+**KULLANICININ ANLATTIĞI (2 hafta sonra buradan devam edilecek):**
+BTC 4h grafiğinde 62.239 → 79.539 (~%28) uzun yeşil mum serisi. Diğer coinler de
+eşlik etti. Donchian bir haftada bakiyeyi ~2 katına çıkardı. Sonra tek sert kırmızı
+mumda **açık 6 pozisyonun 6'sı birden stop oldu**; bakiye $380 → $278.
+
+### ÖLÇÜ — bu bir ARIZA DEĞİL
+| | |
+|---|---|
+| tepe → şimdi | $380 → $278.08 = **−%26.8** |
+| ankorun öngördüğü maxDD | **−%26.4** |
+| fark | **0.4 puan** |
+
+Sistem tam olarak modelin söylediğini yaptı. Büyük hareket → büyük kazanç.
+Dönüş → öngörülen büyüklükte drawdown. Panik gerektiren bir sapma YOK.
+
+### KAYBIN İKİ PARÇASI — ve asıl soru
+```
+6 pozisyon TAM stop (−1R): 6 × %2.25 × $380 = $51.30   ← tasarlanmış, kaçınılmaz
+gözlenen kayıp                              = $101.92
+                                              ────────
+geri verilen AÇIK KÂR                       = $50.62   ← ASIL SORU
+```
+Kaybın YARISI gerçek risk, YARISI hiç kilitlenmemiş açık kârdı. Pozisyonlar
+yükselirken stoplar GİRİŞTE kaldı.
+
+### KODDA NE VAR, NE KAPALI
+`main.py:1071 _update_trailing_stops` MEVCUT ve `check_mexc_stopmove.py` probe'u
+hazır. Ama:
+1. `STOP_MOVE_ENABLED=false` (config.py:90) — probe hiç koşulmadı
+2. **Daha önemlisi:** kod stop taşımayı YALNIZ `orb`/`ifvg` kollarına uyguluyor
+   — ikisi de 2026-07-16'da EMEKLİ EDİLDİ. Yani aktif kollarda (donchian/squeeze/
+   bb) bayrak açılsa BİLE hiçbir şey değişmezdi.
+
+### ÖNCEKİ KANITLAR — trailing trend takipçisini ÖLDÜRÜYOR
+main.py:1077-1088'deki denetim notları:
+* `sr_breakout` (2026-07-13 denetimi): sabit PF **1.80** / +23.4R · trailing'li
+  PF **1.39** / +7.1R, DD de kötü. *"Fixed stops let the 3R winner run."*
+* BB mean-rev ve FVG'de BE **ölçülebilir şekilde zarar** veriyor.
+* Kısmi TP (TP1/TP2): **her kolda DAHA KÖTÜ** — WR yükseliyor, toplam düşüyor.
+* BE@1R yalnız ORB/IFVG'de işe yaradı (+5.5R/+3.0R).
+
+→ Donchian'ın gerçekleşen R:R'si **2.36**. Parayı kazananları KOŞTURARAK
+kazanıyor. Trailing/BE tam o mekanizmayı keser. **Önsel BU FİKRE KARŞI.**
+
+### AMA KODUN KENDİ NOTU BİR EKSİK İŞ BIRAKMIŞ
+main.py:1089: *"single-regime sample — re-verify on longer data when 2023/24 1m
+is around."* Çıkış modeli kanıtı YALNIZ BTC 1dk 2025-05..2026-04 üzerinde.
+**O veri ARTIK VAR**: 13 coin × 3 yıl × 5dk (veri_binance.py). Kodun istediği
+doğrulama artık yapılabilir — ve bu "son kaybı düzeltmek" değil, kodun kendi
+bıraktığı ödevi bitirmek.
+
+### DÖNÜNCE DEĞERLENDİRİLECEK ADAYLAR (öncelik sırasıyla)
+
+**1. PORTFÖY SEVİYESİNDE KÂR KİLİDİ — yeni, hiç test edilmedi**
+İşlem-başına kısmi TP test edilip reddedildi ("her kolda daha kötü"). Ama bu
+olayın sorunu İŞLEM seviyesinde değildi: 6 pozisyonun HEPSİNDE aynı anda büyük
+açık kâr vardı ve hepsi birlikte buharlaştı. Kural şöyle olurdu:
+*"toplam açık kâr bakiyenin %X'ini geçerse tüm pozisyonlarda stopu sıkılaştır /
+bir kısmını al."* PORTFÖY durumuna koşullu — işlem durumuna değil. Bu ayrım
+onu daha önce reddedilen testten FARKLI kılıyor. Ankor verisiyle ölçülebilir
+(giriş/çıkış zamanları ve R elimizde).
+
+**2. YÖNSEL KAPI — `yon_kapi.py` yazıldı, KOŞULMADI**
+6 long'un 4'ü korelasyon grubunun dışındaydı (grup yalnız {BTC,ETH,SOL}).
+Grubu genişletmek bu olayda 2-4 pozisyonu engellerdi: yükselişte daha az kazanç,
+düşüşte daha az kayıp. Ölçüt zaten doğru seçilmişti: **drawdown-normalize kâr**.
+Tek komut: `python3 yon_kapi.py local`
+
+**3. DONCHIAN İÇİN BE/TRAILING — önsel KÖTÜ ama veri artık var**
+sr_breakout kanıtı güçlü şekilde aleyhte. Yine de kodun istediği uzun-veri
+doğrulaması yapılmalı ki eksen KAPANSIN. Düşük beklentiyle.
+
+**4. HİÇBİR ŞEY — dürüst seçenek**
+−%27, +%100'ün bedeli. İkisi AYNI mekanizma: kazananları koşturmak. Trailing
+koyarsan iki tarafı birden kısarsın.
+
+### ⚠ HÂLÂ AÇIK: MUHASEBE
+Bu anlatı bile boşluğu KAPATMIYOR. İki rapor arası: defter PnL **+$8.37**,
+bakiye **−$48.96**. Açık uPnL'in ($25.03) gerçekleşmesi hesaba katılsa bile
+~**$32** açıkta kalıyor. Ve "ne ile başladık" sorusu üç farklı cevap veriyor
+(defter $242.91 · MEXC transfer $209.05 · kullanıcı hafızası $178).
+**Açık pozisyon 0 iken `python3 gercek_pnl.py` çalıştırılmalı** — uPnL
+belirsizliği olmadan ölçüm yapılabilecek tek an buydu/bu.
+
+---
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
