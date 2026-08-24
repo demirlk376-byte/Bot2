@@ -35,21 +35,11 @@
       "skipped": 14
     },
     "BNB": {
-      "balance": 10069.99464050753,
-      "position": {
-        "direction": -1,
-        "entry": 715.0,
-        "sl": 741.0225397299898,
-        "tp": 671.629100450017,
-        "qty": 7.04195429406121,
-        "atr": 8.674179909996617,
-        "entry_ts": "2026-08-22T02:00:00+00:00",
-        "fng_at_entry": 71,
-        "funding_at_entry": 0.000398
-      },
-      "n_trades": 28,
-      "n_wins": 14,
-      "total_pnl": 69.9946405075294,
+      "balance": 10165.883382899816,
+      "position": null,
+      "n_trades": 29,
+      "n_wins": 15,
+      "total_pnl": 165.88338289981604,
       "skipped": 12
     },
     "XRP": {
