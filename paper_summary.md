@@ -1,13 +1,13 @@
 # 📊 Paper Demo Durumu
 
-Son güncelleme: **2026-08-27 04:25 UTC**
+Son güncelleme: **2026-08-27 16:16 UTC**
 
 Gerçek para YOK — her coin $10,000 sanal bakiyeyle başlar. Amaç: hangi
 coinde edge GERÇEKTEN var, körlemesine değil veriyle görmek.
 
 | Coin | Bakiye | Getiri | Trade | Kazanma % | Açık pozisyon | Aday? |
 |------|--------|--------|-------|-----------|---------------|-------|
-| BTC | $9,475 | -5.2% | 42 | 40% | — | ❌ |
+| BTC | $9,475 | -5.2% | 42 | 40% | 🟢 SHORT | ❌ |
 | ETH | $9,738 | -2.6% | 42 | 45% | 🟢 SHORT | ❌ |
 | SOL | $9,515 | -4.8% | 38 | 37% | — | ❌ |
 | BNB | $10,154 | +1.5% | 37 | 46% | — | ✅ |
