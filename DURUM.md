@@ -822,6 +822,30 @@ belirsizliği olmadan ölçüm yapılabilecek tek an buydu/bu.
 
 ---
 
+## 4j. SESSİZLİK (2026-08-27) — "bot iki üç gündür işlem açmıyor"
+
+**Loglar HALT hipotezini ELEDİ.** journalctl'de yalnızca `BB skipped:
+regime=... is_weekend=False` var. `halt` yok, `cooldown` yok, `Correlation cap`
+yok, `Max positions` yok. BB zaten hafta-sonu-only, o satırlar beklenen gürültü.
+
+**Log'un kör noktası:** donchian `direction == 0` verince kod HİÇBİR ŞEY
+yazmıyor. Yani grep boş dönmesi "sinyal yok" ile "sinyal engellendi" ayrımını
+YAPAMIYOR. Bu yüzden `neden_sessiz.py` yazıldı — canlı veriden coin başına
+kanal genişliği / kırılıma uzaklık / MTF kapısı yönü basıyor.
+
+**Hipotez:** BTC 62.239→79.539 hareketinden sonra 40 barlık kanal
+(40×4s ≈ **6.7 GÜN**) o hareketin TAMAMINI içine aldı. Kanal çok geniş, fiyat
+ortasında, tetikleyecek bir şey yok. Zirve barları pencereden çıktıkça (~6-7
+gün) kanal daralır ve sinyaller KENDİLİĞİNDEN döner.
+
+Doğrulaması: `python3 neden_sessiz.py` → `kanal %` sütunu >%15 ve fiyat
+ortadaysa bot bozuk değil, sadece ateşleyecek bir şey yok.
+
+**BACKLOG (hiç bakılmadı):** "Sert hareket sonrası donchian kaç gün susar?"
+sorusunun backtest'te NET bir cevabı var. Ankor 1579 işlemin bar indekslerinden
+sinyal-arası boşluk dağılımı çıkarılabilir. Bu ölçülürse sessizlik bir daha
+teşhis gerektirmez — beklenen aralık bilinir.
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
