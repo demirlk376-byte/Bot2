@@ -916,6 +916,53 @@ pozitif" bulgusuyla aynı yere çıkıyor: donchian'ın kesilecek kötü alt kü
 fiyatı faydasından büyük. Kapanan eksen sayısı 23+ → **25+**.
 
 
+---
+
+## 4m. SAĞLIK KANITI (2026-08-27) — `saglik_kaniti.py`
+
+4k istatistikti: "4-5 gün sessizlik dağılıma UYUYOR". Bu **'sorun yok' demek
+değil** — sadece sessizliğin tek başına kanıt olmadığı demek. Bu araç farklı bir
+soru soruyor ve cevabı SAYIM:
+
+    SON N GÜNDE KAÇ SİNYAL OLUŞMALIYDI, KAÇ TANESİ AÇILDI?
+
+**Loga güvenmiyor.** Canlı kod `direction == 0` iken hiçbir şey yazmıyor; boş log
+"sinyal yok" ile "sinyal yutuldu"yu ayırt etmiyor. O yüzden sinyaller ÜRETİM
+SINIFLARIYLA (DonchianStrategy / SqueezeStrategy + canlı MTF kapısı) sıfırdan
+yeniden hesaplanıyor, sonra trades.db'deki GERÇEK girişlerle eşleştiriliyor.
+
+Dört bağımsız kontrol: **A)** canlı .env ankorla aynı mı · **B)** borsa mumları
+taze mi (bayat veri = sessizce kör bot) · **C)** sinyal yeniden hesabı ·
+**D)** gerçek girişlerle eşleştirme + açık pozisyon yaşı vs max_hold.
+
+Eşleşmeyen her sinyal için sırayla eleniyor: coin kilidi (one-per-symbol),
+MAX_POSITIONS koltuğu, (sleeve:coin) cooldown. Hâlâ açıklanamayan varsa araç
+"⛔ AÇIKLANAMADI" diyor ve o bar için hazır `journalctl` komutunu basıyor —
+"arıza var" diye İDDİA ETMİYOR, elenen ve elenmeyen ihtimalleri sayıyor.
+
+### ÖZ-TEST ZORUNLU — `python3 saglik_kaniti.py --dogrula`
+Araç ancak replay'i ankorla örtüşüyorsa değerli. Öz-test ankorun ürettiği HER
+girişin replay'in aday listesinde olmasını şart koşuyor; bir tanesi eksikse
+`SystemExit` ile duruyor. **Çalıştırıldı: 11 coin, 84 ankor girişi, eksik 0. ✓**
+(Aday sayısı daha büyük — occ uygulanmıyor, bu beklenen.)
+
+### SMOKE-TEST GERÇEK BİR HATA YAKALADI
+İlk sürüm ccxt yokken C bölümünde **"hiç sinyal yok — sessizliğin sebebi BU"**
+diye YALANCI HÜKÜM basıyordu. defter_gercek/gercek_pnl ile aynı hata sınıfı.
+Artık sert guard var: veri eksikse ya da trades.db yoksa `SystemExit(2)`, hüküm
+YOK. "Bakamadık" ile "yok" bir daha karışmayacak.
+
+### YAN BULGU: `DONCHIAN_MTF` varsayılanı `False`
+`config.py:469` `_getbool("DONCHIAN_MTF", False)` ve `.env.example`'da hiç geçmiyor.
+Canlı .env'de set edilmemişse **donchian MTF kapısı olmadan çalışıyor**, ankor ise
+onu HEP uyguluyor. Sessizliğin sebebi değil (kapı yoksa DAHA ÇOK sinyal olur) ama
+canlı ≠ ankor demek. Araç A bölümünde bunu yüzüne söylüyor — VPS'te bakılacak.
+
+### ANKOR VERİSİNE DOKUNMAZ
+ccxt'yi doğrudan, pencereli (220 gün) çağırır; `fast_bt.load`/`_save_cache` yoluna
+hiç girmez, `data/` altına hiçbir şey yazmaz. 4f'deki kaza tekrarlanamaz.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
