@@ -841,10 +841,80 @@ gün) kanal daralır ve sinyaller KENDİLİĞİNDEN döner.
 Doğrulaması: `python3 neden_sessiz.py` → `kanal %` sütunu >%15 ve fiyat
 ortadaysa bot bozuk değil, sadece ateşleyecek bir şey yok.
 
-**BACKLOG (hiç bakılmadı):** "Sert hareket sonrası donchian kaç gün susar?"
-sorusunun backtest'te NET bir cevabı var. Ankor 1579 işlemin bar indekslerinden
-sinyal-arası boşluk dağılımı çıkarılabilir. Bu ölçülürse sessizlik bir daha
-teşhis gerektirmez — beklenen aralık bilinir.
+**⛔ BU HİPOTEZ ÖLÇÜLDÜ VE ÇÜRÜDÜ — bkz. 4k.** Sert hareketle sonraki sessizlik
+arasında ilişki YOK (ρ=−0.0018, p=0.94); hatta en sert kuşakta boşluk en KISA.
+Backlog kapandı: dağılım artık `sessizlik.py` ile ölçülü.
+
+---
+
+## 4k. SESSİZLİK ÖLÇÜLDÜ (2026-08-27) — `sessizlik.py`, İKİ HİPOTEZ ÇÜRÜDÜ
+
+Sonunda "bot kaç gün sessiz kalır?" sorusunun SAYISI var. Ankorun 1579 işleminin
+giriş zamanlarından ardışık boşluk dağılımı (3.24 yıl):
+
+| kapsam | medyan | p90 | p95 | **max** | ≥4 gün | ≥5 gün | ≥7 gün |
+|---|---|---|---|---|---|---|---|
+| tüm kollar | 0.42g | 2.04g | 2.67g | **6.12g** | yılda 6.8 | yılda 1.5 | **hiç** |
+| BB'siz (hafta içi) | 0.38g | 2.29g | 3.01g | **8.21g** | yılda 11.4 | yılda 3.7 | yılda 1.2 |
+| yalnız donchian | 0.50g | 3.17g | 4.67g | **15.50g** | yılda 23 | yılda 13 | yılda 4.6 |
+
+**Hafta içi doğru taban ORTADAKİ satır** (BB yalnız hafta sonu çalışır). 4-5 günlük
+sessizlik ≈ 97.4-99.2 yüzdelik: **seyrek ama yılda ~11 kez oluyor. NORMAL.**
+
+### ÇÜRÜYEN HİPOTEZ 1: "sert hareket kanalı genişletir, bot susar"
+Benim hipotezimdi. **YANLIŞ.** Girişten önceki 7 günlük |BTC getirisi| ile sonraki
+sessizlik arasında Spearman **ρ = −0.0018 (p = 0.94, n=1578)**. Kuşak tablosu TERS
+yönü gösteriyor: en sert kuşak (|BTC 7g| %12.4) medyan boşluk **0.33g**, en sakin
+kuşak (%0.6) **0.46g**. Sert hareket botu susturmuyor, hızlandırıyor.
+
+### ÇÜRÜYEN HİPOTEZ 2: "sessizlik kötüye işarettir"
+Boşluk ≥4 gün olduktan SONRAKİ işlem ort **+0.497R**, diğerleri +0.234R (z=+0.80).
+Anlamlı değil ama işaret POZİTİF — sessizliği uyarı saymak için sebep yok.
+
+### CANLI LOGUN AÇIKLAMASI
+`Donchian skipped: SOL already holds a position` **arıza değil**. Donchian coinleri
+zamanın **%32.2**'sinde açık pozisyonla kilitli (ort tutma 2.4-2.8 gün, max_hold
+120 saat). Rastgele bir donchian sinyalinin ~1/3'ü bu yüzden elenir. MAX_POSITIONS=7
+ise zamanın yalnız **%3.3**'ünde dolu (3.24 yılda 24 sinyal kaybı, %1.5).
+
+### max_hold DENETLENDİ — HATA YOK
+`_enforce_max_hold` primary_tf=1h sayıyor ama execution.py:839 donchian'a açıkça
+`max_hold = 120` (saat) yazıyor = backtest'in 30×4s'i. squeeze/BB varsayılan 48 =
+backtest 48. **Üçü de birebir.** Cooldown per-(sleeve:coin) 4 saat — tüm botu
+susturamaz.
+
+---
+
+## 4l. YÖNSEL KAPI REDDEDİLDİ (2026-08-27) — `yon_kapi.py` çalıştırıldı
+
+"Aynı rüzgâr ters eserse" sorusu. Araç kendini ankora karşı doğruladı (kapısız =
+1579 / $+1420.66 ✓ birebir).
+
+**ÖNCE BİR TESPİT: mevcut korelasyon kapısı BİR HİÇ.** `_CORRELATED_GROUPS` yalnız
+{BTC, ETH, SOL} ve BTC işlem görmüyor → 2 üyeli kümede "en fazla 2" ASLA bağlamaz.
+Ölçüldü: cap 2/3/4/5'te **kesilen işlem 0**. Ağustos'ta 6 pozisyonun birlikte
+stoplanmasını engelleyecek hiçbir şey yoktu, çünkü kapı kapsam dışıydı.
+
+**Grubu tüm coinlere genişletmek ölçüldü ve REDDEDİLDİ.** Ölçüt drawdown-normalize
+kâr (kâr × maxDD_taban/maxDD_aday) = "aynı acıya katlanarak ne kazanırdık":
+
+| kapsam | cap | işlem | kesilen | kâr | maxDD | en kötü ay | normalize | Δ |
+|---|---|---|---|---|---|---|---|---|
+| TABAN | — | 1579 | — | +1421 | 26.2 | −21.0 | 1421 | — |
+| TÜM coinler | 2 | 917 | 686 | +706 | 22.6 | −16.3 | 816 | **−604** |
+| TÜM coinler | 3 | 1161 | 442 | +1043 | 22.0 | −16.4 | 1239 | −182 |
+| TÜM coinler | 4 | 1333 | 270 | +1213 | 24.0 | −20.0 | 1323 | −98 |
+| TÜM coinler | 5 | 1454 | 149 | +1371 | 26.2 | −21.6 | 1371 | −50 |
+
+**MONOTON.** Kapı ne kadar gevşetilirse o kadar az zarar veriyor; hiçbir ayarda kâra
+dönmüyor. maxDD gerçekten düşüyor (26.2→22.0) ama kâr daha hızlı düşüyor.
+**Mekanizma:** yönsel yığılma TRENDLİ dönemlerde oluşuyor — sistemin para kazandığı
+dönem. Yığılmayı kesmek kârın kaynağını kesiyor. ic_bar'ın "30 dilimin 30'u da
+pozitif" bulgusuyla aynı yere çıkıyor: donchian'ın kesilecek kötü alt kümesi yok.
+
+**KARAR: genişletme YAPILMAYACAK.** "Altı long birlikte stoplanır" riski gerçek ama
+fiyatı faydasından büyük. Kapanan eksen sayısı 23+ → **25+**.
+
 
 ## 5. Riski ne zaman artıracağız
 
