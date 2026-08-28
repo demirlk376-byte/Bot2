@@ -21,3 +21,4 @@ data/*_fut_5m.csv
 data/*_fut_15m.csv
 data/*_fut_1m.csv
 data/*_bnc_*.csv
+.para_ekle_snapshot.json

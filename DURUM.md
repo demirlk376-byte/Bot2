@@ -963,6 +963,59 @@ ccxt'yi doğrudan, pencereli (220 gün) çağırır; `fast_bt.load`/`_save_cache
 hiç girmez, `data/` altına hiçbir şey yazmaz. 4f'deki kaza tekrarlanamaz.
 
 
+---
+
+## 4n. PARA EKLEME (2026-08-27) — `para_ekle.py`, ve KAYIT BİR FRENDİR
+
+Kod okundu, mekanik net:
+
+**Boyut EQUITY'den okunur, her girişte, canlı.** `execution.py:472`
+`sizing_balance = equity` ve equity `fetch_balance({"type":"swap"})` ile MEXC'ten.
+Yani **restart GEREKMEZ**; para vadeli cüzdana düşer düşmez sonraki giriş büyür.
+Açık pozisyonlar etkilenmez (boyut girişte sabitlenir).
+
+**⚠ Para VADELİ cüzdanda olmalı.** Bot yalnız swap cüzdanını okur. Spotta kalırsa
+bot parayı GÖRMEZ.
+
+### RİSK 1 — kaydetmezsen GÜNLÜK ZARAR FRENİ GEVŞER
+`execution.py:238` ve `:473` günlük zarar tabanını
+`_daily_starting_balance + _deposit_flow_since_baseline()` diye kuruyor. Akış
+`deposit.py`'nin yazdığı `total_deposits` meta'sından okunuyor. **Kaydetmezsen**
+taban eski kalır ama equity yükselir:
+
+> taban $278, limit %35 → fren $180.7'de. $200 ekleyip kaydetmezsen equity $478
+> olur, fren HÂLÂ $180.7'de → yeni sermayeye göre **−%62**'ye kadar iner.
+
+Yani `deposit.py` süs muhasebe değil, **frenin parçası**.
+
+### RİSK 2 — SABİT MARJ açıksa para hiçbir şey değiştirmez
+`risk.py:57` `FIXED_MARGIN_USDT > 0` iken boyut `min(bakiye, sabit)`. Varsayılan
+0.0 ve canlıda RISK_SCALE=1.125 kullanıldığına göre muhtemelen kapalı
+(`config.py:522` ikisi birlikteyken uyarı basıyor) ama **VPS'te teyit edilmeli** —
+araç A bölümünde söylüyor.
+
+### RİSK 3 — oran aynı, DOLAR büyür
+Ankor maxDD %26.2, en kötü ay %21.0. Bunlar ORAN; para eklemek değiştirmez.
+$278'de −%26.2 = $73; $478'de = $125. Ağustos'taki −%26.8 $478'de $128 olurdu.
+
+### `para_ekle.py` — iki adımlı, doğrulamalı
+```
+venv/bin/python para_ekle.py 200 --once     # durum + ne değişecek + uyarılar
+#  ... MEXC'te SPOT → VADELİ transfer ...
+venv/bin/python para_ekle.py 200 --sonra    # borsayı DOĞRULAR, sonra deftere yazar
+```
+`--sonra` equity artışını beklenenle karşılaştırır; tutmuyorsa **deftere hiçbir şey
+yazmaz** ve sebepleri sayar (para spotta kaldı / transfer oturmadı / tutar yanlış).
+Guard'lar: paper modu, `--once`/`--sonra` tutar uyuşmazlığı, ve **çift kayıt** —
+arada `deposit.py` elle çalıştırıldıysa `total_deposits` değişmiş olur ve araç
+durur. Bu sonuncusu tam da "ne ile başladık" sorusunun üç farklı cevap vermesine
+yol açan hata sınıfını engelliyor (bkz. 4i ⚠ HÂLÂ AÇIK: MUHASEBE).
+
+### YAN FAYDA
+Daha büyük sermaye = min-notional yüzünden reddedilen sinyal azalır → canlı
+işlem sayısı ankora YAKLAŞIR. Bu, canlı-ankor sapmasını küçültür.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
