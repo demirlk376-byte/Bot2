@@ -1358,6 +1358,18 @@ async def restore_state() -> int:
     return restored
 
 
+async def _yatirilan() -> float:
+    """Toplam yatırılan sermaye = ilk bakiye + deposit.py/para_ekle.py ile
+    kaydedilen net akış. Kâr = equity − bu. Kaydedilmemiş bir transfer bu sayıyı
+    OLDUĞU YERDE bırakır ve farkı sahte "kâr" gibi gösterir — 28 Ağustos'ta
+    tam olarak bu oldu. Kayıt için: para_ekle.py <tutar> --once/--sonra"""
+    try:
+        return (await db.get_meta_float("inception_balance", 0.0)
+                + await db.get_meta_float("total_deposits", 0.0))
+    except Exception:
+        return 0.0
+
+
 async def heartbeat_loop() -> None:
     """Periodic liveness signal: writes a timestamp file (for an external
     healthcheck) and, every few hours, a Telegram 'alive' message so a silent
@@ -1398,13 +1410,24 @@ async def heartbeat_loop() -> None:
         if (telegram or ntfy) and since_tg >= tg_every:
             since_tg = 0
             try:
-                bal = await exchange.get_balance()
+                # ⚠ ESKİ HATA: burada get_balance() vardı = SERBEST bakiye
+                # (kilitli marj HARİÇ). Pozisyon açıkken heartbeat /status'tan
+                # DÜŞÜK bir sayı basıyor ve ikisi de "bakiye" diye etiketleniyordu
+                # (28 Ağustos: 03:00 özet $283.29, 03:20 heartbeat $266.42, arada
+                # işlem yok). Artık EQUITY — borsanın kendi rakamı, /status ve
+                # günlük zarar freniyle AYNI ölçü.
                 n_open = portfolio.get_open_position_count()
                 upnl = portfolio.get_total_unrealized_pnl()
-                msg = (
-                    f"Bot çalışıyor · bakiye ${bal:,.2f} · açık {n_open} · "
-                    f"gerçekleşmemiş ${upnl:+.2f}"
-                )
+                eq = await executor.current_equity()
+                if eq is None:
+                    # Okunamadıysa YANLIŞ sayı basma — "bilmiyorum" de.
+                    msg = (f"Bot çalışıyor · ⚠ equity OKUNAMADI (borsa yanıtı yok) · "
+                           f"açık {n_open} · gerçekleşmemiş ${upnl:+.2f}")
+                else:
+                    inv = await _yatirilan()
+                    msg = (f"Bot çalışıyor · equity ${eq:,.2f} · yatırılan "
+                           f"${inv:,.2f} · kâr ${eq - inv:+,.2f} · açık {n_open} · "
+                           f"gerçekleşmemiş ${upnl:+.2f}")
                 if telegram:
                     await telegram.send_alert(msg, "INFO")
                 if ntfy:

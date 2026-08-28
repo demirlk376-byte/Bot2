@@ -154,6 +154,40 @@ class TelegramNotifier:
         deposits = await self._db.get_meta_float("total_deposits", 0.0)
         return inception + deposits
 
+    async def _tutarlilik(self, equity: float, invested: float, upnl: float) -> str:
+        """İKİ BAĞIMSIZ KAYNAK KARŞILAŞTIRMASI — 28 Ağustos hatasının panzehiri.
+
+        İddia edilen kâr  = equity − yatırılan sermaye        (borsa + meta)
+        Defterdeki kâr    = Σ kapanan işlem PnL + açık uPnL   (trades tablosu)
+
+        İkisi uyuşmuyorsa en olası sebep KAYDEDİLMEMİŞ bir para giriş/çıkışıdır:
+        para gelir, `total_deposits` değişmez, fark doğrudan "kâr" diye görünür.
+        O gün tam bu oldu — $69.76'lık bakiye artışının tamamı kâra yazıldı.
+
+        Boş string döner (uyarı yok) ya da tek satırlık uyarı. DB okunamazsa
+        SESSİZ kalır: yanlış alarm, sessizlikten daha kötü.
+        """
+        if self._db is None:
+            return ""
+        try:
+            perf = await self._db.get_performance_summary(
+                is_paper=self._app_config.exchange.paper_mode)
+            defter = float(perf.total_pnl_usdt) + upnl
+        except Exception:
+            return ""
+        iddia = equity - invested
+        fark = iddia - defter
+        # Eşik: ücret/fonlama kayması küçüktür; $5 ve sermayenin %2'sinin büyüğü.
+        esik = max(5.0, abs(invested) * 0.02)
+        if abs(fark) <= esik:
+            return ""
+        yon = "GİRİŞ" if fark > 0 else "ÇIKIŞ"
+        return (f"\n⚠️ <b>Defter uyuşmuyor</b> (fark <code>${fark:+.2f}</code>)\n"
+                f"Defterdeki işlem kârı <code>${defter:+.2f}</code> ama "
+                f"equity−yatırılan <code>${iddia:+.2f}</code> diyor.\n"
+                f"En olası sebep: KAYDEDİLMEMİŞ para {yon}. Düzelt:\n"
+                f"<code>para_ekle.py --tespit</code>")
+
     async def _equity_and_upnl(self) -> tuple[float, float]:
         """Return (equity, unrealized_pnl) with FRESH per-symbol prices.
 
@@ -175,6 +209,19 @@ class TelegramNotifier:
                 upnl += p.direction * (price - p.entry_price) * p.quantity
                 locked += p.entry_price * p.quantity / lev
         equity = free + locked + upnl
+        # BORSA GERÇEĞİ ÖNCE. Yukarıdaki yeniden-kurulum (free+locked+uPnL) bizim
+        # TAHMİNİMİZ; kilitli marjı entry_price/leverage ile yaklaşıklıyor ve
+        # borsanın kendi equity'sinden sapabilir. execution.current_equity() zaten
+        # get_equity()'i tercih ediyor — /status ondan FARKLI bir sayı gösterirse
+        # aynı anda iki "bakiye" ortaya çıkar. Bu tam da 28 Ağustos'ta olan şeydi.
+        # Borsa okunabiliyorsa onun rakamı kullanılır; okunamazsa tahmine düşer.
+        try:
+            if hasattr(self._exchange, "get_equity"):
+                eq_borsa = await self._exchange.get_equity()
+                if eq_borsa and eq_borsa > 0:
+                    equity = eq_borsa
+        except Exception:
+            pass
         # Prefer the exchange's TRUE account equity (cash + locked margin + uPnL).
         # The reconstruction above misses margin locked in positions the portfolio
         # isn't tracking (e.g. orphaned positions still open on MEXC after a failed
@@ -225,11 +272,16 @@ class TelegramNotifier:
             paper = self._app_config.exchange.paper_mode
             text = (
                 f"<b>Durum</b> ({'PAPER' if paper else 'CANLI'})\n"
-                f"Bakiye: <code>${equity:,.2f}</code>\n"
+                f"Equity: <code>${equity:,.2f}</code>\n"
+                # "Gerçek kâr" tek başına yanıltıcıydı: kaydedilmemiş bir para
+                # yatırma doğrudan kâra yazılıyor ve fark GÖRÜNMÜYORDU. Yatırılan
+                # sermaye de basılırsa hata anında gözle yakalanır.
+                f"Yatırılan sermaye: <code>${invested:,.2f}</code>\n"
                 f"Gerçek kâr: <code>${true_pnl:+.2f}</code> ({ret:+.1f}%)\n"
                 f"Açık pozisyon: <code>{n_open}</code>\n"
                 f"Gerçekleşmemiş PnL: <code>${upnl:+.2f}</code>\n"
                 f"Trade durumu: <code>{'DURDURULDU' if halted else 'AKTİF'}</code>"
+                + await self._tutarlilik(equity, invested, upnl)
             )
         except Exception as e:
             text = f"status hatası: {e}"
@@ -268,9 +320,10 @@ class TelegramNotifier:
             true_pnl = equity - invested
             ret = (true_pnl / invested * 100) if invested > 0 else 0.0
             await self._reply(update,
-                f"Bakiye: <code>${equity:,.2f}</code>\n"
-                f"Yatırılan: <code>${invested:,.2f}</code>\n"
-                f"Gerçek kâr: <code>${true_pnl:+.2f}</code> ({ret:+.2f}%)")
+                f"Equity: <code>${equity:,.2f}</code>\n"
+                f"Yatırılan sermaye: <code>${invested:,.2f}</code>\n"
+                f"Gerçek kâr: <code>${true_pnl:+.2f}</code> ({ret:+.2f}%)"
+                + await self._tutarlilik(equity, invested, _upnl))
         except Exception as e:
             await self._reply(update, f"balance hatası: {e}")
 
@@ -539,11 +592,15 @@ class TelegramNotifier:
         balance: float,
     ) -> None:
         win_rate = winning_trades / total_trades if total_trades > 0 else 0.0
+        # ⚠ ETİKET DÜZELTİLDİ: main.py buraya start_equity gönderiyor — YENİ GÜNÜN
+        # BAŞLANGIÇ equity'si, "güncel bakiye" DEĞİL. "Balance" diye etiketlenince
+        # heartbeat'in serbest bakiyesiyle ve /status'un equity'siyle üç farklı
+        # sayı aynı isimle görünüyordu (28 Ağustos).
         text = (
-            f"<b>Daily Summary</b>\n"
-            f"Trades: <code>{total_trades}</code> | Win Rate: <code>{win_rate:.0%}</code>\n"
-            f"Daily PnL: <code>${total_pnl:+.2f}</code>\n"
-            f"Balance: <code>${balance:,.2f}</code>"
+            f"<b>Günlük Özet</b>\n"
+            f"İşlem: <code>{total_trades}</code> | Kazanma: <code>{win_rate:.0%}</code>\n"
+            f"Günlük PnL: <code>${total_pnl:+.2f}</code>\n"
+            f"Yeni günün başlangıç equity'si: <code>${balance:,.2f}</code>"
         )
         await self._send(text)
 

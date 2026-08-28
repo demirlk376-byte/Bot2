@@ -21,6 +21,10 @@ Kullanım (VPS'te, /opt/bot2):
     venv/bin/python para_ekle.py 200 --sonra   # borsayı doğrular, SONRA deftere yazar
 
 Çekmek için tutarı negatif ver:  para_ekle.py -- -50 --once
+
+GEÇMİŞTE kaydedilmemiş bir transfer varsa (para zaten geldi, defter bilmiyor):
+    venv/bin/python para_ekle.py --tespit         # borsa geçmişi vs defter
+    venv/bin/python para_ekle.py 65 --kaydet      # tespit ettiğin tutarı işle
 Araç emir GÖNDERMEZ; yalnız okur ve trades.db'ye muhasebe kaydı yazar.
 """
 from __future__ import annotations
@@ -29,7 +33,7 @@ import asyncio
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from config import load_config
 from database import Database
@@ -217,12 +221,152 @@ async def sonra(tutar):
     print(f"  ✓ Restart GEREKMEZ. Panel birkaç saniyede güncellenir.")
 
 
+async def tespit(gun: int = 89):
+    """Borsanın transfer geçmişini oku, defterle karşılaştır, EKSİĞİ göster.
+
+    28 Ağustos'ta olan şuydu: para vadeli cüzdana geldi, `total_deposits`
+    değişmedi, fark doğrudan "Gerçek kâr" diye göründü ($82.64 → $152.40'ın
+    tamamı bakiye artışıydı). Bu mod o farkı borsadan bulur.
+
+    ⚠ ÇİFT SAYMA TUZAĞI: köken bakiyesi (`inception_balance`) ZATEN bir
+    transferin sonucudur. Bot başlamadan ÖNCEKİ transferler onun İÇİNDE — onları
+    ayrıca eklemek sermayeyi şişirir ve kârı olduğundan DÜŞÜK gösterir. O yüzden
+    bu mod OTOMATİK KAYIT YAPMAZ: tarihli döküm basar, kararı sen verirsin.
+    """
+    cfg = load_config()
+    if cfg.exchange.paper_mode:
+        raise SystemExit("PAPER modda — .env LIVE olmalı.")
+    lx = LiveExchange(cfg.exchange.api_key, cfg.exchange.api_secret,
+                      leverage=cfg.exchange.leverage,
+                      margin_mode=cfg.exchange.margin_mode)
+    try:
+        await lx.initialize(cfg.exchange.symbols[0])
+    except Exception as e:
+        print(f"  (initialize uyarısı: {e})")
+    ex = lx._exchange                      # ham ccxt istemcisi
+    eq = await lx.get_equity()
+
+    db = Database(cfg.db_path); await db.initialize()
+    inc = await db.get_meta_float("inception_balance", 0.0)
+    dep = await db.get_meta_float("total_deposits", 0.0)
+    try:
+        perf = await db.get_performance_summary(is_paper=False)
+        defter_pnl = float(perf.total_pnl_usdt)
+    except Exception:
+        defter_pnl = None
+    # botun ilk işlemi = "köken"den sonrasını ayırmak için referans
+    ilk = None
+    try:
+        import sqlite3
+        con = sqlite3.connect(cfg.db_path)
+        r = con.execute("SELECT MIN(entry_time) FROM trades WHERE is_paper=0").fetchone()
+        con.close()
+        ilk = r[0] if r and r[0] else None
+    except Exception:
+        pass
+    await db.close()
+
+    since = int((datetime.now(timezone.utc) - timedelta(days=gun)).timestamp() * 1000)
+    print("=" * 74)
+    print(f"TESPİT — borsa transfer geçmişi (son {gun} gün) vs defter")
+    print("=" * 74)
+    print(f"  Borsa equity          : ${eq:,.2f}")
+    print(f"  Defter: köken bakiye  : ${inc:,.2f}")
+    print(f"  Defter: kaydedilen ek : ${dep:,.2f}")
+    print(f"  Defter: yatırılan TOP : ${inc+dep:,.2f}")
+    print(f"  → 'Gerçek kâr' şu an  : ${eq-inc-dep:+,.2f}")
+    if defter_pnl is not None:
+        print(f"  → İşlem defterindeki kâr (kapanan işlemler): ${defter_pnl:+,.2f}")
+        print(f"     FARK: ${(eq-inc-dep) - defter_pnl:+,.2f}  "
+              f"← bu fark kadar KAYIT EKSİĞİ olabilir")
+    if ilk:
+        print(f"  Botun ilk gerçek işlemi: {ilk[:16]}")
+
+    print(f"\n  --- BORSADAN TRANSFER KAYITLARI ---")
+    kalem = []
+    try:
+        r = ex.fetch_transfers("USDT", since, 200,
+                               {"fromAccountType": "SPOT", "toAccountType": "FUTURES"})
+    except Exception as e:
+        print(f"  ⛔ fetch_transfers hatası: {e}")
+        r = []
+    for x in (r or []):
+        if not isinstance(x, dict) or (x.get("currency") or "USDT") != "USDT":
+            continue
+        try:
+            a = float(x.get("amount") or 0.0)
+        except (TypeError, ValueError):
+            continue
+        ts = x.get("timestamp")
+        t = (datetime.fromtimestamp(ts / 1000, timezone.utc).strftime("%Y-%m-%d %H:%M")
+             if ts else "?")
+        kalem.append((t, a, (x.get("type") or x.get("status") or "")))
+    if not kalem:
+        print("  (kayıt yok — MEXC 90 günle sınırlı, ya da transfer başka bir")
+        print("   uç noktadan görünüyor. Aşağıdaki elle kayıt yolunu kullan.)")
+    for t, a, ty in sorted(kalem):
+        isaret = "← köken ÖNCESİ, muhtemelen inception içinde" if (
+            ilk and t < ilk[:16]) else ""
+        print(f"    {t}  ${a:+10,.2f}  {ty:<10s} {isaret}")
+    if kalem:
+        sonrasi = [a for t, a, _ in kalem if not (ilk and t < ilk[:16])]
+        print(f"\n    köken SONRASI transfer toplamı: ${sum(sonrasi):+,.2f}")
+        print(f"    deftere kaydedilmiş           : ${dep:+,.2f}")
+        print(f"    KAYIT EKSİĞİ                  : ${sum(sonrasi)-dep:+,.2f}")
+
+    print(f"\n{'─'*74}\nNE YAPMALI\n{'─'*74}")
+    print("  Bu mod OTOMATİK KAYIT YAPMAZ — köken öncesi bir transferi eklemek")
+    print("  sermayeyi çift sayar. Yukarıdaki dökümden EKSİK tutarı seç ve:")
+    print("     venv/bin/python para_ekle.py <tutar> --kaydet")
+    print("  Emin değilsen tutarı MEXC uygulamasındaki transfer geçmişinden teyit et.")
+    try:
+        await lx.close()
+    except Exception:
+        pass
+
+
+async def kaydet(tutar):
+    """Geçmişte YAPILMIŞ bir transferi deftere işler (borsa doğrulaması YOK —
+    para zaten geldiği için --once/--sonra karşılaştırması yapılamaz).
+    Yeni bir transfer için bunu DEĞİL, --once/--sonra akışını kullan."""
+    cfg = load_config()
+    if cfg.exchange.paper_mode:
+        raise SystemExit("PAPER modda — .env LIVE olmalı.")
+    lx = LiveExchange(cfg.exchange.api_key, cfg.exchange.api_secret,
+                      leverage=cfg.exchange.leverage,
+                      margin_mode=cfg.exchange.margin_mode)
+    try:
+        await lx.initialize(cfg.exchange.symbols[0])
+    except Exception:
+        pass
+    eq = await lx.get_equity()
+    try:
+        await lx.close()
+    except Exception:
+        pass
+    db = Database(cfg.db_path); await db.initialize()
+    inc = await db.get_meta_float("inception_balance", 0.0)
+    onceki = await db.get_meta_float("total_deposits", 0.0)
+    yeni = await db.add_deposit(tutar)
+    await db.close()
+    print(f"  ✓ ${tutar:+,.2f} deftere işlendi (geçmiş transfer).")
+    print(f"    kaydedilen ek : ${onceki:,.2f} → ${yeni:,.2f}")
+    print(f"    yatırılan TOP : ${inc+yeni:,.2f}")
+    if eq > 0:
+        print(f"    Gerçek kâr    : ${eq-inc-yeni:+,.2f}  (equity ${eq:,.2f})")
+    print(f"  ✓ Günlük zarar freni de bu akışı sayar (execution.py:238/473).")
+    print(f"  Yanlış girdiysen tersini işle:  para_ekle.py -- {-tutar:g} --kaydet")
+
+
 def main():
     args = [a for a in sys.argv[1:] if a != "--"]
     mod = None
-    for m in ("--once", "--sonra"):
+    for m in ("--once", "--sonra", "--tespit", "--kaydet"):
         if m in args:
             mod = m; args.remove(m)
+    if mod == "--tespit":
+        gun = int(args[0]) if args else 89
+        return asyncio.run(tespit(gun))
     if not args or mod is None:
         raise SystemExit(__doc__)
     try:
@@ -231,7 +375,7 @@ def main():
         raise SystemExit(f"Geçersiz tutar: {args[0]!r}")
     if tutar == 0:
         raise SystemExit("Tutar 0 olamaz.")
-    asyncio.run(once(tutar) if mod == "--once" else sonra(tutar))
+    asyncio.run({"--once": once, "--sonra": sonra, "--kaydet": kaydet}[mod](tutar))
 
 
 if __name__ == "__main__":

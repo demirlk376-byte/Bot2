@@ -16,6 +16,7 @@ TESTS = [
     "tests/test_data_feed.py",   # mum-kapanış tespiti (forming mumda tetiklenmez)
     "tests/test_multicoin.py",   # çoklu coin: coin başına fiyat + izole SL/TP
     "tests/test_maker_routing.py",  # giriş emri yönlendirmesi + bayrak KAPALIYKEN aynılık
+    "tests/test_rapor_tutarlilik.py",  # Telegram raporu: equity vs serbest bakiye, kaydedilmemiş para
     "mtf.py",                    # çok-zaman-dilimi hizalama: look-ahead SERT kilit
     "edge_lab.py",               # yeni strateji iskeleti: swing onayı, maliyet, kötümser çıkış
 ]

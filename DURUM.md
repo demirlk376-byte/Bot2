@@ -1016,6 +1016,64 @@ Daha büyük sermaye = min-notional yüzünden reddedilen sinyal azalır → can
 işlem sayısı ankora YAKLAŞIR. Bu, canlı-ankor sapmasını küçültür.
 
 
+---
+
+## 4o. TELEGRAM RAPORU YANLIŞ SAYI GÖSTERİYORDU (2026-08-28) — DÜZELTİLDİ
+
+Kullanıcı para ekledi, rapor bunun TAMAMINI "Gerçek kâr" diye gösterdi:
+11:27 kâr $+82.64 → 19:10 kâr $+152.40. Artış **$69.76**; bakiye artışı da
+**tam $69.76**. Yani bakiyeye giren her kuruş kâra yazıldı.
+
+Aynı gün **üç farklı sayı "bakiye" etiketiyle** görünüyordu, arada tek işlem yok:
+
+| saat | mesaj | sayı | ASLINDA NE |
+|---|---|---|---|
+| 03:00 | Daily Summary "Balance" | $283.29 | **yeni günün BAŞLANGIÇ equity'si** |
+| 03:20 | heartbeat "bakiye" | $266.42 | **SERBEST bakiye** (kilitli marj hariç) |
+| 11:27 | /status "Bakiye" | $280.51 | equity |
+
+### DÖRT DÜZELTME (hepsi testli)
+
+**1. heartbeat SERBEST bakiye okuyordu** — `main.py:1401` `get_balance()`.
+Pozisyon açıkken kilitli marjı hariç tutuyor, yani /status'tan hep DÜŞÜK.
+Artık `executor.current_equity()`; okunamazsa yanlış sayı basmak yerine
+"⚠ equity OKUNAMADI" diyor. Ayrıca yatırılan sermaye + kâr da basılıyor.
+
+**2. /status equity'i YENİDEN KURUYORDU** — `free + locked + uPnL`, kilitli marjı
+`entry_price/leverage` ile YAKLAŞIKLAYARAK. Borsanın kendi equity'sinden sapabilir
+ve günlük zarar freninin ölçüsünden farklı bir sayı gösterir. Artık önce
+`get_equity()` (borsa gerçeği), okunamazsa yeniden kurulum yedek.
+
+**3. Yatırılan sermaye GÖRÜNMÜYORDU.** /status artık `Yatırılan sermaye` satırını
+da basıyor — eksik kayıt anında gözle yakalanır. Etiketler `Bakiye` → `Equity`.
+
+**4. Günlük özetin "Balance"ı yanlış etiketti** — main.py oraya `start_equity`
+gönderiyor. Artık `Yeni günün başlangıç equity'si` (telegram + ntfy).
+
+### ASIL PANZEHİR: `_tutarlilik()` — İKİ BAĞIMSIZ KAYNAK
+/status ve /balance artık iki kaynağı karşılaştırıyor:
+```
+iddia  = equity − yatırılan sermaye          (borsa + meta)
+defter = Σ kapanan işlem PnL + açık uPnL     (trades tablosu)
+```
+Fark eşiği (max($5, sermayenin %2'si)) aşarsa rapor **kendi kendini suçluyor**:
+"⚠ Defter uyuşmuyor — en olası sebep KAYDEDİLMEMİŞ para GİRİŞ/ÇIKIŞ". DB
+okunamazsa SESSİZ kalır (yanlış alarm, sessizlikten kötü).
+
+### `para_ekle.py --tespit` / `--kaydet`
+Geçmişte kaydedilmemiş transfer için: `--tespit` MEXC transfer geçmişini
+tarihli döker, deftere göre eksiği hesaplar. **Otomatik kayıt YAPMAZ** — köken
+bakiyesinden ÖNCEKİ transferler `inception_balance`'ın İÇİNDE, ayrıca eklemek
+sermayeyi çift sayar (4i'deki üç-farklı-cevap sorununun aynısı). Tutarı sen
+seçip `--kaydet` ile işliyorsun.
+
+### TEST: `tests/test_rapor_tutarlilik.py` — 8 iddia, run_tests.py'ye eklendi
+equity borsadan mı okunuyor · get_equity yokken yedek yol · kaydedilmemiş $70
+yakalanıyor mu · doğru kayıtta yanlış alarm yok · $2 sapma alarm üretmiyor ·
+DB patlarsa sessiz · heartbeat artık `get_balance()` çağırmıyor · günlük özet
+etiketi düzeldi. **7 dosya geçiyor.**
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).

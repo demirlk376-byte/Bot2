@@ -154,7 +154,8 @@ class NtfyNotifier:
         body = (
             f"Trade: {total_trades} | WR: {win_rate:.0%}\n"
             f"Günlük PnL: ${total_pnl:+.2f}\n"
-            f"Bakiye: ${balance:,.2f}"
+            # main.py start_equity gönderiyor — "bakiye" değil, GÜNÜN BAŞLANGICI.
+            f"Yeni günün başlangıç equity'si: ${balance:,.2f}"
         )
         await self._post(title="Günlük Özet", message=body, tags=tag, priority=3)
 
