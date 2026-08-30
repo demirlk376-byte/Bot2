@@ -181,8 +181,23 @@ def calistir(ham, cap, kademeler, guvenlik, likidasyon_uygula: bool):
         kullanim += marjin; tepe = max(tepe, kullanim)
         ctr += 1
         heapq.heappush(koltuk, (x, ctr, marjin))
-        # ── LİKİDASYON: aleyhte hareket likidasyon mesafesini geçti mi?
-        patladi = likidasyon_uygula and (mae >= lik_hareket(L))
+        # ── LİKİDASYON — İKİ ŞART BİRDEN
+        #
+        # ⚠ İLK SÜRÜM YANLIŞTI ve $180'lık SAHTE bir "gizli maliyet" üretti.
+        # Yalnızca `mae >= lik_hareket(L)` diyordu. Ama MAE, stopun tetiklendiği
+        # BARIN TAMAMINI kapsıyor: stopu %1.9'da olan bir işlemde bar dibi
+        # %10.6'ya inerse MAE %10.6 çıkıyor ve araç onu "likide oldu" sayıyordu.
+        # GERÇEKTE stop borsada duran bir emir — fiyat %1.9'a değince ORADA
+        # dolar, %9.5'e hiç varmaz. Likidasyon stoptan ÖNCE olamaz.
+        #
+        # Likidasyon ancak likidasyon seviyesi stoptan DAHA YAKIN ise öne geçer:
+        #   şart 1: slp >= lik_hareket(L)   (stop, likidasyonun ÖTESİNDE)
+        #   şart 2: mae >= lik_hareket(L)   (fiyat oraya gerçekten değdi)
+        # Yani "İHL" olmayan bir işlem, bar dibi ne kadar derin olursa olsun,
+        # likide OLAMAZ.
+        patladi = (likidasyon_uygula
+                   and slp >= lik_hareket(L)
+                   and mae >= lik_hareket(L))
         if patladi:
             lik += 1
             pnl = -marjin                     # isolated: tüm marjin gider
