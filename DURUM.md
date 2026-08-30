@@ -1123,6 +1123,66 @@ kaldıracı DÜŞÜRMEK. Ölçülmedi. **Backlog: "geniş stoplu %2.3'te kaldır
 indirmek ne kaybettirir?"** — kâr etkisi muhtemelen küçük, kuyruk riski gerçek.
 
 
+---
+
+## 4r. GENİŞ STOPLU %2.3 ÖLÇÜLDÜ (2026-08-29) — `genis_stop.py`, MALİYET ~SIFIR
+
+4p'de "İHL=36 tabanda var, bugün canlıda" diye bayrak kaldırılmıştı. Ölçüldü.
+Araç önce likidasyon KAPALIYKEN ankora karşı kendini doğruluyor
+(1579 / $+1420.66 ✓ birebir), tutmazsa hüküm basmadan duruyor.
+
+### CEVAP: 3.24 yılda **$+1.14** — yani sıfır, hatta LEHİMİZE
+
+| | işlem | toplam$ | maxDD | en kötü ay |
+|---|---|---|---|---|
+| ANKOR (likidasyona hiç bakmıyor) | 1579 | +1421 | 26.2 | −21.0 |
+| GERÇEK (likidasyon uygulanmış) | 1579 | **+1422** | 26.1 | −21.0 |
+
+36 işlemin **25'i** gerçekten likidasyon seviyesine değdi. Ve likide olmak,
+stopun çalışmasından **daha ucuz** çıktı.
+
+### MEKANİZMA — risk tabanlı boyutlandırma sorunu ZATEN çözmüş
+`nom = min(RISKF×bakiye/slp, CAP×bakiye)`. Stop %11 olunca nominal
+$0.0225×190/0.11 = **$38.9**, 10x'te marjin **$3.89**.
+- likidasyon (%9.5'te): marjin gider → **−$3.89**
+- stop (%11'de) çalışsaydı: −1R = 0.0225×190 = **−$4.28**
+
+Likidasyon zararı stoptan ÖNCE kapatıyor. Geniş stop → küçük pozisyon → küçük
+marjin. Tehlike kulağa büyük geliyordu, dolar cinsinden yok.
+
+| çözüm | LİK | Δ$ | maxDD | RED |
+|---|---|---|---|---|
+| taban (10x sabit) | 25 | — | 26.1 | 0 |
+| (a) stop≥%9.5 ise alma | 0 | +24 | 24.8 | 0 |
+| (b) kaldıraç kademesi (her varyant) | **0** | **−1** | 26.2 | **0** |
+
+(a) barajın altında (+24 < +28) ama maxDD'yi 1.3 puan düşürüyor.
+(b) likidasyonu tamamen bitiriyor ve **$1'e mal oluyor**, hiç RED üretmeden.
+
+### KARAR: DEĞİŞİKLİK YAPILMIYOR
+$1'lik fayda için işlem-bazında kaldıraç anahtarlama eklemek, MEXC'in açık
+pozisyonda `set_leverage`'ı reddetme riskini karşılamıyor. **4p'deki bayrak
+YANLIŞ ALARMDI** — kayda geçti, bir daha kovalanmayacak.
+
+### ⚠ AMA BU ZARARSIZLIK BİR AYARA BAĞLI — KORUNMALI
+Zararsızlığın tek sebebi boyutun RİSK tabanlı olması. `FIXED_MARGIN_USDT > 0`
+yapılırsa (risk.py:57) boyut `min(bakiye, sabit) × kaldıraç` olur — stop
+mesafesinden BAĞIMSIZ. O zaman geniş stoplu işlem TAM BOY açılır ve likidasyon
+sabit marjinin tamamını götürür. **Değişmez kural: FIXED_MARGIN_USDT = 0.**
+Ayrıca `MARGIN_MODE=isolated` olmalı; cross'ta likidasyon hesabın tamamını
+tehdit eder (bu ölçüm isolated varsayar).
+
+### ARAÇ İKİ KEZ KENDİNİ ELE VERDİ
+1. İlk sürüm `mae >= likidasyon` diyordu ve **84 sahte likidasyon** ile
+   **−$179.63'lük uydurma "gizli maliyet"** üretti. Çıktının kendisi ele verdi:
+   stopu **%1.9** olan bir satır "likide oldu" yazıyordu — imkânsız, çünkü stop
+   borsada duran bir emir, fiyat %1.9'a değince orada dolar. MAE stopun
+   tetiklendiği BARIN TAMAMINI kapsadığı için o barın dibi likidasyonu geçiyor
+   ve sahte sayılıyordu. Doğru kural İKİ ŞART: `slp >= lik` VE `mae >= lik`.
+2. Tip hatası (giriş int ns, çıkış Timestamp) ve f-string tırnak hatası —
+   ikisi de gürültülü çöktü, sessiz yanlış sonuç vermedi.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
