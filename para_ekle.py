@@ -225,8 +225,8 @@ async def tespit(gun: int = 89):
     """Borsanın transfer geçmişini oku, defterle karşılaştır, EKSİĞİ göster.
 
     28 Ağustos'ta olan şuydu: para vadeli cüzdana geldi, `total_deposits`
-    değişmedi, fark doğrudan "Gerçek kâr" diye göründü ($82.64 → $152.40'ın
-    tamamı bakiye artışıydı). Bu mod o farkı borsadan bulur.
+    değişmedi, fark doğrudan "Gerçek kâr" diye göründü. Bu mod o farkı
+    borsadan arar.
 
     ⚠ ÇİFT SAYMA TUZAĞI: köken bakiyesi (`inception_balance`) ZATEN bir
     transferin sonucudur. Bot başlamadan ÖNCEKİ transferler onun İÇİNDE — onları
@@ -243,7 +243,19 @@ async def tespit(gun: int = 89):
         await lx.initialize(cfg.exchange.symbols[0])
     except Exception as e:
         print(f"  (initialize uyarısı: {e})")
-    ex = lx._exchange                      # ham ccxt istemcisi
+    try:
+        await _tespit_govde(lx, cfg, gun)
+    finally:
+        # Çökse de bağlantı kapansın — ilk sürüm çökünce "Unclosed connector"
+        # bırakıyordu ve ccxt "explicit .close()" uyarısı basıyordu.
+        try:
+            await lx.close()
+        except Exception:
+            pass
+
+
+async def _tespit_govde(lx, cfg, gun: int):
+    ex = lx._exchange                      # ham ccxt istemcisi (ASENKRON!)
     eq = await lx.get_equity()
 
     db = Database(cfg.db_path); await db.initialize()
@@ -254,7 +266,6 @@ async def tespit(gun: int = 89):
         defter_pnl = float(perf.total_pnl_usdt)
     except Exception:
         defter_pnl = None
-    # botun ilk işlemi = "köken"den sonrasını ayırmak için referans
     ilk = None
     try:
         import sqlite3
@@ -275,54 +286,107 @@ async def tespit(gun: int = 89):
     print(f"  Defter: kaydedilen ek : ${dep:,.2f}")
     print(f"  Defter: yatırılan TOP : ${inc+dep:,.2f}")
     print(f"  → 'Gerçek kâr' şu an  : ${eq-inc-dep:+,.2f}")
+
     if defter_pnl is not None:
-        print(f"  → İşlem defterindeki kâr (kapanan işlemler): ${defter_pnl:+,.2f}")
-        print(f"     FARK: ${(eq-inc-dep) - defter_pnl:+,.2f}  "
-              f"← bu fark kadar KAYIT EKSİĞİ olabilir")
+        # AÇIK pozisyonların uPnL'i de defterin parçası — ilk sürüm bunu
+        # SAYMIYORDU ve farkı olduğundan BÜYÜK gösteriyordu.
+        upnl = 0.0
+        try:
+            for sym in cfg.exchange.symbols:
+                pz = await lx.get_position(sym)
+                if pz:
+                    upnl += float(getattr(pz, "unrealized_pnl", 0.0) or 0.0)
+        except Exception as e:
+            print(f"  (uPnL okunamadı: {e})")
+            upnl = None
+        if upnl is None:
+            print(f"  → İşlem defteri (kapanan): ${defter_pnl:+,.2f}"
+                  f"   ⚠ açık uPnL okunamadı, FARK hesaplanmadı")
+        else:
+            fark = (eq - inc - dep) - (defter_pnl + upnl)
+            print(f"  → İşlem defteri: kapanan ${defter_pnl:+,.2f} + açık uPnL "
+                  f"${upnl:+,.2f} = ${defter_pnl+upnl:+,.2f}")
+            print(f"     FARK: ${fark:+,.2f}")
+            print(f"\n  ⚠ FARK'I HEMEN 'KAYIT EKSİĞİ' SANMA. Bilinen sızıntılar:")
+            print(f"     • ücret: defter 1bp yazıyor, gerçek ~2.5bp/yön (DURUM 2d)")
+            print(f"       → yüzlerce işlemde birikir")
+            print(f"     • fonlama: ölçülen −$0.91 (DURUM 4i)")
+            print(f"     • main.py:1619 çıkışları SEVİYE fiyatından yazıyor, gerçek")
+            print(f"       dolumdan değil — çıkışların %68'i (DURUM backlog)")
+            print(f"     Kayıt eksiği ancak aşağıdaki dökümde DEFTERDE OLMAYAN bir")
+            print(f"     transfer varsa doğrulanır.")
     if ilk:
         print(f"  Botun ilk gerçek işlemi: {ilk[:16]}")
 
     print(f"\n  --- BORSADAN TRANSFER KAYITLARI ---")
+    # ⚠ DÜZELTİLDİ: ccxt burada ASENKRON. İlk sürüm `ex.fetch_transfers(...)`
+    # diye çağırıp coroutine'i AWAIT ETMEDEN döngüye soktu →
+    # "TypeError: 'coroutine' object is not iterable" (VPS, 28 Ağustos).
+    # Ayrıca tek uç nokta yetmiyor: MEXC'te para vadeliye transfer ya da
+    # deposit olarak görünebiliyor (gercek_pnl.py da birkaçını deniyor).
     kalem = []
-    try:
-        r = ex.fetch_transfers("USDT", since, 200,
-                               {"fromAccountType": "SPOT", "toAccountType": "FUTURES"})
-    except Exception as e:
-        print(f"  ⛔ fetch_transfers hatası: {e}")
-        r = []
-    for x in (r or []):
-        if not isinstance(x, dict) or (x.get("currency") or "USDT") != "USDT":
+    okunan = 0
+    for ad, yap in (
+        ("fetch_transfers", lambda: ex.fetch_transfers(
+            "USDT", since, 200,
+            {"fromAccountType": "SPOT", "toAccountType": "FUTURES"})),
+        ("fetch_deposits", lambda: ex.fetch_deposits(None, since, 200)),
+        ("fetch_withdrawals", lambda: ex.fetch_withdrawals(None, since, 200)),
+    ):
+        if not hasattr(ex, ad):
+            print(f"    {ad:<18s} — ccxt'de YOK")
             continue
         try:
-            a = float(x.get("amount") or 0.0)
-        except (TypeError, ValueError):
+            r = await yap()
+        except Exception as e:
+            print(f"    {ad:<18s} — HATA: {type(e).__name__}: {e}")
             continue
-        ts = x.get("timestamp")
-        t = (datetime.fromtimestamp(ts / 1000, timezone.utc).strftime("%Y-%m-%d %H:%M")
-             if ts else "?")
-        kalem.append((t, a, (x.get("type") or x.get("status") or "")))
+        n = 0
+        for x in (r or []):
+            if not isinstance(x, dict) or (x.get("currency") or "USDT") != "USDT":
+                continue
+            try:
+                a = float(x.get("amount") or 0.0)
+            except (TypeError, ValueError):
+                continue
+            if ad == "fetch_withdrawals":
+                a = -abs(a)
+            ts = x.get("timestamp")
+            t = (datetime.fromtimestamp(ts / 1000, timezone.utc).strftime("%Y-%m-%d %H:%M")
+                 if ts else "?")
+            kalem.append((t, a, ad.replace("fetch_", "")))
+            n += 1
+        okunan += 1
+        print(f"    {ad:<18s} — {n} USDT kaydı")
+        await asyncio.sleep(0.25)
+
+    if okunan == 0:
+        print("\n  ⛔ HİÇBİR uç nokta okunamadı — 'transfer yok' SONUCU ÇIKARMA.")
+        print("     Karar verme; MEXC uygulamasından elle bak.")
+        return
+
     if not kalem:
-        print("  (kayıt yok — MEXC 90 günle sınırlı, ya da transfer başka bir")
-        print("   uç noktadan görünüyor. Aşağıdaki elle kayıt yolunu kullan.)")
+        print("\n  Bu pencerede USDT transfer kaydı YOK.")
+        print("  → Yani yukarıdaki FARK bir para girişinden DEĞİL, muhtemelen")
+        print("    yukarıda sayılan muhasebe sızıntılarından geliyor.")
+        print("  (MEXC varlık uç noktaları 90 günle sınırlı; daha eskisi görünmez.)")
+        return
+
+    print()
     for t, a, ty in sorted(kalem):
-        isaret = "← köken ÖNCESİ, muhtemelen inception içinde" if (
+        isaret = "  ← köken ÖNCESİ, muhtemelen inception içinde" if (
             ilk and t < ilk[:16]) else ""
-        print(f"    {t}  ${a:+10,.2f}  {ty:<10s} {isaret}")
-    if kalem:
-        sonrasi = [a for t, a, _ in kalem if not (ilk and t < ilk[:16])]
-        print(f"\n    köken SONRASI transfer toplamı: ${sum(sonrasi):+,.2f}")
-        print(f"    deftere kaydedilmiş           : ${dep:+,.2f}")
-        print(f"    KAYIT EKSİĞİ                  : ${sum(sonrasi)-dep:+,.2f}")
+        print(f"    {t}  ${a:+10,.2f}  {ty:<12s}{isaret}")
+    sonrasi = [a for t, a, _ in kalem if not (ilk and t < ilk[:16])]
+    print(f"\n    köken SONRASI transfer toplamı: ${sum(sonrasi):+,.2f}")
+    print(f"    deftere kaydedilmiş           : ${dep:+,.2f}")
+    print(f"    KAYIT EKSİĞİ                  : ${sum(sonrasi)-dep:+,.2f}")
 
     print(f"\n{'─'*74}\nNE YAPMALI\n{'─'*74}")
     print("  Bu mod OTOMATİK KAYIT YAPMAZ — köken öncesi bir transferi eklemek")
     print("  sermayeyi çift sayar. Yukarıdaki dökümden EKSİK tutarı seç ve:")
     print("     venv/bin/python para_ekle.py <tutar> --kaydet")
     print("  Emin değilsen tutarı MEXC uygulamasındaki transfer geçmişinden teyit et.")
-    try:
-        await lx.close()
-    except Exception:
-        pass
 
 
 async def kaydet(tutar):
