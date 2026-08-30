@@ -95,6 +95,7 @@ class TelegramNotifier:
         app.add_handler(CommandHandler("positions", self._cmd_positions))
         app.add_handler(CommandHandler("balance", self._cmd_balance))
         app.add_handler(CommandHandler("stats", self._cmd_stats))
+        app.add_handler(CommandHandler("tani", self._cmd_tani))
         app.add_handler(CommandHandler("rapor", self._cmd_rapor))
         app.add_handler(CommandHandler("report", self._cmd_rapor))
         app.add_handler(CommandHandler("pause", self._cmd_pause))
@@ -166,6 +167,19 @@ class TelegramNotifier:
         )
         deposits = await self._db.get_meta_float("total_deposits", 0.0)
         return inception + deposits
+
+    async def _sermaye_uyarisi(self, equity: float, invested: float,
+                               upnl: float) -> str:
+        """Günlük ekranda GÖSTERİLECEK TEK uyarı: yukarıdaki 'Gerçek kâr'
+        rakamının kendisi yanlış olabilir mi?
+
+        Yalnız TEK durumda evet: sermaye eksik kayıtlıysa (borsa defterden
+        FAZLA gösteriyor) kâr gerçekten şişer. Ters yön — defterin iç toplamının
+        şişkin olması — yukarıdaki rakamı ETKİLEMEZ (kâr equity−sermayeden
+        geliyor, defterden değil), o yüzden burada gösterilmez. Tam teşhis
+        /tani'de."""
+        t = await self._tutarlilik(equity, invested, upnl)
+        return t if "Sermaye eksik" in t else ""
 
     async def _tutarlilik(self, equity: float, invested: float, upnl: float) -> str:
         """İKİ BAĞIMSIZ KAYNAK KARŞILAŞTIRMASI — 28 Ağustos hatasının panzehiri.
@@ -286,6 +300,7 @@ class TelegramNotifier:
             "/positions – açık pozisyon detayı\n"
             "/balance – bakiye + getiri\n"
             "/stats – performans özeti\n"
+            "/tani – teşhis (defter-borsa tutarlılığı)\n"
             "/rapor – AY SONU RAPORU (sleeve, temiz dönem, R:R, açık)\n"
             "/strategy – strateji bazlı performans\n"
             "/pause – yeni trade'leri durdur\n"
@@ -315,11 +330,41 @@ class TelegramNotifier:
                 f"Açık pozisyon: <code>{n_open}</code>\n"
                 f"Gerçekleşmemiş PnL: <code>${upnl:+.2f}</code>\n"
                 f"Trade durumu: <code>{'DURDURULDU' if halted else 'AKTİF'}</code>"
-                + await self._tutarlilik(equity, invested, upnl)
+                # ⚠ TEŞHİS NOTU BURADAN KALDIRILDI. Defterin iç toplamının şişkin
+                # olması yukarıdaki rakamları ETKİLEMİYOR (kâr borsadan geliyor),
+                # dolayısıyla günlük ekranda yeri yok — kullanıcı "boş yapmasın,
+                # tertemiz istediğimi versin" dedi ve haklı. Tam teşhis /tani'de.
+                # Burada YALNIZ yukarıdaki rakamı YANLIŞ yapabilecek durum kalır:
+                # sermaye eksik kayıtlıysa "Gerçek kâr" gerçekten şişer.
+                + await self._sermaye_uyarisi(equity, invested, upnl)
             )
         except Exception as e:
             text = f"status hatası: {e}"
         await self._reply(update, text)
+
+    async def _cmd_tani(self, update, context) -> None:
+        """Teşhis — /status'tan çıkarılan iç tutarlılık kontrolü burada durur.
+        Günlük kullanımda kimse buna bakmaz; bir şey şüpheli göründüğünde bakılır."""
+        if not self._authorized(update):
+            return
+        try:
+            equity, upnl = await self._equity_and_upnl()
+            invested = await self._invested()
+            t = await self._tutarlilik(equity, invested, upnl)
+            taban = (await self._db.get_meta_float("sermaye_taban", 0.0)
+                     if self._db else 0.0)
+            L = ["<b>🔧 Teşhis</b>",
+                 f"Equity <code>${equity:,.2f}</code> · yatırılan "
+                 f"<code>${invested:,.2f}</code> · kâr "
+                 f"<code>${equity-invested:+,.2f}</code>",
+                 f"Sermaye kaynağı: <code>"
+                 f"{'borsa (otomatik)' if taban > 0 else 'elle kayıt (yedek yol)'}"
+                 f"</code>"]
+            L.append(t.strip() if t.strip() else
+                     "✓ Defter ile borsa tutarlı — bilinen sapma yok.")
+            await self._reply(update, "\n".join(L))
+        except Exception as e:
+            await self._reply(update, f"tanı hatası: {e}")
 
     async def _cmd_positions(self, update, context) -> None:
         if not self._authorized(update):
@@ -357,7 +402,7 @@ class TelegramNotifier:
                 f"Equity: <code>${equity:,.2f}</code>\n"
                 f"Yatırılan sermaye: <code>${invested:,.2f}</code>\n"
                 f"Gerçek kâr: <code>${true_pnl:+.2f}</code> ({ret:+.2f}%)"
-                + await self._tutarlilik(equity, invested, _upnl))
+                + await self._sermaye_uyarisi(equity, invested, _upnl))
         except Exception as e:
             await self._reply(update, f"balance hatası: {e}")
 
@@ -413,7 +458,7 @@ class TelegramNotifier:
         import asyncio as _aio, sqlite3, json as _json
         path = getattr(self._db, "_path", "trades.db")
 
-        def _build(live_bal) -> str:
+        def _build(live_bal, invested) -> str:
             con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=15)
             try:
                 rows = con.execute(
@@ -472,13 +517,25 @@ class TelegramNotifier:
                 if risk <= 0: continue
                 rr.setdefault(sleeve_of(r[8]), []).append(abs(r[5] - r[2]) / risk)
 
+            # ── PARA (borsa gerçeği) — raporun EN ÜSTÜ, tek bakışta cevap.
+            # Eskiden başlıkta yalnız defterin 'PnL' rakamı vardı ve para
+            # sanılıyordu; oysa o defterin İÇ TOPLAMI (ücret 1bp yazılıyor,
+            # fonlama kalemi yok, eski çıkışlar seviye fiyatından) ve şişkin.
+            # Para sorusunun cevabı equity − yatırılan sermayedir.
             L = [f"<b>📋 AY SONU RAPORU</b>"]
             if live_bal is not None:
-                L.append(f"Bakiye <code>${live_bal:,.2f}</code> <i>(canlı)</i>")
+                L.append(f"Equity <code>${live_bal:,.2f}</code>")
+                if invested and invested > 0:
+                    L.append(f"Yatırılan sermaye <code>${invested:,.2f}</code>")
+                    L.append(f"<b>Gerçek kâr <code>${live_bal-invested:+,.2f}</code> "
+                             f"({(live_bal-invested)/invested*100:+.1f}%)</b>")
             elif bal and bal[0]:
                 L.append(f"Bakiye <code>${float(bal[0]):,.2f}</code> <i>(DB, bayat olabilir)</i>")
+
+            # ── İŞLEM İSTATİSTİĞİ — strateji değerlendirmesi için, PARA DEĞİL.
+            L.append(f"\n<b>İşlem istatistiği</b> <i>(strateji için; para yukarıda)</i>")
             L.append(f"kapanan <code>{len(closed)}</code> · açık <code>{len(openp)}</code>")
-            L.append(f"PnL <code>${pnl:+.2f}</code> · WR <code>%{wr:.0f}</code> · "
+            L.append(f"defter PnL <code>${pnl:+.2f}</code> · WR <code>%{wr:.0f}</code> · "
                      f"PF <code>{pf:.2f}</code>")
             L.append(f"<i>çıpa: PF 1.45 / WR %44 (backtest)</i>")
 
@@ -506,6 +563,11 @@ class TelegramNotifier:
 
         # Bakiyeyi ÖNCE borsadan çek (async), sonra salt-okunur DB işini thread'e ver.
         live_bal = None
+        invested = None
+        try:
+            invested = await self._invested()
+        except Exception as e:
+            logger.debug("rapor: yatırılan sermaye alınamadı: %s", e)
         try:
             # /status ve /balance ile AYNI kaynak. Ham get_balance() canlıda SERBEST bakiyeyi
             # döndürür (kilitli marjin HARİÇ) → açık pozisyon varken /rapor ile /status yine
@@ -515,7 +577,7 @@ class TelegramNotifier:
         except Exception as e:
             logger.debug("rapor: canlı equity alınamadı, DB'ye düşülüyor: %s", e)
         try:
-            text = await _aio.to_thread(_build, live_bal)
+            text = await _aio.to_thread(_build, live_bal, invested)
         except Exception as e:
             text = f"rapor hatası: {e}"
         await self._reply(update, text)

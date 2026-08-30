@@ -135,6 +135,51 @@ def test_sermaye_eksikse_tespite_yonlendirir():
     print("  sermaye eksikken --tespit'e yönlendiriyor ✓")
 
 
+def test_status_TEMIZ_teshis_notu_yok():
+    """Kullanıcı: 'status yazınca boş yapmasın, tertemiz istediğimi versin.'
+    Defterin iç toplamının şişkin olması /status'taki rakamları ETKİLEMİYOR
+    (kâr equity−sermayeden geliyor), o yüzden günlük ekranda görünmemeli."""
+    b = _bot(_SahteBorsa(free=341.75, equity=341.75), _SahtePortfoy(),
+             _SahteDB(inception=48.47, deposits=231.90, defter_pnl=124.81))
+    u = asyncio.run(b._sermaye_uyarisi(equity=341.75, invested=280.38, upnl=0.0))
+    assert u == "", f"/status hâlâ teşhis notu basıyor:\n{u}"
+    print("  /status temiz — defter notu görünmüyor ✓")
+
+
+def test_status_RAKAMI_BOZAN_durumu_hala_soyluyor():
+    """Temizlik, körlük değil: sermaye eksik kayıtlıysa 'Gerçek kâr' rakamının
+    KENDİSİ yanlış olur — bu MUTLAKA görünmeli."""
+    b = _bot(_SahteBorsa(free=270.0, equity=270.0), _SahtePortfoy(),
+             _SahteDB(inception=190.0, deposits=0.0, defter_pnl=10.0))
+    u = asyncio.run(b._sermaye_uyarisi(equity=270.0, invested=190.0, upnl=0.0))
+    assert "Sermaye eksik" in u, f"rakamı bozan durum susturulmuş: {u!r}"
+    print("  sermaye eksikken uyarı hâlâ çıkıyor ✓")
+
+
+def test_tani_komutu_var():
+    """Teşhis kaybolmadı, /tani'ye taşındı."""
+    src = (Path(__file__).resolve().parent.parent / "telegram_bot.py").read_text()
+    assert "async def _cmd_tani" in src, "/tani komutu yok"
+    assert 'CommandHandler("tani"' in src, "/tani kayıtlı değil"
+    i = src.index("async def _cmd_tani")
+    assert "_tutarlilik" in src[i:i + 1500], "/tani tam teşhisi göstermiyor"
+    print("  /tani komutu tam teşhisi taşıyor ✓")
+
+
+def test_rapor_parayi_ustte_gosteriyor():
+    """/rapor'un başlığındaki 'PnL' defterin ŞİŞKİN iç toplamıydı ve para
+    sanılıyordu. Para = equity − yatırılan sermaye, en üstte olmalı."""
+    src = (Path(__file__).resolve().parent.parent / "telegram_bot.py").read_text()
+    i = src.index("async def _cmd_rapor")
+    blok = src[i:i + 6000]
+    assert "Gerçek kâr" in blok, "/rapor gerçek kârı göstermiyor"
+    assert "Yatırılan sermaye" in blok, "/rapor sermayeyi göstermiyor"
+    assert "defter PnL" in blok, "defter rakamı 'PnL' diye para gibi duruyor"
+    assert blok.index("Gerçek kâr") < blok.index("defter PnL"), \
+        "para, defter istatistiğinin ALTINDA kalmış"
+    print("  /rapor parayı en üstte, defteri ayrı gösteriyor ✓")
+
+
 def test_kayit_dogruysa_uyari_yok():
     """$70 deftere işlenmişse uyarı OLMAMALI — yanlış alarm sessizlikten kötü."""
     b = _bot(_SahteBorsa(free=270.0, equity=270.0), _SahtePortfoy(),
@@ -192,6 +237,10 @@ def test_gunluk_ozet_etiketi_duzeltildi():
 if __name__ == "__main__":
     print("test_rapor_tutarlilik — Telegram raporu doğru sayıyı gösteriyor mu?\n")
     for fn in (test_equity_borsadan_okunur,
+               test_status_TEMIZ_teshis_notu_yok,
+               test_status_RAKAMI_BOZAN_durumu_hala_soyluyor,
+               test_tani_komutu_var,
+               test_rapor_parayi_ustte_gosteriyor,
                test_defter_SISKINSE_sermayeye_dokunma_denir,
                test_sermaye_eksikse_tespite_yonlendirir,
                test_equity_okunamazsa_yeniden_kurulum,
