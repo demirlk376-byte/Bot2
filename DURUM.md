@@ -1183,6 +1183,59 @@ tehdit eder (bu ölçüm isolated varsayar).
    ikisi de gürültülü çöktü, sessiz yanlış sonuç vermedi.
 
 
+---
+
+## 4s. SERMAYE DENKLEMİ KAPANDI (2026-08-29) — ve araç ÜST ÜSTE İKİ KEZ YANILDI
+
+Borsanın transfer kaydı okundu. Sonuç:
+
+| | |
+|---|---|
+| Borsa equity | **$341.36** |
+| Vadeliye giren toplam (SPOT→FUTURES) | **$280.37** |
+| **GERÇEK kâr** | **$+60.99 (+%21.8)** |
+| Defterin iddiası | $+143.49 (+%72.5) |
+| Aradaki fark | **$82.51 — kaydedilmemiş sermaye** |
+
+Transferler: 06-09 $9.98 · 06-09 $1.00 · 06-15 $48.43 · 06-17 $45.24 (bunlar
+botun ilk işleminden ÖNCE, toplam $104.65) · 07-12 $104.40 · 08-28 $71.32.
+
+**`inception_balance` GÜVENİLMEZ.** Bot başlamadan $104.65 vadeliye geçmiş ama
+inception $48.47 yazıyor (fark $56.18). Sebep muhtemelen main.py'nin "bogus
+startup value" yolu: inception <$1 görülünce O ANKİ bakiyeyle EZİLİYOR.
+Bu, 4i'deki "ne ile başladık — üç farklı cevap" sorusunun kaynağı.
+
+**DÜZELTME: `total_deposits` $149.39 → $231.90** (`para_ekle.py 82.51 --kaydet`).
+Ondan sonra defter borsayla aynı kâr rakamını verecek.
+
+### ARAÇ İKİ KEZ YANLIŞ RAKAM VERDİ — ikisi de satır içi aritmetikten
+1. **"$26.32 kayıt eksiği"** — YANLIŞ TABAN. inception'ın köken öncesi
+   transferleri karşıladığını varsaydı; karşılamıyordu.
+2. **"$456.09 sermaye / −$114.72 kâr"** — ÇİFT SAYMA. deposits + transfers +
+   withdrawals toplandı. Ama aynı para İKİ KEZ görünüyor:
+   `07-12 00:32 +104.40 deposits` (dışarıdan MEXC'e) ve
+   `07-12 00:37 +104.40 transfers` (spot→vadeli). İki bacak, tek para.
+   Çıktının kendisi ele verdi: aynı tutar, 5 dakika arayla, iki satırda.
+
+**DOĞRU KURAL: sermaye YALNIZ `transfers` ile ölçülür.** Bota para ancak VADELİ
+cüzdana geçince girer; spotta duran deposit'i bot görmez. deposits/withdrawals
+artık yalnız BAĞLAM olarak listeleniyor ve eşleşen çiftler açıkça yazılıyor.
+
+### YAPISAL ÖNLEM
+Aritmetik `sermaye_denklemi()` saf fonksiyonuna çıkarıldı ve
+**`tests/test_sermaye.py` onu GERÇEK MEXC verisiyle kilitliyor** (6 iddia:
+çift sayma yok · köken ayrımı · inception çelişkisi yakalanıyor · gerçek kâr
+$60.99 · düzeltme $82.51 değil $258.22 · transfer yoksa hüküm yok).
+Araç artık satır içi hesap YAPMIYOR. **9 test dosyası geçiyor.**
+
+### HÂLÂ AÇIK
+`fetch_withdrawals` 0 kayıt döndü (7 günlük dilimlemeden sonra okunabildi) —
+yani dışarı para çıkışı yok. Ama FUTURES→SPOT ters transfer olup olmadığı
+kesin değil: MEXC `fromAccountType` parametresini yok sayıyor, yön kaydın
+kendi alanında. 6 kaydın hepsi pozitif göründü. 89 günlük pencere botun ömrünü
+(ilk işlem 06-18, en eski transfer 06-09) kapsıyor.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).

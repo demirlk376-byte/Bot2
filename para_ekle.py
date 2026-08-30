@@ -40,6 +40,11 @@ from database import Database
 from exchange import LiveExchange
 
 SNAP = ".para_ekle_snapshot.json"
+
+
+def pd_ts(t: str):
+    """'YYYY-MM-DD HH:MM' → datetime (UTC). Çift eşleştirmesi için."""
+    return datetime.strptime(t, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
 TOLERANS = 0.02          # equity farkı beklenenin ±%2'si kadar sapabilir (fiyat oynar)
 
 
@@ -221,6 +226,36 @@ async def sonra(tutar):
     print(f"  ✓ Restart GEREKMEZ. Panel birkaç saniyede güncellenir.")
 
 
+def sermaye_denklemi(kalem, ilk, inc, dep, eq):
+    """Sermaye denklemini SAF olarak kur (ağ yok, DB yok) — test edilebilsin.
+
+    Bu fonksiyon iki kez YANLIŞ rakam ürettiği için ayrıştırıldı:
+      1. sürüm: 'köken SONRASI transfer − kaydedilen' = $26.32. YANLIŞ TABAN —
+         inception'ın köken öncesi transferleri karşıladığını varsayıyordu.
+      2. sürüm: deposits+transfers+withdrawals TOPLANDI = $456.09. ÇİFT SAYMA —
+         aynı para hem 'deposit' (dışarıdan MEXC'e) hem 'transfer' (spot→vadeli)
+         olarak görünüyor.
+    Doğrusu: sermaye YALNIZ 'transfers' ile ölçülür (bota para ancak VADELİ
+    cüzdana geçince girer). tests/test_sermaye.py bunu gerçek veriyle kilitliyor.
+
+    kalem: [(ts_str, tutar, tur)] · ilk: botun ilk işlem zamanı (ISO) ya da None
+    Döner: dict
+    """
+    sermaye = [(t, a) for t, a, ty in kalem if ty == "transfers"]
+    oncesi = sum(a for t, a in sermaye if ilk and t < ilk[:16])
+    sonrasi = sum(a for t, a in sermaye if not (ilk and t < ilk[:16]))
+    tum = oncesi + sonrasi
+    return {
+        "oncesi": oncesi, "sonrasi": sonrasi, "tum": tum,
+        "defter_yatirilan": inc + dep,
+        "defter_kar": eq - inc - dep,
+        "gercek_kar": eq - tum if tum > 0 else None,
+        "inception_farki": oncesi - inc,
+        "gereken_dep": tum - inc,
+        "duzeltme": (tum - inc) - dep,
+    }
+
+
 async def tespit(gun: int = 89):
     """Borsanın transfer geçmişini oku, defterle karşılaştır, EKSİĞİ göster.
 
@@ -398,53 +433,87 @@ async def _tespit_govde(lx, cfg, gun: int):
 
     print()
     for t, a, ty in sorted(kalem):
+        if ty != "transfers":
+            print(f"    {t}  ${a:+10,.2f}  {ty:<12s}  (bağlam — sermayeye SAYILMAZ)")
+            continue
         isaret = "  ← köken ÖNCESİ, muhtemelen inception içinde" if (
             ilk and t < ilk[:16]) else ""
         print(f"    {t}  ${a:+10,.2f}  {ty:<12s}{isaret}")
-    oncesi = [a for t, a, _ in kalem if ilk and t < ilk[:16]]
-    sonrasi = [a for t, a, _ in kalem if not (ilk and t < ilk[:16])]
-    tum = sum(a for _, a, _ in kalem)
+    # ══ ÇİFT SAYMA DÜZELTİLDİ ═════════════════════════════════════════════
+    # İlk sürüm ÜÇ uç noktanın kalemlerini TOPLADI ve sermayeyi İKİ KATINA
+    # çıkardı ($456.09 çıktı, doğrusu $280.37). Çünkü aynı para iki kez
+    # görünüyor:
+    #     2026-07-12 00:32  +104.40  deposits   ← dışarıdan MEXC'e girdi
+    #     2026-07-12 00:37  +104.40  transfers  ← spot'tan VADELİYE geçti
+    # Bunlar iki ayrı para değil, AYNI paranın iki bacağı.
+    #
+    # DOĞRU ÖLÇÜ = YALNIZ 'transfers'. Bota sermaye ancak VADELİ cüzdana
+    # geçince girer; deposit tek başına spotta durur ve bot onu görmez.
+    # Zaten spotta duran bir para taze deposit olmadan transfer edilirse de
+    # 'transfers' onu yakalar. deposits/withdrawals yalnız BAĞLAM olarak
+    # listelenir, sermaye denklemine GİRMEZ.
+    sermaye_kalem = [(t, a, ty) for t, a, ty in kalem if ty == "transfers"]
+    baglam = [(t, a, ty) for t, a, ty in kalem if ty != "transfers"]
+    # eşleşen çiftleri göster (aynı tutar, 24 saat içinde) — okur da görsün
+    ciftler = []
+    for t, a, ty in baglam:
+        for t2, a2, _ in sermaye_kalem:
+            if abs(a - a2) < 0.01 and abs(
+                    (pd_ts(t) - pd_ts(t2)).total_seconds()) < 86400:
+                ciftler.append((t, t2, a, ty))
+                break
+    # ⚠ RAKAMLAR TEST EDİLMİŞ SAF FONKSİYONDAN gelir (tests/test_sermaye.py,
+    # gerçek MEXC verisiyle kilitli). Burada elle aritmetik YAPILMAZ — bu araç
+    # aynı rakamı iki kez yanlış verdi, ikisi de satır içi hesaptandı.
+    R = sermaye_denklemi(kalem, ilk, inc, dep, eq)
 
     print(f"\n{'─'*74}\nSERMAYE DENKLEMİ — İKİ OKUMA\n{'─'*74}")
     print(f"  A) DEFTERİN OKUMASI (inception + kaydedilen):")
-    print(f"     köken ${inc:,.2f} + kaydedilen ${dep:,.2f} = ${inc+dep:,.2f}")
-    print(f"     köken SONRASI transfer ${sum(sonrasi):,.2f} − kaydedilen "
-          f"${dep:,.2f} = eksik ${sum(sonrasi)-dep:+,.2f}")
-    print(f"\n  B) BORSANIN OKUMASI (tüm transferler toplamı):")
-    print(f"     köken ÖNCESİ ${sum(oncesi):,.2f} + SONRASI ${sum(sonrasi):,.2f} "
-          f"= ${tum:,.2f}")
+    print(f"     köken ${inc:,.2f} + kaydedilen ${dep:,.2f} = ${R['defter_yatirilan']:,.2f}")
+    print(f"     → defterin iddia ettiği kâr: ${R['defter_kar']:+,.2f}")
+    print(f"\n  B) BORSANIN OKUMASI (yalnız SPOT→VADELİ transferler):")
+    print(f"     köken ÖNCESİ ${R['oncesi']:,.2f} + SONRASI ${R['sonrasi']:,.2f} "
+          f"= ${R['tum']:,.2f}")
 
-    # ⚠ KRİTİK KONTROL: inception, köken öncesi transferleri karşılıyor mu?
-    fark_inc = sum(oncesi) - inc
-    if abs(fark_inc) > 2.0:
+    if R["tum"] <= 0:
+        print(f"\n  ⛔ Hiç transfer okunamadı — sermaye denklemi KURULAMAZ.")
+        print(f"     Hüküm yok. MEXC uygulamasından elle bak.")
+        return
+
+    if abs(R["inception_farki"]) > 2.0:
         print(f"\n  ⛔ İKİ OKUMA ÇELİŞİYOR — inception_balance GÜVENİLMEZ.")
-        print(f"     Bot başlamadan önce ${sum(oncesi):,.2f} transfer edilmiş ama")
-        print(f"     inception_balance ${inc:,.2f} yazıyor (fark ${fark_inc:+,.2f}).")
+        print(f"     Bot başlamadan önce ${R['oncesi']:,.2f} vadeliye geçmiş ama")
+        print(f"     inception_balance ${inc:,.2f} yazıyor "
+              f"(fark ${R['inception_farki']:+,.2f}).")
         print(f"     Sebep muhtemelen main.py'nin 'bogus startup value' yolu:")
-        print(f"     inception <\$1 görülünce O ANKİ bakiyeyle EZİLİYOR — yani")
+        print(f"     inception <$1 görülünce O ANKİ bakiyeyle EZİLİYOR — yani")
         print(f"     gerçek sermaye değil, bir ara bakiye yazılmış olabilir.")
-        print(f"\n     Bu durumda A) okuması YANLIŞ taban kuruyor. Borsa kaydı")
-        print(f"     tek doğrulanabilir kaynak:")
-        print(f"       GERÇEK yatırılan sermaye : ${tum:,.2f}")
-        print(f"       GERÇEK kâr               : ${eq-tum:+,.2f} "
-              f"({(eq-tum)/tum*100:+.1f}%)")
-        print(f"       (defterin iddiası        : ${eq-inc-dep:+,.2f} "
-              f"— ${(eq-inc-dep)-(eq-tum):+,.2f} fazla)")
-        gerekli = tum - inc
-        print(f"\n     DÜZELTME: total_deposits ${dep:,.2f} → ${gerekli:,.2f} olmalı")
-        print(f"       venv/bin/python para_ekle.py {gerekli-dep:.2f} --kaydet")
-        print(f"     ⚠ ÖNCE fetch_withdrawals satırına bak: para ÇIKIŞI varsa")
-        print(f"       yatırılan sermaye daha DÜŞÜKTÜR ve bu rakam değişir.")
-        print(f"     ⚠ 89 günlük pencere botun tüm ömrünü kapsıyor mu? İlk işlem")
-        print(f"       {ilk[:16] if ilk else '?'}, en eski transfer "
-              f"{sorted(kalem)[0][0] if kalem else '?'} — kapsamıyorsa daha eski")
-        print(f"       transferler bu toplamda YOK demektir.")
+        print(f"\n     Bu durumda A) YANLIŞ taban kuruyor. Borsa kaydı tek")
+        print(f"     doğrulanabilir kaynak:")
+        print(f"       GERÇEK yatırılan sermaye : ${R['tum']:,.2f}")
+        print(f"       GERÇEK kâr               : ${R['gercek_kar']:+,.2f} "
+              f"({R['gercek_kar']/R['tum']*100:+.1f}%)")
+        print(f"       (defterin iddiası        : ${R['defter_kar']:+,.2f} — "
+              f"${R['defter_kar']-R['gercek_kar']:+,.2f} fazla)")
+        print(f"\n     DÜZELTME: total_deposits ${dep:,.2f} → "
+              f"${R['gereken_dep']:,.2f} olmalı")
+        print(f"       venv/bin/python para_ekle.py {R['duzeltme']:.2f} --kaydet")
     else:
         print(f"\n  ✓ inception köken öncesi transferlerle tutarlı "
-              f"(fark ${fark_inc:+,.2f}).")
-        print(f"    KAYIT EKSİĞİ: ${sum(sonrasi)-dep:+,.2f}")
-        if abs(sum(sonrasi) - dep) > 1.0:
-            print(f"       venv/bin/python para_ekle.py {sum(sonrasi)-dep:.2f} --kaydet")
+              f"(fark ${R['inception_farki']:+,.2f}).")
+        if abs(R["duzeltme"]) > 1.0:
+            print(f"    KAYIT EKSİĞİ: ${R['duzeltme']:+,.2f}")
+            print(f"       venv/bin/python para_ekle.py {R['duzeltme']:.2f} --kaydet")
+        else:
+            print(f"    ✓ Kayıt eksiği yok.")
+
+    print(f"\n  ⚠ İKİ KONTROL — rakamı kaydetmeden ÖNCE:")
+    print(f"     1) fetch_withdrawals satırı: para ÇIKIŞI varsa yatırılan sermaye")
+    print(f"        daha DÜŞÜKTÜR ve bu rakam değişir.")
+    print(f"     2) {gun} günlük pencere botun tüm ömrünü kapsıyor mu? İlk işlem")
+    print(f"        {ilk[:16] if ilk else '?'}, en eski transfer "
+          f"{sorted(kalem)[0][0] if kalem else '?'} — kapsamıyorsa daha eski")
+    print(f"        transferler bu toplamda YOK demektir.")
 
     print(f"\n{'─'*74}\nNE YAPMALI\n{'─'*74}")
     print("  Bu mod OTOMATİK KAYIT YAPMAZ — yanlış tabanla kayıt, hatayı KALICI")
