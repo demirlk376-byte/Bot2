@@ -326,14 +326,38 @@ async def _tespit_govde(lx, cfg, gun: int):
     # deposit olarak görünebiliyor (gercek_pnl.py da birkaçını deniyor).
     kalem = []
     okunan = 0
+    # ⚠ MEXC KISITI: fetch_deposits/fetch_withdrawals 7 GÜNDEN uzun pencereyi
+    # REDDEDİYOR ({"code":33333,"msg":"start time and end time diff cannot
+    # exceed 7 days"}). İlk sürüm tek seferde 89 gün sorup ikisini de KAYBETTİ —
+    # yani PARA ÇIKIŞLARI hiç görünmedi ve sermaye denklemi eksik kuruldu.
+    # Artık 7 günlük dilimlere bölünüyor. fetch_transfers bu kısıta tabi değil.
+    simdi_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    HAFTA = 7 * 86400 * 1000
+
+    async def _parcali(fn):
+        top = []
+        t = since
+        while t < simdi_ms:
+            son = min(t + HAFTA - 1000, simdi_ms)
+            try:
+                top += list(await fn(t, son) or [])
+            except Exception as e:
+                raise e
+            t = son + 1000
+            await asyncio.sleep(0.2)
+        return top
+
     for ad, yap in (
         ("fetch_transfers", lambda: ex.fetch_transfers(
             "USDT", since, 200,
             {"fromAccountType": "SPOT", "toAccountType": "FUTURES"})),
-        ("fetch_deposits", lambda: ex.fetch_deposits(None, since, 200)),
-        ("fetch_withdrawals", lambda: ex.fetch_withdrawals(None, since, 200)),
+        ("fetch_deposits", lambda: _parcali(
+            lambda a, b: ex.fetch_deposits(None, a, 200, {"endTime": b}))),
+        ("fetch_withdrawals", lambda: _parcali(
+            lambda a, b: ex.fetch_withdrawals(None, a, 200, {"endTime": b}))),
     ):
-        if not hasattr(ex, ad):
+        base = ad if hasattr(ex, ad) else None
+        if base is None:
             print(f"    {ad:<18s} — ccxt'de YOK")
             continue
         try:
@@ -377,16 +401,55 @@ async def _tespit_govde(lx, cfg, gun: int):
         isaret = "  ← köken ÖNCESİ, muhtemelen inception içinde" if (
             ilk and t < ilk[:16]) else ""
         print(f"    {t}  ${a:+10,.2f}  {ty:<12s}{isaret}")
+    oncesi = [a for t, a, _ in kalem if ilk and t < ilk[:16]]
     sonrasi = [a for t, a, _ in kalem if not (ilk and t < ilk[:16])]
-    print(f"\n    köken SONRASI transfer toplamı: ${sum(sonrasi):+,.2f}")
-    print(f"    deftere kaydedilmiş           : ${dep:+,.2f}")
-    print(f"    KAYIT EKSİĞİ                  : ${sum(sonrasi)-dep:+,.2f}")
+    tum = sum(a for _, a, _ in kalem)
+
+    print(f"\n{'─'*74}\nSERMAYE DENKLEMİ — İKİ OKUMA\n{'─'*74}")
+    print(f"  A) DEFTERİN OKUMASI (inception + kaydedilen):")
+    print(f"     köken ${inc:,.2f} + kaydedilen ${dep:,.2f} = ${inc+dep:,.2f}")
+    print(f"     köken SONRASI transfer ${sum(sonrasi):,.2f} − kaydedilen "
+          f"${dep:,.2f} = eksik ${sum(sonrasi)-dep:+,.2f}")
+    print(f"\n  B) BORSANIN OKUMASI (tüm transferler toplamı):")
+    print(f"     köken ÖNCESİ ${sum(oncesi):,.2f} + SONRASI ${sum(sonrasi):,.2f} "
+          f"= ${tum:,.2f}")
+
+    # ⚠ KRİTİK KONTROL: inception, köken öncesi transferleri karşılıyor mu?
+    fark_inc = sum(oncesi) - inc
+    if abs(fark_inc) > 2.0:
+        print(f"\n  ⛔ İKİ OKUMA ÇELİŞİYOR — inception_balance GÜVENİLMEZ.")
+        print(f"     Bot başlamadan önce ${sum(oncesi):,.2f} transfer edilmiş ama")
+        print(f"     inception_balance ${inc:,.2f} yazıyor (fark ${fark_inc:+,.2f}).")
+        print(f"     Sebep muhtemelen main.py'nin 'bogus startup value' yolu:")
+        print(f"     inception <\$1 görülünce O ANKİ bakiyeyle EZİLİYOR — yani")
+        print(f"     gerçek sermaye değil, bir ara bakiye yazılmış olabilir.")
+        print(f"\n     Bu durumda A) okuması YANLIŞ taban kuruyor. Borsa kaydı")
+        print(f"     tek doğrulanabilir kaynak:")
+        print(f"       GERÇEK yatırılan sermaye : ${tum:,.2f}")
+        print(f"       GERÇEK kâr               : ${eq-tum:+,.2f} "
+              f"({(eq-tum)/tum*100:+.1f}%)")
+        print(f"       (defterin iddiası        : ${eq-inc-dep:+,.2f} "
+              f"— ${(eq-inc-dep)-(eq-tum):+,.2f} fazla)")
+        gerekli = tum - inc
+        print(f"\n     DÜZELTME: total_deposits ${dep:,.2f} → ${gerekli:,.2f} olmalı")
+        print(f"       venv/bin/python para_ekle.py {gerekli-dep:.2f} --kaydet")
+        print(f"     ⚠ ÖNCE fetch_withdrawals satırına bak: para ÇIKIŞI varsa")
+        print(f"       yatırılan sermaye daha DÜŞÜKTÜR ve bu rakam değişir.")
+        print(f"     ⚠ 89 günlük pencere botun tüm ömrünü kapsıyor mu? İlk işlem")
+        print(f"       {ilk[:16] if ilk else '?'}, en eski transfer "
+              f"{sorted(kalem)[0][0] if kalem else '?'} — kapsamıyorsa daha eski")
+        print(f"       transferler bu toplamda YOK demektir.")
+    else:
+        print(f"\n  ✓ inception köken öncesi transferlerle tutarlı "
+              f"(fark ${fark_inc:+,.2f}).")
+        print(f"    KAYIT EKSİĞİ: ${sum(sonrasi)-dep:+,.2f}")
+        if abs(sum(sonrasi) - dep) > 1.0:
+            print(f"       venv/bin/python para_ekle.py {sum(sonrasi)-dep:.2f} --kaydet")
 
     print(f"\n{'─'*74}\nNE YAPMALI\n{'─'*74}")
-    print("  Bu mod OTOMATİK KAYIT YAPMAZ — köken öncesi bir transferi eklemek")
-    print("  sermayeyi çift sayar. Yukarıdaki dökümden EKSİK tutarı seç ve:")
-    print("     venv/bin/python para_ekle.py <tutar> --kaydet")
-    print("  Emin değilsen tutarı MEXC uygulamasındaki transfer geçmişinden teyit et.")
+    print("  Bu mod OTOMATİK KAYIT YAPMAZ — yanlış tabanla kayıt, hatayı KALICI")
+    print("  hale getirir. Yukarıdaki iki okumadan hangisinin doğru olduğuna")
+    print("  MEXC uygulamasındaki transfer geçmişine bakarak karar ver.")
 
 
 async def kaydet(tutar):
