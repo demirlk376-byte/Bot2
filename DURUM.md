@@ -1236,6 +1236,40 @@ kendi alanında. 6 kaydın hepsi pozitif göründü. 89 günlük pencere botun �
 (ilk işlem 06-18, en eski transfer 06-09) kapsıyor.
 
 
+---
+
+## 4t. SIRADAKİ EN BÜYÜK RAKAM (2026-08-29) — defter borsadan $62.80 FAZLA yazıyor
+
+4s sermaye denklemini kapattı ve **daha büyük bir soru açtı**:
+
+| | |
+|---|---|
+| Borsa: equity $341.44 − yatırılan $280.38 | **GERÇEK kâr $+61.06** |
+| Defter: kapanan işlem PnL'i | **$+123.86** |
+| **AÇIK** | **$62.80** |
+
+Defter 2.5 ayda gerçek kârın **kendisinden fazla** sapmış. Yıllığa vurulursa
+**~$300** — ankorun bu ölçekteki beklentisinin yarısı kadar. Bu artık bir
+muhasebe detayı değil, **edge'in yarısı büyüklüğünde bir sızıntı**.
+
+`kar_farki.py` farkı kalem kalem kapatmaya çalışır, hepsi BORSA kaydından:
+1. **ÜCRET** — defter nominal×1bp yazıyor; gerçek dolumların ücreti (DURUM 2d
+   ~2.5bp/yön ölçmüştü, ama tüm defter üzerinden hiç toplanmadı)
+2. **FONLAMA** — defterde HİÇ kalemi yok
+3. **ÇIKIŞ KAYMASI** — mutabakat yolu çıkışı SEVİYE fiyatından yazıyordu
+   (bugün düzeltildi). Araç "seviyeye TAM eşit çıkış" oranını sayıyor: oran
+   yüksekse defter gerçek dolumu değil seviyeyi yazmış demektir.
+4. **KALAN**
+
+**Hüküm kuralları** (önceki araçların dersleri kodda): okunamayan kaynak SIFIR
+sayılmaz, dolum kapsaması %80 altındaysa hüküm verilmez, aynı para iki kez
+sayılmaz. Açık pozisyon varsa uyarı basıp "pozisyon yokken tekrar çalıştır" der.
+
+**Not:** `gercek_pnl.py` bu iş için ÇALIŞTIRILMAMALI — sermaye denklemini
+`daily_stats.starting_balance` üzerinden kuruyor, o taban 4s'den sonra geçersiz
+ve rakip bir YANLIŞ rakam üretir.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
