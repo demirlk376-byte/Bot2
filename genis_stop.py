@@ -96,7 +96,7 @@ def gen_mae(sleeve, m, coin):
                 if lo[j] <= tp: ep = tp; break
         if ep is None: j = min(i + mh, n - 1); ep = cl[j]
         R = d_ * (ep - e) / sld - 2 * A.FEE * e / sld
-        out.append((idx[i].value, idx[j], R, sld / e, mae, coin, sleeve))
+        out.append((idx[i].value, idx[j].value, R, sld / e, mae, coin, sleeve))
         occ = j
     return out
 
@@ -140,7 +140,7 @@ def gen_bb_mae(m, coin):
                 if lo[j] <= tp: ep = tp; break
         if ep is None: j = min(i + A.BB_MH, n - 1); ep = cl[j]
         R = d_ * (ep - e) / sld - 2 * A.FEE * e / sld
-        out.append((idx[i].value, idx[j], R, sld / e, mae, coin, "bb"))
+        out.append((idx[i].value, idx[j].value, R, sld / e, mae, coin, "bb"))
         occ = j
     return out
 
@@ -201,7 +201,7 @@ def maxdd(pnl):
 
 def ozet(al):
     pnl = np.array([r[1] for r in al])
-    exits = [pd.Timestamp(r[0]) for r in al]
+    exits = [pd.Timestamp(r[0], tz="UTC") for r in al]
     mon = pd.Series(pnl, index=[x.tz_localize(None).to_period("M") for x in exits]
                     ).groupby(level=0).sum() / BAL * 100
     return pnl.sum(), maxdd(pnl), mon.min(), len(al)
@@ -241,7 +241,7 @@ def main():
               f"marjin ort ${np.mean([r[9] for r in tehlike]):.2f}")
         cs = pd.Series([r[5] for r in tehlike]).value_counts()
         print(f"  coinler: " + ", ".join(f"{k}:{v}" for k, v in cs.items()))
-        ys = pd.Series([pd.Timestamp(r[0]).year for r in tehlike]).value_counts().sort_index()
+        ys = pd.Series([pd.Timestamp(r[0], tz='UTC').year for r in tehlike]).value_counts().sort_index()
         print(f"  yıllar : " + ", ".join(f"{k}:{v}" for k, v in ys.items()))
 
     # ── 2) KAÇI GERÇEKTEN PATLARDI? ──────────────────────────────────────────
@@ -256,7 +256,7 @@ def main():
         print(f"    (fiyat likidasyona değdi, sonra dönüp TP'ye gitti — gerçekte")
         print(f"     pozisyon çoktan patlamış olurdu)")
         for r in sorted(patlayan, key=lambda r: -abs(r[1]))[:8]:
-            print(f"      {pd.Timestamp(r[0]).date()} {r[5]:<5s} {r[6]:<8s} "
+            print(f"      {pd.Timestamp(r[0], tz='UTC').date()} {r[5]:<5s} {r[6]:<8s} "
                   f"stop %{r[3]*100:4.1f} MAE %{r[4]*100:5.1f} "
                   f"ankor {r[2]:+.2f}R → gerçek ${r[1]:+.2f}")
     print(f"\n  {'':22s}{'işlem':>7s} {'toplam$':>9s} {'maxDD':>7s} {'kötü ay':>8s}")
