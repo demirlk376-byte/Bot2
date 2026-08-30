@@ -1648,9 +1648,41 @@ async def position_reconciliation_loop() -> None:
 
                             direction = pos.direction
                             entry_fee = pos.strategy_scores.get("entry_fee_rate", 0.0001)
+
+                            # ⚠ ESKİ HATA: çıkış SEVİYE fiyatından (sl_price/tp_price)
+                            # defterlere yazılıyordu — GERÇEK dolumdan değil. Stop-market
+                            # emri seviyenin ötesinde dolar, yani her SL çıkışı olduğundan
+                            # İYİ kaydediliyordu. Çıkış ücreti de 1bp sabitti; ölçülen
+                            # gerçek ~2.5bp (DURUM 2d). İkisi birlikte defteri borsadan
+                            # uzaklaştırıyor ve GÜNLÜK ZARAR FRENİ bu defteri okuyor.
+                            # Artık borsanın gerçek dolumu sorulur; okunamazsa ESKİ
+                            # davranışa düşülür ve kayıt 'tahmin' diye İŞARETLENİR
+                            # (sessizce doğru sanılmasın).
+                            gercek = None
+                            if hasattr(exchange, "fetch_close_fill"):
+                                try:
+                                    kapanis_side = "sell" if direction == 1 else "buy"
+                                    since_ms = int(pos.entry_time.timestamp() * 1000)
+                                    gercek = await exchange.fetch_close_fill(
+                                        symbol, kapanis_side, pos.quantity, since_ms)
+                                except Exception as _fe:
+                                    logger.debug("fetch_close_fill hatası: %s", _fe)
+                                    gercek = None
+                            if gercek is not None:
+                                gercek_px, gercek_ucret, _nf = gercek
+                                logger.info(
+                                    "Reconciliation: %s GERÇEK dolum $%.6f (seviye "
+                                    "$%.6f, fark %+.1fbp) · gerçek ücret $%.4f",
+                                    symbol, gercek_px, exit_price,
+                                    (gercek_px - exit_price) / exit_price * 1e4
+                                    if exit_price > 0 else 0.0, gercek_ucret)
+                                exit_price = gercek_px
+                                fees = pos.entry_price * pos.quantity * entry_fee + gercek_ucret
+                            else:
+                                pos.strategy_scores["exit_price_estimated"] = True
+                                fees = (pos.entry_price * pos.quantity * entry_fee
+                                        + exit_price * pos.quantity * 0.0001)
                             raw_pnl = direction * (exit_price - pos.entry_price) * pos.quantity
-                            fees = (pos.entry_price * pos.quantity * entry_fee
-                                    + exit_price * pos.quantity * 0.0001)
                             net_pnl = raw_pnl - fees
 
                             logger.warning(

@@ -650,6 +650,70 @@ class LiveExchange:
             return self._mk_position(symbol, p)
         return None
 
+    async def fetch_close_fill(self, symbol: str, kapanis_side: str,
+                               quantity: float, since_ms: int) -> Optional[tuple]:
+        """Bir pozisyonun GERÇEK kapanış dolumunu borsadan oku.
+
+        NEDEN: mutabakat yolu (main.py) borsanın kapattığı pozisyonu SL/TP
+        SEVİYESİNDEN defterlere yazıyordu — gerçek dolumdan değil. Stop-market
+        emri seviyenin ALTINDA dolar, yani her SL çıkışı olduğundan İYİ
+        kaydediliyordu. Üstüne çıkış ücreti 1bp sabit yazılıyordu; ölçülen
+        gerçek ~2.5bp (DURUM 2d). İki hata da defteri borsadan uzaklaştırıyor
+        ve günlük zarar freni bu defteri okuyor.
+
+        Döner: (vwap_fiyat, toplam_ucret_usdt, dolum_sayisi) ya da None.
+        None = okunamadı; çağıran ESKİ davranışa düşmeli ve kaydı 'tahmin'
+        diye işaretlemeli. Sessizce 0 saymak YASAK (defter_gercek.py dersi).
+        """
+        if not hasattr(self._exchange, "fetch_my_trades"):
+            return None
+        try:
+            fills = await self._exchange.fetch_my_trades(symbol, since_ms, 50)
+        except Exception as e:
+            logger.debug("fetch_close_fill(%s): %s", symbol, e)
+            return None
+        if not fills:
+            return None
+        # En YENİden geriye: kapanış yönündeki dolumları miktar dolana kadar topla.
+        # (Kısmi dolum normaldir; VWAP alınır.)
+        kalan = abs(quantity)
+        tutar = 0.0
+        adet = 0.0
+        ucret = 0.0
+        n = 0
+        for f in sorted(fills, key=lambda x: x.get("timestamp") or 0, reverse=True):
+            if (f.get("side") or "").lower() != kapanis_side.lower():
+                continue
+            try:
+                px = float(f.get("price") or 0.0)
+                am = float(f.get("amount") or 0.0)
+            except (TypeError, ValueError):
+                continue
+            if px <= 0 or am <= 0:
+                continue
+            al = min(am, kalan)
+            tutar += px * al
+            adet += al
+            n += 1
+            try:
+                fee = f.get("fee") or {}
+                c = float(fee.get("cost") or 0.0)
+                ucret += c * (al / am)          # kısmi kullanıldıysa ücreti de oranla
+            except (TypeError, ValueError):
+                pass
+            kalan -= al
+            if kalan <= 1e-12:
+                break
+        if adet <= 0:
+            return None
+        # Miktarın ÇOĞU eşleşmediyse güvenme — yarım bir eşleşmeden fiyat üretmek
+        # yanlış bir "gerçek" sayı doğurur.
+        if adet < abs(quantity) * 0.9:
+            logger.debug("fetch_close_fill(%s): yalnız %.6f/%.6f eşleşti — atlandı",
+                         symbol, adet, abs(quantity))
+            return None
+        return (tutar / adet, ucret, n)
+
     async def get_positions_by_side(self, symbol: str) -> dict:
         """{"long": Position|None, "short": Position|None} — TEK fetch ile.
 

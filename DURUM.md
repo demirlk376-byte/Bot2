@@ -1074,6 +1074,55 @@ DB patlarsa sessiz · heartbeat artık `get_balance()` çağırmıyor · günlü
 etiketi düzeldi. **7 dosya geçiyor.**
 
 
+---
+
+## 4p. KALDIRAÇ KADEMESİ ÇALIŞTIRILDI (2026-08-29) — **DAYANIKLILIKTA DÜŞTÜ**
+
+Ön-kayıtlı barajı geçen TEK aday buydu. Tarama tamamlandı ve **reddedildi**.
+
+**Ana tablo (taban: CAP1.5 · 10x sabit → 1579 işlem, $+1476, maxDD 26.4):**
+
+| yapılandırma | Δ$ | maxDD | en kötü ay | tepe marjin | BAR |
+|---|---|---|---|---|---|
+| CAP1.5 · 10/15x | +0 | 26.4 | −20.5 | 82→**57** | ✗ Δ$ yetersiz |
+| CAP2.0 · 10/15x | +56 | 26.3 | −20.3 | 67 | ✓ |
+| CAP2.5 · 10/15x | +88 | 26.3 | −20.3 | 70 | ✓ |
+| **CAP3.0 · 10/15x** | **+107** | **26.1** | −20.3 | 73 | ✓ |
+
+4/4 yıl iyileşti, maxDD düştü, en kötü ay düzeldi, RED=0. Baraj geçildi.
+
+### AMA: DAYANIKLILIK TARAMASI ÖLDÜRDÜ
+
+| ek kayma | Δ$ | hüküm |
+|---|---|---|
+| 0bp | +107 | ✓ |
+| 5bp | +66 | ✓ |
+| **10bp** | **+25** | **✗ baraj altı** |
+| 15bp | −15 | ✗ |
+| 30bp | −138 | ✗ |
+
+**Kazancın tamamı, kendi mekanizmasının belirsizliğinin İÇİNDE.** Kazanç
+pozisyonları BÜYÜTMEKTEN geliyor (CAP 1.5→3.0 = ~2× nominal). Ölçülen 15.3bp
+kayma ~$267 nominalde ölçüldü. ICP/NEAR/BCH gibi ince defterlerde nominali iki
+katına çıkarmak 10bp ek kayma getirir mi? **Büyük ihtimalle evet** — ve o an iş
+biter. Kazancı üreten şey, kazancı öldüren maliyeti de üretiyor.
+
+**KARAR: CANLIYA ALINMIYOR.** Kapanan eksen 25+ → **26+**.
+(Şart değişirse yeniden bakılır: canlı defterde büyük-nominal kayma ÖLÇÜLÜRSE
+ve +10bp'nin altında kaldığı gösterilirse aday geri gelir.)
+
+### ⚠ AYRI VE CANLI BİR BULGU: **İHL = 36, TABANDA**
+Taban yapılandırmada 36 işlemin (%2.3) 2×ATR stopu likidasyon mesafesini
+(10x'te ~%9.5) AŞIYOR. O işlemlerde **stop çalışmadan likide olunur**. Bu
+adayın getirdiği bir şey değil — **bugün canlıda var**. Adaylar bunu artırmıyor
+ama kimse azaltmıyor da.
+
+Yönü ilginç: kaldıraç KADEMESİ tepe marjini %82→%57 düşürüyor (CAP1.5·10/15x,
+Δ$=0 yani kâra dokunmuyor). İHL için gereken ise TERSİ — geniş stoplu işlemlerde
+kaldıracı DÜŞÜRMEK. Ölçülmedi. **Backlog: "geniş stoplu %2.3'te kaldıracı 5x'e
+indirmek ne kaybettirir?"** — kâr etkisi muhtemelen küçük, kuyruk riski gerçek.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
