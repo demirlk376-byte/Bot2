@@ -99,9 +99,40 @@ def test_kaydedilmemis_para_yakalanir():
              _SahteDB(inception=190.0, deposits=0.0, defter_pnl=10.0))
     uyari = asyncio.run(b._tutarlilik(equity=270.0, invested=190.0, upnl=0.0))
     assert uyari, "kaydedilmemiş $70 giriş YAKALANMALIYDI"
-    assert "GİRİŞ" in uyari, uyari
+    assert "Sermaye eksik" in uyari, uyari
     assert "para_ekle" in uyari, uyari
     print(f"  kaydedilmemiş $70 giriş yakalandı ✓")
+
+
+def test_defter_SISKINSE_sermayeye_dokunma_denir():
+    """⚠ CANLIDA YANLIŞ TAVSİYE VERDİ. Defter borsadan FAZLA iddia edince
+    (fark < 0) ilk sürüm 'KAYDEDİLMEMİŞ para ÇIKIŞ → para_ekle.py --tespit'
+    diyordu. Öyle bir çıkış yoktu (fetch_withdrawals 0 kayıt) ve sermaye
+    kaydına dokunmak yeni düzeltilen tabanı BOZARDI.
+
+    Doğru teşhis: muhasebe sızıntısı (ücret 1bp, fonlama kalemi yok, eski
+    çıkışlar seviye fiyatından). Sermaye kaydı DOĞRU, dokunulmamalı."""
+    b = _bot(_SahteBorsa(free=341.76, equity=341.76), _SahtePortfoy(),
+             _SahteDB(inception=48.47, deposits=231.90, defter_pnl=124.82))
+    uyari = asyncio.run(b._tutarlilik(equity=341.76, invested=280.38, upnl=0.0))
+    assert uyari, "sapma bildirilmedi"
+    assert "para_ekle" not in uyari, \
+        f"ZARARLI TAVSİYE geri geldi — sermaye kaydına yönlendiriyor:\n{uyari}"
+    assert "ÇIKIŞ" not in uyari, f"hâlâ 'para çıkışı' diyor:\n{uyari}"
+    assert "kar_farki" in uyari, "doğru araca yönlendirmiyor"
+    assert "dokunma" in uyari.lower(), "sermayeye dokunmama uyarısı yok"
+    print("  defter şişkinken sermayeye dokunma deniyor ✓")
+
+
+def test_sermaye_eksikse_tespite_yonlendirir():
+    """Ters yön: borsa defterden FAZLA gösteriyorsa sermaye eksik kayıtlı
+    olabilir — BU DURUMDA --tespit doğru araç."""
+    b = _bot(_SahteBorsa(free=270.0, equity=270.0), _SahtePortfoy(),
+             _SahteDB(inception=190.0, deposits=0.0, defter_pnl=10.0))
+    uyari = asyncio.run(b._tutarlilik(equity=270.0, invested=190.0, upnl=0.0))
+    assert "para_ekle" in uyari, "sermaye eksikken --tespit önerilmiyor"
+    assert "Sermaye eksik" in uyari, uyari
+    print("  sermaye eksikken --tespit'e yönlendiriyor ✓")
 
 
 def test_kayit_dogruysa_uyari_yok():
@@ -161,6 +192,8 @@ def test_gunluk_ozet_etiketi_duzeltildi():
 if __name__ == "__main__":
     print("test_rapor_tutarlilik — Telegram raporu doğru sayıyı gösteriyor mu?\n")
     for fn in (test_equity_borsadan_okunur,
+               test_defter_SISKINSE_sermayeye_dokunma_denir,
+               test_sermaye_eksikse_tespite_yonlendirir,
                test_equity_okunamazsa_yeniden_kurulum,
                test_kaydedilmemis_para_yakalanir,
                test_kayit_dogruysa_uyari_yok,

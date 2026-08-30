@@ -194,12 +194,33 @@ class TelegramNotifier:
         esik = max(5.0, abs(invested) * 0.02)
         if abs(fark) <= esik:
             return ""
-        yon = "GİRİŞ" if fark > 0 else "ÇIKIŞ"
-        return (f"\n⚠️ <b>Defter uyuşmuyor</b> (fark <code>${fark:+.2f}</code>)\n"
-                f"Defterdeki işlem kârı <code>${defter:+.2f}</code> ama "
-                f"equity−yatırılan <code>${iddia:+.2f}</code> diyor.\n"
-                f"En olası sebep: KAYDEDİLMEMİŞ para {yon}. Düzelt:\n"
-                f"<code>para_ekle.py --tespit</code>")
+
+        # ⚠ YÖN AYRIMI ŞART — ilk sürüm ikisini de "kaydedilmemiş para" sayıp
+        # ZARARLI tavsiye veriyordu ("para ÇIKIŞ → para_ekle.py --tespit").
+        # Öyle bir çıkış yoktu ve sermaye kaydına dokunmak yeni düzeltilen
+        # tabanı BOZARDI. İki yön iki AYRI olaydır:
+        #
+        #   fark > 0  → borsa defterden FAZLA gösteriyor. Sermaye eksik
+        #               kaydedilmiş olabilir (para girdi, kaydedilmedi).
+        #               Bu GERÇEK bir sermaye sorunu → --tespit doğru araç.
+        #   fark < 0  → defter borsadan fazla İDDİA ediyor. Bu sermaye değil,
+        #               MUHASEBE SIZINTISI: defter ücreti 1bp yazıyor (gerçek
+        #               daha yüksek), fonlamanın hiç kalemi yok, ve eski
+        #               kayıtlarda çıkışlar gerçek dolumdan değil SEVİYE
+        #               fiyatından yazılmış (2026-08-29'da düzeltildi).
+        #               Ölçüldü: ücret $22.80 + fonlama $1.61 + çıkış kayması.
+        #               Sermaye kaydına DOKUNULMAMALI.
+        if fark > 0:
+            return (f"\n⚠️ <b>Sermaye eksik kayıtlı olabilir</b> "
+                    f"(fark <code>${fark:+.2f}</code>)\n"
+                    f"Borsa defterden fazla gösteriyor — para girmiş ama "
+                    f"kaydedilmemiş olabilir. Kontrol:\n"
+                    f"<code>para_ekle.py --tespit</code>")
+        return (f"\nⓘ Defterin işlem kaydı <code>${defter:+.2f}</code> diyor — "
+                f"<b>şişkin</b> (ücret 1bp yazılıyor, fonlama kalemi yok, eski "
+                f"çıkışlar seviye fiyatından). Yukarıdaki kâr BORSADAN, doğru "
+                f"olan o. Sermaye kaydına dokunma. Ölçüm: "
+                f"<code>kar_farki.py</code>")
 
     async def _equity_and_upnl(self) -> tuple[float, float]:
         """Return (equity, unrealized_pnl) with FRESH per-symbol prices.
