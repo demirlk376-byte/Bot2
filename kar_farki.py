@@ -107,11 +107,26 @@ async def _govde(lx, ex, cfg, gun, since_ms, since_iso):
     print(f"  → GERÇEK kâr              : ${gercek:+,.2f}")
     print(f"  Defter: {len(rows)} kapanan işlem PnL ${d_pnl:+,.2f} "
           f"(kaydettiği ücret ${d_fee:,.2f})")
+    # ⚠ AÇIK POZİSYONUN uPnL'İ KÖPRÜYE GİRMELİ. 'gerçek kâr' (equity−yatırılan)
+    # açık pozisyonun uPnL'ini İÇERİR; defterin 'kapanan PnL'i İÇERMEZ. İlk
+    # sürüm bunu atladı ve farkı uPnL kadar YANLIŞ gösterdi (--tespit'te de aynı
+    # hatayı yapmıştım).
+    upnl = 0.0
+    upnl_ok = True
+    for sym in syms:
+        try:
+            pz = await lx.get_position(sym)
+            if pz:
+                upnl += float(getattr(pz, "unrealized_pnl", 0.0) or 0.0)
+        except Exception as e:
+            print(f"  ⚠ {sym} uPnL okunamadı: {e}")
+            upnl_ok = False
     if acik:
-        print(f"  ⚠ {acik} AÇIK pozisyon var — uPnL farkı bozar, "
-              f"pozisyon yokken tekrar çalıştır.")
-    fark = d_pnl - gercek
-    print(f"\n  KAPATILACAK FARK: ${fark:+,.2f}")
+        print(f"  Açık pozisyon: {acik} · uPnL "
+              f"${upnl:+,.2f}{'' if upnl_ok else '  ⚠ EKSİK OKUNDU'}")
+    fark = (d_pnl + upnl) - gercek
+    print(f"\n  KAPATILACAK FARK: ${fark:+,.2f}   "
+          f"(defter {d_pnl:+,.2f} + uPnL {upnl:+,.2f} − gerçek {gercek:+,.2f})")
 
     # ── 1) GERÇEK ÜCRET ──────────────────────────────────────────────────────
     print(f"\n{'='*78}\n1) ÜCRET — defter nominal×1bp yazıyor, gerçek ne?\n{'='*78}")
@@ -127,21 +142,58 @@ async def _govde(lx, ex, cfg, gun, since_ms, since_iso):
         await asyncio.sleep(0.25)
     g_fee = None
     if fills:
+        # ⚠ PARA BİRİMİ KONTROLÜ: fee.cost'u körü körüne toplamak, ücret başka
+        # bir varlıkta ödenmişse YANLIŞ toplam üretir. USDT dışı varsa ayrı
+        # gösterilir ve toplama KATILMAZ.
         g_fee = 0.0
         okunmayan = 0
+        yabanci = {}
+        nominal = 0.0
         for f in fills:
-            c = (f.get("fee") or {}).get("cost")
+            fee = f.get("fee") or {}
+            c = fee.get("cost")
+            cur = (fee.get("currency") or "USDT").upper()
+            try:
+                nominal += float(f.get("price") or 0) * float(f.get("amount") or 0)
+            except (TypeError, ValueError):
+                pass
             if c is None:
                 okunmayan += 1
                 continue
             try:
-                g_fee += float(c)
+                v = float(c)
             except (TypeError, ValueError):
                 okunmayan += 1
+                continue
+            if cur != "USDT":
+                yabanci[cur] = yabanci.get(cur, 0.0) + v
+                continue
+            g_fee += v
         print(f"  {len(fills)} dolum okundu ({hata_f} sembol hatalı, "
               f"{okunmayan} dolumda ücret alanı boş)")
+        if yabanci:
+            print(f"  ⚠ USDT DIŞI ücret var, toplama KATILMADI: "
+                  + ", ".join(f"{k}:{v:.6f}" for k, v in yabanci.items()))
         print(f"  GERÇEK ücret ${g_fee:,.4f}  ·  defterin yazdığı ${d_fee:,.4f}")
         print(f"  → ÜCRET AÇIĞI: ${g_fee - d_fee:+,.4f}")
+        # ── İMA EDİLEN ORAN: "$25 çok mu?" sorusunun tek denetlenebilir hali
+        if nominal > 0:
+            bp_g = g_fee / nominal * 1e4
+            bp_d = d_fee / nominal * 1e4
+            print(f"\n  İMA EDİLEN ORAN (denetim): işlem gören nominal "
+                  f"${nominal:,.0f}")
+            print(f"    gerçek  {bp_g:5.2f} bp/dolum   ·  defter {bp_d:5.2f} bp/dolum")
+            print(f"    MEXC vadeli listesi: maker 1bp (0.01%), taker 2bp (0.02%).")
+            if bp_g > 6.0:
+                print(f"    ⛔ {bp_g:.1f}bp LİSTE ORANININ ÇOK ÜSTÜNDE — bu rakam")
+                print(f"       şüpheli. Dolumlar çift okunuyor ya da ücret alanı")
+                print(f"       başka bir şey olabilir. KAYNAK DOĞRULANMADAN")
+                print(f"       'ücret sızıntısı' hükmü VERİLMEMELİ.")
+            elif bp_g > 2.5:
+                print(f"    ⚠ {bp_g:.1f}bp taker oranının üstünde — likidasyon/")
+                print(f"       fonlama ücreti karışmış olabilir.")
+            else:
+                print(f"    ✓ {bp_g:.1f}bp liste oranıyla tutarlı — rakam güvenilir.")
         # kapsama: her işlem en az 2 dolum (giriş+çıkış) üretir
         bek = max(1, len(rows) * 2)
         kaps = len(fills) / bek
@@ -188,8 +240,7 @@ async def _govde(lx, ex, cfg, gun, since_ms, since_iso):
         xp = float(r["exit_price"] or 0)
         if xp <= 0:
             continue
-        for lvl_ad, lvl in (("sl", float(r["sl_price"] or 0)),
-                            ("tp", float(r["tp_price"] or 0))):
+        for lvl in (float(r["sl_price"] or 0), float(r["tp_price"] or 0)):
             if lvl <= 0:
                 continue
             d = abs(xp - lvl) / lvl
@@ -203,13 +254,81 @@ async def _govde(lx, ex, cfg, gun, since_ms, since_iso):
     if top:
         print(f"  {top} kapanan işlem: seviyeye TAM eşit {tam} (%{tam/top*100:.0f}) · "
               f"<5bp {yakin} · uzak {uzak}")
-        print(f"  → 'TAM eşit' oranı yüksekse defter gerçek dolumu DEĞİL seviyeyi")
-        print(f"    yazmış demektir; her birinde kayma kadar FAZLA kâr yazılmıştır.")
-        if tam and fills:
-            print(f"    Ölçülen giriş kayması 15.3bp (DURUM). {tam} çıkışta benzer")
-            print(f"    bir kayma ~${tam * 0.00153 * (sum(float(r['entry_price'] or 0)*float(r['quantity'] or 0) for r in rows)/max(len(rows),1)):.2f} eder — KABA tahmin, ölçüm değil.")
+
+    # ── ÖLÇÜM (tahmin DEĞİL): her çıkışı GERÇEK dolumla eşleştir ─────────────
+    # İlk sürüm "15.3bp × işlem sayısı" diye KABA bir çarpım basıyordu. Dolumlar
+    # zaten elimizde; tahmine gerek yok. Her kapanan işlem için kapanış yönündeki
+    # dolumları çıkış zamanının ±2 saat penceresinde miktara göre eşleştirip
+    # VWAP alıyoruz ve defterin yazdığı fiyatla karşılaştırıyoruz.
+    print(f"\n  --- ÖLÇÜM: defterin çıkış fiyatı vs GERÇEK dolum ---")
+    per_sym = {}
+    for f in fills:
+        per_sym.setdefault(f.get("symbol"), []).append(f)
+    for v in per_sym.values():
+        v.sort(key=lambda x: x.get("timestamp") or 0)
+
+    kayma_top = 0.0
+    eslesen = 0
+    eslesmeyen = 0
+    ornek = []
+    for r in rows:
+        xt = r["exit_time"]
+        xp = float(r["exit_price"] or 0)
+        q = float(r["quantity"] or 0)
+        if not xt or xp <= 0 or q <= 0:
+            eslesmeyen += 1
+            continue
+        try:
+            t = datetime.fromisoformat(str(xt).replace("Z", "+00:00"))
+            if t.tzinfo is None:
+                t = t.replace(tzinfo=timezone.utc)
+            xms = t.timestamp() * 1000
+        except Exception:
+            eslesmeyen += 1
+            continue
+        yon = 1 if str(r["side"]).lower() == "long" else -1
+        kap = "sell" if yon == 1 else "buy"
+        aday = [f for f in per_sym.get(r["symbol"], [])
+                if (f.get("side") or "").lower() == kap
+                and abs((f.get("timestamp") or 0) - xms) <= 2 * 3600 * 1000]
+        kalan = q; tutar = 0.0; adet = 0.0
+        for f in sorted(aday, key=lambda f: abs((f.get("timestamp") or 0) - xms)):
+            try:
+                px = float(f.get("price") or 0); am = float(f.get("amount") or 0)
+            except (TypeError, ValueError):
+                continue
+            if px <= 0 or am <= 0:
+                continue
+            al = min(am, kalan)
+            tutar += px * al; adet += al; kalan -= al
+            if kalan <= 1e-12:
+                break
+        if adet < q * 0.9:          # yarım eşleşmeden "gerçek" fiyat üretme
+            eslesmeyen += 1
+            continue
+        gercek_px = tutar / adet
+        # defterin FAZLA yazdığı miktar (pozitif = defter iyimser)
+        d_kayma = yon * (xp - gercek_px) * q
+        kayma_top += d_kayma
+        eslesen += 1
+        if abs(d_kayma) > 0.05:
+            ornek.append((str(xt)[:16], r["symbol"].split("/")[0],
+                          r["exit_reason"], xp, gercek_px, d_kayma))
+    kaps2 = eslesen / max(len(rows), 1)
+    print(f"  {eslesen}/{len(rows)} çıkış gerçek dolumla eşleşti "
+          f"(%{kaps2*100:.0f}), {eslesmeyen} eşleşmedi")
+    if eslesen and kaps2 >= 0.5:
+        print(f"  → DEFTERİN FAZLA YAZDIĞI (çıkış kayması): ${kayma_top:+,.2f}")
+        if eslesen < len(rows):
+            olcek = kayma_top / eslesen * len(rows)
+            print(f"    (eşleşenlerden tüm deftere ölçeklenirse ~${olcek:+,.2f})")
+        for o in sorted(ornek, key=lambda o: -abs(o[5]))[:6]:
+            print(f"      {o[0]} {o[1]:<5s} {str(o[2]):<14s} defter {o[3]:.5f} "
+                  f"gerçek {o[4]:.5f} → ${o[5]:+.2f}")
     else:
-        print("  (karşılaştırılacak kayıt yok)")
+        print(f"  ⚠ Eşleşme %50'nin altında — çıkış kayması ÖLÇÜLEMEDİ,")
+        print(f"    köprüde SIFIR sayılmayacak.")
+        kayma_top = None
 
     # ── KÖPRÜ ────────────────────────────────────────────────────────────────
     print(f"\n{'='*78}\nKÖPRÜ — fark kapandı mı?\n{'='*78}")
@@ -226,6 +345,13 @@ async def _govde(lx, ex, cfg, gun, since_ms, since_iso):
         bilinen += fon
     else:
         eksik.append("fonlama")
+    if kayma_top is not None:
+        print(f"  − çıkış kayması (ÖLÇÜLDÜ)          ${-kayma_top:>+9.2f}")
+        bilinen += -kayma_top
+    else:
+        eksik.append("çıkış kayması")
+    print(f"  + açık pozisyon uPnL               ${upnl:>+9.2f}")
+    bilinen += upnl
     kalan = d_pnl + bilinen - gercek
     print(f"  {'─'*46}")
     print(f"  = açıklanan sonrası                ${d_pnl+bilinen:>+9.2f}")
