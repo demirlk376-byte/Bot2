@@ -143,11 +143,24 @@ class TelegramNotifier:
     # ── Komut işleyiciler ──────────────────────────────────────────────────────
 
     async def _invested(self) -> float:
-        """Toplam yatırılan sermaye = ilk bakiye + sonradan eklenenler. Getiriyi
-        bunun üzerinden hesaplarız ki aylık para eklemeleri sahte 'kâr' gibi
-        görünmesin (dashboard ile aynı mantık). DB yoksa ilk bakiyeye düşer."""
+        """Toplam yatırılan sermaye. Getiriyi bunun üzerinden hesaplarız ki
+        para eklemeleri sahte 'kâr' gibi görünmesin.
+
+        ⚠ ARTIK KENDİ KENDİNİ GÜNCELLER. Eskiden yalnız `inception_balance +
+        total_deposits` okunuyordu ve bu değerler ELLE tutuluyordu (deposit.py).
+        Bir kez unutulunca eklenen para doğrudan 'kâr' diye göründü:
+        2026-08-28'de $82.51 sermaye kâr olarak raporlandı, /status +%72
+        gösterirken gerçek +%22'ydi.
+
+        Artık `sermaye_taban` meta'sı kullanılır; bunu main.py'deki
+        `sermaye_guncelle()` borsanın SPOT→VADELİ transfer kaydından periyodik
+        olarak günceller. Meta yoksa eski yola (inception+deposits) düşer —
+        davranış bozulmaz."""
         if self._db is None:
             return self._initial_balance
+        taban = await self._db.get_meta_float("sermaye_taban", 0.0)
+        if taban > 0:
+            return taban
         inception = await self._db.get_meta_float(
             "inception_balance", self._initial_balance
         )

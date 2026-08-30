@@ -650,6 +650,46 @@ class LiveExchange:
             return self._mk_position(symbol, p)
         return None
 
+    async def fetch_transfers_in(self, since_ms: int) -> Optional[float]:
+        """SPOT→VADELİ giren net USDT (borsanın kendi kaydı) — sermayenin
+        TEK doğrulanabilir kaynağı.
+
+        NEDEN: 'Gerçek kâr' = equity − yatırılan sermaye. Yatırılan sermaye
+        şimdiye kadar ELLE tutuluyordu (deposit.py). Bir kez unutulunca eklenen
+        para doğrudan 'kâr' diye göründü (2026-08-28: $82.51 sermaye, kâr diye
+        raporlandı). Bot artık bunu kendisi okur.
+
+        ⚠ 'deposits' DEĞİL 'transfers' sayılır: dışarıdan MEXC'e giren para
+        spotta durur, botu ilgilendirmez; sermaye ancak VADELİ cüzdana geçince
+        girer. İkisini toplamak aynı parayı iki kez sayar.
+
+        Döner: toplam USDT, ya da okunamazsa None (0.0 DEĞİL — sıfır saymak
+        sermayeyi siler ve kârı şişirir)."""
+        if not hasattr(self._exchange, "fetch_transfers"):
+            return None
+        try:
+            r = await self._exchange.fetch_transfers(
+                "USDT", since_ms, 200,
+                {"fromAccountType": "SPOT", "toAccountType": "FUTURES"})
+        except Exception as e:
+            logger.debug("fetch_transfers_in: %s", e)
+            return None
+        if r is None:
+            return None
+        tot = 0.0
+        for x in r:
+            if not isinstance(x, dict) or (x.get("currency") or "USDT") != "USDT":
+                continue
+            try:
+                a = float(x.get("amount") or 0.0)
+            except (TypeError, ValueError):
+                continue
+            # Yön kaydın kendi alanında (MEXC fromAccountType'ı yok sayabiliyor)
+            if str(x.get("type") or "").upper().startswith("OUT"):
+                a = -abs(a)
+            tot += a
+        return tot
+
     async def fetch_close_fill(self, symbol: str, kapanis_side: str,
                                quantity: float, since_ms: int) -> Optional[tuple]:
         """Bir pozisyonun GERÇEK kapanış dolumunu borsadan oku.

@@ -19,6 +19,7 @@ TESTS = [
     "tests/test_rapor_tutarlilik.py",  # Telegram raporu: equity vs serbest bakiye, kaydedilmemiş para
     "tests/test_cikis_dolumu.py",   # mutabakat çıkışı: seviye fiyatı değil GERÇEK dolum
     "tests/test_sermaye.py",        # sermaye denklemi: çift sayma yok, gerçek MEXC verisiyle kilitli
+    "tests/test_sermaye_taban.py",  # yatırılan sermaye borsadan kendini gunceller
     "mtf.py",                    # çok-zaman-dilimi hizalama: look-ahead SERT kilit
     "edge_lab.py",               # yeni strateji iskeleti: swing onayı, maliyet, kötümser çıkış
 ]

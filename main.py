@@ -1358,12 +1358,68 @@ async def restore_state() -> int:
     return restored
 
 
+async def sermaye_guncelle() -> None:
+    """Yatırılan sermayeyi BORSADAN oku ve `sermaye_taban` meta'sını güncelle.
+
+    NEDEN: 'Gerçek kâr' = equity − yatırılan sermaye. Yatırılan sermaye elle
+    tutuluyordu; bir kez unutulunca eklenen para doğrudan 'kâr' diye görünüyor
+    (2026-08-28: $82.51 sermaye, /status'ta kâr olarak raporlandı — +%72
+    görünürken gerçek +%22'ydi). Artık bot kendisi okur, kimse bir şey
+    çalıştırmak zorunda kalmaz.
+
+    ⚠ 90 GÜNLÜK PENCERE TUZAĞI: MEXC varlık uç noktaları 90 günden eskiye
+    bakmıyor. Her seferinde "son 90 günün transferleri" toplansaydı, botun
+    ömrü 90 günü geçince ESKİ SERMAYE SİLİNİR ve kâr şişerdi. O yüzden taban
+    BİRİKİMLİ tutulur: yalnız `sermaye_taban_ts`'den SONRAKİ transferler
+    eklenir ve zaman damgası ilerletilir.
+
+    ⚠ İLK TOHUM: taban yoksa mevcut (elle doğrulanmış) inception+deposits
+    değerinden başlatılır ve damga ŞİMDİ olur — geçmiş transferler tekrar
+    eklenmez, yani çift sayma olmaz.
+    """
+    if config.exchange.paper_mode or not hasattr(exchange, "fetch_transfers_in"):
+        return
+    try:
+        taban = await db.get_meta_float("sermaye_taban", 0.0)
+        damga = await db.get_meta_float("sermaye_taban_ts", 0.0)
+        if taban <= 0:
+            tohum = (await db.get_meta_float("inception_balance", 0.0)
+                     + await db.get_meta_float("total_deposits", 0.0))
+            if tohum <= 0:
+                return                     # tohum yoksa uydurma
+            await db.set_meta("sermaye_taban", str(tohum))
+            await db.set_meta("sermaye_taban_ts",
+                              str(datetime.now(timezone.utc).timestamp() * 1000))
+            logger.info("sermaye_taban tohumlandı: %.2f", tohum)
+            return
+        simdi = datetime.now(timezone.utc).timestamp() * 1000
+        yeni = await exchange.fetch_transfers_in(int(damga))
+        if yeni is None:
+            logger.debug("sermaye_guncelle: transfer okunamadı, taban korundu")
+            return                          # OKUNAMADI ≠ SIFIR
+        if abs(yeni) > 1e-9:
+            await db.set_meta("sermaye_taban", str(taban + yeni))
+            logger.info("Sermaye tabanı güncellendi: %.2f → %.2f (borsadan "
+                        "okunan yeni transfer %+.2f)", taban, taban + yeni, yeni)
+            if telegram:
+                await telegram.send_alert(
+                    f"Sermaye kaydı güncellendi: yatırılan ${taban:,.2f} → "
+                    f"${taban + yeni:,.2f} (borsadan okunan transfer "
+                    f"${yeni:+,.2f}). Kâr rakamı buna göre düzeltildi.", "INFO")
+        await db.set_meta("sermaye_taban_ts", str(simdi))
+    except Exception as e:
+        logger.debug("sermaye_guncelle hatası: %s", e)
+
+
 async def _yatirilan() -> float:
     """Toplam yatırılan sermaye = ilk bakiye + deposit.py/para_ekle.py ile
     kaydedilen net akış. Kâr = equity − bu. Kaydedilmemiş bir transfer bu sayıyı
     OLDUĞU YERDE bırakır ve farkı sahte "kâr" gibi gösterir — 28 Ağustos'ta
     tam olarak bu oldu. Kayıt için: para_ekle.py <tutar> --once/--sonra"""
     try:
+        taban = await db.get_meta_float("sermaye_taban", 0.0)
+        if taban > 0:
+            return taban
         return (await db.get_meta_float("inception_balance", 0.0)
                 + await db.get_meta_float("total_deposits", 0.0))
     except Exception:
@@ -1405,6 +1461,13 @@ async def heartbeat_loop() -> None:
                         await ntfy.send_alert(msg, "WARNING")
         except Exception as e:
             logger.debug("Staleness check failed: %s", e)
+
+        # Sermaye tabanını borsadan tazele (ucuz: 5 dk'da bir tek istek).
+        # Böylece para eklenince kâr rakamı KENDİLİĞİNDEN düzelir.
+        try:
+            await sermaye_guncelle()
+        except Exception as _se:
+            logger.debug("sermaye_guncelle: %s", _se)
 
         since_tg += interval
         if (telegram or ntfy) and since_tg >= tg_every:
