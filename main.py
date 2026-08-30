@@ -1397,7 +1397,26 @@ async def sermaye_guncelle() -> None:
         if yeni is None:
             logger.debug("sermaye_guncelle: transfer okunamadı, taban korundu")
             return                          # OKUNAMADI ≠ SIFIR
+        # ⚠ KAÇAK KORUMASI: tek adımda tabanı equity'nin yarısından fazla
+        # değiştiren bir "yeni transfer" gerçek olamaz — süzgeç ya da borsa
+        # yanıtı bozulmuş demektir. UYGULAMA, BAĞIR. (Sessizce uygulamak
+        # sermayeyi uçurur ve kârı kalıcı olarak yanlış gösterir.)
         if abs(yeni) > 1e-9:
+            try:
+                eq_now = await executor.current_equity()
+            except Exception:
+                eq_now = None
+            if eq_now and abs(yeni) > max(eq_now * 0.5, 50.0):
+                logger.error("sermaye_guncelle: ŞÜPHELİ transfer %+.2f "
+                             "(equity %.2f) — UYGULANMADI, damga İLERLETİLMEDİ. "
+                             "Elle bak: para_ekle.py --tespit", yeni, eq_now)
+                if telegram:
+                    await telegram.send_alert(
+                        f"⚠️ Sermaye güncellemesi DURDURULDU: borsadan ${yeni:+,.2f} "
+                        f"okundu ama equity ${eq_now:,.2f}. Bu kadar büyük bir "
+                        f"transfer şüpheli — kayıt DEĞİŞTİRİLMEDİ. "
+                        f"Kontrol: para_ekle.py --tespit", "WARNING")
+                return
             await db.set_meta("sermaye_taban", str(taban + yeni))
             logger.info("Sermaye tabanı güncellendi: %.2f → %.2f (borsadan "
                         "okunan yeni transfer %+.2f)", taban, taban + yeni, yeni)

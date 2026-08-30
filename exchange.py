@@ -676,18 +676,38 @@ class LiveExchange:
             return None
         if r is None:
             return None
+        # ⚠⚠ SUNUCUNUN `since` FİLTRESİNE GÜVENİLMEZ — İSTEMCİDE TEKRAR SÜZ.
+        # MEXC bu uç noktada parametreleri yok sayabiliyor: fromAccountType /
+        # toAccountType'ı yok saydığı ÖLÇÜLDÜ (gercek_pnl.py, ters yön sorgusu
+        # AYNI 5 kaydı döndürdü). `since`'i de yok sayarsa bu fonksiyon her
+        # çağrıda TÜM transferleri döndürür ve birikimli taban her 5 dakikada
+        # bir şişer — sermaye uçar, kâr eksiye düşer. Sunucu filtresi bir
+        # OPTİMİZASYON olarak kalır; DOĞRULUK istemci tarafındaki bu süzgeçten
+        # gelir.
         tot = 0.0
+        damgasiz = 0
         for x in r:
             if not isinstance(x, dict) or (x.get("currency") or "USDT") != "USDT":
                 continue
+            ts = x.get("timestamp")
+            if ts is None:
+                # Damgasız kayıt pencereye göre yerleştirilemez. SAYMA —
+                # saymak çift sayma riskidir, saymamak yalnız gecikme.
+                damgasiz += 1
+                continue
             try:
+                if float(ts) <= float(since_ms):
+                    continue
                 a = float(x.get("amount") or 0.0)
             except (TypeError, ValueError):
                 continue
-            # Yön kaydın kendi alanında (MEXC fromAccountType'ı yok sayabiliyor)
+            # Yön kaydın kendi alanında (parametreye güvenilmez)
             if str(x.get("type") or "").upper().startswith("OUT"):
                 a = -abs(a)
             tot += a
+        if damgasiz:
+            logger.warning("fetch_transfers_in: %d transfer kaydında zaman damgası "
+                           "yok — sayılmadı (sermaye eksik kalabilir)", damgasiz)
         return tot
 
     async def fetch_close_fill(self, symbol: str, kapanis_side: str,

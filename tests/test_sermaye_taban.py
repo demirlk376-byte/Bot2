@@ -57,6 +57,61 @@ def test_since_filtreleniyor():
     print("  damgadan öncekiler tekrar sayılmadı (çift sayma yok) ✓")
 
 
+def test_since_YOK_SAYAN_borsada_da_dogru():
+    """⚠ EN KRİTİK TEST. MEXC bu uç noktada parametreleri yok sayabiliyor —
+    fromAccountType/toAccountType'ı yok saydığı ÖLÇÜLDÜ. `since`'i de yok
+    sayarsa her çağrı TÜM transferleri döndürür; istemcide süzülmezse birikimli
+    taban her 5 dakikada şişer, sermaye uçar, kâr eksiye düşer.
+
+    Bu sahte borsa `since`'i BİLEREK yok sayıyor. Doğru cevap yine 25.0
+    olmalı — filtre istemcide."""
+    kayit = [
+        {"timestamp": 1000, "currency": "USDT", "amount": 100.0},
+        {"timestamp": 5000, "currency": "USDT", "amount": 25.0},
+    ]
+    class _SinceYokSayan:
+        async def fetch_transfers(self, cur, since, limit, params):
+            return kayit                      # since UMURUNDA DEĞİL
+    lx = LiveExchange.__new__(LiveExchange); lx._exchange = _SinceYokSayan()
+    tot = asyncio.run(lx.fetch_transfers_in(2000))
+    assert abs(tot - 25.0) < 1e-9, \
+        f"since yok sayılınca {tot} döndü (100 çift sayıldı) — taban şişer!"
+    # ve tekrar çağrılınca yine aynı: taban büyümemeli
+    tot2 = asyncio.run(lx.fetch_transfers_in(5000))
+    assert abs(tot2) < 1e-9, f"aynı transfer tekrar sayıldı: {tot2}"
+    print("  since'i YOK SAYAN borsada bile doğru (istemci süzgeci) ✓")
+
+
+def test_damgasiz_kayit_sayilmaz():
+    """Zaman damgası olmayan kayıt pencereye yerleştirilemez → SAYILMAZ.
+    Saymak çift sayma riski; saymamak yalnız gecikme."""
+    kayit = [
+        {"timestamp": 5000, "currency": "USDT", "amount": 25.0},
+        {"currency": "USDT", "amount": 999.0},          # damgasız
+    ]
+    class _C:
+        async def fetch_transfers(self, *a, **k):
+            return kayit
+    lx = LiveExchange.__new__(LiveExchange); lx._exchange = _C()
+    tot = asyncio.run(lx.fetch_transfers_in(0))
+    assert abs(tot - 25.0) < 1e-9, f"damgasız kayıt sayıldı: {tot}"
+    print("  damgasız kayıt sayılmadı ✓")
+
+
+def test_kacak_korumasi_var():
+    """Tek adımda equity'nin yarısından büyük bir 'transfer' uygulanmamalı."""
+    src = (Path(__file__).resolve().parent.parent / "main.py").read_text()
+    j = src.index("async def sermaye_guncelle")
+    blok = src[j:j + 3500]
+    assert "eq_now * 0.5" in blok, "kaçak koruması yok"
+    assert "UYGULANMADI" in blok, "şüpheli değer sessizce uygulanıyor"
+    # Sıra GÜNCELLEME yolunda önemli (tohumlama yolu ayrı ve zararsız):
+    # koruma, birikimli yazmadan (taban + yeni) ÖNCE gelmeli.
+    assert blok.index("eq_now * 0.5") < blok.index("str(taban + yeni)"), \
+        "koruma birikimli yazmadan SONRA — işe yaramaz"
+    print("  kaçak koruması yazmadan ÖNCE devrede ✓")
+
+
 def test_okunamazsa_None_doner():
     """SIFIR değil None — sıfır saymak sermayeyi siler ve kârı şişirir."""
     class _Patlak:
@@ -106,6 +161,9 @@ if __name__ == "__main__":
     print("test_sermaye_taban — yatırılan sermaye borsadan kendini güncelliyor mu?\n")
     for fn in (test_yalniz_usdt_ve_yon_okunur,
                test_since_filtreleniyor,
+               test_since_YOK_SAYAN_borsada_da_dogru,
+               test_damgasiz_kayit_sayilmaz,
+               test_kacak_korumasi_var,
                test_okunamazsa_None_doner,
                test_bos_liste_sifir_ama_None_degil,
                test_main_periyodik_cagiriyor,
