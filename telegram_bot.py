@@ -168,6 +168,32 @@ class TelegramNotifier:
         deposits = await self._db.get_meta_float("total_deposits", 0.0)
         return inception + deposits
 
+    async def _temiz(self, equity: float, sermaye: float):
+        """TEMİZ DÖNEM kârı. Çıpa kurulmamışsa None.
+
+        Kullanıcı: 'her komuttaki kâr/zarar temiz döneme göre olsun; o dönemden
+        gerisi yok kabul edilecek, hiçbir iz olmayacak.'
+
+            temiz kâr = equity_şimdi − equity_çıpa − (sermaye_şimdi − sermaye_çıpa)
+
+        Araya giren sermaye eklemeleri DÜŞÜLÜR; yoksa yatırılan para kâr sanılır
+        (2026-08-28'de tam bu oldu). Çıpa `temiz_donem.py --yaz` ile kurulur ve
+        ORADA doğrulanır. Burada uydurma yapılmaz: meta yoksa None döner ve
+        çağıran her-zamanın rakamına düşer."""
+        if self._db is None:
+            return None
+        try:
+            cut = await self._db.get_meta("temiz_cut")
+            c_eq = await self._db.get_meta_float("temiz_equity", 0.0)
+            c_sm = await self._db.get_meta_float("temiz_sermaye", 0.0)
+        except Exception:
+            return None
+        if not cut or c_eq <= 0 or c_sm <= 0:
+            return None
+        kar = equity - c_eq - (sermaye - c_sm)
+        return {"cut": str(cut), "kar": kar,
+                "pct": kar / c_eq * 100 if c_eq > 0 else 0.0}
+
     async def _sermaye_uyarisi(self, equity: float, invested: float,
                                upnl: float) -> str:
         """Günlük ekranda GÖSTERİLECEK TEK uyarı: yukarıdaki 'Gerçek kâr'
@@ -319,6 +345,13 @@ class TelegramNotifier:
             n_open = self._portfolio.get_open_position_count()
             halted = self._executor.is_halted()
             paper = self._app_config.exchange.paper_mode
+            # TEMİZ DÖNEM çıpası varsa kâr ONDAN gösterilir; öncesi hiç yokmuş
+            # gibi davranılır (kullanıcı isteği). Çıpa yoksa her-zamanın rakamı.
+            _t = await self._temiz(equity, invested)
+            kar_satiri = (
+                f"<b>Kâr: <code>${_t['kar']:+.2f}</code> ({_t['pct']:+.1f}%)</b>\n"
+                f"<i>temiz dönem: {_t['cut']} sonrası</i>\n" if _t else
+                f"Gerçek kâr: <code>${true_pnl:+.2f}</code> ({ret:+.1f}%)\n")
             text = (
                 f"<b>Durum</b> ({'PAPER' if paper else 'CANLI'})\n"
                 f"Equity: <code>${equity:,.2f}</code>\n"
@@ -326,7 +359,7 @@ class TelegramNotifier:
                 # yatırma doğrudan kâra yazılıyor ve fark GÖRÜNMÜYORDU. Yatırılan
                 # sermaye de basılırsa hata anında gözle yakalanır.
                 f"Yatırılan sermaye: <code>${invested:,.2f}</code>\n"
-                f"Gerçek kâr: <code>${true_pnl:+.2f}</code> ({ret:+.1f}%)\n"
+                + kar_satiri +
                 f"Açık pozisyon: <code>{n_open}</code>\n"
                 f"Gerçekleşmemiş PnL: <code>${upnl:+.2f}</code>\n"
                 f"Trade durumu: <code>{'DURDURULDU' if halted else 'AKTİF'}</code>"
@@ -398,10 +431,13 @@ class TelegramNotifier:
             invested = await self._invested()
             true_pnl = equity - invested
             ret = (true_pnl / invested * 100) if invested > 0 else 0.0
+            _t = await self._temiz(equity, invested)
             await self._reply(update,
                 f"Equity: <code>${equity:,.2f}</code>\n"
                 f"Yatırılan sermaye: <code>${invested:,.2f}</code>\n"
-                f"Gerçek kâr: <code>${true_pnl:+.2f}</code> ({ret:+.2f}%)"
+                + (f"<b>Kâr: <code>${_t['kar']:+.2f}</code> ({_t['pct']:+.2f}%)</b>\n"
+                   f"<i>temiz dönem: {_t['cut']} sonrası</i>" if _t else
+                   f"Gerçek kâr: <code>${true_pnl:+.2f}</code> ({ret:+.2f}%)")
                 + await self._sermaye_uyarisi(equity, invested, _upnl))
         except Exception as e:
             await self._reply(update, f"balance hatası: {e}")
@@ -411,15 +447,39 @@ class TelegramNotifier:
             return
         try:
             ip = self._app_config.exchange.paper_mode
-            perf = await self._db.get_performance_summary(is_paper=ip)
-            wr = (perf.winning_trades / perf.total_trades * 100
-                  if perf.total_trades else 0.0)
+            # ⚠ ÇIPA ÖNCESİ HİÇ SAYILMAZ. get_performance_summary() TÜM defteri
+            # topluyor; kullanıcı "o dönemden gerisini yok kabul edeceğiz,
+            # hiçbir iz olmayacak" dedi. Burada doğrudan trades'ten süzülür.
+            cut = await self._db.get_meta("temiz_cut")
+            import sqlite3 as _sq
+            path = getattr(self._db, "_path", "trades.db")
+            con = _sq.connect(f"file:{path}?mode=ro", uri=True, timeout=15)
+            try:
+                if cut:
+                    rows = con.execute(
+                        "SELECT pnl_usdt FROM trades WHERE is_paper=? AND "
+                        "exit_time IS NOT NULL AND entry_time>=?",
+                        (1 if ip else 0, str(cut))).fetchall()
+                else:
+                    rows = con.execute(
+                        "SELECT pnl_usdt FROM trades WHERE is_paper=? AND "
+                        "exit_time IS NOT NULL", (1 if ip else 0,)).fetchall()
+            finally:
+                con.close()
+            pn = [float(r[0]) for r in rows if r[0] is not None]
+            n = len(pn)
+            kaz = sum(1 for x in pn if x > 0)
+            wr = (kaz / n * 100) if n else 0.0
+            gp = sum(x for x in pn if x > 0)
+            gl = -sum(x for x in pn if x < 0)
+            pf = (gp / gl) if gl > 0 else float("inf")
             await self._reply(update,
-                f"<b>Performans</b>\n"
-                f"Trade: <code>{perf.total_trades}</code>\n"
-                f"Kazanan: <code>{perf.winning_trades}</code> (WR {wr:.0f}%)\n"
-                f"Toplam PnL: <code>${perf.total_pnl_usdt:+.2f}</code>\n"
-                f"Max DD: <code>{perf.max_drawdown*100:.1f}%</code>")
+                f"<b>Performans</b>"
+                + (f" <i>({cut} sonrası)</i>" if cut else "") + "\n"
+                f"Trade: <code>{n}</code>\n"
+                f"Kazanan: <code>{kaz}</code> (WR {wr:.0f}%)\n"
+                f"Defter PnL: <code>${sum(pn):+.2f}</code> · PF <code>{pf:.2f}</code>\n"
+                f"<i>Para rakamı için /status — defter PnL şişkin olabilir.</i>")
         except Exception as e:
             await self._reply(update, f"stats hatası: {e}")
 
@@ -458,7 +518,7 @@ class TelegramNotifier:
         import asyncio as _aio, sqlite3, json as _json
         path = getattr(self._db, "_path", "trades.db")
 
-        def _build(live_bal, invested) -> str:
+        def _build(live_bal, invested, temiz) -> str:
             con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=15)
             try:
                 rows = con.execute(
@@ -486,7 +546,16 @@ class TelegramNotifier:
                 return "?"
 
             DEPLOY = {"donchian", "squeeze", "mean_rev", "bb"}
-            CUT = "2026-07-16"          # kapalı sleeve'lerin son işlemi
+            # ⚠ CUT ARTIK ÇIPADAN GELİR. Sabit yazılıydı ve doğrulanmamıştı;
+            # temiz_donem.py onu defterden DOĞRULAYIP meta'ya yazıyor.
+            # Kullanıcı: "o dönemden gerisini yok kabul edeceğiz, hiçbir iz
+            # olmayacak" — bu yüzden aşağıda TÜM istatistikler CUT'a göre
+            # süzülür, sadece ayrı bir bölüm değil.
+            CUT = (temiz or {}).get("cut") or "2026-07-16"
+            # ÇIPA ÖNCESİNİ TAMAMEN AT — rapor boyunca hiç var olmamış gibi.
+            rows = [r for r in rows if str(r[7]) >= CUT]
+            if not rows:
+                return f"{CUT} sonrasında canlı işlem kaydı yok."
             closed = [r for r in rows if r[3] is not None]
             openp = [r for r in rows if r[3] is None]
             pnl = sum(r[6] or 0.0 for r in closed)
@@ -502,12 +571,6 @@ class TelegramNotifier:
                 key = sv if sv in DEPLOY else "[kapalı]"
                 a = per.setdefault(key, [0, 0.0])
                 a[0] += 1; a[1] += (r[6] or 0.0)
-
-            temiz = [r for r in closed if str(r[7]) >= CUT]
-            tw = [r for r in temiz if (r[6] or 0) > 0]
-            tgp = sum(r[6] for r in tw)
-            tgl = -sum(r[6] for r in temiz if (r[6] or 0) < 0)
-            tpf = (tgp / tgl) if tgl > 0 else float("inf")
 
             # R:R yapısal kontrol — az işlemle bile anlamlı (giriş=0 olanlar hariç)
             rr = {}
@@ -527,13 +590,19 @@ class TelegramNotifier:
                 L.append(f"Equity <code>${live_bal:,.2f}</code>")
                 if invested and invested > 0:
                     L.append(f"Yatırılan sermaye <code>${invested:,.2f}</code>")
-                    L.append(f"<b>Gerçek kâr <code>${live_bal-invested:+,.2f}</code> "
-                             f"({(live_bal-invested)/invested*100:+.1f}%)</b>")
+                    if temiz:
+                        L.append(f"<b>Kâr <code>${temiz['kar']:+,.2f}</code> "
+                                 f"({temiz['pct']:+.1f}%)</b>")
+                        L.append(f"<i>temiz dönem: {temiz['cut']} sonrası — "
+                                 f"öncesi rapora HİÇ girmiyor</i>")
+                    else:
+                        L.append(f"<b>Gerçek kâr <code>${live_bal-invested:+,.2f}</code> "
+                                 f"({(live_bal-invested)/invested*100:+.1f}%)</b>")
             elif bal and bal[0]:
                 L.append(f"Bakiye <code>${float(bal[0]):,.2f}</code> <i>(DB, bayat olabilir)</i>")
 
             # ── İŞLEM İSTATİSTİĞİ — strateji değerlendirmesi için, PARA DEĞİL.
-            L.append(f"\n<b>İşlem istatistiği</b> <i>(strateji için; para yukarıda)</i>")
+            L.append(f"\n<b>İşlem istatistiği</b> <i>({CUT} sonrası; para yukarıda)</i>")
             L.append(f"kapanan <code>{len(closed)}</code> · açık <code>{len(openp)}</code>")
             L.append(f"defter PnL <code>${pnl:+.2f}</code> · WR <code>%{wr:.0f}</code> · "
                      f"PF <code>{pf:.2f}</code>")
@@ -542,10 +611,6 @@ class TelegramNotifier:
             L.append("\n<b>Sleeve</b>")
             for k in sorted(per, key=lambda x: -per[x][1]):
                 L.append(f"  {k:9s} n={per[k][0]:<3d} <code>${per[k][1]:+.2f}</code>")
-
-            L.append(f"\n<b>Temiz dönem</b> ({CUT} sonrası)")
-            L.append(f"  n=<code>{len(temiz)}</code> · <code>${sum(r[6] or 0 for r in temiz):+.2f}</code>"
-                     f" · PF <code>{tpf:.2f}</code>")
 
             L.append("\n<b>R:R (yapısal)</b>")
             for k in sorted(rr):
@@ -564,6 +629,7 @@ class TelegramNotifier:
         # Bakiyeyi ÖNCE borsadan çek (async), sonra salt-okunur DB işini thread'e ver.
         live_bal = None
         invested = None
+        temiz = None
         try:
             invested = await self._invested()
         except Exception as e:
@@ -574,10 +640,12 @@ class TelegramNotifier:
             # ayrışırdı. Tek-doğru-kaynak kuralı: equity her yerde aynı yerden gelir.
             equity, _u = await self._equity_and_upnl()
             live_bal = float(equity)
+            if invested:
+                temiz = await self._temiz(equity, invested)
         except Exception as e:
             logger.debug("rapor: canlı equity alınamadı, DB'ye düşülüyor: %s", e)
         try:
-            text = await _aio.to_thread(_build, live_bal, invested)
+            text = await _aio.to_thread(_build, live_bal, invested, temiz)
         except Exception as e:
             text = f"rapor hatası: {e}"
         await self._reply(update, text)

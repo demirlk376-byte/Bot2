@@ -1507,8 +1507,19 @@ async def heartbeat_loop() -> None:
                            f"açık {n_open} · gerçekleşmemiş ${upnl:+.2f}")
                 else:
                     inv = await _yatirilan()
+                    # TEMİZ DÖNEM varsa kâr ondan; çıpa öncesi hiç sayılmaz.
+                    kar = eq - inv
+                    etiket = "kâr"
+                    try:
+                        c_eq = await db.get_meta_float("temiz_equity", 0.0)
+                        c_sm = await db.get_meta_float("temiz_sermaye", 0.0)
+                        if c_eq > 0 and c_sm > 0:
+                            kar = eq - c_eq - (inv - c_sm)
+                            etiket = "kâr(temiz)"
+                    except Exception:
+                        pass
                     msg = (f"Bot çalışıyor · equity ${eq:,.2f} · yatırılan "
-                           f"${inv:,.2f} · kâr ${eq - inv:+,.2f} · açık {n_open} · "
+                           f"${inv:,.2f} · {etiket} ${kar:+,.2f} · açık {n_open} · "
                            f"gerçekleşmemiş ${upnl:+.2f}")
                 if telegram:
                     await telegram.send_alert(msg, "INFO")
