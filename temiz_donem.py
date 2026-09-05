@@ -118,10 +118,15 @@ async def main():
     son_kapali, sorun = dogrula_cut(cfg.db_path, cut)
     if sorun:
         print(f"  ⛔ {sorun}")
-        print(f"     Önerilen tarih: kapalı kolların son işleminden SONRAKİ gün.")
         if son_kapali:
-            print(f"     yani ≥ {str(son_kapali)[:10]} (o günü de dışarıda bırakmak")
-            print(f"     istersen bir gün sonrasını ver).")
+            from datetime import timedelta as _td
+            oner = (datetime.strptime(str(son_kapali)[:10], "%Y-%m-%d")
+                    + _td(days=1)).strftime("%Y-%m-%d")
+            print(f"\n     Sebep: karşılaştırma `entry_time >= CUT` ve son kapalı-kol")
+            print(f"     işlemi {str(son_kapali)[:19]} — yani CUT gününün İÇİNDE.")
+            print(f"     Bir gün ileri alınca temizlenir:")
+            print(f"       venv/bin/python temiz_donem.py {oner}          # doğrula")
+            print(f"       venv/bin/python temiz_donem.py --yaz {oner}    # yaz")
         raise SystemExit(2)
     print(f"  ✓ CUT tutarlı — bu tarihten sonra kapalı-kol işlemi yok.")
 
@@ -141,6 +146,30 @@ async def main():
     print(f"  ✓ {cq_gun} günü başlangıç equity'si: ${cq_eq:,.2f}")
     if cq_gun != cut:
         print(f"  ⓘ {cut} için kayıt yoktu, en yakın SONRAKİ gün kullanıldı.")
+    # ⚠ KÖKEN GUARD'I: bu alan HER ZAMAN equity değildi. capture_daily_start
+    # 2026-06-14'te (commit a68a535) equity'ye geçti; ondan ÖNCE yazılmış
+    # satırlar serbest bakiye olabilir ve çıpayı DÜŞÜK kurar → kâr ŞİŞER.
+    # (git ile doğrulandı: 2026-07-18 tarihli kodda current_equity zaten
+    #  borsanın get_equity()'sini tercih ediyordu.)
+    EQUITY_GECIS = "2026-06-14"
+    if cq_gun < EQUITY_GECIS:
+        print(f"  ⛔ {cq_gun} < {EQUITY_GECIS}: o tarihte daily_stats SERBEST")
+        print(f"     BAKİYE yazıyor olabilir (equity değil). Çıpa düşük kurulur")
+        print(f"     ve kâr ŞİŞER. Daha geç bir CUT seç. YAZILMADI.")
+        raise SystemExit(2)
+    print(f"     (köken ✓: capture_daily_start {EQUITY_GECIS}'ten beri borsanın")
+    print(f"      equity'sini yazıyor — bu satır güvenilir)")
+
+    # Komşu günleri de göster: rakam gözle makul mü?
+    con2 = sqlite3.connect(f"file:{cfg.db_path}?mode=ro", uri=True, timeout=15)
+    komsu = con2.execute(
+        "SELECT date, starting_balance FROM daily_stats WHERE is_paper=0 "
+        "AND starting_balance>0 AND date BETWEEN date(?,'-3 day') AND date(?,'+3 day') "
+        "ORDER BY date", (cq_gun, cq_gun)).fetchall()
+    con2.close()
+    if len(komsu) > 1:
+        print(f"     komşu günler: " + " · ".join(
+            f"{d[5:]}:${float(v):,.0f}" for d, v in komsu))
 
     # ── 3) sermaye ÇIPASI ────────────────────────────────────────────────────
     print(f"\n3) Çıpa sermayesi (borsanın transfer kaydı, {cut}'a kadar)")
@@ -190,10 +219,16 @@ async def main():
     taban = cq_eq if cq_eq > 0 else 1.0
     print(f"  temiz dönem getirisi: {temiz_kar/taban*100:+.1f}% "
           f"(çıpa equity'sine göre)")
-    print(f"\n  karşılaştırma — HER ZAMANIN kârı: "
-          f"${eq_now - serm_now:+,.2f}")
-    print(f"  aradaki fark = çıpa ÖNCESİ dönemin katkısı: "
-          f"${(eq_now - serm_now) - temiz_kar:+,.2f}")
+    her_zaman = eq_now - serm_now
+    once = her_zaman - temiz_kar
+    print(f"\n  karşılaştırma — HER ZAMANIN kârı: ${her_zaman:+,.2f}")
+    print(f"  aradaki fark = çıpa ÖNCESİ dönemin katkısı: ${once:+,.2f}")
+    print(f"     (çıpa equity ${cq_eq:,.2f} − çıpa sermaye ${cq_sermaye:,.2f})")
+    # MAKULLUK: çıpa öncesi katkı sermayeye göre absürt mü?
+    if cq_sermaye > 0 and abs(once) > cq_sermaye * 0.8:
+        print(f"  ⛔ Çıpa öncesi katkı sermayenin %{abs(once)/cq_sermaye*100:.0f}'i —")
+        print(f"     bu absürt. Çıpa equity'si ya da sermayesi YANLIŞ okunmuş")
+        print(f"     olabilir. Rakamları elle doğrulamadan --yaz KULLANMA.")
 
     if not yaz:
         print(f"\n  KURU KOŞU — hiçbir şey yazılmadı.")
