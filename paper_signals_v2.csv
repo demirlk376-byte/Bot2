@@ -281,3 +281,4 @@ ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
 2026-09-03T16:00:00+00:00,XRP,SHORT,1.4527,1.5075,1.3613,0.0183,65,9.7e-05,True,F&G=65 (açgözlülük→short uygun)
 2026-09-04T12:00:00+00:00,SOL,LONG,101.55,1.0988,74,-8e-06,False,çelişki: F&G=74 (açgözlülük ortamında long riskli)
 2026-09-04T12:00:00+00:00,BNB,LONG,716.6,6.0851,74,6.7e-05,False,çelişki: F&G=74 (açgözlülük ortamında long riskli)
+2026-09-05T09:00:00+00:00,BNB,SHORT,748.3,766.5251,717.9248,6.075,73,7.9e-05,True,F&G=73 (açgözlülük→short uygun)
