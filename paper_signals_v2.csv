@@ -282,3 +282,5 @@ ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
 2026-09-04T12:00:00+00:00,SOL,LONG,101.55,1.0988,74,-8e-06,False,çelişki: F&G=74 (açgözlülük ortamında long riskli)
 2026-09-04T12:00:00+00:00,BNB,LONG,716.6,6.0851,74,6.7e-05,False,çelişki: F&G=74 (açgözlülük ortamında long riskli)
 2026-09-05T09:00:00+00:00,BNB,SHORT,748.3,766.5251,717.9248,6.075,73,7.9e-05,True,F&G=73 (açgözlülük→short uygun)
+2026-09-05T12:00:00+00:00,SOL,SHORT,103.18,104.9514,100.2276,0.5905,73,4.7e-05,True,F&G=73 (açgözlülük→short uygun)
+2026-09-05T12:00:00+00:00,BNB,SHORT,763.9,785.9417,727.1639,7.3472,73,0.000145,True,F&G=73 (açgözlülük→short uygun) | funding=+0.0145% (long ağırlıklı→short uygun)
