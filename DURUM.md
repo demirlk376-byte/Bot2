@@ -1479,6 +1479,78 @@ istiyor; veri artık var, hiç yapılmadı. Bu bir kayıp-azaltma vaadi DEĞİL,
 sadece kapatılmamış tek defter maddesi.
 
 
+---
+
+## 4z. SABIRLI MAKER GİRİŞ (2026-09-06) — 30. eksen, ve ölçüm mekanizmayı ÇIPLAK GÖSTERDİ
+
+Yeni yöntem üretme işinden mezarlığa karşı sağ çıkan TEK öneri. Yapısal olarak
+farklıydı: 29 kapalı eksenin hepsi işlem KÜMESİNİ ya da BOYUTUNU değiştiriyordu,
+bu ikisine de dokunmuyor — aynı işlemler, sadece daha ucuz giriş.
+
+`sabirli_maker.py` ankor koluna karşı doğrulandı (1579 / $+1420.66 ✓).
+
+### YAN BULGU: GERÇEKÇİ TABAN ANKORUN %8.9 ALTINDA
+Ölçülen 15.32bp giriş kayması dahil edildiğinde portföy
+**$+1420.66 → $+1294.54**. Kaymanın bedeli **−$126.12**. Bu, maker fikrinden
+kazanılabilecek paranın ÜST SINIRI.
+
+### DOLUM SORUN DEĞİL — TERS SEÇİM SORUN
+4h penceresinde dolum oranı 10bp derinlikte bile **%94.4** (ön-kayıt barajı %42
+fazlasıyla aşıldı). Ama portföy karar satırında DÜŞTÜ:
+
+| derinlik | Δ$ | |
+|---|---|---|
+| 0bp | +75 | ✓ |
+| 2bp | +53 | ✓ |
+| 5bp | +26 | ✗ |
+| **10bp (karar)** | **−9** | **✗** |
+
+Desen MONOTON — gürültü değil. Aritmetiği açınca sebep çıplak:
+```
+%94.4 dolum → kaymanın %94'ü tasarruf   = ~+$119
+gözlenen net                             =    −$9
+→ dolmayan %5.6 (~56 işlem)              = ~−$128
+   işlem başına −$2.28  ·  ortalama işlem +$0.90
+```
+**Kaçırılan her işlem 2.5 ortalama işlem değerinde.** Çünkü dolmayanlar
+rastgele değil: limit ancak fiyat GERİ GELİRSE dolar, koşan kırılım geri
+gelmez. Sabırlı limit sistematik olarak KUYRUĞU kaçırıyor — sistemin bütün
+parasını kazandıran şişman kuyruğu.
+
+0bp satırının "geçmesi" ALDATICI: 0bp "fiyat seviyeye değdi mi" demek, oysa
+limit kuyruğun arkasında ve fiyatın seviyeyi GEÇMESİ gerekir. Ön-kayıt tam bu
+yüzden 10bp'ye bağlanmıştı; gevşetilmedi.
+
+### ⚠ KOVALAMA KOLU: SONUÇ ARTEFAKT, HÜKÜM DEĞİL
+Ölçülen kusurun doğal çaresi denendi: kırılım koşarsa limiti iptal et, hemen
+piyasaya geç. Tablo düştü (Δ$ −114 … −270) **ama bu sonuç GEÇERSİZ.**
+Kanıt çıktının kendisinde: 2bp ve 10bp derinlik satırları BİREBİR aynı sonucu
+verdi — derinlik parametresinin hiçbir etkisi yoksa dolum kontrolüne hiç
+ulaşılmıyor demektir. Sebep: 1h barında fiyat hem +10bp hem −10bp gidiyor ve
+kötümser beraberlik kuralım ("aynı barda ikisi de olursa kovalama say") her
+seferinde kovalamayı seçiyor. Yani test "kapanışın 10-50bp üstünden piyasa
+emri ver"i ölçmüş — kovalamayı DEĞİL.
+
+**Kovalama ÇÜRÜTÜLMEDİ, TEST EDİLEMEDİ.** Doğru test bar-içi sıra ister.
+
+### VE CANLI KOD KOVALAYAMIYOR
+`execution.py:629` giriş yolu mum kapanışında tetikleniyor: ya 45sn (piyasa
+yedekli) ya 600sn (**yedeksiz — dolmazsa işlem ATLANIR**). Bar-içi fiyat izleyip
+piyasaya geçen bir mekanizma YOK. Kovalama mimari değişiklik ister.
+
+Canlıda bugün uygulanabilir iki varyant ve ikisi de zayıf:
+- `DONCHIAN_MAKER_ENTRY=true` → 45sn + piyasa yedeği (~$10/yıl, 2c'de ölçüldü)
+- `anchor_is_level=True` → 600sn ama YEDEKSİZ, yani koşanları ATLAR — ölçüm
+  o işlemlerin en değerlileri olduğunu gösterdi, dolayısıyla daha kötü.
+
+### KARAR: eksen KAPANIYOR (30.), kovalama ASKIDA
+`veri_pencere.py` yazıldı: her donchian sinyalinden sonraki 4 saatin 1dk
+verisini çeker (~1000 istek, birkaç dakika, ankor verisine dokunmaz). VPS'te
+çalıştırılıp push edilirse kovalama 1dk sırayla ÖLÇÜLEBİLİR hale gelir.
+Ödül tavanı $126/3.24yıl ≈ $39/yıl ($190 tabanda) olduğu için öncelik DÜŞÜK —
+ama "çürütüldü" demek yanlış olur, "bakılmadı" doğru.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
