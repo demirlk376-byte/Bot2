@@ -1270,6 +1270,67 @@ sayılmaz. Açık pozisyon varsa uyarı basıp "pozisyon yokken tekrar çalışt
 ve rakip bir YANLIŞ rakam üretir.
 
 
+---
+
+## 4u. BETA ÖLÇÜLDÜ (2026-09-06) — YÖN DEĞİL, **HAREKET ŞİDDETİ**
+
+"Kaybettiğimiz dönemlerde neden kaybediyoruz, o dönemleri eleyebilir miyiz?"
+sorusunun DÖNEM seviyesindeki cevabı. `beta_analiz.py` çalıştırıldı (ankora
+karşı kendini doğruladı: 1579 / $+1420.66 ✓). 40 eşleşen ay.
+
+### YÖN NEREDEYSE HİÇBİR ŞEY AÇIKLAMIYOR
+| | |
+|---|---|
+| beta (piyasaya bağımlılık) | **+0.222** [%95: −0.093, +0.536] |
+| R² (piyasanın açıkladığı) | **%4.8** |
+| piyasa YUKARI aylar | +19.81% ort · %83 pozitif |
+| piyasa AŞAĞI aylar | **+17.19%** ort · %76 pozitif |
+| ayrışma | z = **+0.31** (yok) |
+| LONG / SHORT | +0.2585R / +0.2176R — güven aralıkları iç içe |
+
+Bot uzun-beta DEĞİL. Piyasa düşerken de kazanıyor.
+
+### HAREKET ŞİDDETİ 2.3 KAT DAHA ÇOK AÇIKLIYOR
+| | eğim | R² |
+|---|---|---|
+| işaretli getiri (yön) | +0.431 | %4.8 |
+| **|getiri| (şiddet)** | **+0.431** | **%11.2** |
+
+| hareket | ay | sistem ort | poz ay | toplam |
+|---|---|---|---|---|
+| BÜYÜK (\|ret\|>%12.5) | 20 | **+27.56%** | %85 | +551.3% |
+| KÜÇÜK (\|ret\|≤%12.5) | 20 | **+9.82%** | %75 | +196.5% |
+
+**2×2 tablo kesin:** büyük/küçük farkı HER İKİ satırda da büyük
+(yukarı 29.15 vs 11.24 · aşağı 25.62 vs 7.70), yukarı/aşağı farkı her iki
+sütunda da küçük. Yani belirleyici **şiddet**, yön değil.
+
+**Yalnız donchian daha da keskin:** BÜYÜK aylarda **+24.21%**, KÜÇÜK aylarda
+**+3.04%** — sekiz kat.
+
+### SL'LER NEDEN SL OLUYOR — MEKANİZMA
+Donchian bir kırılım takipçisi. Yatay/çırpıntılı piyasada fiyat kanalı kırar,
+koşacak yer bulamaz, döner ve stopa gelir. Kaybettiğimiz dönem = piyasanın
+**hareket etmediği** dönem. Yön hiç fark etmiyor.
+
+### ⛔ AMA "O DÖNEMLERİ ELEYELİM" ÇALIŞMAZ
+Araştırma kuralı 1: bir filtre ancak kestiği alt kümenin ortalama R'si
+NEGATİF ise para kazandırır. Küçük-hareket ayları **+%9.82** (donchian tek
+başına +%3.04) — yani **pozitif**. Kesecek zarar YOK; kesersek toplamın
+%26'sını (+196.5%) hiçbir şey kazanmadan atmış oluruz.
+
+### AÇIK KALAN TEK YOL: ELEMEK DEĞİL, **BOYUTLANDIRMAK**
+Küçük-hareket dönemlerinde işlemi kesmek yerine RİSKİ KÜÇÜLTMEK yapısal olarak
+farklı bir fikir ve HİÇ TEST EDİLMEDİ. Şartı var: şiddet **önceden** ölçülebilir
+olmalı. Yukarıdaki ölçüm AYNI ayın |getirisi|ni kullanıyor — bu eşzamanlı,
+öngörücü değil. Oynaklık kümelenmesi (volatility clustering) finansın en
+sağlam olgularından biri olduğu için geçmiş oynaklık gelecek şiddeti tahmin
+edebilir; ama bu VARSAYIM, ölçülmeden kullanılamaz.
+
+⚠ `regime_sans.py` kötü AYLARIN önceden tahmin edilemediğini 10.000
+permütasyonla göstermişti. Beta AÇIKLAYICI, ÖNGÖRÜCÜ DEĞİL.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
