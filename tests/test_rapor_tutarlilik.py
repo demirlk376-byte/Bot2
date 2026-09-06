@@ -46,9 +46,15 @@ class _SahtePortfoy:
 
 
 class _SahteDB:
-    def __init__(self, inception, deposits, defter_pnl):
+    def __init__(self, inception, deposits, defter_pnl, cut=None):
         self._m = {"inception_balance": inception, "total_deposits": deposits}
         self._pnl = defter_pnl
+        self._cut = cut
+    async def get_meta(self, k):
+        # Bu testlerde ÇIPA YOK (cut=None) — temiz dönem ayrı dosyada sınanıyor.
+        # get_meta'nın var olması şart: yoksa _tutarlilik istisnaya düşüp
+        # SESSİZ kalıyor ve "uyarı çıkmadı" testi yanlış yere geçiyordu.
+        return self._cut if k == "temiz_cut" else self._m.get(k)
     async def get_meta_float(self, k, d=0.0): return self._m.get(k, d)
     async def get_performance_summary(self, is_paper=None):
         return SimpleNamespace(total_pnl_usdt=self._pnl)

@@ -207,11 +207,46 @@ class TelegramNotifier:
         t = await self._tutarlilik(equity, invested, upnl)
         return t if "Sermaye eksik" in t else ""
 
+    async def _defter_pnl(self, cut):
+        """Defterdeki kapanan işlem PnL toplamı. Döner: (toplam, süzüldü_mü).
+
+        `cut` verilmişse yalnız o tarihten SONRAKİ işlemler sayılır. sqlite
+        okunamazsa get_performance_summary()'ye düşer — ama o TARİH SÜZMEZ,
+        o yüzden ikinci değer False döner ve çağıran hüküm vermez. Yarım
+        süzülmüş bir toplamı çıpalı rakamla kıyaslamak uydurma sapma üretir."""
+        ip = 1 if self._app_config.exchange.paper_mode else 0
+        try:
+            import sqlite3 as _sq
+            path = getattr(self._db, "_path", None)
+            if path:
+                con = _sq.connect(f"file:{path}?mode=ro", uri=True, timeout=15)
+                try:
+                    q = ("SELECT COALESCE(SUM(pnl_usdt),0) FROM trades "
+                         "WHERE is_paper=? AND exit_time IS NOT NULL")
+                    pr = [ip]
+                    if cut:
+                        q += " AND entry_time>=?"
+                        pr.append(str(cut))
+                    return float(con.execute(q, tuple(pr)).fetchone()[0]), True
+                finally:
+                    con.close()
+        except Exception:
+            pass
+        try:
+            perf = await self._db.get_performance_summary(
+                is_paper=self._app_config.exchange.paper_mode)
+            return float(perf.total_pnl_usdt), False       # TARİH SÜZÜLMEDİ
+        except Exception:
+            return None, False
+
     async def _tutarlilik(self, equity: float, invested: float, upnl: float) -> str:
         """İKİ BAĞIMSIZ KAYNAK KARŞILAŞTIRMASI — 28 Ağustos hatasının panzehiri.
 
         İddia edilen kâr  = equity − yatırılan sermaye        (borsa + meta)
         Defterdeki kâr    = Σ kapanan işlem PnL + açık uPnL   (trades tablosu)
+
+        ⚠ ÇIPA VARSA İKİ TARAF DA çıpa sonrasına süzülür — karışırsa uydurma
+        sapma çıkar.
 
         İkisi uyuşmuyorsa en olası sebep KAYDEDİLMEMİŞ bir para giriş/çıkışıdır:
         para gelir, `total_deposits` değişmez, fark doğrudan "kâr" diye görünür.
@@ -223,12 +258,25 @@ class TelegramNotifier:
         if self._db is None:
             return ""
         try:
-            perf = await self._db.get_performance_summary(
-                is_paper=self._app_config.exchange.paper_mode)
-            defter = float(perf.total_pnl_usdt) + upnl
+            # ⚠ Defter toplamı da ÇIPA SONRASI olmalı: get_performance_summary()
+            # tarih süzmüyor, çıpa öncesi PnL ekrana geri sızıyordu.
+            cut = await self._db.get_meta("temiz_cut")
+            ham, suzuldu = await self._defter_pnl(cut)
+            if ham is None:
+                return ""
+            # ÇIPA VAR AMA SÜZÜLEMEDİYSE HÜKÜM YOK. Süzülmemiş toplamı çıpalı
+            # iddiayla karşılaştırmak, çıpa öncesi kâr/zarar kadar UYDURMA bir
+            # sapma üretir — sessiz yanlış, sessizlikten kötüdür.
+            if cut and not suzuldu:
+                return ""
+            defter = ham + upnl
         except Exception:
             return ""
-        iddia = equity - invested
+        # ⚠ İKİ TARAF AYNI DÖNEMDEN OLMALI. `defter` yukarıda çıpa sonrasına
+        # süzüldü; `iddia` da süzülmezse elmayla armut karşılaştırılır ve
+        # UYDURMA bir sapma raporlanır (çıpa öncesi kâr/zarar kadar).
+        _t = await self._temiz(equity, invested)
+        iddia = _t["kar"] if _t else (equity - invested)
         fark = iddia - defter
         # Eşik: ücret/fonlama kayması küçüktür; $5 ve sermayenin %2'sinin büyüğü.
         esik = max(5.0, abs(invested) * 0.02)
@@ -386,10 +434,17 @@ class TelegramNotifier:
             t = await self._tutarlilik(equity, invested, upnl)
             taban = (await self._db.get_meta_float("sermaye_taban", 0.0)
                      if self._db else 0.0)
+            # ⚠ ÇIPA KAÇAĞI — denetimde bulundu. Burada `equity−invested` yani
+            # HER ZAMANIN kârı basılıyordu; /status ve /balance çıpaya geçmişti
+            # ama /tani unutulmuştu. Çıpa öncesi dönem ekrana geri geliyordu.
+            _t = await self._temiz(equity, invested)
             L = ["<b>🔧 Teşhis</b>",
                  f"Equity <code>${equity:,.2f}</code> · yatırılan "
-                 f"<code>${invested:,.2f}</code> · kâr "
-                 f"<code>${equity-invested:+,.2f}</code>",
+                 f"<code>${invested:,.2f}</code>",
+                 (f"Kâr <code>${_t['kar']:+,.2f}</code> "
+                  f"<i>(temiz dönem: {_t['cut']} sonrası)</i>" if _t else
+                  f"Kâr <code>${equity-invested:+,.2f}</code> "
+                  f"<i>(çıpa YOK — her zamanın rakamı)</i>"),
                  f"Sermaye kaynağı: <code>"
                  f"{'borsa (otomatik)' if taban > 0 else 'elle kayıt (yedek yol)'}"
                  f"</code>"]
@@ -488,11 +543,46 @@ class TelegramNotifier:
             return
         try:
             ip = self._app_config.exchange.paper_mode
-            breakdown = await self._db.get_strategy_breakdown(is_paper=ip)
+            # ⚠ ÇIPA KAÇAĞI — denetimde bulundu, 3 şüpheciden 0'ı çürütebildi.
+            # get_strategy_breakdown() (database.py:305) SADECE exit_time IS NOT
+            # NULL süzüyor, TARİH süzgeci YOK. Yani /rapor'da tamamen atılan
+            # emekli kolların çıpa öncesi işlemleri burada satır satır
+            # görünüyordu — "hiçbir iz olmayacak" isteğinin en açık ihlali ve
+            # iki komut aynı hesap için çelişen tablo veriyordu.
+            cut = await self._db.get_meta("temiz_cut") if self._db else None
+            import sqlite3 as _sq, json as _js
+            path = getattr(self._db, "_path", "trades.db")
+            con = _sq.connect(f"file:{path}?mode=ro", uri=True, timeout=15)
+            try:
+                q = ("SELECT strategy_scores, pnl_usdt FROM trades WHERE is_paper=? "
+                     "AND exit_time IS NOT NULL")
+                pr = [1 if ip else 0]
+                if cut:
+                    q += " AND entry_time>=?"
+                    pr.append(str(cut))
+                rows = con.execute(q, tuple(pr)).fetchall()
+            finally:
+                con.close()
+            agg = {}
+            for sc, pn in rows:
+                try:
+                    d = _js.loads(sc or "{}")
+                    st = str(d.get("strategy") or d.get("sleeve") or "unknown")
+                except Exception:
+                    st = "unknown"
+                a = agg.setdefault(st, {"strategy": st, "total": 0, "win": 0, "pnl": 0.0})
+                a["total"] += 1
+                v = float(pn or 0.0)
+                a["pnl"] += v
+                if v > 0:
+                    a["win"] += 1
+            breakdown = sorted(agg.values(), key=lambda x: -x["pnl"])
             if not breakdown:
-                await self._reply(update, "Henüz kapanmış trade yok.")
+                await self._reply(update, "Henüz kapanmış trade yok."
+                                  + (f" ({cut} sonrası)" if cut else ""))
                 return
-            lines = ["<b>Strateji Performansı</b>"]
+            lines = ["<b>Strateji Performansı</b>"
+                     + (f" <i>({cut} sonrası)</i>" if cut else "")]
             for s in breakdown:
                 wr = s["win"] / s["total"] * 100 if s["total"] > 0 else 0.0
                 pnl_sign = "🟢" if s["pnl"] >= 0 else "🔴"

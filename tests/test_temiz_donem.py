@@ -86,6 +86,42 @@ def test_status_ve_rapor_temizi_kullaniyor():
     print("  /status · /rapor · /stats üçü de çıpayı kullanıyor ✓")
 
 
+def test_strategy_ve_tani_da_suzuluyor():
+    """DENETİM BULGUSU (3 şüpheciden 0'ı çürütebildi): /strategy çıpa öncesinin
+    TAMAMINI basıyordu — get_strategy_breakdown() tarih süzmüyor. /tani de
+    her-zamanın kârını yazıyordu. İkisi de 'hiçbir iz olmayacak' ihlaliydi ve
+    /rapor ile çelişen tablo veriyordu."""
+    src = (Path(__file__).resolve().parent.parent / "telegram_bot.py").read_text()
+
+    i = src.index("async def _cmd_strategy")
+    blok = src[i:i + 3500]
+    assert "temiz_cut" in blok, "/strategy çıpayı okumuyor"
+    # ÇAĞRIYI hedefle — açıklama yorumunda adı geçmesi normal.
+    assert "await self._db.get_strategy_breakdown" not in blok, \
+        "/strategy hâlâ tarih süzmeyen toplu sorguyu ÇAĞIRIYOR"
+    assert "entry_time>=?" in blok, "/strategy tarih süzgeci uygulamıyor"
+
+    j = src.index("async def _cmd_tani")
+    tblok = src[j:j + 2000]
+    assert "_temiz(" in tblok, "/tani çıpayı kullanmıyor"
+    assert 'f"Kâr <code>${equity-invested:+,.2f}</code>' in tblok, \
+        "çıpa yokken yedek yol kaldırılmış"
+    print("  /strategy ve /tani da çıpaya göre süzülüyor ✓")
+
+
+def test_tutarlilik_iki_tarafi_ayni_donemden_aliyor():
+    """`defter` çıpa sonrasına süzüldü; `iddia` süzülmezse elmayla armut
+    karşılaştırılır ve UYDURMA sapma raporlanır."""
+    src = (Path(__file__).resolve().parent.parent / "telegram_bot.py").read_text()
+    i = src.index("async def _tutarlilik")
+    blok = src[i:i + 2600]
+    assert 'iddia = _t["kar"] if _t else' in blok, \
+        "iddia tarafı çıpaya göre süzülmüyor — sahte sapma üretir"
+    assert blok.index("_temiz(") < blok.index("fark = iddia - defter"), \
+        "süzme karşılaştırmadan SONRA"
+    print("  _tutarlilik iki tarafı da aynı dönemden alıyor ✓")
+
+
 def test_heartbeat_temizi_kullaniyor():
     src = (Path(__file__).resolve().parent.parent / "main.py").read_text()
     i = src.index("async def heartbeat_loop")
@@ -114,6 +150,8 @@ if __name__ == "__main__":
                test_cipa_oncesi_kar_HIC_sayilmiyor,
                test_zarar_da_dogru,
                test_status_ve_rapor_temizi_kullaniyor,
+               test_strategy_ve_tani_da_suzuluyor,
+               test_tutarlilik_iki_tarafi_ayni_donemden_aliyor,
                test_heartbeat_temizi_kullaniyor,
                test_kurulum_araci_dogruluyor):
         fn()
