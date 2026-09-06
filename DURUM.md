@@ -1408,6 +1408,77 @@ Ağustos'ta yaşanan −%26.8 böylece ankorun beklediği en kötüden DAHA KÖT
 olmuş oluyor — teselli değil ama doğru olan bu.
 
 
+---
+
+## 4x. PORTFÖY KÂR KİLİDİ REDDEDİLDİ (2026-09-06) — 29. eksen kapandı
+
+Ağustos kaybının hiç ele alınmamış yarısı: −$50.62 **geri verilen açık kâr**.
+`kar_kilidi.py` bunu test etti — bar bar portföy simülasyonu, kötümser mark
+(tetikleme bar kapanışıyla değil ALEYHTEKİ UÇLA), erken çıkışa ek maliyet.
+Kuralsız hali ankora karşı doğrulandı: 1579 / $+1420.66 ✓, maxDD %24.4 (4w).
+
+**13 adayın 13'ü düştü.** Öne çıkanlar:
+
+| kural | Δ$ | maxDD | en kötü ay | Δnorm |
+|---|---|---|---|---|
+| TABAN | — | 24.4 | −21.0 | — |
+| A) başabaş ≥%10 | **+42** | **24.3** | **−20.1** | +51 |
+| B) takip zirve≥%10 geri %50 | +131 | 24.9 | **−23.0** | +102 |
+
+**A) ≥%10 üç ölçütü de hafifçe İYİLEŞTİRDİ** — 29 eksende bunu yapan tek şey.
+Ama barajı geçemedi (+%3.6 < %5). Ve tunelemeye kalkışmamak için iki sebep var:
+
+### 1. DESEN MONOTON DEĞİL → GÜRÜLTÜ
+Eşik büyüdükçe kural DAHA AZ tetikler. Gerçek bir mekanizma olsaydı Δ$ tek
+yönde ilerlerdi. Gözlenen: **−280 / +42 / −92 / −2** — işaret dört kez
+değişiyor. Bu, mekanizma değil örneklem gürültüsü imzasıdır.
+
+### 2. BÜYÜKLÜK ZATEN GÜRÜLTÜNÜN İÇİNDE
+σ_R=1.465 · eff=$4.27 · n=1579 → toplam kârın gürültü ölçeği **±$249**.
+En iyi adayın kazancı **+$42 = 0.17σ**. Barajın istediği +$71 bile 0.29σ.
+Yani bu tabloda hiçbir hücre sıfırdan ayrılamaz.
+
+### HÜKÜM
+"Geri verilen açık kâr" GERÇEK bir olgu — ama korumanın bedeli faydasından
+büyük, ve ölçülen fayda zaten gürültü seviyesinde. **B) takip stopu özellikle
+kötü:** kârı artırır gibi görünürken en kötü ayı −21.0'dan −23.0'a
+KÖTÜLEŞTİRİYOR. Sebebi anlaşılır — geçici bir geri çekilmeyi gerçekleşmiş
+zarara çeviriyor. Koruma diye eklenen şey kuyruğu uzatıyor.
+
+**Kapanan eksen 28+ → 29+.**
+
+---
+
+## 4y. ARAMANIN DURUMU — dürüst özet (2026-09-06)
+
+Kullanıcının sorusu: "kayıpları öngörmenin, azaltmanın bir yolunu bul."
+29 eksen kapandı. Kategorik cevap:
+
+| ne denendi | sonuç |
+|---|---|
+| İŞLEM seçmek (hangi sinyal kötü?) | ölü — kesilecek negatif alt küme YOK (ic_bar 30/30 pozitif) |
+| DÖNEM seçmek (hangi piyasa hali?) | ölü — şiddet öngörülemiyor (ρ=+0.034, p=0.18) |
+| YÖN sınırlamak | ölü — monoton kayıp, yığılma trendde oluşuyor |
+| BOYUT ayarlamak (oynaklığa göre) | ölü — sakin dönemde kısmak maxDD'yi KÖTÜLEŞTİRİYOR |
+| KÂRI kilitlemek (portföy) | ölü — fayda 0.17σ, desen monoton değil |
+| KALDIRAÇ kademesi | ölü — +10bp ek kaymada buhar |
+
+**Ortak mekanizma:** her denemede kesilen küme POZİTİF beklentili çıktı.
+Sistemin kayıpları ayrıştırılabilir bir kusur değil, edge'in fiyatı.
+
+### GERİYE KALAN DÜRÜST SEÇENEKLER (edge iyileştirmesi DEĞİL)
+1. **RISK_SCALE'i düşürmek** — kârı ve drawdown'ı ORANTILI küçültür. Oranı
+   iyileştirmez ama dolar cinsinden acıyı azaltır. Bu bir TERCİH kolu.
+2. **Bakiyenin büyümesi** — aynı %24.4 daha büyük tabanda daha çok dolar ama
+   hesap daha çok drawdown'a dayanır.
+3. **Dokunmamak** — 29 eksenin gösterdiği şey bu.
+
+### HÂLÂ AÇIK TEK ARAŞTIRMA MADDESİ
+`main.py:1089` çıkış modelinin 3 yıllık veriyle YENİDEN doğrulanmasını
+istiyor; veri artık var, hiç yapılmadı. Bu bir kayıp-azaltma vaadi DEĞİL,
+sadece kapatılmamış tek defter maddesi.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
