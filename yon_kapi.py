@@ -156,6 +156,13 @@ def koltuk_yonlu(ham, yon_cap: int, kapsam: set | None):
 def olc(al):
     if not al:
         return dict(n=0)
+    # ⚠ DÜZELTME (2026-09-06): equity eğrisi ÇIKIŞ sırasına göre kurulmalı —
+    # PnL çıkışta gerçekleşir. Bu fonksiyon girişte üretilen sırayı kullanıyordu
+    # ve maxDD'yi ~1.75 puan YÜKSEK gösteriyordu (26.18 yerine gerçek 24.43).
+    # deployed_backtest.seat_select ÇIKIŞA göre sıralar; ankorla tutarlılık
+    # için burası da öyle olmalı. Δ karşılaştırmaları etkilenmiyordu (iki taraf
+    # da aynı yanlış sırayı kullanıyordu) ama MUTLAK rakam yanlıştı.
+    al = sorted(al, key=lambda a: a[0])
     r = np.array([a[1] for a in al]); sp = np.array([a[2] for a in al])
     eff = np.minimum(A.RISKF, A.CAP * sp)
     pnl = r * eff * A.BAL0

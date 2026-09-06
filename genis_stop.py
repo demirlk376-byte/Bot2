@@ -215,6 +215,9 @@ def maxdd(pnl):
 
 
 def ozet(al):
+    # ⚠ DÜZELTME (2026-09-06): equity ÇIKIŞ sırasına göre — PnL çıkışta
+    # gerçekleşir. Giriş sırası maxDD'yi ~1.75 puan yüksek gösteriyordu.
+    al = sorted(al, key=lambda r: r[0])
     pnl = np.array([r[1] for r in al])
     exits = [pd.Timestamp(r[0], tz="UTC") for r in al]
     mon = pd.Series(pnl, index=[x.tz_localize(None).to_period("M") for x in exits]

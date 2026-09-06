@@ -1331,6 +1331,83 @@ edebilir; ama bu VARSAYIM, ölçülmeden kullanılamaz.
 permütasyonla göstermişti. Beta AÇIKLAYICI, ÖNGÖRÜCÜ DEĞİL.
 
 
+---
+
+## 4v. OYNAKLIK EKSENİ KAPANDI (2026-09-06) — ve 4u'nun tersini gösterdi
+
+4u "belirleyici olan hareket ŞİDDETİ" dedi ve tek açık yol olarak "elemek
+değil BOYUTLANDIRMAK"ı bıraktı. `oynaklik_kapisi.py` onu test etti (ankora
+karşı 1579 / $+1420.66 ✓ birebir).
+
+### [1] ŞİDDET ÖNCEDEN BİLİNEMİYOR
+Girişten ÖNCEKİ 30 günlük pencerede ölçülen piyasa oynaklığı (rolling +
+`shift(1)`, lookahead kilitli) ile işlemin R'si arasında:
+**Spearman ρ = +0.0342, p = 0.1765, n = 1566 → İLİŞKİ YOK.**
+
+### [2] VE DİLİM TABLOSU 4u'NUN TERSİNİ SÖYLÜYOR
+| dilim | n | oynaklık | ort R | alt güven |
+|---|---|---|---|---|
+| Q1 (en sakin) | 311 | %1.83 | +0.2323 | +0.0634 |
+| Q2 | 315 | %2.41 | +0.3264 | +0.1637 |
+| **Q3 (orta)** | 313 | %2.83 | **+0.4029** | +0.2363 |
+| Q4 | 312 | %3.36 | +0.1834 | +0.0237 |
+| **Q5 (en oynak)** | 315 | %4.31 | **+0.0559** | −0.0966 |
+
+**En iyi dilim ORTA, en kötü dilim EN OYNAK olan.** Aylık analiz "büyük
+hareket iyi" diyordu; işlem seviyesinde tam tersi çıkıyor.
+
+**Çelişki değil, açıklaması var:** aylık |getiri| EŞZAMANLI ölçülüyordu —
+sistem hareketi yakaladığı için o ay büyük görünüyor; bu SONUÇ, öngörü değil.
+İşlem öncesi yüksek oynaklık ise hareketin ÇOKTAN OLDUĞU anlamına geliyor;
+oraya girmek GEÇ kalmak demek. 4u açıklayıcıydı, 4v öngörücü — ikisi farklı
+soru ve cevapları da farklı.
+
+Hiçbir dilim negatif değil → **eleme kural 1'e göre kesin ölü.**
+
+### [3] BOYUTLANDIRMA DA ÇALIŞMIYOR — beşinin beşi düştü
+| kural | kâr$ | Δ$ | maxDD | en kötü ay | NORM | Δnorm |
+|---|---|---|---|---|---|---|
+| TABAN | +1421 | — | 24.4 | −21.0 | 1421 | — |
+| düşük vol'de 0.5× | +962 | −458 | **27.5** | −14.2 | 853 | −567 |
+| düşük vol'de 0.75× | +1192 | −229 | 25.9 | −17.4 | 1124 | −296 |
+| yüksek vol'de 1.25× | +1547 | +126 | 29.8 | −22.7 | 1266 | −155 |
+| düşük 0.5× · yüksek 1.5× | +1215 | −205 | **39.6** | −21.2 | 750 | −670 |
+| vol ile orantılı | +1317 | −103 | 33.8 | −21.1 | 952 | −469 |
+
+**Ters yönde sürpriz:** sakin dönemde riski KISMAK drawdown'ı İYİLEŞTİRMİYOR,
+KÖTÜLEŞTİRİYOR (24.4 → 27.5). Sakin dönemlerin istikrarlı küçük kârı
+drawdown'ları yastıklıyormuş; onu kesince kuyruk daha çıplak kalıyor.
+
+**KARAR: eksen KAPANDI.** "Kaybettiğimiz dönemleri önleyelim" sorusunun hem
+eleme hem boyutlandırma cevabı ölçüldü ve ikisi de para kaybettiriyor.
+Kapanan eksen **26+ → 28+**.
+
+---
+
+## 4w. ⚠ DÜZELTME: ANKORUN GERÇEK maxDD'si **%24.4**, %26.2 DEĞİL
+
+4v çalışırken kendi araçlarım arasında tutarsızlık çıktı ve kovalandı.
+Sebep tamamen equity eğrisinin SIRASI:
+
+| sıra | maxDD | kâr |
+|---|---|---|
+| GİRİŞ sırasıyla | 26.18 | $+1420.66 |
+| **ÇIKIŞ sırasıyla** | **24.43** | $+1420.66 |
+
+Aynı işlemler, aynı kâr — tek fark sıralama. **PnL çıkışta gerçekleşir, yani
+doğru olan ÇIKIŞ sırası.** `deployed_backtest.seat_select` zaten çıkışa göre
+sıralıyor; ankorun gerçek rakamı **%24.4**.
+
+`yon_kapi.py` ve `genis_stop.py` giriş sırasını kullanıyordu ve %26.2
+raporluyordu. **Δ karşılaştırmaları ETKİLENMEDİ** (iki taraf da aynı yanlış
+sırayı kullanıyordu, hükümler geçerli) ama MUTLAK rakam ~1.75 puan şişkindi.
+İkisi de düzeltildi.
+
+**Pratik sonuç:** DURUM'da maxDD %26.2/%26.4 geçen yerler ~%24.4 okunmalı.
+Ağustos'ta yaşanan −%26.8 böylece ankorun beklediği en kötüden DAHA KÖTÜ
+olmuş oluyor — teselli değil ama doğru olan bu.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
