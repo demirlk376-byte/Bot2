@@ -37,21 +37,11 @@
       "skipped": 33
     },
     "SOL": {
-      "balance": 9872.343380348277,
-      "position": {
-        "direction": -1,
-        "entry": 103.18,
-        "sl": 104.95144410014726,
-        "tp": 100.22759316642127,
-        "qty": 47.84039242269954,
-        "atr": 0.5904813667157475,
-        "entry_ts": "2026-09-05T12:00:00+00:00",
-        "fng_at_entry": 73,
-        "funding_at_entry": 4.7e-05
-      },
-      "n_trades": 30,
+      "balance": 9785.605381450105,
+      "position": null,
+      "n_trades": 31,
       "n_wins": 13,
-      "total_pnl": -127.6566196517291,
+      "total_pnl": -214.3946185499002,
       "skipped": 17
     },
     "BNB": {
