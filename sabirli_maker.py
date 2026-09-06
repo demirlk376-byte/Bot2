@@ -104,7 +104,7 @@ def _cikis(d4, i0, yon, giris, sld, mh, rr):
     return j, cl[j]
 
 
-def kol(coin, source, mod, pencere_h=4, derinlik_bp=2.0):
+def kol(coin, source, mod, pencere_h=4, derinlik_bp=2.0, kovala_bp=20.0):
     """mod: 'ankor'  = A.gen birebir (kaymasız, 1bp×2) — makine doğrulaması
             'taker'  = bugünkü GERÇEK yol: piyasa girişi + 15.32bp kayma
             'sabirli'= post-only limit, pencere_h saat; dolmazsa piyasaya düş
@@ -124,6 +124,39 @@ def kol(coin, source, mod, pencere_h=4, derinlik_bp=2.0):
             giris = L; ucret_bp = 2 * TAKER_BP; i0 = i + 1
         elif mod == "taker":
             giris = L * (1 + yon * KAYMA_BP / 1e4); ucret_bp = 2 * TAKER_BP; i0 = i + 1
+        elif mod == "kovala":
+            # ── SABIRLI LİMİT + KOVALAMA ─────────────────────────────────────
+            # ÖLÇÜLEN KUSURUN ÇARESİ: saf sabırlı limitte dolmayan %5.6, işlem
+            # başına $2.28 kaybettiriyor (ortalama işlem +$0.90 kazandırırken)
+            # — çünkü dolmayanlar KOŞAN kırılımlar, yani kuyruğun kendisi.
+            # Çare: pencereyi sonuna kadar bekleme. Fiyat aleyhe (long'da
+            # YUKARI) kovala_bp kadar giderse limiti iptal edip HEMEN piyasaya
+            # geç. Geri çekilenlerde tasarruf korunur, koşanlar kaçmaz.
+            #
+            # ⚠ KÖTÜMSER BERABERLİK: aynı 1h barında hem dolum hem kovalama
+            # şartı oluşursa KOVALAMA sayılır (daha pahalı olan).
+            t0 = idx4[i] + pd.Timedelta(hours=4)
+            t1 = t0 + pd.Timedelta(hours=pencere_h)
+            pen = d1.loc[(d1.index >= t0) & (d1.index < t1)]
+            if len(pen) == 0:
+                continue
+            hedef = L * (1 - yon * derinlik_bp / 1e4)
+            kov = L * (1 + yon * kovala_bp / 1e4)
+            giris = None
+            for _, bar in pen.iterrows():
+                kacti = (bar["high"] > kov) if yon == 1 else (bar["low"] < kov)
+                doldu_b = (bar["low"] < hedef) if yon == 1 else (bar["high"] > hedef)
+                if kacti:                                  # kötümser: kovalama önce
+                    giris = kov * (1 + yon * KAYMA_BP / 1e4)
+                    ucret_bp = 2 * TAKER_BP; i0 = i + 1
+                    break
+                if doldu_b:
+                    giris = L
+                    ucret_bp = MAKER_BP + TAKER_BP; i0 = i + 1
+                    break
+            if giris is None:                              # pencere doldu, dolmadı
+                giris = float(pen["close"].iloc[-1]) * (1 + yon * KAYMA_BP / 1e4)
+                ucret_bp = 2 * TAKER_BP; i0 = i + 2
         else:
             # ── SABIRLI LİMİT ────────────────────────────────────────────────
             # Bar KAPANDIKTAN sonra pencere_h saatlik 1h barlarına bak.
@@ -151,10 +184,10 @@ def kol(coin, source, mod, pencere_h=4, derinlik_bp=2.0):
     return out
 
 
-def portfoy(mod, source, pencere_h=4, derinlik_bp=2.0):
+def portfoy(mod, source, pencere_h=4, derinlik_bp=2.0, kovala_bp=20.0):
     ham = []
     for c in A.DONCH:
-        ham += kol(c, source, mod, pencere_h, derinlik_bp)
+        ham += kol(c, source, mod, pencere_h, derinlik_bp, kovala_bp)
     for c in A.SQZ:
         ham += A.gen("squeeze", fast_bt.load(c, source=source))
     for c in A.BB_COINS:
@@ -225,6 +258,24 @@ def main():
             bar = ("✓ GEÇTİ" if (k - t_kar >= 28 and ay >= t_ay - 0.05)
                    else ("✗ ay↓" if ay < t_ay - 0.05 else "✗ Δ$ yetersiz"))
             print(f"  {W:>6d}h {D:>8.0f}bp {n:>6d} {k:>+8.0f} {k-t_kar:>+7.0f} "
+                  f"{dd:>7.1f} {ay:>8.1f}  {bar}")
+
+    # ── KOVALAMA: ölçülen kusurun çaresi ────────────────────────────────────
+    print(f"\n{'='*80}\nKOVALAMA — koşan kırılımı kaçırma, geri çekileni ucuza al\n{'='*80}")
+    print(f"  Saf sabırlı limitin kusuru ÖLÇÜLDÜ: dolmayan %5.6 işlem başına")
+    print(f"  ~$2.28 kaybettiriyor (ortalama işlem +$0.90). Kaçanlar KOŞAN")
+    print(f"  kırılımlar. Çare: fiyat aleyhe X bp giderse limiti iptal et,")
+    print(f"  HEMEN piyasaya geç. Karar yine 10bp derinlik satırından.")
+    print(f"  {'kovala':>7s} {'derinlik':>9s} {'işlem':>6s} {'kâr$':>8s} "
+          f"{'Δ$':>7s} {'maxDD':>7s} {'kötü ay':>8s}  BAR")
+    print(f"  {'—':>7s} {'taker':>9s} {t_n:>6d} {t_kar:>+8.0f} {0:>7.0f} "
+          f"{t_dd:>7.1f} {t_ay:>8.1f}")
+    for KV in (10.0, 20.0, 30.0, 50.0):
+        for D in (2.0, 10.0):
+            k, dd, ay, n = portfoy("kovala", source, 4, D, KV)
+            bar = ("✓ GEÇTİ" if (k - t_kar >= 28 and ay >= t_ay - 0.05)
+                   else ("✗ ay↓" if ay < t_ay - 0.05 else "✗ Δ$ yetersiz"))
+            print(f"  {KV:>6.0f}bp {D:>8.0f}bp {n:>6d} {k:>+8.0f} {k-t_kar:>+7.0f} "
                   f"{dd:>7.1f} {ay:>8.1f}  {bar}")
 
     print(f"\n{'='*80}\nHÜKÜM\n{'='*80}")
