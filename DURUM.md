@@ -1752,6 +1752,60 @@ büyük işlem" olurdu. Yani bu kural canlıda test edildiği gibi DAVRANMAZDI.
 çoğaltılarak iyileşiyor.
 
 
+---
+
+## 5d. ⭐ UYUM TESTİ GEÇTİ (2026-09-07) — ankorun zemini KANITLANDI
+
+Kullanıcının fikri ve doğru fikirdi: bu dönemin verisini backtest'e sok, aynı
+dönemin GERÇEK işlem geçmişiyle karşılaştır. 34 eksen boyunca her şey ANKORA
+KARŞI ölçülmüştü ama ankorun canlıyla örtüştüğü uçtan uca HİÇ doğrulanmamıştı.
+
+⚠ İLK KOŞU %22 EŞLEŞME VERDİ — ve bu ARACIN hatasıydı. `A.gen` `idx[i]` yazıyor
+= pandas resample bin etiketi = BARIN BAŞLANGICI; canlı ise bar KAPANINCA
+giriyor. Donchian 4h → tam 4 saat fark, ±2 saatlik pencereyle ASLA eşleşemezdi.
+Aynı konvansiyonu `veri_pencere.py` ve `sabirli_maker.py`'de doğru yazmıştım,
+burada unuttum. **Hatayı ele veren şey aynı çıktıdaki toplam sayılardı:**
+beklenen 68 işlem vs gerçekleşen 67, beklenen $59 vs gerçekleşen $50 — gerçek
+bir ayrışmada bunlar tutmazdı. Araç artık düşük eşleşmede ÖNCE KENDİNDEN
+şüphelenmeyi söylüyor.
+
+### DÜZELTİLMİŞ SONUÇ
+| | |
+|---|---|
+| eşleşme | **48/67 = %72** (eşik %70, hüküm verilebilir) |
+| canlı ort R | +0.1004 |
+| backtest ort R | +0.1082 |
+| FARK | **−0.0078 ± 0.0632 (%95) · z = −0.24** |
+
+**✓ SİSTEMATİK SAPMA YOK.** Canlı, backtest'in dediğini yapıyor.
+İşlem sayısı 69 beklenen / 71 gerçekleşen; kâr $59 beklenen / $50 gerçekleşen.
+
+### ⚠ TESTİN ÇÖZÜNÜRLÜĞÜ — ne kanıtlandı, ne kanıtlanmadı
+Güven aralığı **±0.063R**, ankorun edge'i **+0.166R**. Yani edge'in %38'inden
+BÜYÜK bir sapma yakalanabilirdi; **%20'lik bir aşınma GÖRÜNMEZDİ.** 48 işlem
+bunun için az. "Büyük bozukluk yok" kanıtlandı, "edge tam beklendiği kadar"
+KANITLANMADI. Risk artışının ölçülü olmasının sebebi bu.
+
+### AÇIK KALAN: `external_close`
+En büyük 5 sapmanın DÖRDÜ `external_close` — SL'e de TP'ye de varmadan ERKEN
+kapanmış pozisyonlar (canlı −0.08R vs backtest −1.00R gibi). Tasarlanmış bir
+çıkış yolu DEĞİL. Toplamda zarar ettirmemiş (hem kazananı hem kaybedeni kısıyor,
+net ≈0) ama mekanizma AÇIKLANMADI. `cikis_dagilim.py` kaç tane olduğunu ve
+kümelenip kümelenmediğini gösteriyor (aynı güne kümeleniyorsa günlük zarar
+freni ya da elle kapatma; dağınıksa borsa tarafında senkron sorunu).
+
+### RİSK KARARI: `RISK_SCALE` 1.125 → **1.4**
+Ön-kayıtlı kural uygulandı: "sapma yok çıkarsa 1.4 savunulabilir".
+| | şimdi | 1.4'te |
+|---|---|---|
+| beklenen aylık | ~$29 | ~$36 |
+| en kötü ay | −$65 | **−$81** |
+| maxDD | −$75 | −$93 |
+Ağustos'ta yaşanan −$102'nin ALTINDA kalıyor. 2x önerilmedi: test çözünürlüğü
+%20'lik aşınmayı göremiyor.
+⚠ Bu artış EDGE'İ İYİLEŞTİRMİYOR, aynı eğriyi %24 büyütüyor. Kâr da acı da.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
