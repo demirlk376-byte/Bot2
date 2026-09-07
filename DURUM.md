@@ -1786,15 +1786,30 @@ BÜYÜK bir sapma yakalanabilirdi; **%20'lik bir aşınma GÖRÜNMEZDİ.** 48 i�
 bunun için az. "Büyük bozukluk yok" kanıtlandı, "edge tam beklendiği kadar"
 KANITLANMADI. Risk artışının ölçülü olmasının sebebi bu.
 
-### AÇIK KALAN: `external_close`
+### `external_close` — ÖLÇÜLDÜ VE KAPANDI
 En büyük 5 sapmanın DÖRDÜ `external_close` — SL'e de TP'ye de varmadan ERKEN
 kapanmış pozisyonlar (canlı −0.08R vs backtest −1.00R gibi). Tasarlanmış bir
 çıkış yolu DEĞİL. Toplamda zarar ettirmemiş (hem kazananı hem kaybedeni kısıyor,
-net ≈0) ama mekanizma AÇIKLANMADI. `cikis_dagilim.py` kaç tane olduğunu ve
-kümelenip kümelenmediğini gösteriyor (aynı güne kümeleniyorsa günlük zarar
-freni ya da elle kapatma; dağınıksa borsa tarafında senkron sorunu).
+net ≈0) ama mekanizma AÇIKLANMADI. `cikis_dagilim.py` ölçtü: **4 işlem (%6), toplam +$0.50.** İkisi 08-22'de
+(Ağustos düşüşü günü — muhtemelen günlük fren ya da elle kapatma), ikisi
+dağınık. Etkisi yarım dolar; **kovalamaya değmez, konu kapandı.**
 
-### RİSK KARARI: `RISK_SCALE` 1.125 → **1.4**
+### TEMİZ DÖNEM ÇIKIŞ PROFİLİ (67 kapanan işlem)
+| çıkış | adet | pay | ort$ |
+|---|---|---|---|
+| sl_hit | 33 | %49 | −5.02 |
+| tp_hit | 23 | %34 | **+10.82** |
+| max_hold | 7 | %10 | +1.86 |
+| external_close | 4 | %6 | +0.12 |
+
+Kazanan, kaybedenin **2.16 katı** kazandırıyor; WR %34. Bir kırılım sisteminin
+olması gereken profili ve ankorun PF 1.42'siyle tutarlı.
+
+### RİSK KARARI: `RISK_SCALE` 1.125 → **1.4** — ✅ CANLIDA UYGULANDI
+Doğrulandı (2026-09-07 19:27 UTC): `.env` satır 81 `RISK_SCALE=1.4`,
+`load_config()` → `max_risk_per_trade = 0.028` (0.02 × 1.4), ve
+`Started btc-bot.service` sed'den SONRA. Çalışan bot 1.4 ile işlem açıyor.
+**Geri dönüş:** `.env`'de `RISK_SCALE=1.125` + `systemctl restart btc-bot`.
 Ön-kayıtlı kural uygulandı: "sapma yok çıkarsa 1.4 savunulabilir".
 | | şimdi | 1.4'te |
 |---|---|---|
@@ -1891,8 +1906,18 @@ journalctl -u btc-bot -n 100 --no-pager
 **Durdurmak istersen:** Telegram'dan elle duraklat. Loglarda artık gerçek sebebi
 yazıyor (`manual pause via Telegram`), günlük zarar limitiyle karışmaz.
 
-**Kırmızı çizgi:** bakiye $130'un altına inerse dur ve bak. Aylık −%21 normaldir,
-o çizgiye kadar müdahale gerekmez.
+**Kırmızı çizgi (2026-09-07'de GÜNCELLENDİ):** eski $130 çizgisi ~$190
+bakiyeye göreydi; sermaye $280.38, `RISK_SCALE` 1.4 oldu. Yeni çizgi:
+
+  **equity $180'in altına inerse DUR ve bak.**
+
+Gerekçesi: $184.63 temiz dönem çıpası. Oranın altına inmek "temiz dönemde
+kazanılan her şey geri verildi VE eklenen sermaye yeniyor" demektir — bu artık
+normal drawdown değil. 1.4 ölçekte beklenen maxDD ~%34, yani $306'dan ~$200'e
+inmek HÂLÂ NORMAL; müdahale çizgisi onun altında olmalı ki normal dalgalanmada
+paniğe kapılmayalım.
+
+⚠ Aylık −$81 (en kötü ay) ve −$93 (maxDD) 1.4 ölçekte BEKLENEN rakamlardır.
 
 ---
 
