@@ -243,6 +243,60 @@ def main():
         print(f"    → 4 yılın {'HEPSİNDE' if hep_ayni else 'hepsinde DEĞİL'} "
               f"aynı uç en iyi ({yon_sayac})")
 
+    # ── [D] rr TEK BAŞINA — tek tutarlı boyut, İZOLE OOS ─────────────────────
+    # [C] ayrım yaptı: sl_atr ve max_hold yılda bir yöne, ertesi yıl başka yöne
+    # gidiyor (gürültü). rr ise 4 YILIN 4'ÜNDE de monoton artan ve 4'ünde de
+    # uç değer en iyi. Bu, OOS'un kaçıramayacağı kadar tutarlı — ama OOS ÜÇ
+    # boyutu birden seçtiği için gürültülü iki boyut rr'yi de aşağı çekti.
+    #
+    # ⚠ ÖN-KAYIT (bu satırlar sonuç görülmeden yazıldı):
+    #   rr TEK BAŞINA, sl_atr ve max_hold MEVCUTTA SABİT tutularak taranır.
+    #   Aday ancak (1) izole OOS'ta mevcut rr'yi yenerse VE (2) en kötü ay
+    #   kötüleşmezse "sonraki tur için aday" sayılır. Bugün YİNE değişiklik YOK;
+    #   geçse bile dayanıklılık turu (ek kayma) gerekir — kaldıraç kademesini
+    #   tam o aşamada elemiştik.
+    # ⚠ Izgara SINIRININ ötesi de taranıyor (3.5, 4.0, 5.0): marjinal sınıra
+    #   kadar tek yönde gidiyorsa optimum dışarıda olabilir — ya da dönebilir.
+    #   Dönmesi beklenir: rr→∞ iken TP hiç vurulmaz, her işlem stop ya da
+    #   max_hold'da kapanır. Dönmüyorsa bu bir uyarıdır, müjde değil.
+    print(f"\n{'='*76}\n[D] rr TEK BAŞINA (sl_atr={MEVCUT[0]}, mh={MEVCUT[2]} SABİT)\n{'='*76}")
+    RR_GENIS = [2.0, 2.5, 3.0, 3.5, 4.0, 5.0]
+    izole = {}
+    for rr in RR_GENIS:
+        ham = []
+        for c in A.DONCH:
+            d, sig = coin_sig[c]
+            ham += kol_uret(d, sig, MEVCUT[0], rr, MEVCUT[2])
+        ham += sabit
+        izole[rr] = olc(A.seat_select(ham))
+    print(f"  {'rr':>5s} {'işlem':>6s} {'toplam$':>9s} {'maxDD':>7s} {'kötü ay':>8s}  " +
+          " ".join(f"{y:>7d}" for y in yillar))
+    for rr in RR_GENIS:
+        k, dd, ay, n, yil = izole[rr]
+        yildiz = "  ← MEVCUT" if abs(rr - MEVCUT[1]) < 1e-9 else ""
+        print(f"  {rr:>5.1f} {n:>6d} {k:>+9.0f} {dd:>7.1f} {ay:>8.1f}  " +
+              " ".join(f"{yil.get(y,0.0):>+7.0f}" for y in yillar) + yildiz)
+    # izole OOS
+    print(f"\n  İZOLE OOS — her yıl için diğer yıllarda en iyi rr seçilir:")
+    oa = om = 0.0
+    for Y in yillar:
+        skor = {rr: sum(v for y, v in izole[rr][4].items() if y != Y) for rr in RR_GENIS}
+        sec = max(skor, key=skor.get)
+        a = izole[sec][4].get(Y, 0.0); m = izole[MEVCUT[1]][4].get(Y, 0.0)
+        oa += a; om += m
+        print(f"    {Y}: seçilen rr={sec:<4.1f} OOS {a:>+7.0f} · mevcut {m:>+7.0f} "
+              f"· fark {a-m:>+6.0f}")
+    print(f"    TOPLAM: OOS {oa:>+7.0f} · mevcut {om:>+7.0f} · fark {oa-om:>+6.0f}")
+    en_rr = max(RR_GENIS, key=lambda r: izole[r][0])
+    print(f"\n  en iyi rr (havuzlanmış): {en_rr} → ${izole[en_rr][0]:+.0f} "
+          f"(mevcut {MEVCUT[1]} → ${izole[MEVCUT[1]][0]:+.0f})")
+    print(f"  en kötü ay: mevcut {izole[MEVCUT[1]][2]:.1f} · rr={en_rr} "
+          f"{izole[en_rr][2]:.1f}")
+    if oa - om > 0 and izole[en_rr][2] >= izole[MEVCUT[1]][2] - 0.05:
+        print(f"  → ✓ İZOLE OOS GEÇTİ. SONRAKİ TUR ADAYI (bugün değişiklik YOK).")
+    else:
+        print(f"  → ✗ İzole OOS de geçmedi. rr ekseni de KAPANIR.")
+
     print(f"\n{'='*76}\nHÜKÜM\n{'='*76}")
     if oos_a - oos_m <= 0:
         print(f"  ✗ Uyarlanabilir seçim OOS'ta mevcut ayarı YENEMEDİ "
