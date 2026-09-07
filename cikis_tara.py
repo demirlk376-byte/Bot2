@@ -215,6 +215,34 @@ def main():
         print(f"  {Y:>6d} {str(sec):>34s} {a:>+9.0f} {m:>+10.0f} {a-m:>+8.0f}")
     print(f"  {'TOPLAM':>6s} {'':>34s} {oos_a:>+9.0f} {oos_m:>+10.0f} {oos_a-oos_m:>+8.0f}")
 
+    # ── [C] MARJİNAL YÖN HER YIL AYNI MI? ────────────────────────────────────
+    # Yüzeyde marjinaller DÜZGÜN ve TEK YÖNLÜ çıktı (dar stop iyi, yüksek rr
+    # iyi). Bu gürültünün değil gerçek etkinin imzası olabilir — ya da havuzlanmış
+    # veride tek bir yılın baskınlığı olabilir. Ayırt etmenin yolu: aynı yön HER
+    # YIL BAĞIMSIZ olarak görülüyor mu?
+    # ⚠ Bu bir kazanan SEÇMİYOR (o iş OOS'un), yalnız gözlenen YÖNÜN tutarlılığını
+    #   ölçüyor. Barajı gevşetmiyor.
+    print(f"\n{'='*76}\n[C] MARJİNAL YÖN TUTARLILIĞI — her yıl aynı mı?\n{'='*76}")
+    for ad, degerler, ix in (("sl_atr", SL_ATR, 0), ("rr", RR, 1), ("max_hold", MH, 2)):
+        print(f"  {ad}:")
+        yon_sayac = []
+        for Y in yillar:
+            ort = []
+            for v in degerler:
+                alt = [sonuc[kk][4].get(Y, 0.0) for kk in sonuc if kk[ix] == v]
+                ort.append(np.mean(alt))
+            en_iyi = degerler[int(np.argmax(ort))]
+            # monoton mu? (artan ya da azalan)
+            artan = all(ort[i] <= ort[i+1] for i in range(len(ort)-1))
+            azalan = all(ort[i] >= ort[i+1] for i in range(len(ort)-1))
+            yon_sayac.append(en_iyi)
+            m = "↑artan" if artan else ("↓azalan" if azalan else "düzensiz")
+            print(f"    {Y}: " + " ".join(f"{v}:{o:>+7.0f}" for v, o in zip(degerler, ort))
+                  + f"   en iyi {en_iyi}  {m}")
+        hep_ayni = len(set(yon_sayac)) == 1
+        print(f"    → 4 yılın {'HEPSİNDE' if hep_ayni else 'hepsinde DEĞİL'} "
+              f"aynı uç en iyi ({yon_sayac})")
+
     print(f"\n{'='*76}\nHÜKÜM\n{'='*76}")
     if oos_a - oos_m <= 0:
         print(f"  ✗ Uyarlanabilir seçim OOS'ta mevcut ayarı YENEMEDİ "
