@@ -1544,9 +1544,29 @@ Canlıda bugün uygulanabilir iki varyant ve ikisi de zayıf:
   o işlemlerin en değerlileri olduğunu gösterdi, dolayısıyla daha kötü.
 
 ### KARAR: eksen KAPANIYOR (30.), kovalama ASKIDA
-`veri_pencere.py` yazıldı: her donchian sinyalinden sonraki 4 saatin 1dk
-verisini çeker (~1000 istek, birkaç dakika, ankor verisine dokunmaz). VPS'te
-çalıştırılıp push edilirse kovalama 1dk sırayla ÖLÇÜLEBİLİR hale gelir.
+`veri_pencere.py` yazıldı — **ilk sürümü çöktü, iki hatası da bendendi:**
+
+  (1) **SESSİZ HATA.** `except Exception: yok += 1; continue` hatanın SEBEBİNİ
+      yutuyordu. Bütün oturum boyunca "okunamayan kaynak sıfır sayılmaz" diye
+      uğraşıp aynı tuzağa kendim düştüm.
+  (2) **YALANCI SAYAÇ.** Coin tamamen başarısız olunca `continue` sayaç
+      toplamasını atlıyordu → çıktı `TOPLAM: 0 alındı, 0 ALINAMADI` diyordu,
+      oysa 147 deneme başarısızdı. Başarısızlığın kendisi gizleniyordu.
+
+  **KÖK SEBEP:** MEXC derin 1dk geçmişi tutmuyor. `veri_binance.py`'nin
+  docstring'i bunu ZATEN yazıyordu ("MEXC 5dk'yı derin geçmişe tutmuyor") —
+  kontrol etmeden MEXC'e gittim.
+
+  **DÜZELTİLDİ:** kaynak Binance aylık ZIP dökümlerine çevrildi, ilk hata TAM
+  METNİYLE basılıyor, arka arkaya 3 hatada coin bırakılıyor, sayaçlar her yolda
+  toplanıyor, hiç pencere alınamazsa çıkış kodu 1. Doğrulandı (ağ kapalı
+  ortamda): `TOPLAM: 0 alındı, 21 alınamadı` + hata metni + kod 1.
+  Venue ayrımı korunuyor: `{COIN}_bnc_pencere_1m.csv` (keşif verisi, `_fut_`
+  değil); disk şişmiyor (yalnız sinyal pencereleri saklanıyor, ~2 MB/coin).
+
+⚠ BU KONTEYNERDEN ÖLÇÜLEMEZ: hem MEXC hem data.binance.vision ağ politikasıyla
+  kapalı (403 CONNECT, proxy status ile doğrulandı). VPS'te çalıştırılıp push
+  edilirse kovalama 1dk sırayla ÖLÇÜLEBİLİR hale gelir.
 Ödül tavanı $126/3.24yıl ≈ $39/yıl ($190 tabanda) olduğu için öncelik DÜŞÜK —
 ama "çürütüldü" demek yanlış olur, "bakılmadı" doğru.
 

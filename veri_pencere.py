@@ -1,46 +1,62 @@
 """
-veri_pencere.py — sabırlı-maker testi için TAM GEREKEN 1dk pencereleri çeker.
+veri_pencere.py — kovalama testi için 1dk pencereleri. BINANCE aylık dökümlerinden.
 
-NEDEN: sabirli_maker.py'nin KOVALAMA kolu 1h çözünürlükte test EDİLEMEDİ.
-Sebep ölçüldü: 1h barında fiyat hem +10bp hem −10bp gidiyor, kötümser
-beraberlik kuralı yüzünden her seferinde "kovalama" sayılıyor ve dolum
-kontrolüne hiç ulaşılmıyor (kanıt: 2bp ve 10bp derinlik satırları BİREBİR
-aynı sonucu verdi). Yani o tablo kovalama fikrini test etmiyor.
+═══ İLK SÜRÜM ÇÖKTÜ VE İKİ HATASI BENDENDİ (2026-09-06 → düzeltildi) ═══════════
+VPS çıktısı: her coin için "hiç pencere alınamadı", altında "TOPLAM: 0 alındı,
+0 ALINAMADI". İki ayrı hata:
 
-Doğru test BAR-İÇİ SIRA istiyor: limit mi önce doldu, fiyat mı önce kaçtı?
-Bunun için 1dk veri şart. Ama 3.3 yıl × 7 coin × 1dk = ~12M bar; gereksiz.
-GEREKEN yalnızca her donchian sinyalinden SONRAKİ 4 saat: sinyal başına 240
-bar. ~145 sinyal/coin × 7 coin ≈ 1000 istek, birkaç dakika.
+  (1) SESSİZ HATA — `except Exception: yok += 1; continue` hatanın SEBEBİNİ
+      yutuyordu. Bütün oturum boyunca "okunamayan kaynak sıfır sayılmaz"
+      diye uğraşıp aynı tuzağa kendim düştüm. Artık ilk hata TAM METNİYLE
+      basılıyor ve arka arkaya 3 hatadan sonra o coin için DURULUYOR.
 
-⚠ Ankor verisine DOKUNMAZ: ayrı dosyalara yazar (data/{COIN}_pencere_1m.csv),
-   fast_bt._save_cache yoluna hiç girmez.
-⚠ Eksik pencereyi UYDURMAZ: çekilemeyen sinyal kaydedilmez, sayısı raporlanır.
+  (2) YALANCI SAYAÇ — coin tamamen başarısız olunca `continue` sayaç
+      toplamasını atlıyordu; "0 alınamadı" yazıyordu, oysa 147 deneme
+      başarısızdı. Sayaçlar artık her yolda toplanıyor.
 
-Kullanım (VPS'te — MEXC erişimi orada var):
+═══ KÖK SEBEP: MEXC DERİN 1dk TUTMUYOR ════════════════════════════════════════
+veri_binance.py'nin docstring'i bunu ZATEN yazıyordu ("MEXC 5dk'yı derin
+geçmişe tutmuyor") — kontrol etmeden MEXC'e gittim. Kaynak Binance aylık
+ZIP dökümleri oldu (data.binance.vision): hız limiti yok, eksiksiz,
+tekrarlanabilir.
+
+⚠ VENUE AYRIMI — repo kuralı: Binance verisi KEŞİF içindir, KARAR için değil.
+   Dosyalar `{COIN}_bnc_pencere_1m.csv` diye kaydedilir, `_fut_` DEĞİL.
+   Kovalama ölçümü "limit mi önce doldu, fiyat mı önce kaçtı" SIRALAMASINI
+   sorar; bu soru için venue farkı ikinci derecedendir ama SIFIR değildir —
+   `veri_binance.py --venue-fark SOL` ile ölçülebilir, hükümde belirtilmeli.
+
+⚠ DİSKİ ŞİŞİRMEZ: aylık dosya indirilir, YALNIZ sinyal pencereleri (her
+   sinyalden sonraki 4 saat) saklanır, gerisi atılır. Coin başına ~2 MB.
+⚠ ANKOR VERİSİNE DOKUNMAZ: ayrı isim, fast_bt._save_cache yoluna hiç girmez.
+
+Kullanım (VPS'te — ağ erişimi orada):
     venv/bin/python veri_pencere.py
-    git add data/*_pencere_1m.csv && git commit -m "1dk pencereler" && git push
-Sonra PC'de:
-    python3 sabirli_maker.py local      # kovalama kolu artık 1dk sırayla ölçer
+    git add data/*_bnc_pencere_1m.csv && git commit -m "1dk pencereler" && git push
+Sonra:
+    python3 sabirli_maker.py local     # kovalama kolu 1dk SIRAYLA ölçer
 """
 from __future__ import annotations
 
 import os
 import sys
-import time
 
 import numpy as np
 import pandas as pd
 
 import deployed_backtest as A
 import fast_bt
+import veri_binance as VB
 from indicators import atr as atr_fn
 
 PENCERE_SAAT = 4
-CIKTI = "data/{coin}_pencere_1m.csv"
+CIKTI = "data/{coin}_bnc_pencere_1m.csv"
+ART_ARDA_HATA_SINIR = 3
 
 
 def sinyal_zamanlari(coin, source="local"):
-    """A.gen'in KAPILARIYLA birebir — occ dahil, yani ankorun aldığı sinyaller."""
+    """A.gen'in KAPILARIYLA birebir (occ dahil) — ankorun ALDIĞI sinyaller.
+    Döner: barın KAPANDIĞI anlar (limit o an konur)."""
     from strategies.donchian import DonchianStrategy
     m = fast_bt.load(coin, source=source)
     d4 = fast_bt.resample(m, "4h")
@@ -72,59 +88,85 @@ def sinyal_zamanlari(coin, source="local"):
                 if lo[j] <= slp or hi[j] >= tp: break
             else:
                 if hi[j] >= slp or lo[j] <= tp: break
-        out.append(idx[i] + pd.Timedelta(hours=4))     # barın KAPANDIĞI an
+        out.append(idx[i] + pd.Timedelta(hours=4))
         occ = j
     return out
 
 
 def main():
-    import ccxt
-    ex = ccxt.mexc({"options": {"defaultType": "swap"}, "enableRateLimit": True})
-    toplam_ok = toplam_yok = 0
+    os.makedirs("data", exist_ok=True)
+    g_ok = g_yok = 0
+    ozet = []
     for coin in A.DONCH:
         p = CIKTI.format(coin=coin)
         if os.path.exists(p):
-            print(f"  {coin}: {p} zaten var, ATLANDI (silip yeniden çek)")
+            print(f"  {coin}: {p} zaten var, ATLANDI (yeniden çekmek için sil)")
+            ozet.append((coin, "atlandı", 0, 0))
             continue
         zamanlar = sinyal_zamanlari(coin)
-        print(f"  {coin}: {len(zamanlar)} sinyal penceresi çekiliyor...", flush=True)
-        parcalar = []; ok = yok = 0
-        for t0 in zamanlar:
-            since = int(t0.timestamp() * 1000)
+        if not zamanlar:
+            print(f"  ⛔ {coin}: sinyal bulunamadı — ankor verisi eksik olabilir")
+            ozet.append((coin, "sinyal yok", 0, 0))
+            continue
+        aylar = sorted({t.strftime("%Y-%m") for t in zamanlar})
+        print(f"  {coin}: {len(zamanlar)} sinyal · {len(aylar)} ay indirilecek",
+              flush=True)
+        parcalar = []; ok = yok = 0; ard = 0; ilk_hata = None
+        for ay in aylar:
             try:
-                b = ex.fetch_ohlcv(f"{coin}/USDT:USDT", "1m", since=since,
-                                   limit=PENCERE_SAAT * 60)
+                d = VB._ay_indir(f"{coin}USDT", "1m", ay)
+                ard = 0
             except Exception as e:
+                yok += 1; ard += 1
+                if ilk_hata is None:
+                    ilk_hata = f"{type(e).__name__}: {e}"
+                    # ⚠ İLK HATA TAM METNİYLE — sessiz geçmek YASAK
+                    print(f"    ⛔ {coin} {ay}: {ilk_hata}", flush=True)
+                if ard >= ART_ARDA_HATA_SINIR:
+                    print(f"    ⛔ {coin}: arka arkaya {ard} hata — bu coin BIRAKILDI")
+                    break
+                continue
+            if d is None or d.empty:
                 yok += 1
                 continue
-            if not b:
-                yok += 1
-                continue
-            d = pd.DataFrame(b, columns=["ts", "open", "high", "low", "close", "volume"])
-            d.index = pd.to_datetime(d["ts"], unit="ms", utc=True)
-            # istenen pencerenin DIŞINI at (borsa fazla verebilir)
-            d = d[(d.index >= t0) & (d.index < t0 + pd.Timedelta(hours=PENCERE_SAAT))]
-            if len(d) < 30:                       # çok delikli pencereyi ALMA
-                yok += 1
-                continue
-            parcalar.append(d.drop(columns=["ts"]))
-            ok += 1
-            time.sleep(0.12)
+            # yalnız bu aya düşen sinyal pencerelerini AL, gerisini AT
+            for t0 in [t for t in zamanlar if t.strftime("%Y-%m") == ay]:
+                w = d[(d.index >= t0) & (d.index < t0 + pd.Timedelta(hours=PENCERE_SAAT))]
+                if len(w) < 30:            # çok delikli pencereyi ALMA
+                    yok += 1
+                    continue
+                parcalar.append(w)
+                ok += 1
+            del d
+        g_ok += ok; g_yok += yok           # ⚠ HER YOLDA topla (eski hata buydu)
         if not parcalar:
-            print(f"    ⛔ {coin}: hiç pencere alınamadı, dosya YAZILMADI")
+            print(f"    ⛔ {coin}: hiç pencere alınamadı ({yok} deneme başarısız)"
+                  + (f" · ilk hata: {ilk_hata}" if ilk_hata else ""))
+            ozet.append((coin, "BAŞARISIZ", ok, yok))
             continue
         tam = pd.concat(parcalar).sort_index()
         tam = tam[~tam.index.duplicated(keep="first")]
-        os.makedirs("data", exist_ok=True)
         tam.to_csv(p)
-        toplam_ok += ok; toplam_yok += yok
-        print(f"    ✓ {p} · {ok} pencere ({yok} alınamadı) · {len(tam)} bar")
-    print(f"\n  TOPLAM: {toplam_ok} pencere alındı, {toplam_yok} alınamadı")
-    if toplam_yok > toplam_ok * 0.2:
-        print(f"  ⚠ Kayıp oranı %20'nin üstünde — kovalama ölçümü EKSİK örneklemle")
-        print(f"    yapılır, hükümde bunu belirt.")
-    print(f"  Sonraki adım: git add data/*_pencere_1m.csv && git commit && git push")
+        mb = os.path.getsize(p) / 1e6
+        print(f"    ✓ {p} · {ok}/{len(zamanlar)} pencere · {len(tam)} bar · {mb:.1f} MB")
+        ozet.append((coin, "tamam", ok, yok))
+
+    print(f"\n{'='*66}\n  ÖZET\n{'='*66}")
+    for c, durum, ok, yok in ozet:
+        print(f"    {c:<5s} {durum:<11s} alınan {ok:>4d} · alınamayan {yok:>4d}")
+    print(f"\n  TOPLAM: {g_ok} pencere alındı, {g_yok} alınamadı")
+    if g_ok == 0:
+        print(f"  ⛔ HİÇBİR pencere alınamadı. Yukarıdaki İLK HATA satırlarına bak —")
+        print(f"     ağ engeli, 404 (parite o ay listede yok) ya da disk olabilir.")
+        print(f"     Kovalama ölçümü YAPILAMAZ; sabirli_maker.py'yi çalıştırma.")
+        return 1
+    if g_yok > g_ok * 0.2:
+        print(f"  ⚠ Kayıp oranı %{g_yok/(g_ok+g_yok)*100:.0f} — ölçüm EKSİK")
+        print(f"     örneklemle yapılır, hükümde bu belirtilmeli.")
+    print(f"\n  Sonraki: git add data/*_bnc_pencere_1m.csv && git commit && git push")
+    print(f"  ⚠ Venue farkı ölçülmeli: python3 veri_binance.py --venue-fark SOL")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
