@@ -49,7 +49,16 @@ BAL = 190.0
 SL_ATR = [1.5, 2.0, 2.5, 3.0]
 RR = [1.5, 2.0, 2.5, 3.0]
 MH = [15, 30, 45]
-MEVCUT = (2.0, 2.0, 30)
+# ⚠ MEVCUT AYAR A.CFG'DEN OKUNUR, ELLE YAZILMAZ.
+# İlk sürümde (2.0, 2.0, 30) yazmıştım — YANLIŞ. Ankorun donchian RR'si 2.5
+# (A.CFG["donchian"] = ("4h", 259, 2.0, 2.5, 30)). Makine doğrulaması bunu
+# yakaladı ve hüküm basmadan durdu. Sabiti elle yazmak yerine kaynaktan
+# okumak bu hatayı yapısal olarak imkânsız kılıyor.
+# NOT: deployed_backtest.py:52 DonchianStrategy'yi rr=2.0 ile kuruyor ama
+# A.gen onun tp_price'ını YOK SAYIP CFG'deki 2.5'i kullanıyor — kafa
+# karıştırıcı, zararsız. Canlıda ölçülen R:R 2.37 (hedef 2.5) bunu doğruluyor.
+_TF, _WIN, _SLA, _RR, _MH = A.CFG["donchian"]
+MEVCUT = (_SLA, _RR, _MH)
 
 
 def sinyal_cek(coin, source):
@@ -138,6 +147,11 @@ def main():
     for c in A.BB_COINS:
         sabit += A.gen_bb(fast_bt.load(c, source=source))
     print(f"  donchian sinyali: {sum(len(v[1]) for v in coin_sig.values())} ham")
+
+    # mevcut ayar ızgarada MUTLAKA olmalı — yoksa doğrulama hücresi yok
+    if MEVCUT[0] not in SL_ATR: SL_ATR.append(MEVCUT[0]); SL_ATR.sort()
+    if MEVCUT[1] not in RR: RR.append(MEVCUT[1]); RR.sort()
+    if MEVCUT[2] not in MH: MH.append(MEVCUT[2]); MH.sort()
 
     sonuc = {}
     for sa in SL_ATR:
