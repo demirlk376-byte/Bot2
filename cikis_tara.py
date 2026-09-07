@@ -157,11 +157,18 @@ def main():
     for sa in SL_ATR:
         for rr in RR:
             for mh in MH:
-                ham = list(sabit)
+                # ⚠ BİRLEŞTİRME SIRASI ÖNEMLİ — seat_select KARARLI sıralama
+                # yapıyor (sorted), yani AYNI zaman damgalı işlemlerde giriş
+                # sırası koltuk dağıtımını belirliyor. İlk sürümde squeeze+bb
+                # önce konuyordu; işlem SAYISI aynı (1579) çıkıyor ama eşitlikte
+                # farklı işlemler seçildiği için kâr $2.94 sapıyordu.
+                # deployed_backtest.main() sırası: DONCH → SQZ → BB. Birebir aynısı.
+                ham = []
                 for c in A.DONCH:
                     d, sig = coin_sig[c]
                     ham += kol_uret(d, sig, sa, rr, mh)
-                taken = A.seat_select(sorted(ham, key=lambda t: t[0]))
+                ham += sabit
+                taken = A.seat_select(ham)
                 sonuc[(sa, rr, mh)] = olc(taken)
 
     kar, dd, ay, n, yil = sonuc[MEVCUT]
