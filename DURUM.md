@@ -1571,6 +1571,85 @@ Canlıda bugün uygulanabilir iki varyant ve ikisi de zayıf:
 ama "çürütüldü" demek yanlış olur, "bakılmadı" doğru.
 
 
+---
+
+## 5a. ÇIKIŞ PARAMETRELERİ DOĞRULANDI (2026-09-07) — `cikis_tara.py`
+
+`main.py:1089`'un yıllardır beklettiği doğrulama. 30 kapanan eksenin HEPSİ giriş
+tarafındaydı; bu ilk çıkış-tarafı ölçümü. Makine doğrulaması ✓ BİREBİR
+(1579 / $+1420.66) — **ama araç iki kez kendini durdurdu, ikisinde de haklıydı:**
+
+1. `MEVCUT = (2.0, 2.0, 30)` yazmıştım; ankorun donchian RR'si **2.5**
+   (`A.CFG["donchian"]`). Yanlış taban hücresiyle karşılaştırma yapılıyordu.
+   Sabit artık kaynaktan okunuyor, elle yazılmıyor.
+2. İşlem sayısı birebir çıktı ama kâr **$2.94** saptı. Sebep: `seat_select`
+   içeride `sorted()` kullanıyor ve Python sıralaması **KARARLI** — aynı zaman
+   damgalı işlemlerde koltuğu kimin kapacağını **giriş listesindeki sıra**
+   belirliyor. Ankor `DONCH → SQZ → BB` sırasıyla birleştiriyor.
+   **ANKORUN GİZLİ VARSAYIMI:** $1420.66 rakamı liste sırasına bağlı. Hata değil
+   ama hiçbir yerde yazılı değildi. Canlıda da MAX_POSITIONS dolunca aynı
+   keyfiyet var (`_entry_gate` + coroutine sırası); koltuk zamanın %3.3'ünde
+   dolduğu için etkisi küçük ama SIFIR değil.
+
+### ⚠ ÖNCE GÜRÜLTÜ ÖLÇÜLDÜ (koda başlamadan)
+1σ = 1.465 × $4.27 × √1579 = **$249**. 48 hücrede saf gürültünün beklenen en
+yükseği ≈ 2.78σ = **+$692**. Ankor $1421. → **en yüksek hücre KARAR DEĞİLDİR.**
+
+### [B] WALK-FORWARD OOS — mevcut ayar KALIR
+| yıl | seçilen | OOS $ | mevcut $ | fark |
+|---|---|---|---|---|
+| 2023 | (1.5,3.0,45) | +253 | +321 | −68 |
+| 2024 | (1.5,3.0,45) | +435 | +457 | −23 |
+| 2025 | (2.0,2.5,45) | +468 | +447 | +21 |
+| 2026 | (1.5,3.0,30) | +216 | +195 | +21 |
+| **TOPLAM** | | **+1372** | **+1421** | **−48** |
+
+Uyarlanabilir seçim OOS'ta kaybetti → parametreler AYIRT EDİLEMEZ.
+**Mevcut ayar savunulabilir** — bu bir başarısızlık değil, kanıt.
+
+### [C] YÖN TUTARLILIĞI — havuzlanmış marjinal YANILTICIYDI
+Havuzlanmışta `sl_atr` monoton görünüyordu. Yıl bazında:
+- `sl_atr` en iyi uç: 3.0 / 2.0 / 1.5 / 1.5 → **düzensiz.** O pürüzsüzlük tek
+  bir yılın baskınlığıydı (2025'te 1.5→$538 vs 3.0→$312).
+- `max_hold`: 30 / 30 / 45 / 45 → **düzensiz.**
+- **`rr`: 3.0 / 3.0 / 3.0 / 3.0 — dört yılın DÖRDÜNDE de monoton artan.**
+
+### [D] rr TEK BAŞINA — ve "rr ayarı" ASLINDA BU DEĞİL
+| rr | işlem | toplam$ | maxDD | en kötü ay | 2023 | 2024 | 2025 | 2026 |
+|---|---|---|---|---|---|---|---|---|
+| 2.5 (mevcut) | 1579 | +1421 | 24.4 | **−21.0** | +321 | +457 | +447 | +195 |
+| 3.0 | 1540 | +1441 | 22.4 | −27.8 | +360 | +480 | +418 | +183 |
+| 5.0 | 1498 | **+1614** | 19.1 | **−29.7** | +505 | +518 | +416 | +175 |
+
+İzole OOS toplamda +$193 önde AMA **ön-kayıt DÜŞTÜ: en kötü ay −21.0 → −29.7.**
+
+**Ve iki şey daha, ikisi de reddi güçlendiriyor:**
+1. **Fayda TERS DÖNÜYOR.** Yıl bazında: +184, +61, **−32, −20.** Kazanç tamamen
+   2023-24'ten; son iki yılda mevcut ayar ÖNDE.
+2. **Bu bir "rr ayarı" değil.** Çıkış kompozisyonu ölçüldü:
+   | rr | TP% | SL% | max_hold% | ort R |
+   |---|---|---|---|---|
+   | 2.5 | 24% | 51% | 25% | +0.238 |
+   | 5.0 | **7%** | 51% | **41%** | +0.300 |
+   TP oranı %24→%7. Yani "rr=5" pratikte **"TP'yi KALDIR, 5 gün tut ya da stop
+   ol"** demek. Yapısal değişiklik, parametre ayarı değil.
+3. Eğri ızgara sınırına kadar **DÖNMEDİ** — ön-kayıtta "dönmezse bu uyarıdır,
+   müjde değil" yazmıştım. Mekanizmasız monotonluk ölçüm yapısına işaret eder.
+
+### KALICI BULGU (reddedilen adaydan bağımsız)
+Ortalama R, çıkışlar TP'den max_hold'a kaydıkça YÜKSELİYOR (+0.238 → +0.300).
+**2.5R'lik TP kazananları erken kesiyor.** Bu mekanizma gerçek — ama onu
+`rr`'yi büyüterek hasat etmek, en kötü ayı −%29.7'ye çıkarıyor.
+
+**SONRAKİ ADIM (test edilmedi):** takip eden çıkış (trailing) — "kazananı erken
+kesme"yi, "5 gün körlemesine tut"un kuyruk riskini almadan hasat edebilir.
+⚠ Bugün trailing yalnız `orb`/`ifvg` için doğrulanmış (`main.py:1071`) ve
+`STOP_MOVE_ENABLED=false`. Donchian'da 3 yıllık veriyle HİÇ denenmedi.
+
+**KARAR: hiçbir parametre değişmiyor.** Kapanan eksen **30+ → 32+**
+(3B ızgara + izole rr).
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
