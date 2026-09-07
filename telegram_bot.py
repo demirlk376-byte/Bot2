@@ -398,7 +398,12 @@ class TelegramNotifier:
             _t = await self._temiz(equity, invested)
             kar_satiri = (
                 f"<b>Kâr: <code>${_t['kar']:+.2f}</code> ({_t['pct']:+.1f}%)</b>\n"
-                f"<i>temiz dönem: {_t['cut']} sonrası</i>\n" if _t else
+                # ⚠ Yüzdenin paydası ÇIPA EQUITY'si. Arada sermaye eklendiyse
+                # bu getiriyi bir miktar YÜKSEK gösterir (para geç geldiği için
+                # tüm dönem çalışmadı). Dolar rakamı KESİN, yüzde yaklaşık —
+                # etiket bunu açıkça söylüyor ki okuyan yanılmasın.
+                f"<i>temiz dönem: {_t['cut']} sonrası · % çıpa equity'sine göre</i>\n"
+                if _t else
                 f"Gerçek kâr: <code>${true_pnl:+.2f}</code> ({ret:+.1f}%)\n")
             text = (
                 f"<b>Durum</b> ({'PAPER' if paper else 'CANLI'})\n"
