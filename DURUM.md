@@ -1698,6 +1698,60 @@ mekanizma onları erken kesiyor.** 33 kapanan eksenin ortak deseniyle birebir.
 **Kapanan eksen 32+ → 33+.**
 
 
+---
+
+## 5c. "DAHA FAZLA AL" — 34. eksen, ve İLK KEZ POZİTİF OOS (ama EDGE DEĞİL)
+
+33 kapanan eksenin HEPSİ çıkarmak/korumak üzerineydi. Bu ilk EKLEMEK denemesi:
+aynı coinde eş zamanlı birden çok pozisyona izin ver (donchian sinyallerinin
+%32.2'si "coin dolu" diye eleniyordu — `sessizlik.py`).
+
+⚠ Makine doğrulaması hatayı YAKALADI (oturumun 4. öz-yakalaması): ankor
+`if i <= occ` ile ÇIKIŞ BARININ KENDİSİNİ de dolu sayıyor; `x > i` yazmıştım
+→ 119 fazla işlem, $40 sapma. Doğrusu `x >= i`.
+
+| coin başına | işlem | kâr$ | Δ$ | maxDD | **en kötü ay** |
+|---|---|---|---|---|---|
+| 1 (MEVCUT) | 1579 | +1421 | — | 24.4 | **−21.0** |
+| 2 | 1884 | +1725 | +304 | 31.5 | **−38.8** |
+| 3 | 1969 | +1884 | +463 | 28.5 | **−41.0** |
+| SINIRSIZ | 2017 | +1847 | +426 | 27.8 | **−45.5** |
+
+**Walk-forward OOS: +$332 — 34 eksende İLK POZİTİF SONUÇ.**
+
+### AMA ÖN-KAYIT REDDEDİYOR, VE HAKLI
+En kötü ay −21.0'dan **−38.8…−45.5'e** çıkıyor. Kullanıcı Ağustos'ta −%26.8
+yaşadı ve sarsıldı; bu kural onu neredeyse İKİYE KATLIYOR. maxDD de 3-7 puan
+bozuluyor. Ön-kayıttaki dört şarttan ikisi düşüyor.
+
+**Bu, ön-kaydın neden dört şartlı olduğunun en net kanıtı:** yalnız kâra ve
+OOS'a bakılsaydı, en kötü ayı iki katına çıkaran bir değişiklik ÖNERİLECEKTİ.
+
+### RİSK-EŞLENMİŞ KARŞILAŞTIRMA — "EDGE Mİ, KALDIRAÇ MI?"
+Sabit-oran modelinde PnL boyutla DOĞRUSAL: boyut f ile çarpılırsa hem toplam
+kâr hem aylık kayıp f ile çarpılır. Her adayı **en kötü ayı tabanla eşitleyecek
+kadar küçültüp** kârını kıyaslayınca:
+
+| aday | ham kâr | kötü ay | ölçek f | eşitlenmiş kâr | vs taban |
+|---|---|---|---|---|---|
+| TABAN | +1421 | −21.0 | 1.00 | **+1421** | — |
+| 2/coin | +1725 | −38.8 | 0.54 | +934 | **−487** |
+| 3/coin | +1884 | −41.0 | 0.51 | +965 | −456 |
+| SINIRSIZ | +1847 | −45.5 | 0.46 | +852 | −568 |
+
+**Aynı acıya eşitlenince ÜÇÜ DE tabanın ALTINDA.** Yani +$332'lik OOS kazancı
+EDGE DEĞİL, sadece KALDIRAÇ — ve mevcut ayardan daha VERİMSİZ bir kaldıraç.
+Aynı riski almak isteyen zaten `RISK_SCALE`'i büyütür ve daha iyisini alır.
+
+### KAYIT: CANLI KISIT (geçseydi bile)
+MEXC **netted** modda aynı coindeki ikinci pozisyon AYRI işlem değil, mevcudu
+BÜYÜTÜR → SL/TP tek seviyeye düşer. Backtest'teki "iki işlem" canlıda "tek
+büyük işlem" olurdu. Yani bu kural canlıda test edildiği gibi DAVRANMAZDI.
+
+**Kapanan eksen 33+ → 34+.** Kör nokta da kapandı: sistem ne kesilerek ne de
+çoğaltılarak iyileşiyor.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
