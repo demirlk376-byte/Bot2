@@ -49,7 +49,11 @@ def kol_coklu(d, sig, sl_a, rr, mh, coin_limit):
     out = []
     acik = []                     # o coinde açık pozisyonların çıkış barları
     for i, yon, a in sig:
-        acik = [x for x in acik if x > i]      # kapananları düş
+        # ⚠ SINIR KOŞULU: ankor `if i <= occ: continue` diyor, yani ÇIKIŞ
+        # BARININ KENDİSİ de DOLU sayılır (aynı barda çık-gir yok). İlk sürümde
+        # `x > i` yazmıştım = o barı boş saymak → 119 FAZLA işlem (1698 vs 1579)
+        # ve $40 sapma. Makine doğrulaması yakaladı. Doğrusu `x >= i`.
+        acik = [x for x in acik if x >= i]     # kapananları düş (çıkış barı DAHİL dolu)
         if len(acik) >= coin_limit:
             continue
         e = cl[i]; sld = sl_a * a
