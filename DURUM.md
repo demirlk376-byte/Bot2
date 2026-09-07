@@ -1650,6 +1650,54 @@ kesme"yi, "5 gün körlemesine tut"un kuyruk riskini almadan hasat edebilir.
 (3B ızgara + izole rr).
 
 
+---
+
+## 5b. TRAILING REDDEDİLDİ (2026-09-07) — 33. eksen, ve ÖNCEKİ BULGUYU DOĞRULADI
+
+5a "2.5R'lik TP kazananları erken kesiyor" demişti (ort R +0.238→+0.300).
+Doğal çare trailing'di. `trail_tara.py` ölçtü — makine doğrulaması ✓ BİREBİR.
+
+**10 adayın 10'u düştü. Hiçbiri kâr artırmadı.**
+
+| aday | işlem | Δ$ | maxDD | en kötü ay |
+|---|---|---|---|---|
+| TABAN (sabit SL/TP) | 1579 | — | 24.4 | −21.0 |
+| BE@1R (canlı-doğrulanmış model) | 1628 | −175 | 19.5 | −28.8 |
+| ATR trail 1.5× (TP duruyor) | 1982 | **−579** | 15.0 | −26.5 |
+| ATR trail 2.0× (TP yok) | 1753 | −53 | 13.9 | −25.9 |
+| ATR trail 3.0× (TP yok) | 1575 | −36 | 17.2 | −30.2 |
+| zirveden 0.5R geri veriş | 2160 | −94 | 11.4 | −25.8 |
+
+**Walk-forward OOS: −$365.** 2023 ve 2025'te hakem TABANI seçti; trailing
+seçilen iki yılda da kaybetti (−255, −110).
+
+### DESEN ÇARPICI VE ONUNCUSUNDA BİLE AYNI
+**10 varyantın 10'unda da maxDD İYİLEŞTİ (24.4 → 11.4-20.6) ama en kötü ay
+KÖTÜLEŞTİ (−21.0 → −23.9…−30.2).** İstisnasız. Trailing equity eğrisini
+pürüzsüzleştiriyor — büyük drawdown'ı çok sayıda küçük gerçekleşmiş zarara
+bölüyor — ama acıyı belirli aylarda YOĞUNLAŞTIRIYOR (birçok trail aynı anda
+tetikleniyor). "Daha az drawdown" ile "daha az acı" AYNI ŞEY DEĞİL.
+
+Ayrıca işlem sayısı trail sıkılaştıkça ARTIYOR (1579 → 2160): trailing erken
+çıkıyor, `occ` erken serbest kalıyor, daha çok işlem giriyor. Yani "daha sık
+işlem + daha düşük maxDD + daha az kâr + daha kötü ay" tek bir mekanizmanın
+dört yüzü.
+
+### sr_breakout BULGUSU DONCHIAN'DA DOĞRULANDI
+`main.py:1078` sr_breakout için yazıyordu: *"Sabit stoplar 3R'lik kazananın
+koşmasına izin veriyor"* (PF 1.80→1.39). Donchian'da da aynı çıktı. O kanıt
+12 aylık tek rejimdendi; bu 3 yıl ve dört yıl bağımsız olarak aynı yönü veriyor.
+`main.py:1088`'in istediği "daha uzun veriyle yeniden doğrula" **YAPILDI.**
+
+### BİRLEŞİK HÜKÜM (5a + 5b)
+"TP kazananı kesiyor" ölçümü **GERÇEK** — ama çaresi ne TP'yi büyütmek
+(en kötü ay −29.7) ne de trailing (10/10 ret). Geriye tek açıklama kalıyor:
+**donchian'ın kârı birkaç büyük koşudan geliyor ve o koşulara DOKUNAN her
+mekanizma onları erken kesiyor.** 33 kapanan eksenin ortak deseniyle birebir.
+
+**Kapanan eksen 32+ → 33+.**
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
