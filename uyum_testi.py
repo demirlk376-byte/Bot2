@@ -115,19 +115,26 @@ def main():
         raise SystemExit(2)
 
     # ── BACKTEST'İN BU DÖNEM İÇİN BEKLEDİĞİ İŞLEMLER ────────────────────────
+    # ⚠⚠ ZAMAN DAMGASI KONVANSİYONU — İLK SÜRÜMÜN HATASI BURADAYDI.
+    # A.gen `idx[i]` yazıyor = pandas resample bin etiketi = BARIN BAŞLANGICI.
+    # Canlı bot ise bar KAPANINCA giriyor. Donchian 4h → aradaki fark TAM 4 SAAT,
+    # squeeze/bb 1h → 1 saat. ±2 saatlik eşleştirme penceresiyle donchian ASLA
+    # eşleşemezdi; ilk koşuda %22 çıktı ve bu botun değil ARACIN hatasıydı.
+    # (Aynı konvansiyonu veri_pencere.py ve sabirli_maker.py'de doğru yazmıştım,
+    #  burada unuttum — o yüzden artık kol başına AÇIKÇA ekleniyor.)
+    KAPANIS = {"donchian": pd.Timedelta(hours=4),
+               "squeeze": pd.Timedelta(hours=1),
+               "bb": pd.Timedelta(hours=1)}
     bek = []
-    for c in A.DONCH:
-        for t in A.gen("donchian", veri[c]):
-            bek.append({"coin": c, "kol": "donchian", "e": pd.Timestamp(t[0], tz="UTC"),
-                        "x": pd.Timestamp(t[1]), "R": t[2], "slp": t[3]})
-    for c in A.SQZ:
-        for t in A.gen("squeeze", veri[c]):
-            bek.append({"coin": c, "kol": "squeeze", "e": pd.Timestamp(t[0], tz="UTC"),
-                        "x": pd.Timestamp(t[1]), "R": t[2], "slp": t[3]})
-    for c in A.BB_COINS:
-        for t in A.gen_bb(veri[c]):
-            bek.append({"coin": c, "kol": "bb", "e": pd.Timestamp(t[0], tz="UTC"),
-                        "x": pd.Timestamp(t[1]), "R": t[2], "slp": t[3]})
+    for kol_ad, coinler, uret in (("donchian", A.DONCH, lambda c: A.gen("donchian", veri[c])),
+                                  ("squeeze", A.SQZ, lambda c: A.gen("squeeze", veri[c])),
+                                  ("bb", A.BB_COINS, lambda c: A.gen_bb(veri[c]))):
+        for c in coinler:
+            for t in uret(c):
+                bek.append({"coin": c, "kol": kol_ad,
+                            # bar başlangıcı + tf = canlının GERÇEKTEN girdiği an
+                            "e": pd.Timestamp(t[0], tz="UTC") + KAPANIS[kol_ad],
+                            "x": pd.Timestamp(t[1]), "R": t[2], "slp": t[3]})
     bek = [b for b in bek if b["e"] >= bas]
     bek.sort(key=lambda b: b["e"])
 
@@ -177,6 +184,15 @@ def main():
     if kaps < 0.70:
         print(f"\n  ⛔ Kapsama %70'in ALTINDA — sistematik sapma hükmü VERİLMEZ.")
         print(f"     Önce eşleşmeme sebebi bulunmalı.")
+        # Düşük eşleşmenin EN OLASI sebebi aracın kendi hatasıdır, botun değil.
+        # Toplam sayılar tutuyorsa (backtest ~= canlı) sorun EŞLEŞTİRMEDEDİR.
+        if abs(len(bek) - len(canli)) <= max(5, 0.15 * len(canli)):
+            print(f"\n  ⚠ AMA TOPLAM SAYILAR TUTUYOR ({len(bek)} vs {len(canli)}).")
+            print(f"    Bu, botun farklı işlem açtığını DEĞİL, EŞLEŞTİRMENİN")
+            print(f"    bozuk olduğunu gösterir. Önce aracı şüphelen:")
+            print(f"      • zaman damgası konvansiyonu (bar başlangıcı vs kapanışı)")
+            print(f"      • kol etiketi (strategy_scores['strategy']) farklı yazım")
+            print(f"      • veri penceresi (taze veri ankorla aynı dönemi kapsıyor mu)")
         return
 
     # ── SONUÇ KARŞILAŞTIRMASI ───────────────────────────────────────────────
