@@ -136,10 +136,51 @@ def main():
         print(f"  {ad:<28s}{len(cs):>8d}{n:>7d}{kar:>+9.0f}{kar-t_kar:>+7.0f}"
               f"{dd:>7.1f}{ay:>9.1f}  {bar}")
 
+    # ── EŞ ZAMANLILIK SINIRI — ölçülen kusura DOĞRUDAN nişan ───────────────
+    # "Hepsi" düştü ama SEBEBİ coinler değil: maxDD 24.4 → 51.3. Mekanizma
+    # donchian'dakinden KESKİN — BB ortalamaya dönüş, yani DÜŞEN fiyatı alıyor.
+    # Hafta sonu çöküşünde 21 coin birden "aşırı satılmış, al" diyor ve hepsi
+    # çöküşün İÇİNE birlikte giriyor. Korele değil, TERS korele.
+    #
+    # O halde sorun havuzun GENİŞLİĞİ değil, EŞ ZAMANLILIK. Havuz geniş ama
+    # aynı anda en fazla K pozisyon: daha çok fırsat, AYNI maruziyet.
+    # ⚠ Bu SEÇİM DEĞİL — kim önce sinyal verirse o alınır (zaman önceliği).
+    import heapq as _hq
+    def portfoy_kapali(bb_coinler, K):
+        bb_ham = []
+        for c in bb_coinler:
+            bb_ham += bb[c]
+        bb_ham.sort(key=lambda t: t[0])
+        acik = []; secili = []
+        for t in bb_ham:
+            while acik and acik[0] <= t[0]:
+                _hq.heappop(acik)
+            if len(acik) >= K:
+                continue                      # eş zamanlılık dolu → ATLA
+            _hq.heappush(acik, pd.Timestamp(t[1]).value)
+            secili.append(t)
+        return olc(A.seat_select(list(sabit) + secili)), len(secili)
+
+    print(f"\n{'='*84}\nEŞ ZAMANLILIK SINIRI — geniş havuz, dar maruziyet\n{'='*84}")
+    print(f"  Havuz 21 coin ama aynı anda en fazla K BB pozisyonu.")
+    print(f"  {'K':>3s} {'BB işlem':>9s} {'işlem':>7s} {'kâr$':>9s} {'Δ$':>7s}"
+          f" {'maxDD':>7s} {'kötü ay':>9s}  ÖN-ELEME")
+    for K in (1, 2, 3):
+        (kar, dd, ay, n, yil), nbb = portfoy_kapali(uygun, K)
+        sonuc[f"HAVUZ21 · eşzaman≤{K}"] = (kar, dd, ay, n, yil)
+        neden = []
+        if kar - t_kar < 28: neden.append("Δ$")
+        if ay < t_ay - 0.05: neden.append("ay↓")
+        if dd > t_dd + 2.0: neden.append("DD↑")
+        bar = "✓ geçti" if not neden else "✗ " + "+".join(neden)
+        print(f"  {K:>3d} {nbb:>9d} {n:>7d} {kar:>+9.0f} {kar-t_kar:>+7.0f}"
+              f" {dd:>7.1f} {ay:>9.1f}  {bar}")
+    adlar_ek = [a for a in sonuc if a.startswith("HAVUZ21")]
+
     # ── WALK-FORWARD OOS — asıl hakem ──────────────────────────────────────
     print(f"\n{'='*84}\nWALK-FORWARD OOS — asıl hakem\n{'='*84}")
     yillar = sorted(t_yil)
-    adlar = list(sonuc)
+    adlar = list(sonuc)   # eş zamanlılık varyantları DAHİL
     oa = om = 0.0
     print(f"  {'yıl':>6s} {'diğer yıllarda en iyi':>28s} {'OOS $':>8s} "
           f"{'taban $':>9s} {'fark':>7s}")
