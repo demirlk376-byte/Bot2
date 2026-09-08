@@ -1891,6 +1891,84 @@ bir tercih** — ve gerekçem burada kayıtlı ki ileride bakan yanılmasın.
 1246 işlem beklemeden elde edebileceğimiz TEK erken uyarı budur.
 
 
+---
+
+## 5g. BB KOLU GENİŞLETME REDDEDİLDİ (2026-09-08) — 35. eksen, LTC GERÇEKTEN ÖZEL
+
+`coin_expand.py` kodu okundu: `CFG`'de yalnız donchian ve squeeze var, yani
+"coin ekleme kapandı" hükmü **BB kolunu hiç kapsamamış**. DURUM'da BB'nin
+HAFTA SONU olma gerekçesi belgeliydi, **tek coin olma gerekçesi DEĞİLDİ**.
+On aylık kayıtta bu boşluk kimseye çarpmamış.
+
+⚠ SEÇİM YAPILMADI — testin en önemli kuralı. coin_expand'ı öldüren şey
+coinler değil "geçmişte iyi gideni seç" PROSEDÜRÜYDÜ (TRAIN muhteşem,
+TEST −$254). Ana aday bu yüzden **HEPSİNİ EKLE**.
+
+| aday | BB coin | kâr$ | Δ$ | maxDD | en kötü ay |
+|---|---|---|---|---|---|
+| TABAN (yalnız LTC) | 1 | +1421 | — | 24.4 | −21.0 |
+| HEPSİ (seçimsiz) | 21 | +1233 | −187 | **51.3** | **−49.9** |
+| BÜYÜK-KAP (yapısal) | 11 | +1405 | −16 | 47.6 | −41.4 |
+
+Walk-forward OOS: **−$198**.
+
+### MEKANİZMA — donchian'dakinden KESKİN
+Tek tek coinlerin çoğu POZİTİF (ETH +120, LTC +114, XMR +80, XRP +73,
+XLM +57, ICP +50). Öldüren şey coinler değil, **maxDD'nin ikiye katlanması**.
+Sebep: **BB ortalamaya dönüş, yani DÜŞEN fiyatı ALIYOR.** Hafta sonu
+çöküşünde 21 coin birden "aşırı satılmış, al" diyor ve hepsi çöküşün İÇİNE
+birlikte giriyor. Korele değil, **TERS korele** — strateji en kötü anda üst
+üste biniyor. DURUM'daki "BB'nin kısıtlaması doğru yerde" notu artık
+gerekçeyle değil ÖLÇÜMLE doğrulanmış oldu.
+
+### EŞ ZAMANLILIK SINIRI — teşhis doğruydu, çare yetmedi
+Ölçümden doğan hipotez: sorun havuzun genişliği değil eş zamanlılık. Havuz 21
+coin, aynı anda en fazla K pozisyon (SEÇİM DEĞİL — zaman önceliği).
+
+| K | BB işlem | kâr$ | Δ$ | maxDD | en kötü ay |
+|---|---|---|---|---|---|
+| 1 | 303 | +1246 | −174 | **19.9** | −29.2 |
+| 2 | 579 | +1243 | −178 | 21.8 | −31.9 |
+| 3 | 842 | +1280 | −140 | 25.7 | −25.5 |
+
+**Teşhis doğruydu: K=1'de maxDD 24.4 → 19.9 İYİLEŞTİ.** Ama kâr düştü.
+Sebep: LTC tek başına **+$0.70/işlem** (+$114/163); havuzun ortalaması bunun
+dörtte biri. "İlk sinyal kazanır" kaliteyi korumuyor, **SEYRELTİYOR**.
+
+### HÜKÜM: LTC GERÇEKTEN ÖZEL — üç ayrı yoldan ölçüldü
+hepsi · büyük-kap · eş zamanlılık sınırlı → üçü de aynı yere çıkıyor.
+BB'nin değeri coin çeşitliliğinde değil, LTC'nin kendine özgü hafta sonu
+davranışında. **Kapanan eksen 34+ → 35+.**
+
+---
+
+## 5h. STRATEJİ DIŞINDA KALAN TEK KALEM: ÜCRET
+
+35 eksen kapandıktan sonra "daha fazla para" için stratejide bir şey kalmadı.
+Ama canlı ölçümlerden çıkan bir kalem var ve **stratejiye hiç dokunmuyor**:
+
+| | yıllık (canlı ölçümlerden) |
+|---|---|
+| net kâr | ~$351 |
+| **ÖDENEN ÜCRET** | **~$104** (borsanın kendi kaydından, `kar_farki.py`) |
+| brüt kâr | ~$455 |
+| **ücretin brüte oranı** | **%23** |
+
+Ücret indirimi olursa: **%20 indirim → yılda +$21 (+%6 net kâr)** ·
+**%50 indirim → +$52 (+%15)**. Aynı işlemler, aynı risk, aynı drawdown.
+
+⚠ MEXC'in ücret kademelerini ve MX token indirimini BURADAN doğrulayamam
+(ağ kapalı). Kullanıcının hesabında bakılması gereken bir şey; strateji
+araştırması değil, hesap ayarı. Ama 35 eksende bulunamayan "daha fazla para"
+ya en yakın duran kalem bu.
+
+⚠ `kar_farki.py`'deki "0.15bp/dolum · liste oranıyla tutarlı" satırı
+ŞÜPHELİ: nominal MEXC dolum `amount` alanından hesaplanıyor, o da KONTRAT
+sayısı olabilir (coin miktarı değil) → payda ~20x şişik olabilir. Ücretin
+MUTLAK tutarı ($25.39) borsanın kendi kaydı olduğu için doğru; ORAN yorumu
+düzeltilmeli.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
