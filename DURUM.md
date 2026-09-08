@@ -1821,6 +1821,76 @@ Ağustos'ta yaşanan −$102'nin ALTINDA kalıyor. 2x önerilmedi: test çözün
 ⚠ Bu artış EDGE'İ İYİLEŞTİRMİYOR, aynı eğriyi %24 büyütüyor. Kâr da acı da.
 
 
+---
+
+## 5e. COIN EVRENİ ŞANS MI? (2026-09-08) — ankorun BÜYÜKLÜĞÜ kısmen seçim artefaktı
+
+Kullanıcı "daha iyi çalışan coinler bulabilir miyiz" diye sordu. O eksen zaten
+kapalıydı (DURUM 4: coin eklemek en kötü ayı −21 → −58.8 yapıyor; "geçmişte iyi
+gideni seç" walk-forward'da TEST'te −$254). **Ama soru hiç sorulmamış bir şeyi
+ima ediyordu: mevcut 12 coin de yıllar önce TAM O YÖNTEMLE seçildi. Öyleyse
+ankorun kendisi de o artefaktı taşıyor olabilir.**
+
+### ÖLÇÜM 1 — rastgele evrenler (⚠ KUSURLU, olduğundan güçlü gösteriyor)
+21 coinden rastgele 12 seçilen 300 evren: ort $+547 · medyan $+545 · en iyi
+$+1,032. Mevcut evren **$+1,421** — 300'ün 300'ünden iyi.
+⚠ Bu test KUSURLU: coinleri kollara RASTGELE atıyor (VET'i donchian'a, SOL'u
+hafta-sonu BB'sine). Saçma atamalar rastgele tabanı zayıflatıyor. Rakam şişkin.
+
+### ÖLÇÜM 2 — her coin KENDİ KOLUNDA sıralama (keskin olan bu)
+| kol | canlıdakilerin sıraları | ort sıra | rastgele beklenti |
+|---|---|---|---|
+| donchian | **[1, 2, 3, 4, 5, 7, 10]** | **4.6 / 21** | 11.0 |
+| squeeze | [1, 3, 5, 12] | 5.2 / 21 | 11.0 |
+
+Donchian'da **ilk beşin beşi de canlıda.** Evren büyük ölçüde geçmiş
+performansa göre seçilmiş. `coin_expand` bu prosedürün ileriye taşınmadığını
+zaten göstermişti.
+
+### RAHATLATICI YARISI — edge GERÇEK, seçim onu BÜYÜTMÜŞ
+Donchian sıralamasında **21 coinin 18'i POZİTİF** (+$226 … +$21); yalnız LTC,
+ETC, XMR negatif. Yani strateji geniş tabanlı çalışıyor. Seçim edge'i
+YARATMADI, **büyüttü**. Kaba ölçek: mevcut 7'nin tek başına toplamı $1,026,
+ortanca 7'ninki $470 → oran ~0.46.
+
+### SONUÇ: ankorun YÖNÜ güvenilir, BÜYÜKLÜĞÜ şişkin
+İleri beklenti ankorun %50-100'ü arasında bir yerde. Hangi noktada olduğu
+BİLİNMİYOR ve aşağıdaki hesap yüzünden uzun süre bilinmeyecek.
+
+---
+
+## 5f. ⚠ KAÇ İŞLEMDE NE ANLAŞILIR — "300 işlem" iddiam EKSİKTİ
+
+Defalarca "~300 işlemde edge'i gürültüden ayırırız" dedim. Doğru ama EKSİK:
+o sayı **edge VAR MI YOK MU** sorusu için.
+
+| soru | gereken n (2σ) | süre (~40 işlem/ay) |
+|---|---|---|
+| edge var mı, yok mu (0.166 vs 0) | **312** | ~8 ay |
+| edge TAM mı YARIM mı (0.166 vs 0.083) | **1246** | **~31 ay** |
+
+**Yani 5e'nin sorduğu soru — seçim primi kayboldu mu — canlı veriyle
+2-3 YIL boyunca cevaplanamaz.** Bu, riskin ne kadar olması gerektiği
+tartışmasında bilinmesi gereken en önemli sınırlama.
+
+### KARAR: `RISK_SCALE` 1.4'TE KALIYOR — kullanıcının BİLGİLİ kararı
+5e ölçüldükten sonra 1.125'e dönmeyi önerdim; kullanıcı 1.4'te kalmayı seçti.
+Gerekçe sunuldu, karar tekrarlandı, uygulanıyor. **Bu bir ihmal değil, bilgili
+bir tercih** — ve gerekçem burada kayıtlı ki ileride bakan yanılmasın.
+
+### İZLEME KURALI (ankorda ayların %80'i pozitif)
+| olay | ankor altında olasılık | ne yapmalı |
+|---|---|---|
+| 2 ay üst üste negatif | %4.0 | not et, bekle |
+| **3 ay üst üste negatif** | **%0.8** | **DUR ve bak** |
+| 4 ay üst üste negatif | %0.2 | sistem bozuk say |
+| equity < $180 | — | DUR (kırmızı çizgi, 5d) |
+
+3 ay üst üste negatif, ankor doğruysa 125 ayda bir olur. Gerçekleşirse
+"şanssızlık" değil, edge'in beklenenden zayıf olduğunun işaretidir — ve
+1246 işlem beklemeden elde edebileceğimiz TEK erken uyarı budur.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
