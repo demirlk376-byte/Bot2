@@ -123,6 +123,55 @@ async def main():
             print(f"\n  → İNDİRİM KOLUNUN GERÇEK DEĞERİ (yalnız bu kısma uygulanır):")
             for ind in (0.20, 0.50):
                 print(f"      %{ind*100:.0f} indirim → yılda +${yil*ind:.0f}")
+        # ── GERÇEK ORAN: ücret / NOMİNAL. "$/dolum" pozisyon BÜYÜKLÜĞÜNÜ
+        #    yansıtıyor, ORANI değil. Bir coinin ücreti gerçekten farklı mı,
+        #    ancak nominale bölünce anlaşılır. Nominal, defterin KENDİ kaydından
+        #    (entry_price × quantity) — borsanın `amount` alanı KONTRAT sayısı
+        #    olabilir ve orayı kullanmak paydayı ~20x şişiriyordu (kar_farki'de
+        #    bu hataya düşmüştüm, kaydı DURUM 5h'de).
+        print(f"\n{'='*74}\nGERÇEK ORAN — ücret / nominal (bp)\n{'='*74}")
+        con = sqlite3.connect(f"file:{cfg.db_path}?mode=ro", uri=True, timeout=15)
+        try:
+            iso = __import__("datetime").datetime.utcfromtimestamp(
+                since / 1000).isoformat()
+            nom = {}
+            for sym, ep, q in con.execute(
+                    "SELECT symbol, entry_price, quantity FROM trades "
+                    "WHERE is_paper=0 AND entry_time>=?", (iso,)):
+                try:
+                    nom[sym.split('/')[0]] = nom.get(sym.split('/')[0], 0.0) + \
+                        float(ep or 0) * float(q or 0)
+                except (TypeError, ValueError):
+                    pass
+        finally:
+            con.close()
+        print(f"  {'coin':<6s}{'nominal$':>12s}{'ücret$':>9s}{'bp/tur':>9s}  not")
+        oranlar = []
+        for c, n, u, yb in satir:
+            v = nom.get(c, 0.0)
+            if v <= 0:
+                print(f"  {c:<6s}{'—':>12s}{u:>9.4f}{'—':>9s}  defterde nominal yok")
+                continue
+            # tur = giriş + çıkış, nominal giriş tarafından → x2
+            bp = u / (v * 2) * 1e4
+            oranlar.append((c, bp))
+            print(f"  {c:<6s}{v:>12,.0f}{u:>9.4f}{bp:>9.2f}")
+        if len(oranlar) >= 3:
+            import statistics as st
+            bps = [b for _, b in oranlar]
+            med = st.median(bps)
+            print(f"\n  medyan {med:.2f}bp/tur · en düşük "
+                  f"{min(oranlar, key=lambda x: x[1])[0]} {min(bps):.2f} · en yüksek "
+                  f"{max(oranlar, key=lambda x: x[1])[0]} {max(bps):.2f}")
+            sapan = [c for c, b in oranlar if b < med * 0.5]
+            if sapan:
+                print(f"  → ORANI belirgin DÜŞÜK olan: {', '.join(sapan)}")
+                print(f"    Bu gerçek bir tarife farkı olabilir — teyit et.")
+            else:
+                print(f"  → Hiçbir coinin ORANI diğerlerinin yarısından düşük değil.")
+                print(f"    Yani 'şu coin ucuz' diye bir yapısal fark YOK; ")
+                print(f"    '$/dolum' farkları POZİSYON BÜYÜKLÜĞÜNDEN geliyor.")
+
         print(f"\n  ⚠ Ankorun `FEE=0.0001` varsayımı TÜM coinlere aynı 1bp/taraf")
         print(f"    uyguluyor. Yukarıdaki $/dolum sütunu bununla karşılaştırılırsa")
         print(f"    hangi coinlerde ankorun maliyeti FAZLA, hangilerinde AZ saydığı")
