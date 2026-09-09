@@ -36,24 +36,42 @@ ENV = os.path.join(BOT_DIR, ".env")
 # Politika sorusu ("bu rakam DOĞRU rakam mı") ayrı bir bölümde, ANKORA kıyasla
 # yanıtlanıyor — çünkü kullanıcıya verdiğim her getiri tahmini ankor birimindedir.
 
-# Ankorun risk oranı — deployed_backtest.py kaynağından OKUNUR, elle yazılmaz.
-def _ankor_sabit(ad, varsayilan):
-    """deployed_backtest.py'den sabiti metin olarak çek. import etmiyoruz:
-    bu betik VPS'te koşuyor ve ağır import zinciri (fast_bt, strategies) bir
-    ayar doğrulamasını data eksikliği yüzünden düşürmemeli."""
+# Ankorun ve canlının sabitleri — deployed_backtest.py KAYNAĞINDAN okunur, elle yazılmaz.
+# Bu betiği 2026-09-09'da bozan hata tam olarak "elle yazılmış sayı bayatladı"ydı.
+def _ankor_sabit(ad):
+    """deployed_backtest.py'den sabiti metin olarak çek.
+
+    import ETMİYORUZ: betik VPS'te koşuyor ve ağır import zinciri (fast_bt,
+    strategies, veri) bir AYAR doğrulamasını düşürmemeli.
+
+    ⚠ Bulunamazsa VARSAYILANA DÜŞMEZ, çöker. İlk sürüm `^RISKF` diye arıyordu
+    ama RISKF paylaşımlı satırda (`BAL0 = ...; RISKF = 0.0225; ...`) tanımlı,
+    yani hiç bulunamıyor ve sessizce varsayılanı kullanıyordu. Doğru sayıyı
+    ŞANSA veriyordu. Sessiz geri düşüş = bayat sabitin ta kendisi.
+    """
+    yol = os.path.join(BOT_DIR, "deployed_backtest.py")
     try:
-        src = open(os.path.join(BOT_DIR, "deployed_backtest.py"), encoding="utf-8").read()
-        m = re.search(rf"^{ad}\s*=\s*([0-9.]+)", src, re.M)
-        return float(m.group(1)) if m else varsayilan
-    except OSError:
-        return varsayilan
+        src = open(yol, encoding="utf-8").read()
+    except OSError as e:
+        print(f"✗ ankor sabitleri okunamadı ({yol}): {e}")
+        sys.exit(2)
+    m = re.search(rf"(?:^|;)\s*{ad}\s*=\s*([0-9.]+)", src, re.M)
+    if not m:
+        print(f"✗ '{ad}' sabiti deployed_backtest.py içinde BULUNAMADI.")
+        print(f"  Yeniden adlandırıldıysa burayı da güncelle. Tahmin YÜRÜTMÜYORUM.")
+        sys.exit(2)
+    return float(m.group(1))
 
 
-ANKOR_RISKF = _ankor_sabit("RISKF", 0.0225)
-ANKOR_CAP = _ankor_sabit("CAP", 1.25)
+ANKOR_RISKF = _ankor_sabit("RISKF")      # çıpanın riski (regresyon sabiti)
+ANKOR_CAP = _ankor_sabit("CAP")
+CANLI_CAP = _ankor_sabit("CANLI_CAP")    # canlının GERÇEKTE koştuğu — .env buna uymalı
+CANLI_RISKF = _ankor_sabit("CANLI_RISKF")
+CANLI_OLCEK = _ankor_sabit("CANLI_OLCEK")
+CANLI_MAXDD_BAZ = _ankor_sabit("CANLI_MAXDD_BAZ")
 
 # Risk oranının ankorun kaç katına kadar çıkmasına izin var. Aşılırsa ✗.
-# Gerekçe: ankorun ölçülen maxDD'si %24.43. 1.5 kat = ~%37 maxDD; $306'lık
+# Gerekçe: ankorun ölçülen maxDD'si %24.43. 1.5 kat ≈ %37 maxDD; $306'lık
 # hesapta ~$113'lük tepe-dip. Bunun ötesi "normal dalgalanma" diye savunulamaz.
 ORAN_TAVAN = 1.5
 ANKOR_MAXDD = 24.43     # ölçüldü (çıkış sırasına göre equity eğrisi)
@@ -129,30 +147,44 @@ def main():
     print(f"  ↑ bu bölüm 'config .env'i doğru okudu mu' sorusudur, "
           f"'rakam doğru mu' DEĞİL.")
 
-    # ── POLİTİKA: rakamın kendisi doğru mu? Ankora kıyasla. ──
-    # Kullanıcıya verilen her getiri/maxDD tahmini ankor birimindedir
-    # (1579 işlem / +$1420.66 · RISKF %2.25 · CAP 1.25). Canlı ondan
-    # saparsa o tahminlerin hepsi aynı oranda kayar.
+    # ── POLİTİKA: rakamın kendisi doğru mu? İKİ AYRI SORU. ──
+    # (a) Canlı, KOŞMASINI İSTEDİĞİMİZ ayarda mı? Referans deployed_backtest.py'deki
+    #     CANLI_* sabitleri. Sapma = ya .env kaydı yapılmadan değişti, ya biri
+    #     bu sabitleri güncellemeyi unuttu. İkisi de ✗.
+    # (b) Canlı, ÇIPADAN ne kadar sapıyor? Çünkü kullanıcıya verilen her
+    #     getiri/maxDD tahmini çıpa birimindedir ve o oranla kayar.
     canli_risk = getattr(r, "max_risk_per_trade", None)
     canli_cap = getattr(r, "position_cap_fraction", None)
     print(f"\n  {'—' * 60}")
-    print(f"  ANKORA KIYAS (tüm getiri tahminleri bu birimde)")
+    print(f"  (a) CANLI, OLMASI GEREKEN AYARDA MI?")
+    for ad, gercek, bek in (("risk/işlem", canli_risk, CANLI_RISKF),
+                            ("cap fraction", canli_cap, CANLI_CAP)):
+        ok = gercek is not None and abs(gercek - bek) < 1e-9
+        hepsi &= ok
+        print(f"    {ad:<14s} {gercek if gercek is None else f'{gercek:>7.4f}'} "
+              f"beklenen {bek:>7.4f}  {'✓' if ok else '✗ SAPMA'}")
+    if not (canli_cap is not None and abs(canli_cap - CANLI_CAP) < 1e-9):
+        print(f"      .env bilerek mi değişti? Öyleyse deployed_backtest.py'deki")
+        print(f"      CANLI_CAP / CANLI_RISKF / CANLI_OLCEK sabitlerini de güncelle —")
+        print(f"      yoksa bu doğrulayıcı bayatlar (2026-09-09'da tam olarak bu oldu).")
+
+    print(f"\n  (b) ÇIPAYA KIYAS (tüm getiri tahminleri bu birimde)")
     if canli_risk:
         oran = canli_risk / ANKOR_RISKF
         ok = oran <= ORAN_TAVAN
         hepsi &= ok
-        print(f"    risk/işlem   canlı %{canli_risk*100:.3f}  ankor %{ANKOR_RISKF*100:.3f}"
+        print(f"    risk/işlem   canlı %{canli_risk*100:.3f}  çıpa %{ANKOR_RISKF*100:.3f}"
               f"   → {oran:.3f}x  {'✓' if ok else f'✗ TAVAN {ORAN_TAVAN}x AŞILDI'}")
-        print(f"      beklenen maxDD  ~%{ANKOR_MAXDD*oran:.1f}   (ankor %{ANKOR_MAXDD:.2f} × {oran:.2f})")
-        print(f"      ankorun aylık rakamlarını {oran:.2f} ile ÇARP.")
-    if canli_cap is not None and abs(canli_cap - ANKOR_CAP) > 1e-9:
-        hepsi = False
-        print(f"    ✗ POSITION_CAP_FRACTION canlı {canli_cap:.2f} ≠ ankor {ANKOR_CAP:.2f}")
-        print(f"      Bu ikisi AYNI olmalı, yoksa ankorun +$1420.66'sı canlıyı temsil ETMİYOR.")
-        print(f"      Ya .env'i ankora çek, ya deployed_backtest.py'deki CAP'i canlıya çek")
-        print(f"      ve ankoru YENİDEN koş (1579/+$1420.66 rakamı değişir).")
-    elif canli_cap is not None:
-        print(f"    cap fraction canlı {canli_cap:.2f}  ankor {ANKOR_CAP:.2f}   ✓ aynı")
+        print(f"    cap          canlı {canli_cap:.2f}      çıpa {ANKOR_CAP:.2f}"
+              f"        → kâr %+3.9 (ölçüldü, maxDD +0.36 puan)")
+        print(f"    ── ikisi birlikte: kâr ölçeği {CANLI_OLCEK:.3f}x ──")
+        # maxDD tabanı cap 1.50'de ÖLÇÜLEN değer (24.79), çıpanınki (24.43) değil —
+        # yoksa cap'in katkısı düşer ve drawdown OLDUĞUNDAN AZ görünür.
+        dd_bek = CANLI_MAXDD_BAZ * oran
+        print(f"    beklenen maxDD  ~%{dd_bek:.1f}   "
+              f"(cap1.50'de ölçülen %{CANLI_MAXDD_BAZ:.2f} × {oran:.2f})")
+        print(f"    çıpanın aylık DOLAR rakamlarını {CANLI_OLCEK:.2f} ile ÇARP.")
+        print(f"    (yüzde rakamları ölçekten BAĞIMSIZ değildir — onlar da çarpılır)")
 
     # ── BB kolunun gerçekte alacağı boyut ──
     # ⚠ 2026-09-09: BU TEST DE BOZUKTU. "hepsi AYNI olmalı" diyordu; oysa

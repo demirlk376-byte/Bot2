@@ -10,12 +10,17 @@ değiştireceğiz" sorularının cevabı burada. Yeni bir şey yapmadan önce bu
 ## 1. Şu anki yapılandırma
 
 ```
-LEVERAGE=10                RISK_SCALE=1.125
+LEVERAGE=10                RISK_SCALE=1.4                 ← 2026-09-09'da 1.125'ten
 MAX_RISK_PCT=0.02          POSITION_CAP_FRACTION=1.5      ← 2026-08-12'de değişti
 MAX_POSITIONS=7            CONSECUTIVE_LOSS_LIMIT=2
 COOLDOWN_MINUTES=240       DAILY_MAX_LOSS_PCT=0.35
 FIXED_MARGIN_USDT=0        MAKER_ENTRY=true
+MARGIN_MODE=isolated       DONCHIAN_MAKER_ENTRY=true      ← 2026-09-09'da açıldı
 ```
+
+Gerçekleşen risk/işlem = MAX_RISK_PCT × RISK_SCALE = **%2.80** (çıpa %2.25).
+Bu satır bayatlarsa `ayar_dogrula.py` yakalar — ama ancak `deployed_backtest.py`
+içindeki `CANLI_*` sabitleri de güncellenirse. İkisi birlikte güncellenir.
 
 Üç kol çalışıyor:
 
@@ -2327,26 +2332,62 @@ doğrulamasını veri eksikliğinden düşürmemeli.
 Tavan: risk ankorun **1.5 katını** aşarsa `✗`. Gerekçe: 1.5 kat ≈ %37 maxDD,
 $306'lık hesapta ~$113 tepe-dip. Ötesi "normal dalgalanma" diye savunulamaz.
 
-### ⚠ AÇIK SORU — kullanıcının koşması gerek
+### AÇIK SORU KAPANDI — canlı 1.50, çıpa 1.25, ikisi de doğru
 
-İki dosya canlı `POSITION_CAP_FRACTION` konusunda **çelişiyor**:
+VPS'te koşuldu: `position_cap_fraction 1.5000`. Yani **bayat olan ankor
+dosyasıydı**, `.env` değil. `deployed_backtest.py:27` "canlı .env'de 1.25,
+işlem boyutundan teyitli" diyordu; o yorum 2026-08-12'de geçerliliğini
+yitirmiş, kimse silmemiş. DURUM bölüm 1 ise 1.5'i doğru yazıyordu — üç
+kaynaktan ikisi doğru, biri yanlıştı ve ben yanlış olana baktım.
 
-| dosya | değer | notu |
-|---|---|---|
-| `deployed_backtest.py:27` | 1.25 | "canlı .env'deki GERÇEK değer, işlem boyutundan teyitli" |
-| `ayar_dogrula.py` (eski) | 1.50 | "paket sonrası beklenen" |
+CAP 1.25 → 1.50 **bilerek** yapılmış ve gerekçesi ölçülü (bölüm 2190):
+cap'e takılan işlemlerin ort R'si **+0.4597**, takılmayanların **+0.2056**.
+Cap dar stoplu = iyi işlemleri kırpıyordu; 1.5 kırpmayı azalttı.
 
-Hangisinin bayat olduğunu buradan bilemem — `.env` VPS'te. Önemi şu: ankor
-1.25 ile koşuldu. Canlı 1.5 ise **+$1420.66 canlıyı temsil etmiyor** ve dar
-stoplu işlemler ankorun varsaydığından %20 büyük giriyor demektir.
+## 5n. Çıpa ile canlı arasındaki gerçek fark ÖLÇÜLDÜ (2026-09-09)
 
-Doğrulayıcı artık bu soruyu kendisi yanıtlıyor. VPS'te:
+Aynı 1579 işlem, tek değişken cap, equity ÇIKIŞ sıralı:
 
-```bash
-cd /opt/bot2 && git pull && python3 ayar_dogrula.py
+| cap | ort risk | tavana takılan | kâr | maxDD | en kötü ay |
+|---|---|---|---|---|---|
+| 1.25 (çıpa) | %2.13 | %19 | **+$1420.66** | %24.43 | %−21.05 |
+| 1.50 (canlı) | %2.17 | %12 | **+$1476.05** | %24.79 | %−20.46 |
+
+1.25 satırı çıpayı **birebir** üretti (+$1420.66 · %24.43), yani ölçüm sağlam.
+
+**Fark küçük ve lehimize:** kâr **%+3.9**, maxDD **+0.36 puan**, en kötü ay
+**0.59 puan DAHA İYİ**. Yani sana verdiğim bütün aylık/yıllık rakamlar
+%3.9 DÜŞÜK'tü. Hiçbir sonucu değiştirmiyor.
+
+**Canlının çıpaya toplam oranı:**
+
+```
+kâr ölçeği   = (1476.05/1420.66) × (0.028/0.0225) = 1.293x
+beklenen maxDD ~%30.8   ($306 hesapta tepe-dip ~$95)
+beklenen en kötü ay ~%−25.5
 ```
 
-`✓ AYARLAR DOĞRU` çıkarsa konu kapanmıştır. `✗ POSITION_CAP_FRACTION` satırı
-çıkarsa iki seçenek var ve ikisi de meşru: ya `.env`'i 1.25'e çek, ya
-`deployed_backtest.py`'deki `CAP`'i canlıya çek ve ankoru **yeniden koş** —
-o durumda 1579/+$1420.66 rakamı değişir ve ona çıpalı her sayı da değişir.
+**Kırmızı çizgi $180 GEÇERLİ KALIYOR.** Gerekçesi %34 maxDD varsayımıydı,
+ölçülen %30.8 → $306'dan ~$212'ye inmek hâlâ NORMAL. $180 onun altında,
+yani normal dalgalanmada paniğe kapılmıyoruz. Değişiklik gerekmiyor.
+
+### Bunun bir daha olmaması için
+
+`deployed_backtest.py` artık canlının değerlerini de **açıkça beyan ediyor**:
+`CANLI_CAP`, `CANLI_RISKF`, `CANLI_OLCEK`, `CANLI_MAXDD_BAZ`. `ayar_dogrula.py`
+bunları kaynaktan okuyup `.env` ile karşılaştırıyor. Artık iki soru ayrı
+yanıtlanıyor:
+
+- **(a) Canlı, olması gereken ayarda mı?** `.env` ↔ `CANLI_*` sabitleri.
+  Sapma = ya `.env` kayıtsız değişti, ya sabitler güncellenmedi. İkisi de `✗`.
+- **(b) Canlı çıpadan ne kadar sapıyor?** Ölçek oranı + ölçeklenmiş maxDD.
+
+`CAP = 1.25` **dondurulmuş regresyon çıpası** olarak kalıyor: 49 araç
+"1579 / +$1420.66" sayısını backtest motorunun bozulmadığını anlamak için
+kullanıyor. O sabiti değiştirmek 49 aracı aynı anda kör ederdi.
+
+**Ayrıca sessiz bir geri düşüş bulundu ve kapatıldı.** `_ankor_sabit` sabiti
+`^RISKF` diye arıyordu, ama `RISKF` paylaşımlı satırda tanımlı
+(`BAL0 = ...; RISKF = 0.0225; ...`) — hiç bulunamıyor, sessizce varsayılana
+düşüyordu. Doğru sayıyı **şansa** veriyordu. Artık bulamazsa `SystemExit(2)`.
+Sessiz geri düşüş, bayat sabitin ta kendisidir.

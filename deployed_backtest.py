@@ -23,10 +23,34 @@ from strategies.donchian import DonchianStrategy
 from strategies.squeeze import SqueezeStrategy
 
 BAL0 = 190.0; FEE = 0.0001; RISKF = 0.0225; MAXPOS = 7
-# POSITION_CAP_FRACTION — canlı .env'deki GERÇEK değer (config.py varsayılanı 1.0 ama
-# .env POSITION_CAP_FRACTION=1.25 ile eziyor; canlı işlemlerin boyutundan da teyitli).
-# 1.0 kullanmak sonucu ~%5 DÜŞÜK gösteriyordu (live_gates.py ile ölçüldü).
+# POSITION_CAP_FRACTION — DİKKAT, İKİ AYRI DEĞER VAR VE İKİSİ DE DOĞRU.
+#
+# CAP=1.25 bu dosyanın REGRESYON ÇIPASIDIR ve DONDURULMUŞTUR. 49 araç
+# "1579 işlem / +$1420.66" sayısını backtest motorunun bozulmadığını anlamak
+# için kullanıyor. Bu sabiti değiştirmek o 49 aracın hepsini aynı anda kör eder.
+#
+# CANLI ise 2026-08-12'den beri 1.50 koşuyor (DURUM bölüm 1; CAP'e takılan
+# işlemlerin ort R'si +0.4597 vs +0.2056 olduğu için bilerek yükseltildi —
+# cap iyi işlemleri kırpıyordu). 2026-09-09'a kadar buradaki yorum hâlâ
+# "canlı 1.25" diyordu; BAYATTI ve ayar_dogrula.py'yi de yanlış yönlendirdi.
+#
+# Farkı ÖLÇTÜM (aynı 1579 işlem, tek değişken cap, çıkış sıralı equity):
+#     cap 1.25 → +$1420.66 · maxDD %24.43 · en kötü ay %−21.05
+#     cap 1.50 → +$1476.05 · maxDD %24.79 · en kötü ay %−20.46
+#   yani kâr %+3.9, maxDD +0.36 puan, en kötü ay 0.59 puan DAHA İYİ.
+#
+# Bu dosyanın çıktısı CANLIYI DEĞİL ÇIPAYI temsil eder. Canlı beklentisi için
+# aşağıdaki iki sabitle ölçekle.
 CAP = 1.25
+
+# Canlının gerçekte koştuğu değerler — ayar_dogrula.py bunları okuyup .env ile
+# karşılaştırıyor. .env değişirse BURASI DA değişmeli, yoksa doğrulayıcı bayatlar.
+CANLI_CAP = 1.50
+CANLI_RISKF = 0.028          # MAX_RISK_PCT 0.02 × RISK_SCALE 1.4
+# Ölçülen toplam kâr ölçeği: (1476.05/1420.66) × (0.028/0.0225) = 1.293
+CANLI_OLCEK = 1.293
+# cap 1.50'de ölçülen maxDD (çıkış sıralı). RISK_SCALE ile ayrıca ölçeklenir.
+CANLI_MAXDD_BAZ = 24.79
 DONCH = ["SOL", "ETH", "ADA", "NEAR", "BCH", "ICP", "BNB"]
 SQZ = ["XRP", "DOGE", "TRX", "XLM"]
 CFG = {"donchian": ("4h", 259, 2.0, 2.5, 30), "squeeze": ("1h", 119, 2.0, 2.5, 48)}
