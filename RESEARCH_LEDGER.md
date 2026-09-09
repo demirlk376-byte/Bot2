@@ -3787,3 +3787,81 @@ tam da kaçınmaya çalıştığımız yarım ölçüm olur.
 
 Venüs farkı bilinçli: fiyat MEXC vadeli, funding Binance. Arbitraj ikisini
 bağlar ve ölçülen şey pozisyonlanma yönü.
+
+## ⛔ FUNDING FİLTRESİ — TAM VERİYLE KOŞULDU, RED (2026-09-09)
+
+`funding_binance.py` çalıştı: 12/12 coin, coin başına 4044 kayıt,
+**2023-01-01 → 2026-09-09**. Ankorun **1579/1579 işlemi** eşleşti (%100).
+Funding kolonları (`fund`, `f_yon`, `f_z`, `fz_yon`) `data/ay_analiz.csv`'ye
+eklendi; hüküm bugünkü hakemle (`ay_tara.py`) verildi, bayat sabitli eski
+`funding_filter_test.py` ile değil.
+
+### Hipotez doğrudan: NULL
+
+`f_yon = funding × yön` (yüksek = benim yönümde kalabalık). Hipotez: yükseldikçe
+R düşmeli.
+
+| beşte birlik | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| ort R (yönlü ham) | +0.310 | +0.216 | +0.236 | +0.268 | +0.080 |
+| ort R (yönlü z) | +0.328 | +0.243 | +0.288 | +0.187 | +0.140 |
+
+Spearman **+0.0105** (p=0.674) ham · **−0.0011** (p=0.970) z-skor. İlişki yok.
+
+### Bir aday ekranı geçti — ve plato şekli umut vericiydi
+
+`fz_yon > 1.6`: %5.4 sil · silinen ort R **−0.132** · Δ$ **+62.29** ·
+ΔmaxDD **−1.62** · Δkötü ay **+2.81** · permütasyon **%99.4**.
+1.3'ten 1.8'e kadar **altı ardışık eşik** aynı yöne baktı (bıçak sırtı değil).
+Oturum boyunca ekranı geçen ilk aday buydu.
+
+### Üç bağımsız kanıt onu YIKTI
+
+**1. Gürültü tavanının ALTINDA.** Silinen kümenin (n=85) toplam PnL'inin gürültü
+ölçeği σ_R×eff×BAL0×√n = **$67.53**. 14 hücrelik bir taramanın saf gürültüdeki
+beklenen en iyisi σ√(2·ln N) = **$155**. Gözlenen +$62.29 bunun **altında** —
+yani aranan eşik sayısı göz önüne alındığında hiç sıra dışı değil.
+
+**2. Kâr etkisinin %66'sı TEK YILDA, 10 işlemde.**
+
+| kapsam | silinen n | silinen ort R | Δ$ |
+|---|---|---|---|
+| tam örneklem | 85 | −0.132 | +62.29 |
+| **2025 hariç** | 75 | **−0.047** | **+21.42** |
+| yalnız 2025 | **10** | −0.768 | **+40.87** |
+
+2025 çıkınca Δ$ barın (+$36) altına düşüyor ve silinen kümenin ort R'si
+−0.047'ye, yani fiilen sıfıra iniyor. Üstelik **en çok silme yapılan yıl olan
+2024'te (n=41) etki YOK** (ort R +0.024, Δ$ −$2.45).
+
+**3. "En kötü ay +2.81 puan" iyileşmesinin TAMAMI TEK BİR İŞLEM.**
+En kötü ay 2026-04 (36 işlem); filtre orada **1 işlem** siliyor:
+ADA donchian, R −1.005, pnl **−$5.35**. $5.35 / $190 = **%2.82** — gözlenen
++2.81'in ta kendisi. Aynı işlem `fz_yon`'u 2.52 olduğu için 1.2'den 1.8'e kadar
+**her eşikte** siliniyor; ΔmaxDD ve Δkötü ayın tüm eşiklerde sabit görünmesi
+bu yüzden. **Sabitlik dayanıklılık değil, tek bir olayın tekrar sayılması.**
+
+### Karıştırıcı değil, ama önemi yok
+
+`fz_yon` hiçbir fiyat özelliğiyle karışmıyor (en yüksek |Spearman| = 0.13,
+`atr_pct` ile). Silinenlerin kol dağılımı tabana yakın. Yani ölçtüğümüz şey
+gerçekten funding. Etki 10 işlemden geliyorsa bunun bir önemi kalmıyor.
+
+### 📌 HÜKÜM VE SONUÇLARI
+
+Funding bir filtre olarak **RED**. Ledger'ın kendi ifadesiyle bu "son test
+edilebilir fikir"di ve orada yazan şart gerçekleşti:
+
+> *"Geçmezse sahte kırılım, ELİMİZDEKİ HİÇBİR VERİYLE öngörülemez — kesin
+> kapanış (ve tek kalan yol ileriye dönük OI toplamak)."*
+
+Artık üç bağımsız bilgi kanalı denendi ve üçü de null verdi:
+**fiyat** (17 özellik, ay-dışı AUC 0.47) · **portföy** (eşzamanlı maruziyet,
+hipotez ters çıktı) · **pozisyonlanma** (funding, %100 kapsam, red).
+
+Üçünün de aynı yöne bakması bir tesadüf değil: iki bağımsız kalabalık ölçüsü
+(aynı-yön eşzamanlılık ve funding) aynı şeyi söylüyor — **kalabalık, çalışan
+bir trendin belirtisi, uyarı işareti değil.**
+
+Geriye ileriye dönük **open interest** toplamak kalıyor; VPS'te `oi_log.csv`
+zaten birikiyor. Backtest edilemez, yalnız ileriye doğru değerlendirilebilir.

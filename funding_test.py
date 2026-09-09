@@ -39,7 +39,15 @@ def funding_yukle():
     d = {}
     for p in glob.glob("data/*_funding_bnc.csv") or glob.glob("data/*_funding.csv"):
         coin = os.path.basename(p).split("_funding")[0]
-        s = pd.read_csv(p, parse_dates=["dt"]).sort_values("dt")
+        s = pd.read_csv(p)
+        # ⚠ parse_dates=["dt"] YETMİYOR: Binance damgalarının bir kısmında
+        # milisaniye var (…08:00:00.008000+00:00), bir kısmında yok. Karışık
+        # formatta pandas sessizce STRING bırakıyor ve merge_asof dtype hatası
+        # veriyor. format="mixed" + utc=True ile açıkça ayrıştırılıyor.
+        s["dt"] = pd.to_datetime(s["dt"], format="mixed", utc=True)
+        s = s.sort_values("dt")
+        if s["dt"].isna().any():
+            print(f"✗ {p}: {int(s['dt'].isna().sum())} tarih ayrıştırılamadı"); sys.exit(2)
         d[coin] = s.set_index("dt")["rate"]
     kaynak = "Binance (tam geçmiş)" if glob.glob("data/*_funding_bnc.csv") else "MEXC (kısıtlı)"
     return d, kaynak
