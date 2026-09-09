@@ -22,7 +22,7 @@
       "n_trades": 31,
       "n_wins": 13,
       "total_pnl": -214.3946185499002,
-      "skipped": 18
+      "skipped": 19
     },
     "BNB": {
       "balance": 10097.270534981584,
@@ -30,7 +30,7 @@
       "n_trades": 36,
       "n_wins": 18,
       "total_pnl": 97.27053498158483,
-      "skipped": 14
+      "skipped": 15
     },
     "XRP": {
       "balance": 8612.342732450097,
