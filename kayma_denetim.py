@@ -119,6 +119,67 @@ def olc(rows, mumlar, tol_dk=None):
     return out, eslesmedi
 
 
+def buyukluk_etkisi(v):
+    """BÜYÜKLÜK KAYMAYI ARTIRIYOR MU? — kendi dolumlarımızdan.
+
+    NEDEN: yıllık projeksiyonda "hesap büyüdükçe oran düşer" dedim ve
+    "her ikiye katlanmada edge'in %20'si gider" diye modelledim. O rakam
+    ÖLÇÜM DEĞİLDİ — kaldıraç kademesi testindeki bir DUYARLILIK analizinden
+    ("+10bp eklenirse ne olur") çıkarsanmıştı. "10bp gerçekten ekleniyor mu"
+    sorusu HİÇ SORULMADI. Bu fonksiyon onu kendi verimizle soruyor.
+
+    Mekanizma gerçek (emir defteri derinliği) ama BÜYÜKLÜĞÜ ölçülmeli:
+    $285'lik ICP alımı defterin üstünden karşılanır, $3,850'lik alım
+    derinlere iner. Soru: bizim ARALIĞIMIZDA bu etki görünüyor mu?
+
+    ⚠ KAPSAM SINIRI: pozisyonlarımız dar bir aralıkta. Nominal aralığı
+    2 kattan darsa bu test SORUYU CEVAPLAYAMAZ — o zaman "etki yok" değil
+    "göremedik" denir ve öyle raporlanır.
+    """
+    d = [(x["nom"], x["bp"]) for x in v
+         if np.isfinite(x.get("nom", np.nan)) and np.isfinite(x["bp"]) and x["nom"] > 0]
+    if len(d) < 12:
+        print(f"\n  BÜYÜKLÜK ETKİSİ: n={len(d)} — çok az, ÖLÇÜLEMEDİ.")
+        return
+    nom = np.array([a for a, _ in d]); bp = np.array([b for _, b in d])
+    aralik = nom.max() / nom.min()
+    print(f"\n{'='*66}\nBÜYÜKLÜK KAYMAYI ARTIRIYOR MU? (n={len(d)})\n{'='*66}")
+    print(f"  nominal aralığı: ${nom.min():,.0f} … ${nom.max():,.0f}  "
+          f"({aralik:.1f}x)")
+    if aralik < 2.0:
+        print(f"  ⛔ ARALIK 2 KATTAN DAR — bu veriyle soru CEVAPLANAMAZ.")
+        print(f"     Sonuç 'etki yok' DEĞİL, 'göremedik' olur. Hesap büyüdükçe")
+        print(f"     tekrar çalıştır; aralık açılınca anlamlı olur.")
+        return
+    def _rank(x):
+        o = np.argsort(x, kind="mergesort"); r = np.empty(len(x), float)
+        r[o] = np.arange(1, len(x) + 1); return r
+    rho = float(np.corrcoef(_rank(nom), _rank(bp))[0, 1])
+    n = len(d); t = rho * np.sqrt((n - 2) / max(1e-12, 1 - rho ** 2))
+    import math
+    pv = 2 * 0.5 * (1.0 - math.erf(abs(t) / math.sqrt(2)))
+    print(f"  Spearman(nominal, kayma_bp) = {rho:+.4f}  (t={t:+.2f}, p={pv:.4f})")
+    kes = np.percentile(nom, [33, 67])
+    grup = np.digitize(nom, kes)
+    print(f"\n  {'dilim':<10s}{'n':>5s}{'ort nominal':>13s}{'ort kayma':>12s}")
+    for q, ad in enumerate(("küçük", "orta", "büyük")):
+        m = grup == q
+        if m.sum() < 3:
+            continue
+        print(f"  {ad:<10s}{m.sum():>5d}{nom[m].mean():>12,.0f}$"
+              f"{bp[m].mean():>11.2f}bp")
+    if pv < 0.05 and rho > 0:
+        print(f"\n  → ✓ ETKİ GÖRÜLDÜ: büyük pozisyon daha çok kayıyor.")
+        print(f"    'Hesap büyüdükçe oran düşer' varsayımı DESTEKLENDİ.")
+    else:
+        print(f"\n  → ✗ BU ARALIKTA ETKİ GÖRÜLMEDİ (p={pv:.2f}).")
+        print(f"    Bu, etkinin YOK olduğu anlamına GELMEZ — aralığımız dar ve")
+        print(f"    defter derinliği asıl büyük hesaplarda bağlar. Ama yıllık")
+        print(f"    projeksiyondaki %20/katlanma modeli BU VERİYLE")
+        print(f"    DESTEKLENMİYOR; gerçek sonuç B ile A senaryosu ARASINDA")
+        print(f"    olabilir. Model varsayım olarak kalıyor, ölçüm değil.")
+
+
 def ozet(v, ad):
     if len(v) < 5:
         print(f"  {ad:<24s} n={len(v):<4d} — çok az, hüküm yok")
@@ -317,6 +378,7 @@ def main():
 
     print(f"\n{'=' * 108}\n=== [1] KOL BAZINDA GİRİŞ KAYMASI ===")
     print(f"  (+bp = ALEYHE: long'da daha pahalıya alındı / short'ta daha ucuza satıldı)")
+    buyukluk_etkisi(v)          # "büyüdükçe oran düşer" varsayımını KENDİ verimizle sına
     tum = ozet(v, "TÜM KOLLAR")
     per = {}
     for kol in sorted({x["kol"] for x in v}):
