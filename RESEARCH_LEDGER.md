@@ -3494,3 +3494,83 @@ tekrarlamıyor: stop>band **VE** cikis=='sl' şartı birlikte aranıyor.
 - **ÖN-KAYITLI BARI GEÇMEDİ** (bar Δ$ ≥ +36 istiyor, bu −$20.51). Bar "para
   kazandırıyor mu" diye soruyor; bu aday **para kazandırmıyor, oynaklık satıyor**.
   Bu bir dağıtım kararı değil, **kullanıcının tercih kararıdır**.
+
+## ⛔ DÜZELTME — KOL AĞIRLIĞI ADAYI ÇÜRÜTÜLDÜ (2026-09-09, aynı gün)
+
+Yukarıdaki bölüm 3'te kol ağırlığı paketini "gerçek, mekanik, 6/6 walk-forward"
+diye yazdım ve kullanıcıya öyle söyledim. **Yanlıştı.** Çok-ajanlı tarama
+doğru null'u getirdi, paketi ona karşı sınadım, geçmedi.
+
+**Doğru null:** işlemleri ve paketin etkisini aynı bırakıp **ay etiketlerini
+karıştırmak**. Çünkü taramanın en önemli bulgusu şuydu: işlemler aylara
+rastgele dağıtıldığında null **6.9 kötü ay** ve en kötü ay **%−27.21**
+üretiyor. Gözlenen 8 ay (p=0.81) ve %−26.38 (p=0.50) null'un **tam ortasında**
+— gözlenen en kötü ay null medyanından **daha iyi**. "Kötü ay" ayırt edilebilir
+bir nesne değil; %43.5 isabetli bir trend sisteminin binom aritmetiği.
+
+`paket_null.py` (4000 tekrar, 5 istatistik, Bonferroni eşiği p<0.010):
+
+| istatistik | gerçek | null ort | null %5–95 | ham p | hüküm |
+|---|---|---|---|---|---|
+| en kötü ay | +4.842 | −2.130 | [−9.85, +5.28] | 0.0610 | sınırda |
+| maxDD | −1.321 | +1.374 | [−3.28, +6.82] | 0.1487 | null da üretiyor |
+| aylık std | −0.942 | +0.906 | [−0.62, +2.41] | 0.0255 | düzeltmeyi geçmez |
+| %10 dilim | +0.982 | −1.271 | [−6.02, +3.47] | 0.2080 | null da üretiyor |
+| Sharpe | +0.014 | −0.044 | [−0.11, +0.01] | 0.0485 | düzeltmeyi geçmez |
+
+**Bonferroni'yi geçen: 0/5.**
+
+**Nerede yanıldım:** 6/6 walk-forward dilimini kanıt saydım. O dilimler
+**bağımsız değil** — hepsi aynı 40 ayı paylaşıyor, sadece başlangıç noktası
+kayıyor. Tutarlılık, gerçeklik değildir. "$6.13/puan üç ağırlıkta da aynı,
+demek ki doğrusal ve mekanik" argümanı da kurtarmıyor: doğrusallık ağırlığın
+etkisinin doğrusal olduğunu gösterir, o etkinin gürültüden ayrıştığını değil.
+
+**Ayakta kalan iki şey:**
+1. Fayda, squeeze'in kâr katkısını taşıyan iki aydan (2025-03, 2025-12)
+   **bağımsız**: ikisi de çıkarıldığında en kötü ay etkisi +4.88 (tam örneklemde
+   +4.84). Yani `MEKANIZMA` ajanının uyarısı squeeze'in **dolar** katkısına dair,
+   kuyruk etkisine dair değil. Ama kuyruk etkisi de null'u geçmiyor.
+2. Tek gerçek sinyal: **aylık PnL standart sapması null'un üstünde (31.45 vs
+   24.32, p=0.006)**. Bu, aynı ay içinde aynı yönde açılan **korele
+   pozisyonların** izi — giriş koşulunun değil. Paketin en anlamlıya yaklaşan
+   istatistiğinin de "aylık std" olması tesadüf değil; doğru hedefe bakıyor,
+   ama etkisi düzeltmeyi geçecek büyüklükte değil.
+
+## 📌 KÖTÜ AY DOSYASI — NİHAİ HÜKÜM
+
+**Neden batıyor (kesin):** kayıp büyüklüğü değil, isabet oranı.
+Kayıplar −1R'de **sert tavanlı** (her kötü ayda en büyük tek kayıp tam $5.37,
+aylık brüt kaybın %4-8'i). Aylık $91.44'lük farkın **%73'ü eksik take-profit**
+(tp 11.6/ay → 6.0/ay), yalnız %14'ü fazla stop. Kaynak tek kol: donchian
+kötü-ay zararının **%102'si**, ama kârın da %73'ü. Kesilecek kötü bir dilimi yok.
+
+**Neden önlenemez — üç bağımsız kanıt:**
+
+1. **Aritmetik:** mükemmel kâhin +$234.16 (kârın %13.3'ü, ayda $5.85).
+   2026-07-25'te +$231'di; config tamamen değişti, sayı değişmedi.
+2. **Geometri:** kullanıcının "iyi aylardan ≤%5 sil" şartı, 288 kötü-ay işlemini
+   yakalarken en fazla 64 iyi-ay işlemi harcamaya izin veriyor → TPR≈1.00 @
+   FPR≈0.05 → **AUC≈0.99 gerekiyor**. Ölçülen en iyi AUC **0.60** (17 özellik,
+   ay-gruplu OOF). 0.60→0.99 uçurumu arama stratejisiyle kapanmaz.
+3. **İstatistik:** kötü aylar karıştırma null'unun ortasında (p=0.81 sayıda,
+   p=0.50 en kötü ayda). Ortada tespit edilecek bir nesne yok.
+
+Destekleyici: 17 giriş özelliğiyle ay-blok CV'de R öngörüsü **OOS r=+0.031**;
+giriş koşulları sabitlendiğinde kötü-ay açığı hiç kapanmıyor (−0.4578 koşullu
+vs −0.4556 ham). Ay içi erken uyarı yok (ilk 10 gün ↔ ayın kalanı r=−0.104).
+Kümelenme **ters** yönde: kötü aylar korele bir patlama değil, dağılmış sızıntı.
+
+**Tarama hacmi:** 4 boyut × ~70/1086/101.848 hücre, hakemle 55+ aday ölçüldü.
+Bar'ı geçen adayların **hepsinin** en kötü aya etkisi **+0.00** — kötü ayı
+iyileştirdikleri için değil, ona **nötr** oldukları için geçtiler.
+
+**Tek açık kapı:** aylık dağılımın fazla yayılması (p=0.006) **portföy
+korelasyonundan** geliyor — aynı ay, aynı yön, aynı anda açılan pozisyonlar.
+Bu bir **giriş filtresi** sorunu değil, bir **eşzamanlı maruziyet** sorunu.
+Oraya bakılacaksa doğru araç korelasyon-tavanı/koltuk tahsisi, filtre değil.
+(Not: aynı-yön cap K=4 daha önce denenmiş, dolar-negatif çıkmıştı.)
+
+**Kâhinin asıl ödülü kâr değil:** kötü aylar atlanınca maxDD %27.98 → **%18.70**
+(−9.28 puan). Kâr +%13, drawdown −%33. Yani bu eksende aranacak şey "daha çok
+para" değil, "daha az sarsıntı"ydı — ve o bile ulaşılamıyor.
