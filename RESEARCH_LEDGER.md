@@ -3574,3 +3574,85 @@ Oraya bakılacaksa doğru araç korelasyon-tavanı/koltuk tahsisi, filtre değil
 **Kâhinin asıl ödülü kâr değil:** kötü aylar atlanınca maxDD %27.98 → **%18.70**
 (−9.28 puan). Kâr +%13, drawdown −%33. Yani bu eksende aranacak şey "daha çok
 para" değil, "daha az sarsıntı"ydı — ve o bile ulaşılamıyor.
+
+## ⛔ EŞZAMANLI MARUZİYET TAVANI — TEST EDİLDİ, EKSEN KAPANDI (2026-09-09)
+
+Kullanıcı: *"korele pozisyonlara bak, eşzamanlı maruziyet tavanını test et."*
+Doğru yerdi: ay-karıştırma null'unu geçen **tek** istatistik aylık PnL
+yayılmasıydı. Araçlar: `korele.py` (teşhis), `maruziyet.py` (tavan testleri).
+
+### TEŞHİS — ortak hareket GERÇEK
+
+| ölçüm | değer |
+|---|---|
+| örtüşen **aynı yön** çiftlerin R korelasyonu | **+0.3102** (3152 çift) |
+| örtüşen **ters yön** çiftlerin R korelasyonu | −0.2247 (934 çift) |
+| aylık std, gözlenen | %31.45 |
+| aylık std, R-karıştırma null'u | %24.98 (%95 dilim %29.73) → **p=0.0105** |
+
+Yani örtüşen pozisyonlar gerçekten birlikte hareket ediyor ve kaynağı **yön
+hizalanması**. Buraya kadar hipotez doğrulandı.
+
+### AMA SORUN DEĞİL — dört bağımsız kanıt
+
+**1. Kalabalıkla beklenti DÜŞMÜYOR.** Aynı-yön eşzamanlı sayısına göre ort R
+ve %95 aralıkları (hepsi üst üste biniyor, fark YOK):
+
+| n | işlem | ort R | %95 aralık |
+|---|---|---|---|
+| 1 | 401 | +0.137 | [+0.002, +0.273] |
+| 3 | 276 | +0.370 | [+0.188, +0.552] |
+| 6 | 118 | +0.070 | [−0.195, +0.335] |
+| 7 | 50 | +0.451 | [+0.010, +0.893] |
+
+Kalabalık işlemler **kötü işlemler değil**, sadece **korele** işlemler.
+
+**2. Kalabalık aylar İYİ aylar — hipotez TERS ÇIKTI.**
+Spearman(ort kalabalık, aylık PnL) = **+0.332**, permütasyon **p=0.038**.
+Kötü ayların ort kalabalığı **2.787**, iyi ayların **2.989**.
+Korele maruziyet kötü ayların nedeni olamaz; tam tersine iyi ayın imzası.
+
+**3. SİLEN tavan düşüyor — ledger'ın K=4 bulgusunu birebir doğruluyor.**
+
+| K | kalan | Δ$ | Δkötü ay | ΔmaxDD | ΔSharpe |
+|---|---|---|---|---|---|
+| 2 | 730 | **−$1149.84** | −4.35 | +5.75 | −0.285 |
+| 4 | 1245 | −$287.06 | −1.18 | +1.21 | −0.015 |
+| 6 | 1529 | −$111.06 | −6.02 | +0.00 | −0.018 |
+
+Her K'da kâr, en kötü ay, maxDD ve Sharpe **hepsi kötüleşiyor**.
+
+**4. KÜÇÜLTEN sürüm de düşüyor — ve sebebi mekanik.**
+`eff × n^(−p)`, Σrisk sabit (hiçbir işlem silinmez):
+
+| p | Δ$ | Δkötü ay | ΔmaxDD | ΔSharpe | tepe marjin |
+|---|---|---|---|---|---|
+| 0.50 | −$116.33 | +0.95 | **+3.19** | −0.044 | %90.5→**%93.1** |
+
+Sebep: `n^(−p)` riski **tenha** işlemlere kaydırıyor, oysa tenhanın ort R'si
+**en düşük** (+0.137). Ayrıca tekil pozisyonlar büyüyünce tepe marjin de
+**artıyor**. Yani müdahale her eksende geri tepiyor.
+
+**5. Asimetrik şekiller (yalnız aşırı kalabalığı kırp) null'u geçemiyor.**
+Görünürde para kazandırıyorlar ama R'ler kol içinde karıştırıldığında null
+aynı kazancı üretiyor: `n≥5 ×0.75` p=0.21 · `n≥5 ×0.50` p=0.21 ·
+`n≤1 ×0.75` (ters yön) p=0.062. 5 şekil denendi, Bonferroni eşiği p<0.010.
+
+### 📌 HÜKÜM
+
+Fazla aylık yayılma **edge'in çalışmasının imzası**, bir risk sızıntısı değil.
+Trend sistemi, trendler hizalandığında hizalı pozisyon alır; o pozisyonlar
+**tanımı gereği** koreledir ve **tam da o anlarda** para kazanır. Korelasyonu
+kısmak edge'i kısmaktır. Pozitif beklentili korele pozisyonlar hâlâ pozitif
+beklentilidir; varyans maliyeti gerçek ama getiri onu fazlasıyla karşılıyor.
+
+**Kötü ay dosyası artık tam kapalı.** Açık kalan tek kapı da denendi ve
+hipotezin tersine çıktı. Aranacak yeni bir yer YOK — bu eksende.
+
+### 🧰 YOL BOYUNCA BULUNAN ARAÇ HATASI (bu depoda sekizinci)
+
+`maruziyet.py` equity eğrisini `np.argsort(cikis_ts)` ile sıralıyordu.
+1579 işlemin **281'inin çıkış damgası EŞİT** ve numpy'ın varsayılanı
+(quicksort) **kararsız**: eşitleri keyfi sıralıyor. Taban maxDD **%27.35**
+okunuyordu, doğrusu **%27.98** (ankorun yolu Python'un stable `sorted`'ı).
+0.63 puanlık sahte fark. `kind="stable"` ile düzeltildi; hükümler değişmedi.
