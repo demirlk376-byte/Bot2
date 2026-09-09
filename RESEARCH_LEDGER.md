@@ -3865,3 +3865,57 @@ bir trendin belirtisi, uyarı işareti değil.**
 
 Geriye ileriye dönük **open interest** toplamak kalıyor; VPS'te `oi_log.csv`
 zaten birikiyor. Backtest edilemez, yalnız ileriye doğru değerlendirilebilir.
+
+## ⏳ OPEN INTEREST — VERİ SAĞLIKLI, TEST İÇİN 17 AY ERKEN (2026-09-09)
+
+Funding reddedildikten sonra geriye kalan tek kanal. `data/oi_log.csv` denetlendi.
+
+### Veri sağlığı: TEMİZ
+
+| ölçüm | değer |
+|---|---|
+| satır | 47.676 |
+| kapsam | 2026-07-29 → 2026-09-09 (**41 gün**) |
+| coin | 12, her birinde tam 3973 kayıt |
+| örnekleme | medyan **15.1 dk**, %90 dilim 15.6 dk |
+| 2 saatten uzun boşluk | **0** |
+| OI gerçekten değişiyor mu | evet: 3973/3973 benzersiz, değişim katsayısı 0.20–0.35 |
+| eksik hücre | yalnız `funding` sütununda 1640 (%3.4) |
+
+Sabit-yazma, donmuş sayaç, kesinti yok. Logger çalışıyor ve son kayıt bugün.
+
+### Ama örneklem 17 ay erken
+
+Ankor hızı 40 işlem/ay → 41 gün ≈ **55 işlem**.
+
+| toplam n | silinen (%20) | std hata | tespit eşiği \|R\| |
+|---|---|---|---|
+| **55 (bugün)** | 11 | 0.442 | **0.866** |
+| 400 | 80 | 0.164 | 0.321 |
+| **745** | 149 | 0.120 | **0.235** |
+| 1579 (funding testinin gücü) | 316 | 0.082 | 0.162 |
+
+Bugünkü eşik 0.87, yani silinen kümenin ortalama işlemden **3.6 kat** kötü
+olması gerekir. O büyüklükte bir etki zaten istatistiksiz görünürdü.
+
+### 📌 ÖN KAYIT — açılış tarihi ve kural
+
+**Hedef: 745 işlem** (eşik |R|>0.235, ankorun +0.237'lik edge'ine karşı ~2σ).
+Bugünkü hızla gereken ek süre **17 ay → ~2028-02**.
+
+O gün gelmeden OI'ye bakmak, tam da bu oturumda funding'de yakalanan hatayı
+tekrarlamak olur: küçük örneklemde eşik tarayıp "plato" görmek. Funding'de
+altı ardışık eşik aynı yöne baktı ve etkinin %66'sı 10 işlemden çıktı.
+
+**Kural (şimdi yazıldı, sonra gevşetilmeyecek):**
+1. n < 745 iken hüküm verilmez. Ara bakış yapılırsa "ön okuma" diye işaretlenir
+   ve aday üretilmez.
+2. Hipotez ŞİMDİ sabitlenir, veriye bakılarak sonra seçilmez:
+   *yukarı kırılım + OI ARTIYOR = yeni para giriyor → GERÇEK;
+    yukarı kırılım + OI DÜŞÜYOR = pozisyon kapanışı (stop avı) → SAHTE.*
+   Tek değişken: giriş anındaki OI değişimi × yön.
+3. Hüküm `ay_tara.py` hakemiyle ve permütasyon kontrolüyle verilir.
+4. Gürültü tavanı raporlanır: taranan hücre sayısı N için σ√(2·ln N).
+
+**OI geçmişi satın alınamaz** — Binance 30 gün, MEXC hiç veriyor. Bu yüzden
+tek yol beklemek. Dosya büyümesi ~30 MB/yıl, sorun değil.
