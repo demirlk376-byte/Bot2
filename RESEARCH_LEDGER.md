@@ -3656,3 +3656,81 @@ hipotezin tersine çıktı. Aranacak yeni bir yer YOK — bu eksende.
 (quicksort) **kararsız**: eşitleri keyfi sıralıyor. Taban maxDD **%27.35**
 okunuyordu, doğrusu **%27.98** (ankorun yolu Python'un stable `sorted`'ı).
 0.63 puanlık sahte fark. `kind="stable"` ile düzeltildi; hükümler değişmedi.
+
+## ⛔ BTC / ÇAPRAZ-VARLIK EKSENİ — SON BOYUT DA KOŞULDU, NULL (2026-09-09)
+
+Taramanın oturum limitine takılan son boyutu. Araç: `btc_eksen.py`.
+Anlamlılık **ay-etiketi permütasyonu** ile ölçüldü (20.000 tekrar), i.i.d. testle
+değil: 288 kötü-ay işlemi yalnız **8 aydan** geliyor, gerçek serbestlik 8 vs 32 ay.
+
+### (a) Ayrım gücü — YOK
+
+| özellik | kötü ort | iyi ort | AUC | ay-perm p |
+|---|---|---|---|---|
+| btc_atr_pct | 0.0121 | 0.0107 | **0.5656** | 0.254 |
+| btc_get20 | −0.0074 | +0.0032 | 0.4451 | 0.247 |
+| btc_adx | 25.11 | 27.51 | 0.4522 | 0.245 |
+| btc_ic40 | 0.9540 | 0.9448 | 0.5520 | 0.250 |
+| btc_er20 | 0.2497 | 0.2882 | 0.4484 | 0.175 |
+
+Gereken AUC **0.99** (kullanıcının "iyi aylardan ≤%5 sil" şartından geometrik
+olarak çıkan çıta). En iyi BTC özelliği **0.5656**, ve hiçbiri anlamlı değil.
+BTC, coinin kendi özelliklerinden **daha iyi de değil**.
+
+### (b) Kalıcılık — ilginç ama işe yaramaz bir gerçek
+
+| özellik | ay-ay otokorelasyon | p |
+|---|---|---|
+| btc_atr_pct | **+0.393** | **0.0155** |
+| atr_pct (coin) | +0.360 | 0.022 |
+| adx14 (coin) | **−0.393** | **0.011** |
+| btc_adx | −0.017 | 0.921 |
+
+İki gerçek çıktı. Birincisi, tek-coin ADX'in anti-persistent olduğu eski bulgu
+(−0.379) **birebir doğrulandı** (−0.393). İkincisi, **BTC ADX anti-persistent
+bile değil, tamamen rastgele** (−0.017, p=0.92) — yani "piyasa geneli rejim
+daha kararlıdır" hipotezi yanlış.
+
+Kalıcı olan tek şey **oynaklık** (+0.393). Ama oynaklık kötü ayları ayırmıyor
+(AUC 0.5656, p=0.254). **Öngörülebilen şey önemli değil; önemli olan şey
+öngörülemiyor.** Kötü ayı yapan, kırılımın devamının gelmemesi — ve onun
+oynaklıkla ilgisi yok.
+
+### (c) Önceki ayın BTC rejimi bu ayı öngörüyor mu — HAYIR
+
+En iyi işaret isabeti **%48.7**. Hiçbir şey yapmamanın isabeti **%80**
+(40 ayın 32'si artı). Korelasyonlar −0.245 ile +0.139 arası, hepsi p>0.12.
+
+### (d) Birleşim ve çok değişkenli — DAHA KÖTÜ
+
+coin ADX × BTC ADX 3×3: **9 kovanın 0'ında** ort R negatif. En düşük kova
++0.143, en yüksek +0.420, sistematik desen yok.
+
+Ay-dışı-bırak çapraz doğrulama (ridge λ=5):
+
+| model | iç-örnek AUC | AY-DIŞI AUC |
+|---|---|---|
+| yalnız BTC (5) | 0.6323 | **0.4720** |
+| yalnız coin (5) | 0.5635 | 0.2906 |
+| BTC + coin (10) | 0.6435 | 0.4618 |
+
+Ay dışında **yazı-turadan kötü**. İç-örnek ile ay-dışı arasındaki uçurum saf
+aşırı uyum. Gereken 0.99'a uzaklık **0.518**.
+
+### (e) Yasal aday üretilemiyor
+
+5 özellik × 10 dilim = **50 dilimin 1'inde** ort R negatif (btc_adx dilim 8,
+−0.019, n=159, %95 aralık [−0.202, +0.215] — sıfırı kapsıyor). 50'de 1, saf
+şansın beklediği sayıdır. Yine de hakeme sokuldu, 5 aday: **0/5 geçti**.
+En iyisi Δ$ +$7.29 (bar +$36) ve **iyi aylardan (%10.5) kötü aylardan (%6.6)
+DAHA ÇOK siliyor** — istenenin tam tersi.
+
+### 📌 KÖTÜ AY DOSYASI TAMAMEN KAPANDI
+
+Sekiz boyutun sekizi de koşuldu. Aday üreten boyut yok, bar'ı geçen aday yok.
+Kapanış üç bağımsız kanıta dayanıyor ve üçü de arama miktarıyla değil,
+**yapıyla** ilgili:
+
+1. **Aritmetik** — mükemmel kâhin +$234 (kârın %13.3'ü, ayda $5.85)
+2. **Geometri** — %5 şartı AUC≈0.99 talep ediyor; ölçülen en iyi ay-dışı 0.4720
+3. **İstatistik** — kötü aylar karıştırma null'unun ortasında (p=0.81)
