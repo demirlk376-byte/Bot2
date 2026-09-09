@@ -3345,3 +3345,152 @@ Yalnız 294 işlem (%19) büyüyor, ortalama **1.16×** — cerrahi bir değişi
 (sınırda). Etki gerçekse +$55, kalite farkı yoksa yaklaşık nötr-pozitif (hedef riske
 yaklaşmak). Zarar senaryosu: kırpılanlar aslında daha KÖTÜ olsaydı — veri bunun tersini
 söylüyor ama kesinlikle dışlamıyor.
+
+---
+
+# 🔬 KÖTÜ AYLAR — GÜNCEL CONFIG'TE YENİDEN (2026-09-09)
+
+Kullanıcı: *"kötü aylardaki işlemleri, piyasa koşullarını, her şeyi incele.
+Neden batıyor bu aylar? Nasıl önleriz, İYİ AYLARA DOKUNMADAN?"*
+
+2026-07-25'te bu soru "kesin cevaplandı" ve sonuç **aksiyon yok** olmuştu. Ama o
+analiz **başka bir config'teydi**: BB kolu yoktu, taban +$1222, 16/40 kötü ay.
+Bugün BB var, cap 1.5, risk %2.80, taban +$1755.21, **8/40 kötü ay**. Sonucun
+hâlâ geçerli olduğunu varsaymadım, yeniden koştum.
+
+Altyapı: `ay_veri.py` → `data/ay_analiz.csv` (1579 işlem × 29 kolon, giriş anı
+piyasa koşulları, lookahead yok, R dizisi ankorla **birebir** doğrulandı).
+`ay_tara.py` → tek hakem, ön-kayıtlı bar + permütasyon kontrolü.
+
+## 1. NEDEN batıyor — mekanizma NET ve eski bulguyu KESKİNLEŞTİRİYOR
+
+|  | kötü ay (8) | iyi ay (32) |
+|---|---|---|
+| WR | %30.2 | %46.5 |
+| ort **kazanç** | +1.641R | +1.780R |
+| ort **kayıp** | **−0.904R** | **−0.947R** |
+| TP ile çıkış | %16.7 | %28.7 |
+| SL ile çıkış | %59.7 | %48.7 |
+| işlem/ay | 36.0 | 40.3 |
+
+**Kayıplar BÜYÜMÜYOR — kötü ayda ortalama kayıp aslında DAHA KÜÇÜK.** İşlem
+sayısı da benzer. Fark neredeyse tamamen **isabet oranı**: TP'ye ulaşan işlem
+oranı %28.7'den %16.7'ye düşüyor. Eski analiz "kazançlar azalıyor" demişti;
+güncel veride kazanç yalnız %8 küçülüyor (1.78→1.64), WR ise %35 çöküyor.
+**Yani sorun stop yerleşimi değil, kırılımın tutmaması.**
+
+Kolların payı (kötü aylardaki $):
+
+| kol | kötü ay | iyi ay | aylık Sharpe | en kötü ayı |
+|---|---|---|---|---|
+| donchian | **−$239.17** | +$1527.09 | +0.548 | −%38.01 |
+| squeeze | **+$50.78** | +$265.31 | +0.366 | −%12.40 |
+| bb | −$45.77 | +$196.97 | +0.258 | −%14.06 |
+
+**Squeeze kötü aylarda POZİTİF.** Kol korelasyonları: squeeze↔donchian **−0.181**,
+squeeze↔bb **−0.277**. Squeeze gerçek bir çeşitlendirici.
+
+## 2. TAVAN — ay-kapısı ARİTMETİK OLARAK ödeyemez
+
+```
+8 kötü ayın TAMAMI mükemmel bir kâhinle atlansa : +$234.16
+   = kârın %13.3'ü = ayda $5.85
+kötü aylardaki TÜM zararlı işlemler silinse     : +$930.46  (ulaşılamaz)
+iyi ay ort %+32.72  ·  kötü ay ort %−15.41      → 2.1x
+```
+
+2026-07-25'te bu sayı **+$231**'di. Config tamamen değişti, sayı **değişmedi**.
+Bu tesadüf değil: kötü aylar küçük, iyi aylar büyük ve bu yapısal.
+**Ay-seviyesi tahmin ne kadar iyi olursa olsun ödeyemez.** Eksen kapalı.
+
+## 3. AMA: SİLMEK ≠ KÜÇÜLTMEK — ve küçültmek 13-19 kat ucuz
+
+Ledger'ın "ne silinirse silinsin silmek negatif beklentidir" bulgusu **silmeye**
+dairdir. Ağırlıklandırma hiçbir işlemi silmiyor. `kol_agirlik.py`, toplam riski
+(Σ eff) **sabit tutarak** kol boyutlarını değiştiriyor (risk eşitleme —
+`sleeve_risk_test.py` tam bu tuzağa düşmüştü).
+
+**Paket: squeeze ×1.5 · bb ×0.5 · donchian ×1.0** (1579 işlemin hepsi duruyor)
+
+| | taban | paket | fark |
+|---|---|---|---|
+| **en kötü ay** | −%26.38 | −%21.54 | **+4.84 puan** |
+| **maxDD** | %27.98 | %26.66 | **−1.32 puan** |
+| Sharpe (aylık) | +0.734 | +0.748 | +0.014 |
+| ortalama ay | +%23.09 | +%22.83 | −0.27 |
+| toplam kâr | +$1755.21 | +$1734.70 | **−$20.51** |
+| artı ay oranı | %80 | %70 | **−10 puan** |
+
+**Puan başına fiyat $4.24.** Bilinen filtreleme doğrusu $55-80/puan
+(`17c adx≥30`: +6.0 puan için −$328). **13-19 kat ucuz.**
+
+**Dayanıklılık — parametre BAŞTAN sabit, seçim yok:**
+- Walk-forward **6/6** dilimde en kötü ay iyileşti (+4.11 … +4.54 puan, çok kararlı)
+- **4/6** dilimde maxDD de iyileşti
+- **4/4 yılda** en kötü ay iyileşti
+- Δ$ dilimlere göre −$13 ile +$43 arası, ortalaması **pozitif**
+- Tek parametreli hâlde (yalnız squeeze) fiyat 3 ayrı ağırlıkta **tam $6.13/puan**
+  → doğrusal, yani fit değil **mekanik**
+
+**Kontrol — "squeeze büyütmek" mi "donchian küçültmek" mi:**
+donchian ×0.75 tek başına $10.32/puan; squeeze ×1.5 $6.13/puan. Yani etki
+donchian'ı kısmaktan değil, **negatif korelasyonlu kola tahsisten** geliyor.
+
+**Bedeli dürüstçe:** artı ay oranı %80 → %70. 8 kötü ayın 6'sı iyileşti,
+**2'si kötüleşti** (2026-02: −%5.75 → −%12.07). İyi aylar ort **−%1.30**.
+
+## 4. ⛔ ENGEL — MARJİN, VE BU EDGE MESELESİ DEĞİL
+
+```
+tepe eşzamanlı marjin (10x, bakiyenin %'si)
+  TABAN  %90.5        ← zaten dar
+  PAKET  %99.6        ← DUVARDA — canlıda işlem reddi başlar
+```
+
+Sebep: Σeff sabit tutmak Σ**nominal**'i sabit tutmuyor. Squeeze'in stopları dar
+(ort %1.94 vs donchian %4.95), yani birim risk başına **daha çok nominal**.
+Squeeze'e tahsis marjin yiyor. bb'yi kısmak bile marjini artırıyor (%90.5→%95.4).
+
+**Bütün kol-ağırlığı ekseni marjin-kısıtlı, edge-kısıtlı değil.** Bu, XAU
+bölümündeki ve alt-hesap notundaki engelin aynısı.
+
+## 5. AÇILIŞ — kaldıraç kademesi (yeni bir amaçla)
+
+Kaldıraç kademesi 4p'de **kâr için** denenip dayanıklılıkta düşmüştü. Burada
+amaç kâr değil, **yer açmak** — ve kaldıraç riski değiştirmez, yalnız marjini.
+
+```
+squeeze 15x · donchian 10x · bb 10x   →  paket tepe marjini %85.5   ✓ güvenli
+```
+
+Likidasyon güvenliği (izole, bakım %0.5, band = 1/K − 0.005):
+
+| kaldıraç | band | squeeze'de stop>band | KESİN likidasyon | belirsiz |
+|---|---|---|---|---|
+| 10x | %9.50 | 1/410 (%0.2) | 1 | 0 |
+| **15x** | **%6.17** | **6/410 (%1.5)** | **2** | **4** |
+| 20x | %4.50 | 18/410 (%4.4) | 10 | 8 |
+
+Squeeze'in stopları dar olduğu için 15x onu neredeyse hiç ısırmıyor.
+
+**⚠ ÖLÇÜM SINIRI, dürüstçe:** "kesin" sayımı yalnız *stop>band VE stop'a gitmiş*
+işlemleri sayıyor — bunlar aritmetik olarak stoptan **ucuz** kapanıyor (izole
+marjinde azami kayıp = yatırılan marjin). Asıl pahalı vaka **kazanacakken bandı
+delip likide olan** işlemdir ve onu ölçmek için 1 dakikalık intrabar MAE verisi
+gerekir (`veri_pencere.py` çekebilir). 15x'te bu belirsiz küme **4 işlem**.
+Ölçülmeden dağıtım önerilmez.
+
+⚠ Daha önce `genis_stop.py`'de yalnız "stop geniş" diye sayıp **84 sahte
+likidasyon** ve uydurma bir −$179 maliyet üretmiştim. Bu sayım o hatayı
+tekrarlamıyor: stop>band **VE** cikis=='sl' şartı birlikte aranıyor.
+
+## 📌 HÜKÜM
+
+- **"Neden batıyor" KAPANDI:** isabet oranı çöküşü, kayıp büyümesi değil.
+- **Ay-kapısı KAPANDI:** kâhin tavanı $234 (ayda $5.85). Aritmetik yasak.
+- **Kol ağırlığı AÇIK ve gerçek:** kuyruğu $4.24/puana satın alıyor, filtrelemenin
+  $55-80'i yerine. 6/6 OOS, 4/4 yıl. Ama **kâr getirmiyor**, kuyruk **satın alıyor**.
+- **Uygulanabilirlik marjine bağlı**, ve kaldıraç kademesi onu açıyor.
+- **ÖN-KAYITLI BARI GEÇMEDİ** (bar Δ$ ≥ +36 istiyor, bu −$20.51). Bar "para
+  kazandırıyor mu" diye soruyor; bu aday **para kazandırmıyor, oynaklık satıyor**.
+  Bu bir dağıtım kararı değil, **kullanıcının tercih kararıdır**.
