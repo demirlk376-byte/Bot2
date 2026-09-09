@@ -2090,6 +2090,77 @@ sıfır strateji değişikliği.
 hiçbiri risk artırmadan (RISK_SCALE ayrı bir karar ve ayrı kayıtlı).
 
 
+---
+
+## 5l. KAYMA DENETİMİ ÇALIŞTI (2026-09-09) — İKİ SÖYLEDİĞİM DÜZELTİLDİ
+
+`kayma_denetim.py`, n=87, **eşleşme %100**.
+
+### ① SABİTLER ÖLÇÜLDÜ VE GÜNCELLENDİ (kod değişti)
+| sabit | eski | yeni | gerekçe |
+|---|---|---|---|
+| `live_verify.ANK_SLIP_BP` | 13.4 | **15.85** | ölçüldü n=54, [%95: +8.34, +23.37] |
+| `live_verify.TAKER_FEE` | 0.0002 | **0.0001** | iki uçtan kalibre edildi |
+
+13.4 aralığın İÇİNDEYDİ (yanlış değildi) ama "ölçülen" diye duruyor, ölçüm
+KODU yoktu — aracın kendi hükmü bunu *"bugünkü en büyük metodoloji açığı"*
+diye işaretledi. TAKER_FEE ise DURUM 2g'de "yan bulgu (ayrı iş)" diye not
+edilip yapılmamıştı; iki kat şişkin ücret beklenen-vs-gerçekleşen kıyasında
+**SAHTE sistematik sapma** üretiyordu.
+
+Ücret modeli iki uçtan DOĞRULANDI: zorunlu-maker kol 0.547bp (beklenen 0.500),
+zorunlu-taker kollar 0.933bp (beklenen 1.000) → **"maker %0 / taker 1bp"**.
+
+### ② ⚠ "BÜYÜDÜKÇE ORAN DÜŞER" MODELİM DESTEKLENMEDİ
+Nominal aralığı **$59 … $513 (8.7×)** — kapsam guard'ının istediği 2×'in çok
+üstünde, yani test GEÇERLİ.
+| dilim | n | ort nominal | ort kayma |
+|---|---|---|---|
+| küçük | 29 | $95 | 11.67bp |
+| orta | 29 | $163 | 15.84bp |
+| **büyük** | 29 | **$278** | **3.35bp** |
+
+Spearman +0.0987, **p=0.36 → ETKİ YOK.** Üstelik en büyük dilim EN AZ kayıyor.
+
+**Muhtemel sebep — ve bu testin sınırı:** nominal bağımsız bir değişken DEĞİL.
+`nom = RISKF×equity/slp` yani BÜYÜK nominal = DAR stop = SAKİN an. Sakin anda
+spread de dar. Yani "büyüklük" ile "oynaklık" iç içe geçmiş; test bunları
+ayıramıyor.
+
+**Yıllık projeksiyondaki "her ikiye katlanmada edge'in %20'si gider" modeli
+BU VERİYLE DESTEKLENMİYOR.** O model bir duyarlılık analizinden çıkarsanmıştı,
+ölçümden değil — kullanıcıya ölçülmüş gibi sunmuştum, YANLIŞTI.
+⚠ Ama ölçüm yalnız **$513 nominale kadar** geçerli. $4,000 equity'de nominal
+~$3,850 olur; o bölge hakkında VERİ YOK. "Etki yok" değil, "bu aralıkta
+görünmüyor".
+
+### ③ ⚠ MAKER GİRİŞ KAZANCINI ABARTTIM — ters seçim ÖLÇÜLDÜ
+Doğal deney güçlü duruyor: bb (maker) **−1.58bp** vs donchian+squeeze (market)
+**+12.56bp**, fark **+14.14bp [+7.61, +20.67]**. Aracın kendi tahmini: her iki
+momentum kolunu maker'a almak **~$74/yıl**.
+
+**AMA aracın kendi çekincesi kritik:**
+> BB bir ORTALAMAYA DÖNÜŞ kolu — limiti fiyatın GERİ GELDİĞİ yere koyuyor,
+> dolum LEHİNE yanlı. donchian/squeeze MOMENTUM; fiyat limitten KAÇAR.
+> **BB'nin oranı donchian için bir ÜST SINIRDIR, tahmin değil.**
+> `maker_giris.py` ölçtü: limit **kazanan işlemlerde %9, kaybedenlerde %27**
+> doluyor.
+
+Dolum oranları: bb **%64** [%39–%89] · başabaş ~%42 (2bp) … ~%26 (10bp).
+**Nokta tahmini başabaşın üstünde ama CI'nin alt ucu (%39) ALTINDA. n=14 ile
+kesin konuşulamaz.**
+
+→ Kullanıcıya verdiğim **"+$39–57/yıl"** rakamı, BB'nin oranının donchian'a
+taşınacağını varsayıyordu. **O bir ÜST SINIR.** Gerçek değer sıfıra yakın,
+hatta hafif negatif olabilir. Deneyin ve geri alma ölçütünün sebebi TAM BUDUR.
+
+### DEĞİŞMEYEN
+Deney doğru kurulmuş: aşağı yön **piyasa yedeğiyle sınırlı** (hiçbir işlem
+kaçmıyor), squeeze **kontrol grubu** olarak `force_market` kalıyor, geri alma
+ölçütü ön-kayıtlı. 4–6 hafta sonra `kayma_denetim.py` tekrar çalıştırılıp
+donchian'ın KENDİ dolum oranı okunacak — BB'ninki değil.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).

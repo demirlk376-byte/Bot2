@@ -41,11 +41,21 @@ DB = os.environ.get("TRADES_DB", os.path.join(BOT_DIR, "trades.db"))
 ANK_R = 0.237          # ortalama R
 ANK_WR = 0.435         # kazanma oranı
 ANK_PF = 1.45
-ANK_SLIP_BP = 13.4     # ölçülen donchian giriş kayması
-# MEXC taker ücreti (taraf başına). Beklenen-PnL karşılaştırmasını NET-NET
-# yapmak için gerekli; brüt beklenen ile net gerçekleşeni kıyaslamak ücret
-# kadar sahte "sistematik sapma" üretiyordu.
-TAKER_FEE = float(os.environ.get("TAKER_FEE", "0.0002"))
+# ⚠ 2026-09-09'DA ÖLÇÜLEN DEĞERLE GÜNCELLENDİ (kayma_denetim.py, n=54).
+# Eskiden 13.4 yazıyordu ve "ölçülen" diye duruyordu ama ölçüm KODU YOKTU —
+# kayma_denetim.py'nin kendi hükmü bunu "bugünkü en büyük metodoloji açığı"
+# diye işaretledi. Ölçüm: +15.85bp [%95: +8.34, +23.37]. 13.4 aralığın
+# İÇİNDEYDİ, yani eski sabit yanlış değildi; ama artık nokta tahmini ölçülen
+# değer ve TARİHİ var. Yeniden ölçüldüğünde bu satır güncellenmeli.
+ANK_SLIP_BP = 15.85    # ölçüldü 2026-09-09 · n=54 · [%95: +8.34, +23.37]
+# MEXC taker ücreti (taraf başına).
+# ⚠ 0.0002 İKİ KAT ŞİŞKİNDİ — DURUM 2g'de "yan bulgu (ayrı iş)" diye not
+# edilmiş ama yapılmamıştı. kayma_denetim.py iki uçtan kalibre etti:
+# zorunlu-maker kol 0.547bp (beklenen 0.500 ✓), zorunlu-taker kollar 0.933bp
+# (beklenen 1.000 ✓) → "maker %0 / taker 1bp" modeli DOĞRULANDI.
+# Şişkin ücret, beklenen-vs-gerçekleşen kıyasında SAHTE sistematik sapma
+# üretiyordu.
+TAKER_FEE = float(os.environ.get("TAKER_FEE", "0.0001"))
 ANK_EXIT = {"sl": 0.561, "tp": 0.213, "mh": 0.226}   # power_test taban dağılımı
 
 # ⚠️ ANKOR YALNIZ BU ÜÇ KOLUN BACKTESTİ. Defterde KAPALI kolların da işlemleri var
