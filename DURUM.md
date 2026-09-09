@@ -2275,3 +2275,78 @@ diye raporluyordu. Artık defterden yeniden kuruluyor.
 
 **Halt mesajı yalan söylüyordu.** Sebebi ne olursa olsun "daily loss limit" yazıyordu;
 elle duraklatma bile öyle görünüyordu. Artık gerçek sebep yazılıyor.
+
+---
+
+## 5m. `ayar_dogrula.py` iki yerden bozuktu (2026-09-09)
+
+`RISK_SCALE`'i 1.125 → 1.4 yaptık ama doğrulayıcıyı güncellemedim. Bölüm 6'daki
+aylık rutin bu betiği koşmayı söylüyor; koşulsa **canlı DOĞRUYKEN** iki ayrı
+`✗` verecekti. Aylık rutinde yalancı alarm veren doğrulayıcı, doğrulayıcı
+değildir — insan onu görmezden gelmeye başlar ve gerçek arızayı da kaçırır.
+
+**Hata 1 — ezberlenmiş risk rakamı.** `BEK` sözlüğü `0.0225` yazıyordu
+(`MAX_RISK_PCT 0.02 × RISK_SCALE 1.125`). Canlı artık `0.028`.
+→ Beklenen değerler artık `.env` tabanı × `RISK_SCALE` ile **TÜRETİLİYOR**.
+Betiğin docstring'deki iddiası zaten buydu: ".env'i değiştirmek" ile "config
+katmanının onu okuduğu" ayrı şeylerdir. Türetme tam olarak o katmanı sınar ve
+`RISK_SCALE` ne olursa olsun geçerli kalır.
+
+**Hata 2 — BB testinin premisi yanlıştı.** "farklı oynaklıklarda risk% hepsi
+AYNI olmalı" diyordu. Gerçek boyutlandırma `risk = min(max_risk, CAP × stop)`.
+Dar stopta CAP bağlar, yani risk DÜŞÜK olmalıdır — arıza değil, tasarım.
+Eski test yalnız (CAP 1.5, risk %2.25) çiftinde ve stop ızgarası tam sınırda
+başladığı için geçiyordu. 1.4 ölçekte ızgara sınırın içine düştü:
+
+```
+  stop 1.50% → risk 1.87%   (0.015 × 1.25 = cap bağladı)
+  stop 2.16% → risk 2.70%
+```
+
+Test bunu "✗ DEĞİŞKEN — düzeltme UYGULANMAMIŞ" diye okudu. **Yanlıştı.**
+→ Test artık ankorun kendi formülüne uyumu ölçüyor, 7 noktada, cap-bağlı ve
+risk-bağlı iki rejimi de kapsayarak. Korunan asıl hata (BB'nin oynaklıkla riski
+BÜYÜTMESİ, %1.87 → %5.62) hâlâ yakalanıyor: o model tavanı aşıyordu, `min()`
+asla aşamaz. Reddedilen kurulumlar teste sokulmuyor, ayrıca bildiriliyor.
+
+**Yeni bölüm — ANKORA KIYAS.** Kullanıcıya verilen her getiri/maxDD tahmini
+ankor birimindedir. Canlı ondan saparsa o tahminlerin hepsi aynı oranda kayar,
+ve bunu hiçbir yerde görmüyorduk. Artık:
+
+```
+  risk/işlem   canlı %2.800  ankor %2.250   → 1.244x  ✓
+    beklenen maxDD  ~%30.4   (ankor %24.43 × 1.24)
+    ankorun aylık rakamlarını 1.24 ile ÇARP.
+```
+
+`ANKOR_RISKF` ve `ANKOR_CAP` `deployed_backtest.py` **kaynağından okunuyor**,
+elle yazılmıyor — bu dosyayı bozan hatanın aynısını tekrarlamamak için.
+`import` etmiyoruz: betik VPS'te koşuyor ve ağır import zinciri bir ayar
+doğrulamasını veri eksikliğinden düşürmemeli.
+
+Tavan: risk ankorun **1.5 katını** aşarsa `✗`. Gerekçe: 1.5 kat ≈ %37 maxDD,
+$306'lık hesapta ~$113 tepe-dip. Ötesi "normal dalgalanma" diye savunulamaz.
+
+### ⚠ AÇIK SORU — kullanıcının koşması gerek
+
+İki dosya canlı `POSITION_CAP_FRACTION` konusunda **çelişiyor**:
+
+| dosya | değer | notu |
+|---|---|---|
+| `deployed_backtest.py:27` | 1.25 | "canlı .env'deki GERÇEK değer, işlem boyutundan teyitli" |
+| `ayar_dogrula.py` (eski) | 1.50 | "paket sonrası beklenen" |
+
+Hangisinin bayat olduğunu buradan bilemem — `.env` VPS'te. Önemi şu: ankor
+1.25 ile koşuldu. Canlı 1.5 ise **+$1420.66 canlıyı temsil etmiyor** ve dar
+stoplu işlemler ankorun varsaydığından %20 büyük giriyor demektir.
+
+Doğrulayıcı artık bu soruyu kendisi yanıtlıyor. VPS'te:
+
+```bash
+cd /opt/bot2 && git pull && python3 ayar_dogrula.py
+```
+
+`✓ AYARLAR DOĞRU` çıkarsa konu kapanmıştır. `✗ POSITION_CAP_FRACTION` satırı
+çıkarsa iki seçenek var ve ikisi de meşru: ya `.env`'i 1.25'e çek, ya
+`deployed_backtest.py`'deki `CAP`'i canlıya çek ve ankoru **yeniden koş** —
+o durumda 1579/+$1420.66 rakamı değişir ve ona çıpalı her sayı da değişir.
