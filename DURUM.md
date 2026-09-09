@@ -2025,6 +2025,71 @@ aynı momentum mekaniği. bb'nin ortalamaya-dönüş yanlılığı böylece elen
 **Geri alma:** aynı satır `false`.
 
 
+---
+
+## 5j. ÜCRET EKSENİ KAPANDI (2026-09-09) — "ucuz coin" YOK, ankor varsayımı GEÇERLİ
+
+Kullanıcı "bazı coinler mesela NEAR zaten 0fee" dedi. **Vadeli dolum kayıtları
+bunu DOĞRULAMADI:** 12 coinin 12'si de ücret ödüyor, NEAR 13 dolumda $1.1973.
+Muhtemelen MEXC'in SPOT kampanyası ya da sona ermiş bir promosyon.
+
+### COIN BAZINDA ORAN — yapısal fark YOK
+| medyan | en düşük | en yüksek |
+|---|---|---|
+| **7.97 bp/tur** | BCH 6.93 | ETH 10.44 |
+Hiçbiri diğerlerinin yarısı değil. `$/dolum` sütunundaki farklar (XLM 0.208 vs
+XRP 0.065) tarife değil **POZİSYON BÜYÜKLÜĞÜ** farkı. **Coin bazlı ücret
+arbitrajı fikri KAPANDI** — ve bu, aşırı-uydurma riski taşımayan tek coin
+ayrımı olduğu için denenmeye değerdi.
+
+### ⚠ ORAN ÖLÇÜMÜNÜN KENDİSİ GÜVENİLMEZ — İKİ TARAFLI HATA
+| yöntem | bp/taraf | hatası |
+|---|---|---|
+| defter-tabanlı (bu araç) | 7.97 | payda EKSİK — pencere öncesi açılan işlemlerin nominali yok |
+| borsa-tabanlı çapraz kontrol | **0.16** | payda FAZLA — `amount` KONTRAT sayısı olabilir |
+| **DURUM 2d/2f** (iki uç kalibrasyonu) | **0.51–0.99** | **en güvenilir** |
+| MEXC listesi | maker 1.0 / taker 2.0 | — |
+
+0.16bp MEXC'in kendi maker oranının altıda biri — mümkün değil. Yani aracın
+"✓ ankor varsayımı geçerli" hükmü DOĞRU sonuca ŞÜPHELİ bir sayıdan ulaştı.
+**Üçgenleme sonucu:** gerçek oran 0.5–1bp/taraf bandında, ankorun
+`FEE=0.0001` varsayımı gerçeğe yakın → **DÜZELTME GEREKMİYOR.**
+
+### SAĞLAM KALAN: MUTLAK TUTAR
+$30.29 / 89 gün = **~$124/yıl**. Bu dolar cinsinden, paydaya ihtiyacı YOK.
+İndirim kolu: %20 → +$25/yıl · %50 → **+$62/yıl**.
+SOL ve XRP satırlarında `+MX` ücret görünüyor, diğer onunda YOK → **MX ile
+ücret ödeme KISMEN aktif.** Hesapta tam açılırsa indirim 12 coine yayılır.
+
+---
+
+## 5k. ✅ İKİ DEĞİŞİKLİK CANLIDA (2026-09-09)
+
+| ayar | eski | yeni | değeri |
+|---|---|---|---|
+| `RISK_SCALE` | 1.125 | **1.4** | ölçek (edge değil) |
+| `DONCHIAN_MAKER_ENTRY` | false | **true** | **+$39–57/yıl** |
+
+Maker yolu doğrulandı: `main.py:745` `anchor_is_level=False` →
+`execution.py:629` **45sn + piyasa yedeği**. Yedeksiz 600sn yoluna GİTMİYOR,
+yani hiçbir işlem kaçmıyor; yalnız giriş fiyatı değişiyor.
+
+### ⏰ 4–6 HAFTA SONRA — ÖN-KAYITLI KONTROL (gevşetilmeyecek)
+```
+python3 kayma_denetim.py
+```
+- donchian dolum oranı **%42'nin altına düşerse** → `DONCHIAN_MAKER_ENTRY=false`
+- donchian kayması **squeeze'e göre iyileşmezse** → `DONCHIAN_MAKER_ENTRY=false`
+squeeze KONTROL GRUBU olarak `force_market` kalıyor.
+
+### KULLANICI TARAFINDA KALAN TEK KOL
+MEXC hesabında **MX ile ücret ödeme**yi tam aç → +$25–62/yıl, sıfır risk,
+sıfır strateji değişikliği.
+
+**Toplam beklenen kazanç: +$64–119/yıl** — mevcut net kârın (~$351) **%18–34'ü**,
+hiçbiri risk artırmadan (RISK_SCALE ayrı bir karar ve ayrı kayıtlı).
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
