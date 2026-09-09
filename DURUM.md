@@ -1969,6 +1969,62 @@ MUTLAK tutarı ($25.39) borsanın kendi kaydı olduğu için doğru; ORAN yorumu
 düzeltilmeli.
 
 
+---
+
+## 5i. ⚡ MAKER GİRİŞ AÇILIYOR (2026-09-09) — 2g'deki deney NİHAYET başlatıldı
+
+2g'de tasarlanan deney on aydır bekliyordu ("bulgu güçlü ama açmak bir KARAR").
+Kullanıcı "bulmadan gelme, emir emirdir" dedi; kanıt yeniden okundu ve
+hatırladığımdan GÜÇLÜ çıktı — 2f'deki DOĞAL DENEY canlı defterden:
+
+| kol | yürütme | giriş kayması | n |
+|---|---|---|---|
+| **bb/mean_rev** | **maker limit + 45sn piyasa yedeği** | **−2.95bp** [−6.37, +0.47] | 11 |
+| donchian | `force_market` | **+15.32bp** [+0.26, +30.38] | 21 |
+| squeeze | `force_market` | +4.18bp | 12 |
+
+**FARK +14.22bp [+3.87, +24.57] — sıfırı DIŞLIYOR.** Maker kolu sinyal
+fiyatından DAHA İYİ giriyor. Dolum oranı %73 [%46–%99]; başabaş ~%42 ve
+**güven aralığının ALT UCU (%46) bile başabaşın üstünde.**
+
+### DEĞER — RISK_SCALE 1.4 ile İKİYE KATLANDI
+donchian kayma bedeli ankor tabanında $39/yıl. Bugünkü ölçek
+(equity $306 × RISKF 0.028) / (190 × 0.0225) = **2.00×** → **$78/yıl**.
+| kurtarma varsayımı | yıllık kazanç |
+|---|---|
+| muhafazakâr (%50) | **+$39** |
+| bb'nin ölçülen %73 dolumuyla | **+$57** |
+Kıyas: ücret indirimi %20 → +$21, %50 → +$52. **Maker girişi en az onun kadar,
+ve bu BENİM uygulayabildiğim tek kalem.**
+
+### NEDEN GÜVENLİ — aşağı yön SINIRLI
+`place_limit_order(..., fallback_market=True)`: limit 45sn'de dolmazsa PİYASAYA
+düşülüyor. Yani **hiçbir işlem kaçmıyor**, yalnız giriş fiyatı değişiyor.
+Bu, `sabirli_maker.py`'de reddedilen 4 SAATLİK sabırlı limitten YAPISAL OLARAK
+farklı: orada ters seçim kuyruğu kaçırıyordu (dolmayan %5.6 işlem başına
+−$2.28), burada pencere 45 SANİYE ve yedek var.
+
+### ⚠ TAŞIMA RİSKİ — dürüst kayıt
+Kanıt bb'den (ortalamaya dönüş) geliyor, donchian ise KIRILIM. bb'de fiyatın
+limite dönmesi NORMAL yol; donchian'da dönmesi kırılımın ZAYIF olduğu anlamına
+gelebilir. 45sn'de bu etki küçük ama SIFIR DEĞİL. Deneyin sebebi tam bu.
+
+### ⚠ MODELLENMEMİŞ: KISMİ DOLUM
+`place_limit_order` kısmi dolumu bookluyor, üstüne piyasa yedeği ATMIYOR
+(bilinçli — çift maruziyeti önlüyor). Pozisyon hedeflenenden küçük kalabilir.
+Zararlı değil (risk de orantılı küçülür) ama backtest'te modellenmedi.
+
+### GERİ ALMA ÖLÇÜTÜ — ÖN-KAYITLI, GEVŞETİLMEYECEK
+**4–6 hafta sonra `python3 kayma_denetim.py`:**
+- donchian dolum oranı **%42'nin altına düşerse** → bayrak KAPAT
+- donchian kayması **squeeze'e göre iyileşmezse** → bayrak KAPAT
+squeeze KONTROL GRUBU olarak `force_market` kalıyor — aynı dönem, aynı piyasa,
+aynı momentum mekaniği. bb'nin ortalamaya-dönüş yanlılığı böylece elenir.
+
+**Uygulama:** `.env` → `DONCHIAN_MAKER_ENTRY=true` + restart.
+**Geri alma:** aynı satır `false`.
+
+
 ## 5. Riski ne zaman artıracağız
 
 **CEVAP: ARTIRMIYORUZ.** İki bağımsız sebep, ikisi de ölçüldü (risk_kademe.py).
