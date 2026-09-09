@@ -1,6 +1,9 @@
 # Sistem Durumu
 
-*Son güncelleme: 2026-08-14*
+*Son güncelleme: 2026-09-09*
+
+**Özet sayfası (telefondan okumak için):**
+https://claude.ai/code/artifact/2bde810a-b5ed-4adf-b01a-be868027eb34
 
 Bu dosya tek doğruluk kaynağı. "Ne yapıyorduk, neyi kanıtladık, ne zaman ne
 değiştireceğiz" sorularının cevabı burada. Yeni bir şey yapmadan önce buraya bak.
