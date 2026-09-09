@@ -2391,3 +2391,66 @@ kullanıyor. O sabiti değiştirmek 49 aracı aynı anda kör ederdi.
 (`BAL0 = ...; RISKF = 0.0225; ...`) — hiç bulunamıyor, sessizce varsayılana
 düşüyordu. Doğru sayıyı **şansa** veriyordu. Artık bulamazsa `SystemExit(2)`.
 Sessiz geri düşüş, bayat sabitin ta kendisidir.
+
+---
+
+## 5o. 1 yıl projeksiyonu — `yil_projeksiyon.py` (2026-09-09)
+
+"Her ay $150 eklesem 1 yıl sonra ne olur" sorusunun yanıtı **tek sayı değil**.
+Araç Monte Carlo + gerçek pencere yürüyüşü yapıyor, sabit tohumla (sonuç
+cherry-pick edilemez).
+
+**Aylık (B senaryosu, çıpa − ölçülen kayma):**
+
+| ölçü | değer |
+|---|---|
+| ortalama ay | %+17.52 |
+| MEDYAN ay (tipik) | **%+10.18** |
+| en kötü ay | %−32.62 |
+| artı ay oranı | %60 |
+
+**Yıl sonu — GERÇEK 12 aylık pencereler** (sıra korundu, 29 pencere).
+Yatırılan: $306 + 12×$150 = **$2,106**.
+
+| pencere | yıl sonu | yatırdığına göre |
+|---|---|---|
+| EN KÖTÜ 2025-08→2026-07 | $3,882 | +$1,776 |
+| MEDYAN 2023-08→2024-07 | $7,680 | +$5,574 |
+| EN İYİ 2025-02→2026-01 | $12,856 | +$10,750 |
+
+29 pencerenin **%0'ı** yatırılanın altında bitti.
+
+**Bootstrap (aylar bağımsız çekildi), üç senaryo:**
+
+| senaryo | medyan yıl | %10 | %90 | yatırılanın altında bitme |
+|---|---|---|---|---|
+| A) çıpa aynen | $9,655 | $4,183 | $24,489 | %1 |
+| B) çıpa − kayma | $6,181 | $2,668 | $15,434 | %5 |
+| C) B'nin yarısı | $3,042 | $1,352 | $7,522 | **%29** |
+
+### ⚠ BU RAKAMLARA PLAN YAPILMAZ — üç ayrı sebep
+
+**1. Bileşik varsayımı test edilmedi.** `deployed_backtest.py`'nin kendi uyarısı:
+"bileşik görünüm küçük hesapta patlar = fantezi". Çıpanın aylık ~%20'si **sabit
+$190 tabanında** ölçüldü. 12 ay bileşiklemek, aynı oranın HER hesap boyutunda
+geçerli olduğunu varsayar. Kayma ölçümü $59-513 nominali kapsıyor; bakiye
+$2000'i geçince nominal o aralığın ÜSTÜNE çıkar ve orada **verimiz yok**.
+
+**2. Pencerelerin çoğu boğa piyasasında.** 2023-2024 ağırlıklı. Kullanıcının
+kendi gözlemi: "bot boğalarda iyi çalışıyor, boğadan sonraki süreçte dökülüyor".
+EN KÖTÜ satırı bir taban değil, sadece geçmişte **gördüğümüz** en kötü.
+
+**3. Çıpa bu veriye bakılarak seçildi.** Coin evreni geçmiş performansa göre
+seçilmiş (donchian coinleri 21 içinde ort. sıra 4.6, rastgele 11.0) ve
+`coin_expand` yürüyen-pencere testi seçimin ileriye taşınmadığını gösterdi.
+Ama 21 coinin 18'i pozitif → edge geniş ve gerçek; seçim onu BÜYÜTTÜ, YARATMADI.
+İleri beklenti çıpanın %50-100'ü. C senaryosu o aralığın alt ucu.
+
+### Yan bulgu: `ANK_SLIP_BP` ÖLÜ KOD
+
+`live_verify.py:50`'de tanımlı ama **hiçbir yerde kullanılmıyor**. 5l'de bu
+sabiti 13.4 → 15.85 güncelledim ve kullanıcıya "metodoloji açığı kapandı"
+dedim; **düzeltme kozmetikti**, hiçbir hesabı değiştirmedi. `live_verify`
+canlıyı kaymasız çıpa beklentisiyle karşılaştırıyor, yani ölçtüğü fark
+(−0.0078R) kaymayı ZATEN içeriyor — ama ±0.063R güven aralığı onu sıfırdan
+ayıramıyor. `yil_projeksiyon.py` kaymayı bu yüzden AÇIKÇA düşüyor.
