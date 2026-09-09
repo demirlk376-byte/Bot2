@@ -3734,3 +3734,56 @@ Kapanış üç bağımsız kanıta dayanıyor ve üçü de arama miktarıyla de�
 1. **Aritmetik** — mükemmel kâhin +$234 (kârın %13.3'ü, ayda $5.85)
 2. **Geometri** — %5 şartı AUC≈0.99 talep ediyor; ölçülen en iyi ay-dışı 0.4720
 3. **İstatistik** — kötü aylar karıştırma null'unun ortasında (p=0.81)
+
+## ⏳ FUNDING FİLTRESİ — ÖN OKUMA NULL, HÜKÜM İÇİN VERİ EKSİK (2026-09-09)
+
+Ledger'ın "son test edilebilir fikri". Bugünkü teşhisle örtüşüyordu: kötü ay =
+kırılımın tutmaması, ve fiyattan türetilen 17 özelliğin hiçbirinde izi yok.
+Funding fiyat değil **pozisyonlanma** verisi — örneklenmemiş tek kanal.
+
+### ⚠ VERİ KAPSAMI YETERSİZ — ve sebebi tanıdık bir tuzak
+
+`fetch_funding.py` 2023-01-01'den istedi, **2025-10-11'den** itibaren 1000 kayıt
+aldı ve "başarılı" dedi. Sebep: MEXC'in `fetch_funding_rate_history`'si `since`
+parametresini **yok sayıyor**, hep en yeni 1000 kaydı döndürüyor.
+**Aynı tuzak `exchange.py:fetch_transfers_in`'de zaten notlanmıştı** ("MEXC'in
+`since` filtresine GÜVENME") — bu betiği yazarken kontrol edilmemiş.
+
+Kapsam: 1579 işlemin **361'i (%22.9)**. Güç: %20'lik bir kesimin ort R'sinin
+standart hatası ±0.163, yani gürültüden ayrılmak için |ort R| > **0.319**
+gerekiyor. Ankorun kendi ort R'si +0.237 — yani aranan etki, ortalama işlemin
+1.3 katı kadar kötü bir alt küme olmalı. Bu pencerede **null sonuç kapanış
+değildir**.
+
+### Ön okuma (361 işlem) — hipotezin TERSİ yönde, anlamsız
+
+Hipotez: `f_yon = funding × yön` yükseldikçe (benim yönümde kalabalık) R DÜŞMELİ.
+
+| beşte birlik | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| ort R (yönlü ham oran) | +0.044 | +0.162 | +0.159 | +0.182 | **+0.239** |
+
+Spearman **+0.0247** (p=0.638) · yönlü z-skorla +0.0037 (p=0.940).
+Ort R kalabalıkla **artıyor**, azalmıyor. Anlamlı değil ama yön hipoteze zıt.
+
+5 aday filtre denendi: **hepsinde silinen kümenin ort R'si POZİTİF**
+(+0.139 … +0.287), yani hakemin ilk şartını bile geçmiyorlar. Δ$ hepsinde
+negatif (−$25 … −$203), permütasyon yüzdelikleri %26-58.
+
+### 🔗 BUGÜNKÜ EŞZAMANLI MARUZİYET BULGUSUYLA AYNI YÖNE BAKIYOR
+
+Bu, aynı gün ölçülen şu bulgunun tekrarı: aynı yönde kalabalık AYLAR **iyi**
+aylar (Spearman +0.332, p=0.038). Şimdi funding kalabalığı da aynı şeyi
+söylüyor. İki bağımsız kalabalık ölçüsü, aynı yön: **kalabalık, çalışan bir
+trendin belirtisi — uyarı işareti değil.**
+
+### SIRADAKİ ADIM
+
+`funding_binance.py` yazıldı (Binance `startTime`'a uyuyor, sayfalama kendi
+ilerlemesini doğruluyor, eksik coinde `SystemExit(2)`). Tam geçmişle örneklem
+4.4 kat büyür, standart hata ~2.1 kat düşer, tespit eşiği ~0.15'e iner.
+Ön okuma beklentiyi düşürdü ama gücü 4 kat artırmadan "kapandı" demek,
+tam da kaçınmaya çalıştığımız yarım ölçüm olur.
+
+Venüs farkı bilinçli: fiyat MEXC vadeli, funding Binance. Arbitraj ikisini
+bağlar ve ölçülen şey pozisyonlanma yönü.
