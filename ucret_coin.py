@@ -129,7 +129,61 @@ async def main():
         #    (entry_price × quantity) — borsanın `amount` alanı KONTRAT sayısı
         #    olabilir ve orayı kullanmak paydayı ~20x şişiriyordu (kar_farki'de
         #    bu hataya düşmüştüm, kaydı DURUM 5h'de).
-        print(f"\n{'='*74}\nGERÇEK ORAN — ücret / nominal (bp)\n{'='*74}")
+        # ── ÇAPRAZ KONTROL: BORSANIN KENDİ VERİSİYLE, defterden BAĞIMSIZ ─────
+        # Aşağıdaki defter-tabanlı oran DURUM 2d/2f ile ÇELİŞİYOR (onlar
+        # ~1bp/taraf ölçmüştü, bu ~8bp). İkisi birden doğru olamaz.
+        # En olası suçlu PAYDA: ücretler pencere içindeki TÜM dolumlardan,
+        # nominal ise yalnız pencere içinde AÇILAN işlemlerden geliyor —
+        # önce açılıp içinde kapanan işlemlerin çıkış ücreti sayılıyor,
+        # nominali sayılmıyor. Bu, oranı YUKARI çeker.
+        # Burada her dolumun KENDİ price×amount'ı kullanılıyor: aynı kaynaktan
+        # pay ve payda, eşleştirme sorunu YOK.
+        print(f"\n{'='*74}\nÇAPRAZ KONTROL — dolum başına oran (borsa verisi, defter YOK)\n{'='*74}")
+        cn = 0; ctop = 0.0; cnom = 0.0
+        for sym in cfg.exchange.symbols:
+            try:
+                fills = await ex.fetch_my_trades(sym, since, 200)
+            except Exception:
+                continue
+            for f in (fills or []):
+                if not isinstance(f, dict):
+                    continue
+                fee = f.get("fee") or {}
+                if (fee.get("currency") or "USDT").upper() != "USDT":
+                    continue
+                try:
+                    c_ = float(fee.get("cost") or 0.0)
+                    px = float(f.get("price") or 0.0)
+                    am = float(f.get("amount") or 0.0)
+                except (TypeError, ValueError):
+                    continue
+                if px <= 0 or am <= 0:
+                    continue
+                cn += 1; ctop += c_; cnom += px * am
+            await asyncio.sleep(0.15)
+        if cn and cnom > 0:
+            bp_c = ctop / cnom * 1e4
+            print(f"  {cn} dolum · ücret ${ctop:.4f} · nominal ${cnom:,.0f}")
+            print(f"  → {bp_c:.2f} bp/taraf  (borsanın kendi price×amount'ı)")
+            print(f"\n  KIYAS:")
+            print(f"    MEXC listesi        : maker 1bp · taker 2bp")
+            print(f"    DURUM 2d/2f ölçümü  : 0.51–0.99 bp/taraf")
+            print(f"    ankor varsayımı     : 1.00 bp/taraf (FEE=0.0001)")
+            print(f"    BU ÖLÇÜM            : {bp_c:.2f} bp/taraf")
+            if bp_c < 3.0:
+                print(f"\n  ✓ Bu ölçüm liste ve DURUM ile TUTARLI. O halde aşağıdaki")
+                print(f"    defter-tabanlı ~8bp YANLIŞ — paydası eksik (pencere")
+                print(f"    öncesi açılan işlemlerin nominali sayılmıyor).")
+                print(f"    ANKORUN FEE=0.0001 VARSAYIMI GEÇERLİ, düzeltme GEREKMİYOR.")
+            else:
+                print(f"\n  ⛔ Bu ölçüm de yüksek → çelişki paydadan DEĞİL.")
+                print(f"    O zaman gerçekten liste oranının üstünde ücret ödeniyor")
+                print(f"    ve ankorun FEE varsayımı DÜZELTİLMELİ. MEXC hesap")
+                print(f"    kademesini kontrol et.")
+        else:
+            print(f"  ⛔ Çapraz kontrol yapılamadı — hüküm YOK.")
+
+        print(f"\n{'='*74}\nGERÇEK ORAN — ücret / nominal (bp) ⚠ ÇAPRAZ KONTROLE BAK\n{'='*74}")
         con = sqlite3.connect(f"file:{cfg.db_path}?mode=ro", uri=True, timeout=15)
         try:
             iso = __import__("datetime").datetime.utcfromtimestamp(
