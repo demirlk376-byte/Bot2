@@ -47,10 +47,17 @@ CAP = 1.25
 # karşılaştırıyor. .env değişirse BURASI DA değişmeli, yoksa doğrulayıcı bayatlar.
 CANLI_CAP = 1.50
 CANLI_RISKF = 0.028          # MAX_RISK_PCT 0.02 × RISK_SCALE 1.4
-# Ölçülen toplam kâr ölçeği: (1476.05/1420.66) × (0.028/0.0225) = 1.293
-CANLI_OLCEK = 1.293
-# cap 1.50'de ölçülen maxDD (çıkış sıralı). RISK_SCALE ile ayrıca ölçeklenir.
-CANLI_MAXDD_BAZ = 24.79
+#
+# ⚠ 2026-09-09'DA DÜZELTİLDİ. Önce (1476.05/1420.66) × (0.028/0.0225) = 1.293
+# yazmıştım. YANLIŞ: iki etki ÇARPIMSAL DEĞİL. eff = min(RISKF, CAP×slp)
+# olduğu için cap'in bağladığı işlemlerde RISKF'i yükseltmenin HİÇBİR etkisi
+# yok; iki katkıyı çarpmak o işlemleri iki kez sayıyor. Doğrusu tek seferde
+# (CAP=1.50, RISKF=0.028) ile ölçmek:
+#     çıpa   (1.25 · %2.25) → +$1420.66 · maxDD %24.43 · en kötü ay %−21.05
+#     CANLI  (1.50 · %2.80) → +$1755.21 · maxDD %27.98 · en kötü ay %−26.38
+CANLI_OLCEK = 1.2355         # 1755.21 / 1420.66 — ÖLÇÜLDÜ, türetilmedi
+CANLI_MAXDD = 27.98          # canlı ayarda doğrudan ölçüldü (çıkış sıralı)
+CANLI_KOTU_AY = -26.38
 DONCH = ["SOL", "ETH", "ADA", "NEAR", "BCH", "ICP", "BNB"]
 SQZ = ["XRP", "DOGE", "TRX", "XLM"]
 CFG = {"donchian": ("4h", 259, 2.0, 2.5, 30), "squeeze": ("1h", 119, 2.0, 2.5, 48)}

@@ -68,7 +68,7 @@ ANKOR_CAP = _ankor_sabit("CAP")
 CANLI_CAP = _ankor_sabit("CANLI_CAP")    # canlının GERÇEKTE koştuğu — .env buna uymalı
 CANLI_RISKF = _ankor_sabit("CANLI_RISKF")
 CANLI_OLCEK = _ankor_sabit("CANLI_OLCEK")
-CANLI_MAXDD_BAZ = _ankor_sabit("CANLI_MAXDD_BAZ")
+CANLI_MAXDD = _ankor_sabit("CANLI_MAXDD")
 
 # Risk oranının ankorun kaç katına kadar çıkmasına izin var. Aşılırsa ✗.
 # Gerekçe: ankorun ölçülen maxDD'si %24.43. 1.5 kat ≈ %37 maxDD; $306'lık
@@ -175,9 +175,8 @@ def main():
         hepsi &= ok
         print(f"    risk/işlem   canlı %{canli_risk*100:.3f}  çıpa %{ANKOR_RISKF*100:.3f}"
               f"   → {oran:.3f}x  {'✓' if ok else f'✗ TAVAN {ORAN_TAVAN}x AŞILDI'}")
-        print(f"    cap          canlı {canli_cap:.2f}      çıpa {ANKOR_CAP:.2f}"
-              f"        → kâr %+3.9 (ölçüldü, maxDD +0.36 puan)")
-        print(f"    ── ikisi birlikte: kâr ölçeği {CANLI_OLCEK:.3f}x ──")
+        print(f"    cap          canlı {canli_cap:.2f}      çıpa {ANKOR_CAP:.2f}")
+        print(f"    ── ikisi birlikte, TEK SEFERDE ölçüldü: kâr ölçeği {CANLI_OLCEK:.4f}x ──")
         # maxDD tabanı cap 1.50'de ÖLÇÜLEN değer (24.79), çıpanınki (24.43) değil —
         # yoksa cap'in katkısı düşer ve drawdown OLDUĞUNDAN AZ görünür.
         dd_bek = CANLI_MAXDD_BAZ * oran
