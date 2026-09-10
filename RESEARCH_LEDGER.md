@@ -3919,3 +3919,130 @@ altı ardışık eşik aynı yöne baktı ve etkinin %66'sı 10 işlemden çıkt
 
 **OI geçmişi satın alınamaz** — Binance 30 gün, MEXC hiç veriyor. Bu yüzden
 tek yol beklemek. Dosya büyümesi ~30 MB/yıl, sorun değil.
+
+---
+
+# ⭐ CAP × KALDIRAÇ TEZİ (2026-09-10) — ALTI SINAVDAN GEÇTİ, İKİ AÇIK RİSK
+
+Kullanıcı: *"stratejiyi nasıl geliştiririz, düşün taşın."*
+
+## Tez
+
+`CAP` (POSITION_CAP_FRACTION) bir risk kontrolü **değil**, bir kırpma artefaktı.
+`qty = min(risk$/stop%, CAP × bakiye / fiyat)` — stop dar olduğunda hedef risk
+daha büyük nominal ister, CAP keser, o işlem **hedeflenenden az risk alır**.
+Yani en dar stoplu işlemlere en küçük bahsi koyuyoruz.
+
+`pw_cap.py` (2026-08-10) bunu ölçmüş: doz-yanıt CAP 0.75→3.0 arasında **monoton**,
+4/4 yıl iyileşiyor, en kötü ay da iyileşiyor. **1.5'te kesilmesinin sebebi edge
+değil MARJİN**: CAP 3.0'da tepe eşzamanlı marjin bakiyenin %107'si, o işlem
+canlıda açılamaz.
+
+**Açılış:** kaldıraç riski değiştirmez, yalnız marjini. Kaldıracı stop
+mesafesinin fonksiyonu yaparsak, `L = clip(1/(pay×stop + 0.005), 10, 25)`:
+
+| CAP | Δ$ | maxDD | en kötü ay | tepe marjin |
+|---|---|---|---|---|
+| 1.5 (bugün, 10x) | — | %27.35 | −%26.38 | **%90.5** |
+| 3.0 (pay 2.4) | **+$186.44** | %28.39 | **−%25.23** | **%66.1** |
+
+## Altı sınav — hepsi geçildi
+
+**1. Verimlilik mi, kılık değiştirmiş kaldıraç mı?** (`cap_tezi.py`)
+`sleeve_risk_test.py`'nin düştüğü tuzak kuruldu: **aynı ortalama gerçekleşen
+riske** iki yoldan çıkıldı.
+
+| yol | ort risk | kâr | en kötü ay |
+|---|---|---|---|
+| CAP 3.0 | %2.7724 | +$1941.65 | **−%25.23** |
+| aynı riski düz RISKF artışıyla | %2.7724 | +$1843.96 | **−%28.54** |
+
+CAP **$97.69 kazanıyor**, ve daha önemlisi: aynı riskle CAP kuyruğu
+**iyileştirirken** düz artış onu **kötüleştiriyor**. Zıt kuyruk davranışı,
+farkın kaldıraçtan değil **dağılımdan** geldiğinin kanıtı.
+
+**2. Mekanizma gerçek mi?** İki tuzakla sınandı: (a) "dar stop" aslında
+"squeeze" olabilir (squeeze ort stop %1.94 vs donchian %4.95); (b) `R` stop'a
+bölündüğü için dar stopta aynı hareket daha büyük R üretir — ama bu yalnız
+`sure` çıkışları için, `tp` hep +RR ve `sl` hep −1R.
+
+Kol sabit + `sure` hariç:
+
+| squeeze | TP oranı | ort R |
+|---|---|---|
+| dar | **%35.8** | +0.406 |
+| orta | %29.4 | +0.205 |
+| geniş | **%20.4** | −0.074 |
+
+Etki duruyor ve **isabet oranından** geliyor, ölçekten değil.
+Donchian kontrolü **düz**: +0.168 / +0.092 / +0.124, ilişki yok.
+Ekonomik mekanizma anlamlı: squeeze bir sıkışma kırılımı; dar stop sıkışmanın
+gerçekten sıkışık olduğu, geniş stop "squeeze"in aslında sıkışmadığı demektir.
+
+**3. Funding — nominal büyüyor, maliyet de büyüyor.** Tam Binance geçmişiyle
+(1579/1579 işlem) ölçüldü: CAP 1.5'te toplam funding −$38.58, CAP 3.0'da
+−$40.95. **Ek maliyet $2.37**, kazancın %1.3'ü. Net kazanç **+$184.07**.
+
+**4. Likidasyon ve gap.** Doğru kural **iki şart birden**: band < stop (yoksa
+stop önce dolar) **VE** MAE ≥ band (fiyat oraya gitmiş).
+
+| şema | band<stop | likide | net etki |
+|---|---|---|---|
+| bugün 10x | 36 | 25 | +$1.41 |
+| **pay 2.4 · CAP 3.0** | **36** | **25** | **+$1.41** |
+
+**Birebir aynı.** Sebebi 10x tabanı: formül hiçbir işlemin kaldıracını
+düşürmüyor, yalnız dar stopluları yükseltiyor. Açıkta olan 36 işlemin 35'i
+çok geniş stoplu donchian (ort stop %11.62) ve tabana takılı — şema onlara
+dokunmuyor. Likide olan 25 işlemin yalnız **1'i kazanan** (−$3.92), 24'ünde
+izole marjin tasarruf ettiriyor (+$5.34).
+
+**5. Serbest kalan marjinin daha iyi kullanımı var mı?** MAX_POSITIONS:
+
+| MP | reddedilen sinyal | Δ$ | en kötü ay |
+|---|---|---|---|
+| 7 (bugün) | 24 | — | −%26.38 |
+| 9 | 1 | +$34.99 | **−%29.10** |
+| 11+ | 0 | +$29.86 | −%29.10 |
+
+Barın altında **ve** kuyruğu kötüleştiriyor. DURUM:437 zaten "sinyallerin
+%1.5'i koltuk yüzünden engelleniyor, 10'un üstünde hiçbir şey değişmiyor"
+diyordu. **CAP her iki eksende de kazanıyor.**
+
+**6. Doz-yanıt ve yıl-yıl** — ledger'da zaten: monoton, zikzak yok, 4/4 yıl.
+
+## ⚠ İKİ AÇIK RİSK — bunlar çözülmeden dağıtılmaz
+
+**A. `set_leverage` hatası SESSİZCE yutuluyor.** `exchange.py:456`:
+`logger.debug("set_leverage pos_type=%d %s: %s", ...)`. Ayar başarısız olursa
+kod devam ediyor ve emir yine de `leverage=self._leverage` ile gidiyor. Per-trade
+kaldıraçta bu, **pozisyonun yanlış kaldıraçla açılması** demektir ve kimse fark
+etmez. Bu düzeltilmeden ilerlenmez: hata WARNING'e çıkarılmalı ve ayar
+doğrulanamıyorsa işlem **açılmamalı**.
+
+**B. MEXC kaldıraç kademesi ÖLÇÜLMEDİ.** Borsalar nominal büyüdükçe azami
+kaldıracı düşürür, ve azami kaldıraç coin başına değişir. 12 coinin hepsinde
+25x mümkün mü bilinmiyor — çevrimdışı doğrulanamaz. **Varsayım olarak
+işaretlendi**, canlıda teyit gerekir.
+
+Ayrıca: izole marjinde kaldıraç **her emre** ekleniyor (giriş, SL, TP ve
+kapanış — `exchange.py:884, 956, 1099`). Per-trade kaldıraç, değerin bu dört
+yoldan da tutarlı geçmesini gerektirir; biri kaçarsa MEXC emri reddeder.
+
+## 📋 ÖNERİLEN KADEMELİ UYGULAMA
+
+**Adım 1 — kaldıraç, CAP'e DOKUNMADAN.** `L = clip(1/(2.4×stop+0.005), 10, 20)`,
+`CAP = 1.5` sabit. **Kâr etkisi TAM SIFIR** (boyutlandırma değişmiyor), tepe
+marjin %90.5 → **%55.5**. Yani bu adım saf bir **risk azaltma** ve tesisatın
+canlıda çalıştığını P&L'e hiç dokunmadan doğrulamanın tek yolu.
+Önce (A) düzeltilir. Tavan 25 değil **20** — kademe belirsizliğine tampon.
+
+**Adım 2 — en az 40 işlem sonra**, kaldıracın her işlemde doğru set edildiği
+defterden teyit edilirse: `POSITION_CAP_FRACTION` 1.5 → **2.0**. Beklenen
++$102 (3.3 yılda), ~+$31/yıl.
+
+**Adım 3** — 2.0 sorunsuzsa 2.5, sonra 3.0.
+
+**ÖN-KAYITLI GERİ ALMA:** herhangi bir adımda (a) kaldıracı beklenenden farklı
+tek bir pozisyon görülürse, (b) tepe marjin %85'i aşarsa, (c) emir reddi
+başlarsa → o adım **anında geri alınır** ve sebebi ölçülmeden ilerlenmez.
