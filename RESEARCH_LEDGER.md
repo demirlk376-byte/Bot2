@@ -4344,3 +4344,51 @@ HİÇ test edilmedi:
 ⚠ Ön beklenti yine de düşük: fiyat (17 özellik), pozisyonlanma (funding) ve
 çapraz-varlık (BTC) kanallarının üçü de null verdi. Ama gün-bazı tavanı
 ay-bazından 13 kat büyük olduğu için bu sefer **aritmetik yasak yok**.
+
+## ⛔ MAKRO TAKVİM — TEST EDİLDİ, NULL (2026-09-10)
+
+Kullanıcının fikri test edildi. Doğru sıra: makro olaylar **takvime bağlıdır**,
+o yüzden önce takvim yapısı arandı. Yapı yoksa kesin tarihleri çekmenin anlamı
+kalmaz. Bu test dış veri gerektirmiyor ve tamamen dışsal.
+
+### Ön-belirlenmiş üç hipotez (tarama YOK) — üçü de düştü
+
+| hipotez | n | ort R | toplam | null ort | p |
+|---|---|---|---|---|---|
+| **ilk Cuma** (istihdam verisi) | 57 | **+0.395** | +$128.09 | +$62.29 | **0.886** |
+| ayın 10-15'i (enflasyon) | 327 | +0.221 | +$300.33 | +$367.46 | 0.282 |
+| ay sonu (28+) | 174 | +0.145 | +$121.94 | +$191.72 | 0.223 |
+
+**İlk Cuma testi kritik, çünkü TAM.** İstihdam verisi her zaman ayın ilk
+cumasıdır — smear yok, vekil yok. Ve sonuç hipotezin **tersi**: o günler
+ortalamanın **üstünde** (ort R +0.395 vs genel +0.237).
+
+### Keşif taraması da boş
+
+Ayın günü (31 hücre): en kötü gün 25'i, −$93.30. 31 hücrelik saf gürültü
+taramasının beklenen en kötüsü **−$131.60**. Yani en kötü hücre bile şansın
+öngördüğünden **daha ılımlı**.
+
+### Yıl-yıl istikrar da yok
+
+```
+ilk Cuma   2023 −1.87 · 2024 +1.20 · 2025 +3.99 · 2026 +4.02   (iyileşiyor)
+10-15      2023 +0.99 · 2024 +1.55 · 2025 +1.04 · 2026 −0.60   (işaret dönüyor)
+```
+
+### 📌 HÜKÜM — eksen kapanıyor
+
+Takvimde hiçbir yapı yok. Makro olaylar takvim-çapalı olduğu için, kesin
+FOMC/CPI tarih listesi çekmenin beklentisi çok düşük. Üstelik tam olarak
+test edilebilen tek olay (istihdam = ilk Cuma) **ters yönde** çıktı.
+
+Kalan tek dışsal aday **opsiyon örtük oynaklığı** (Deribit DVOL) idi. Onu da
+önermiyorum, üç sebeple: (a) DVOL yalnız BTC/ETH, bizim evren alt-coin;
+(b) örtük oynaklık gerçekleşmiş oynaklığın ileriye dönük hâlidir ve
+gerçekleşmiş oynaklık kötü ayları ayırmıyordu (AUC 0.5656, p=0.254);
+(c) gün bazında zaten kümelenme, kalıcılık ve yoğunlaşma YOK — yani
+yakalanacak bir olay yapısı yok.
+
+**"Dış veriyle tehlike öngörüsü" ekseni kapandı.** Dört bağımsız bilgi kanalı
+denendi: fiyat (17 özellik) · pozisyonlanma (funding) · çapraz-varlık (BTC) ·
+**takvim (makro)**. Dördü de null.
