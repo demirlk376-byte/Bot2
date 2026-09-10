@@ -4046,3 +4046,71 @@ defterden teyit edilirse: `POSITION_CAP_FRACTION` 1.5 → **2.0**. Beklenen
 **ÖN-KAYITLI GERİ ALMA:** herhangi bir adımda (a) kaldıracı beklenenden farklı
 tek bir pozisyon görülürse, (b) tepe marjin %85'i aşarsa, (c) emir reddi
 başlarsa → o adım **anında geri alınır** ve sebebi ölçülmeden ilerlenmez.
+
+## 🎯 "TP'YE DOKUNMADAN SL'LERİ AZALT" — ÖLÇÜLDÜ (2026-09-10, `sl_azalt.py`)
+
+Kullanıcı: *"SL çok SL oluyor, TP'lere dokunmadan SL'leri öldürmemiz lazım."*
+
+**Bu biçimde daha önce sorulmadı.** `cikis_tara.py` ızgarası stop'u genişletirken
+TP'yi de ORANTILI genişletiyordu (rr, stop'un katıdır). Burada TP **fiyat cinsinden
+sabit**: `sl_atr` büyürken `rr = TP_mesafesi / sl_atr` ile küçültülüyor.
+
+### Fikir ÇALIŞIYOR — SL oranı gerçekten düşüyor
+
+| stop | yeni rr | SL% | TP% | WR% | PF | kâr | Δ$ | maxDD | en kötü ay |
+|---|---|---|---|---|---|---|---|---|---|
+| **2.00× (bugün)** | 2.500 | **%46.2** | %22.8 | %43.5 | 1.42 | +$1755 | — | %27.98 | −%26.38 |
+| 2.50× | 2.000 | %39.4 | %24.0 | %46.6 | 1.37 | +$1373 | −$382 | %23.32 | −%28.78 |
+| 3.00× | 1.667 | **%32.9** | %25.0 | **%49.7** | 1.38 | +$1258 | **−$497** | %15.66 | −%27.47 |
+| 3.50× | 1.429 | %28.6 | %25.5 | %50.7 | 1.32 | +$982 | −$773 | %15.63 | −%29.13 |
+| 4.00× | 1.250 | **%24.7** | %25.8 | **%51.6** | 1.29 | +$807 | −$949 | %14.86 | −%31.91 |
+
+SL oranı **%46 → %25**'e iniyor, kazanma oranı **%43.5 → %51.6**'ya çıkıyor.
+Kullanıcının istediği tam olarak oluyor.
+
+### Ve TAM OLARAK BU YÜZDEN para kaybettiriyor
+
+Stop genişlerse aynı dolar riski için **pozisyon küçülür** (`qty = risk$ / stop_mesafesi`).
+Aynı fiyat hareketi daha az para kazandırır. TP'nin R karşılığı 2.5'ten 1.25'e düşüyor.
+
+**SL oranı ile pozisyon boyu AYNI KADRANDIR.** Birini çevirmeden diğeri dönmez.
+PF de monoton düşüyor: 1.42 → 1.37 → 1.38 → 1.32 → 1.29. Yani risk edilen dolar
+başına edge gerçekten zayıflıyor, sadece "daha az kaybediyoruz" değil.
+
+### Risk-eşitlemeli karşı argüman — kontrol edildi, GEÇMEDİ
+
+Geniş stop maxDD'yi %27.98 → %15.66'ya indiriyor. "O boşluğu riskle doldursak?"
+(Ledger bu argümanı erken çıkışta da kontrol etmişti; kontrol etmeden reddetmek
+özensizlik olurdu.) maxDD tabanla eşitlenene kadar risk artırıldı:
+
+| stop | gereken risk | kâr | Δ$ | en kötü ay |
+|---|---|---|---|---|
+| 2.50× | %3.83 | +$1751.27 | **−$3.95** | **−%40.24** |
+
+Aynı maxDD'de kâr **birebir aynı**, ama en kötü ay **14 puan daha kötü**.
+Takas yok, saf kayıp.
+
+⚠ 3.00× satırı GEÇERSİZ: ikili arama üst sınırda (%20 risk) doygunlaştı ve
+en kötü ay −%121 çıktı. Sabit-oran muhasebesinde equity erkenden negatife
+gidince maxDD doğrusal ölçeklenmiyor. O satır bir model artefaktıdır, rapor
+edilmez. (İlk denememde ayrıca ÇARPANI stop katıyla karıştırıp 5.0× ve 6.0×
+üretmiştim; ikisi de düzeltildi.)
+
+### Zaten bilinen mekanik cevapla birebir örtüşüyor
+
+`mfe_anatomy` (2026-07-25, 1440 işlem): SL'lerin **%76.5'i 1R'ye bile ulaşmıyor**,
+ort MFE 0.64R. Kazananlar stop'a nadiren yaklaşıyor (ort MAE −0.37R, %40'ı
+−0.25R'yi bile görmüyor). **Stop avlanmıyor** — stop'a giden işlemler daha
+en baştan aleyhimize gidenler. SL'e ort 11.4 bar, TP'ye 14.4 bar.
+
+### 📌 HÜKÜM
+
+"Çok SL yemek" bir arıza değil, **2.5:1 ödemeli bir kırılım sisteminin şekli**.
+%43.5 isabetle çalışan bir sistem, tanımı gereği kazandığından çok kaybeder;
+kârı 2.5R'lik kazançlar taşır. SL oranını düşürmek her zaman mümkün ve fiyatı
+bilinen: **her 1 puanlık SL azalması ~$23** (2.0×→3.0× arası: 13.3 puan / $497).
+
+**Yan bulgu (kuyruk satın alma):** 3.0× stop maxDD'yi %27.98 → %15.66 yapıyor,
+12.3 puan, $497'ye. Puan başına **$40** — bilinen filtreleme doğrusundan
+($55-80) ucuz. Kâr istiyorsak yanlış yol, ama *sarsıntıyı* azaltmak istiyorsak
+bugüne kadarki en ucuz araç. Kullanıcının tercihi, benim hükmüm değil.
