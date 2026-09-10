@@ -4392,3 +4392,61 @@ yakalanacak bir olay yapısı yok.
 **"Dış veriyle tehlike öngörüsü" ekseni kapandı.** Dört bağımsız bilgi kanalı
 denendi: fiyat (17 özellik) · pozisyonlanma (funding) · çapraz-varlık (BTC) ·
 **takvim (makro)**. Dördü de null.
+
+---
+
+# 🔴 DÜZELTME: RAPORLADIĞIM maxDD YANLIŞ BİRİMDEYDİ (2026-09-10)
+
+"Daha büyük bahis" kolunu incelerken 2026-07-22 tarihli büyüme-optimal risk
+kaydına döndüm. O tablo **bileşik** ölçüyordu: %2.0 → DD %42, %2.5 → %50,
+tolerans %50. Bugün %2.80'deyiz. Kontrol ettim ve kendi hatamı buldum.
+
+## Bot canlıda BİLEŞİKLENİYOR — ben bileşiksiz rakamı raporladım
+
+Bot her işlemi **mevcut equity'nin** yüzdesi olarak boyutlandırıyor. Ankorun
+sabit-oran görünümü ($190 tabanına göre) edge'in taşınabilir ölçüsüdür, ama
+**drawdown'ın gerçeğini temsil etmez**.
+
+| risk · cap | DD (bileşiksiz) | **DD (BİLEŞİK)** | fark |
+|---|---|---|---|
+| %2.25 · 1.25 (eski çıpa) | %23.87 | %41.45 | +17.6 puan |
+| %2.25 · 1.50 | %24.24 | %41.56 | +17.3 |
+| **%2.80 · 1.50 (BUGÜN CANLI)** | **%27.35** | **%48.78** | **+21.4** |
+| %3.50 · 1.50 | %27.87 | %56.54 | +28.7 |
+| %4.50 · 1.50 | %28.97 | %64.59 | +35.6 |
+
+Oturum boyunca **%27.98** dedim. Gerçek **%48.78**.
+
+## Sonuç 1: risk-bütçesi DOLU, "daha büyük bahis" kolu KAPALI
+
+2026-07-22'de tolerans %50 olarak yazılmış. Ölçülen %48.78 → **tavandayız**.
+Aynı kayıt ayrıca uyarıyor: *"ileriye-dönük DD ~her zaman in-sample'dan KÖTÜ
+(en kötü kümelenme henüz olmadı)"*. Yani %48.78 bir **taban**, tavan değil.
+Riski artırmak (%3.5 → %56.5) toleransı aşar. **Bu kol kapandı.**
+
+## Sonuç 2: KIRMIZI ÇİZGİ KENDİ GEREKÇESİYLE ÇELİŞİYOR
+
+$180 çizgisi *"normal dalgalanmada paniğe kapılmayalım"* diye konmuştu ve
+gerekçesi benim yanlış %27.98 rakamımdı:
+
+| varsayım | $306 tepeden dip |
+|---|---|
+| %27.98 (benim kullandığım) | $220 |
+| **%48.78 (ölçülen)** | **$157** |
+| %55 (ileriye dönük makul) | $138 |
+
+**Normal drawdown çizginin ALTINA iniyor.** Yani çizgi, önlemek için konduğu
+şeyin ta kendisi tarafından tetiklenecek.
+
+### İki tutarlı seçenek — bu bir ölçüm değil TERCİH
+
+**A) Çizgiyi indir ve ORANA bağla:** tepe equity'nin %55 altı ($306 tepede
+$138). Sabit dolar zaten yanlış tasarım: kullanıcı ayda $150 ekliyor, equity
+büyüdükçe sabit çizgi anlamsızlaşıyor.
+
+**B) Riski indir:** RISK_SCALE 1.4 → 1.25 (%2.50). Bileşik DD ~%45, $306
+tepeden dip ~$168, mevcut $180 çizgisi anlamlı kalır. Bedeli kâr ~%10.
+
+⚠ Bu, oturumun başında RISK_SCALE'i 1.125'ten 1.4'e çıkarırken **kontrol
+etmediğim** şey. O kararı "1.4 ölçekte beklenen maxDD ~%34" diye gerekçe-
+lendirmiştim; doğrusu ~%49'du.
