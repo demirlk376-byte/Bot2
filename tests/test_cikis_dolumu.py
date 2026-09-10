@@ -10,6 +10,16 @@ frenin girdisi.
 
 Kritik davranış: gerçek dolum OKUNAMAZSA eski davranışa düşülmeli AMA kayıt
 'tahmin' diye işaretlenmeli. Sessizce doğru sanmak yasak.
+
+⚠⚠ 2026-09-10 — BU TEST GEÇİYORDU AMA ÜRETİM 30 GÜN BOYUNCA BOZUKTU.
+Sebep: fixture'lar BENİM VARSAYDIĞIM veri şeklindeydi, MEXC'in gönderdiği
+şekil değil. Gerçekte ccxt-MEXC `side`'ı tutarsız döndürüyor (bazen 'buy'/
+'sell', bazen ham kod '1'..'4') ve `amount` KONTRAT cinsinden geliyor —
+kontrat boyutu sembole göre değişiyor (BNB/BCH 0.01, NEAR 1.0). Eski
+fixture'larda `cost` alanı HİÇ YOKTU.
+Ders: bir mock, gerçeğin ölçülmüş şeklini taşımıyorsa test kendi
+varsayımını doğrular. Fixture'lar artık VPS'ten alınan gerçek dolumların
+şeklinde ve `tests/test_dolum.py` ayrıştırıcıları o rakamlarla kilitliyor.
 """
 from __future__ import annotations
 
@@ -35,11 +45,13 @@ def _borsa(fills):
 
 def test_gercek_dolum_vwap_ve_ucret():
     """İki kısmi dolum → VWAP fiyat + ücretlerin TOPLAMI."""
+    # GERÇEKÇİ ŞEKİL: amount KONTRAT (boyut 0.01), cost coin cinsini taşıyor,
+    # ve side biri ham kod '4' (= long kapat) biri normalize 'sell'.
     fills = [
-        {"timestamp": 200, "side": "sell", "price": 99.0, "amount": 0.6,
-         "fee": {"cost": 0.03}},
-        {"timestamp": 100, "side": "sell", "price": 98.0, "amount": 0.4,
-         "fee": {"cost": 0.02}},
+        {"timestamp": 200, "side": "4", "price": 99.0, "amount": 60.0,
+         "cost": 99.0 * 0.6, "fee": {"cost": 0.03}},
+        {"timestamp": 100, "side": "sell", "price": 98.0, "amount": 40.0,
+         "cost": 98.0 * 0.4, "fee": {"cost": 0.02}},
     ]
     r = asyncio.run(_borsa(fills).fetch_close_fill("X/USDT:USDT", "sell", 1.0, 0))
     assert r is not None
@@ -53,10 +65,10 @@ def test_gercek_dolum_vwap_ve_ucret():
 def test_ters_yon_dolumlari_sayilmaz():
     """GİRİŞ dolumları (ters yön) kapanış fiyatına karışmamalı."""
     fills = [
-        {"timestamp": 50, "side": "buy", "price": 50.0, "amount": 1.0,
-         "fee": {"cost": 0.10}},                       # giriş — sayılmamalı
-        {"timestamp": 200, "side": "sell", "price": 99.0, "amount": 1.0,
-         "fee": {"cost": 0.03}},
+        {"timestamp": 50, "side": "1", "price": 50.0, "amount": 100.0,
+         "cost": 50.0, "fee": {"cost": 0.10}},         # ham kod 1 = long AÇ, sayılmamalı
+        {"timestamp": 200, "side": "4", "price": 99.0, "amount": 100.0,
+         "cost": 99.0, "fee": {"cost": 0.03}},         # ham kod 4 = long KAPAT
     ]
     px, ucret, n = asyncio.run(
         _borsa(fills).fetch_close_fill("X/USDT:USDT", "sell", 1.0, 0))
@@ -68,8 +80,8 @@ def test_ters_yon_dolumlari_sayilmaz():
 def test_yarim_eslesme_REDDEDILIR():
     """Miktarın çoğu eşleşmiyorsa None dönmeli — yarım eşleşmeden 'gerçek'
     fiyat üretmek, yanlış bir kesinlik yaratır."""
-    fills = [{"timestamp": 200, "side": "sell", "price": 99.0, "amount": 0.3,
-              "fee": {"cost": 0.01}}]
+    fills = [{"timestamp": 200, "side": "4", "price": 99.0, "amount": 30.0,
+              "cost": 99.0 * 0.3, "fee": {"cost": 0.01}}]
     r = asyncio.run(_borsa(fills).fetch_close_fill("X/USDT:USDT", "sell", 1.0, 0))
     assert r is None, f"yarım eşleşme kabul edildi: {r}"
     print("  yarım eşleşme (0.3/1.0) reddedildi ✓")
@@ -90,8 +102,8 @@ def test_dolum_yoksa_None():
 
 def test_ucret_kismi_kullanimda_oranlanir():
     """Dolumun bir KISMI kullanıldıysa ücreti de o oranda sayılmalı."""
-    fills = [{"timestamp": 200, "side": "sell", "price": 100.0, "amount": 2.0,
-              "fee": {"cost": 0.20}}]
+    fills = [{"timestamp": 200, "side": "sell", "price": 100.0, "amount": 200.0,
+              "cost": 200.0, "fee": {"cost": 0.20}}]
     px, ucret, n = asyncio.run(
         _borsa(fills).fetch_close_fill("X/USDT:USDT", "sell", 1.0, 0))
     assert abs(px - 100.0) < 1e-9

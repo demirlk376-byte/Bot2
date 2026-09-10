@@ -18,6 +18,7 @@ TESTS = [
     "tests/test_maker_routing.py",  # giriş emri yönlendirmesi + bayrak KAPALIYKEN aynılık
     "tests/test_rapor_tutarlilik.py",  # Telegram raporu: equity vs serbest bakiye, kaydedilmemiş para
     "tests/test_cikis_dolumu.py",   # mutabakat çıkışı: seviye fiyatı değil GERÇEK dolum
+    "tests/test_dolum.py",          # MEXC dolum ayrıştırıcıları: ham yön kodu + kontrat birimi
     "tests/test_sermaye.py",        # sermaye denklemi: çift sayma yok, gerçek MEXC verisiyle kilitli
     "tests/test_sermaye_taban.py",  # yatırılan sermaye borsadan kendini gunceller
     "tests/test_temiz_donem.py",    # kar rakamlari temiz doneme gore mi

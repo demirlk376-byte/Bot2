@@ -396,6 +396,64 @@ class PaperExchange:
 # Live Exchange (ccxt.pro MEXC)
 # ---------------------------------------------------------------------------
 
+# ── MEXC vadeli dolum ayrıştırıcıları (2026-09-10'da CANLI VERİYLE ölçüldü) ──
+#
+# ⚠ NEDEN VARLAR: fetch_close_fill 30 gün boyunca BİR KEZ BİLE başarılı olmadı
+#   (`journalctl | grep -c "GERÇEK dolum"` → 0) ve sessizce eski davranışa düştü.
+#   Sonuç: defter her SL çıkışını TAM stop seviyesinden yazdı, yani çıkış kayması
+#   yapısal olarak görünmez oldu — ve GÜNLÜK ZARAR FRENİ bu defteri okuyor.
+#   Sebep bu iki ayrıştırma hatasıydı; ikisi de aşağıda ölçümle belgelendi.
+
+_MEXC_YON = {"1": "buy",    # long AÇ
+             "2": "buy",    # short KAPAT
+             "3": "sell",   # short AÇ
+             "4": "sell"}   # long KAPAT
+
+
+def _mexc_yon(f: dict) -> Optional[str]:
+    """Dolumun yönü — 'buy' / 'sell' / None.
+
+    ccxt-MEXC yönü TUTARSIZ döndürüyor: bazı dolumlarda 'buy'/'sell', bazılarında
+    MEXC'in ham kodu ('1'..'4') string olarak. Ölçülen dağılım (2026-09-10):
+        NEAR {'sell': 2, '3': 1, 'buy': 5, '4': 5}
+        BNB  {'buy': 9, '4': 12}
+        BCH  {'3': 4, 'sell': 2, 'buy': 3, '4': 3}
+    Eski süzgeç yalnız 'buy'/'sell' arıyordu, yani KAPANIŞ dolumlarının çoğunu
+    (kod 4 = 'long kapat') eliyordu — tam da aradığımız dolumları.
+    """
+    v = str(f.get("side") or "").strip().lower()
+    if v in ("buy", "sell"):
+        return v
+    if v in _MEXC_YON:
+        return _MEXC_YON[v]
+    return _MEXC_YON.get(str((f.get("info") or {}).get("side") or "").strip())
+
+
+def _mexc_miktar(f: dict, px: float) -> Optional[float]:
+    """Dolumun COIN cinsinden miktarı — `amount` KONTRAT olabilir.
+
+    MEXC vadelide `amount` kontrat sayısıdır ve kontrat boyutu sembole göre
+    DEĞİŞİR (ölçüldü: BNB ve BCH 0.01, NEAR 1.0). Defterdeki `pos.quantity` ise
+    coin cinsinden; ikisini kıyaslayan %90 guard'ı elmayla armudu kıyaslıyordu.
+
+    `cost` kontrat boyutunu ZATEN içerir, yani cost/price doğru coin miktarını
+    verir. Canlı veriyle üç sembolde de birebir doğrulandı:
+        NEAR  90.0980 / 2.371   = 38.0000   (defter 38.0000)
+        BNB  236.7750 / 717.5   =  0.3300   (defter  0.3300)
+        BCH  155.4712 / 250.76  =  0.6200   (defter  0.6200)
+
+    cost yoksa None döner. `amount`a düşmek SESSİZCE yanlış birim kullanmak
+    olurdu ve bu fonksiyonun tüm derdi zaten oydu.
+    """
+    if px <= 0:
+        return None
+    try:
+        c = float(f.get("cost") or 0.0)
+    except (TypeError, ValueError):
+        return None
+    return (c / px) if c > 0 else None
+
+
 class LiveExchange:
     def __init__(self, api_key: str, api_secret: str, leverage: int = 10,
                  margin_mode: str = "isolated"):
@@ -741,13 +799,17 @@ class LiveExchange:
         adet = 0.0
         ucret = 0.0
         n = 0
+        birimsiz = 0
         for f in sorted(fills, key=lambda x: x.get("timestamp") or 0, reverse=True):
-            if (f.get("side") or "").lower() != kapanis_side.lower():
+            if _mexc_yon(f) != kapanis_side.lower():
                 continue
             try:
                 px = float(f.get("price") or 0.0)
-                am = float(f.get("amount") or 0.0)
             except (TypeError, ValueError):
+                continue
+            am = _mexc_miktar(f, px)
+            if am is None:
+                birimsiz += 1
                 continue
             if px <= 0 or am <= 0:
                 continue
@@ -769,8 +831,12 @@ class LiveExchange:
         # Miktarın ÇOĞU eşleşmediyse güvenme — yarım bir eşleşmeden fiyat üretmek
         # yanlış bir "gerçek" sayı doğurur.
         if adet < abs(quantity) * 0.9:
-            logger.debug("fetch_close_fill(%s): yalnız %.6f/%.6f eşleşti — atlandı",
-                         symbol, adet, abs(quantity))
+            # ⚠ WARNING, debug DEĞİL: bu fonksiyonun 30 gün boyunca sessizce
+            # başarısız olmasının sebebi tam olarak sessiz loglamaydı.
+            logger.warning(
+                "fetch_close_fill(%s): yalnız %.6f/%.6f eşleşti (%d dolumda cost "
+                "yoktu) — GERÇEK DOLUM OKUNAMADI, seviyeye düşülüyor",
+                symbol, adet, abs(quantity), birimsiz)
             return None
         return (tutar / adet, ucret, n)
 
