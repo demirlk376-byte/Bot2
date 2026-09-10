@@ -4281,3 +4281,66 @@ açık; squeeze kontrol grubu olarak `force_market`'ta tutuluyor.
 varsayım üzerine kurulu ve her biri ölçülmeden dağıtım yapılmaz. Ama
 **büyüklük sırası** şüphe götürmez: sürtünme, strateji ayarından bir mertebe
 büyük.
+
+## 🔍 GÜN BAZINDA KÂHİN TAVANI (2026-09-10) — kullanıcı fikri: dış veriyle tehlike öngörüsü
+
+Kullanıcı: *"kötü ayları veya günleri, SL'lerin seri olduğu günleri başka bir
+platformdan veri çekerek öngörüp 'piyasa tehlikeli' deyip trade'i durdurabilir miyiz?"*
+
+Ay bazında bakmıştık, **gün bazında hiç bakmamıştık**. Bakıldı.
+
+### Kullanıcının granülerlik sezgisi DOĞRU — tavan 13 kat daha yüksek
+
+| seviye | mükemmel kâhin | aylık |
+|---|---|---|
+| AY bazında | +$234 | $5.85 |
+| **GÜN bazında** | **+$3070** (kârın %175'i) | **$76.75** |
+
+778 işlem gününün 409'u (%53) zararlı, toplam zarar −$3070. Yani gün bazında
+gerçekten büyük bir oda var ve ay bazındaki aritmetik yasak burada geçerli değil.
+
+### AMA aradığı mekanizma YOK — üç ölçüm
+
+**1. Zarar YOĞUNLAŞMIYOR.** Birkaç çöküş gününü atlamak yetmiyor:
+
+| en kötü | zarar | toplam zararın |
+|---|---|---|
+| 5 gün | −$144 | %5 |
+| 10 gün | −$267 | %9 |
+| 50 gün | −$937 | %31 |
+
+Zarar **409 güne yayılmış**. Bir "tehlike dedektörü" birkaç kara günü değil,
+yüzlerce sıradan günü doğru işaretlemek zorunda.
+
+**2. Dün bugünü söylemiyor.** Gün-gün otokorelasyon **−0.018** (p=0.61).
+Dün zararlıysa bugün zararlı olma oranı %50.6; dün kârlıysa %54.6; taban %52.6.
+Yani zararlı bir gün, ertesi günü **hafifçe İYİ** öngörüyor — hipotezin tersi
+ve anlamsız.
+
+**3. SL SERİLERİ KÜMELENMİYOR.** En uzun ardışık kayıp serisi **13**;
+rastgele karıştırılmış dizide ortalama **12.0**, %95 dilimi 16, **p=0.334**.
+"SL'ler seri geliyor" hissi gerçek bir kümelenme değil — %43.5 isabetli bir
+sistemde 13'lük seri zaten beklenen şey.
+
+### 📌 HÜKÜM: fikir ölmedi ama tarif ettiği mekanizma yok
+
+Ay bazında dış veri aramak **aritmetik olarak** anlamsızdı ($5.85/ay tavan).
+Gün bazında tavan $76.75/ay, yani **denemeye değer**. Ama:
+- kümelenme yok → "seri SL günü" diye ayırt edilebilir bir nesne yok
+- kalıcılık yok → dünkü veri hiçbir şey söylemiyor
+- yoğunlaşma yok → birkaç kriz gününü yakalamak yetmez
+
+Dolayısıyla işe yarayacak sinyalin **eş-zamanlı ve dışsal** olması gerekir,
+geçmiş fiyattan türetilmiş değil. Bu koşulu sağlayan iki aday var ve ikisi de
+HİÇ test edilmedi:
+
+1. **Makro takvim** (FOMC, CPI, büyük veri açıklamaları). Tamamen dışsal,
+   **önceden kesin biliniyor**, ücretsiz. Bugüne kadar test edilen her şeyin
+   aksine bu "tahmin" değil, **bilgi**.
+2. **Opsiyon örtük oynaklığı** (Deribit DVOL). İleriye dönük; bugüne kadar
+   ölçtüğümüz tüm oynaklık göstergeleri GERÇEKLEŞMİŞ oynaklıktı ve rejim
+   anti-persistent çıkmıştı. Örtük oynaklık farklı bir şeydir.
+
+⚠ Ön beklenti yine de düşük: fiyat (17 özellik), pozisyonlanma (funding) ve
+çapraz-varlık (BTC) kanallarının üçü de null verdi. Ama gün-bazı tavanı
+ay-bazından 13 kat büyük olduğu için bu sefer **aritmetik yasak yok**.
