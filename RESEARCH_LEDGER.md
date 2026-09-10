@@ -4114,3 +4114,77 @@ bilinen: **her 1 puanlık SL azalması ~$23** (2.0×→3.0× arası: 13.3 puan /
 12.3 puan, $497'ye. Puan başına **$40** — bilinen filtreleme doğrusundan
 ($55-80) ucuz. Kâr istiyorsak yanlış yol, ama *sarsıntıyı* azaltmak istiyorsak
 bugüne kadarki en ucuz araç. Kullanıcının tercihi, benim hükmüm değil.
+
+## ⚠ DÜZELTME — CAP TEZİ KAYMA UYGULANINCA BARI GEÇMİYOR (2026-09-10)
+
+Yukarıdaki "altı sınavdan geçti" değerlendirmesini **geri alıyorum**. Çok-ajanlı
+eleştiri (`edge-gercek-mi`) analizimde gerçek bir delik buldu ve doğruladım.
+
+### DELİK: kaymayı CAP analizine hiç uygulamamışım
+
+Ankor taraf başına **1bp** varsayıyor. Deponun kendi ölçümü **15.85bp giriş
+kayması** (`kayma_denetim.py`, n=54). Ve kaymanın R karşılığı `kayma/stop`
+olduğu için **dar stoplu işlemler onu çok daha ağır öder** — yani tam da CAP'in
+daha çok bahis koyduğu işlemler.
+
+| kayma/taraf | kırpılanın cezası | kırpılmayanın | ceza farkı |
+|---|---|---|---|
+| 13.4bp | 0.1164R | 0.0354R | **+0.0810R** |
+| 15.85bp | 0.1376R | 0.0418R | **+0.0958R** |
+
+Ham üstünlük **+0.1353R** idi. Ceza farkı onun **%71'ini** yiyor.
+
+### Sonuç: kayma arttıkça tez sönüyor
+
+| kayma | kırpılan−kırpılmayan | CAP3 Δ$ | düz risk Δ$ | **CAP üstünlüğü** |
+|---|---|---|---|---|
+| kaymasız (ankor) | +0.1353R | +$186.44 | +$88.75 | **+$97.69** |
+| giriş 13.4bp | +0.0543R | +$130.54 | +$74.04 | +$56.50 |
+| giriş 15.85bp | +0.0395R | +$120.32 | +$71.35 | +$48.97 |
+| **giriş+çıkış 15.85bp** | **−0.0563R** | +$54.20 | +$53.96 | **+$0.24** |
+
+Son satırda CAP'in düz risk artışına üstünlüğü **tamamen yok oluyor**. Yani
+"gerçek verimlilik" iddiası çıkış kaymasının büyüklüğüne bağlı.
+
+**Gerçek değer ikisinin arasında:** TP çıkışları limit emirdir, kaymaz;
+SL ve süre çıkışları piyasa emridir, kayar. İşlemlerin ~%70'i piyasadan çıkıyor,
+yani efektif çıkış kayması ~11bp. Toplam ~27bp'ye denk gelir ve interpolasyonla
+CAP üstünlüğü **~$10-20** — ön-kayıtlı barın (+$36) **altında**.
+
+### Ajanın bulduğu diğer üç zayıflık (hepsi doğrulandı)
+
+1. **Temel teşhis anlamlı DEĞİL.** Kırpılan vs kırpılmayan ort R farkı
+   +0.1353R, **z=+1.39** (ledger'ın +1.85'i ANKOR ayarındaydı, canlı ayarda
+   zayıflıyor). Ay-blok bootstrap %95CI **[−0.069, +0.340]**, P(fark≤0)=**%9.5**.
+2. **Manşet +$186'nın yalnız %52'si edge**, %48'i düz risk artışı.
+3. **Etki sönüyor:** W/işlem 2023 +0.112 → 2026 −0.010. **Son 12 ayda −$2.78.**
+4. **Tamamı squeeze:** W(CAP3) = squeeze +$150.10, donchian −$65.17, bb +$12.76.
+   Saf kol kayması tek başına **−$61.47 zararlı**.
+
+### Ve benim kendi metrik hatam
+
+`maxDD` metriği kusurlu: `eq = 190 + cumsum` (bileşiklenme yok) olduğu için
+oransal drawdown **doygunlaşıyor**. RISKF %2.80→%4.50 (risk +%45) maxDD'yi
+yalnız 27.35→28.97 taşıyor, ve %8'de **geri düşüyor** — monoton değil.
+Dün risk-eşitlemeli aramamın %20'de doygunlaşmasının sebebi buydu; "model
+artefaktı" demiştim ama asıl sebebi bu metrikmiş.
+
+Ayrıca eşitlik sıralaması: CSV sırasıyla maxDD %27.35, 2000 rastgele sıralamanın
+**medyanı %27.98**. Yani bildirdiğim taban 0.6 puan **iyimserdi**. Δ sağlam.
+
+### 📌 REVİZE HÜKÜM: DAHA ÇOK ÖLÇÜM
+
+Tez **çökmedi** — kayma uygulanmasa da uygulansa da CAP kuyruğu düz risk
+artışından farklı davranıyor (CAP 8 negatif ayın 5'ini iyileştiriyor, düz artış
+**8/8'ini kötüleştiriyor**). Ama **ön-kayıtlı barı geçmiyor** ve eksik ölçüm net:
+
+**ÇIKIŞ KAYMASI ÖLÇÜLMEDİ.** `exchange.py:fetch_close_fill()` bu oturumda tam
+bu iş için yazıldı (gerçek çıkış dolumu, VWAP + gerçek ücret). Canlı defterde
+yeterli kapanmış işlem birikince ölçülür.
+
+**Karar kuralı (ön-kayıt):** çıkış kayması ölçülür; toplam (giriş+çıkış) etkin
+kayma **20bp/taraf altındaysa** CAP kademeli uygulanır, **üstündeyse eksen
+kapanır**. Ölçülmeden uygulanmaz.
+
+**Adım 1 (kaldıraç şeması, CAP sabit) bundan BAĞIMSIZ ve hâlâ geçerli:**
+kâr etkisi tam sıfır, tepe marjin %90.5 → %55.5. Saf risk azaltma.
