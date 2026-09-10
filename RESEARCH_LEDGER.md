@@ -4188,3 +4188,96 @@ kapanır**. Ölçülmeden uygulanmaz.
 
 **Adım 1 (kaldıraç şeması, CAP sabit) bundan BAĞIMSIZ ve hâlâ geçerli:**
 kâr etkisi tam sıfır, tepe marjin %90.5 → %55.5. Saf risk azaltma.
+
+---
+
+# 🔭 YÖN DEĞİŞİKLİĞİ: PARA STRATEJİDE DEĞİL, YÜRÜTMEDE (2026-09-10)
+
+Kullanıcı: *"stratejileri geliştirmemiz, gelişmiyorsa yenilerini bulmamız lazım."*
+
+Bir adım geri çekilip "para nerede kazanılıyor ve nerede sızıyor" diye sordum.
+Cevap, iki oturumdur aradığımız yerde değilmiş.
+
+## 1. Sistem bir BİLET sistemi — bu, iyileştirme yolunu belirliyor
+
+| dilim | işlem | toplam kârın payı |
+|---|---|---|
+| en iyi %1 | 15 | **%11.4** |
+| en iyi %5 | 78 | **%59.0** |
+| en iyi %10 | 157 | **%118.8** |
+
+En iyi %10'un altındaki her şey **net negatif**. 687 kazanan, 892 kaybeden.
+Pozitif beklentili bir piyango. Böyle bir sistemde iyileştirme "daha iyi bilet
+seç" değildir — 290 filtre denemesi, 8 boyutlu kötü-ay taraması ve funding
+ekseni bunu zaten kanıtladı. Kalan üç yol: **daha çok bilet · daha büyük
+bilet · daha ucuz bilet.**
+
+## 2. Çıkışlar kazananları kesiyor — ama iki cevabı da kapalı
+
+| çıkış | n | çıkışta R | sonraki 30 barda ulaşılan en iyi R |
+|---|---|---|---|
+| tp | 418 | +2.5 | **+4.90** (medyan 3.94) · %62'si 0.5R+ devam etti |
+| süre | 360 | +0.53 | **+2.06** (medyan 1.56) · %48'i 1R+ devam etti |
+
+TP kazananları erken kesiyor. Ama `trail_tara.py` docstring'i bunu zaten
+biliyor ve iki cevabı da ölçmüş: **TP'yi kaldırmak (rr=5) en kötü ayı −%21'den
+−%29.7'ye çıkarıyor**, trailing ise **10/10 düştü** (OOS −$365). Kapı kapalı.
+
+## 3. ASIL BULGU — sürtünme kârın %46'sı ve çoğu ÖLÇÜLMEMİŞ
+
+| kalem | 3.24 yıl $ | yıllık | kârın % | kontrol |
+|---|---|---|---|---|
+| **giriş kayması** (15.85bp, ölçüldü) | **$423.55** | $130.73 | **%24.1** | maker girişi |
+| çıkış kayması, SL | $217.69 | $67.19 | %12.4 | kaçınılmaz |
+| çıkış kayması, SÜRE | $83.51 | $25.77 | %4.8 | **limit yapılabilir** |
+| funding (ölçüldü) | $38.58 | $11.90 | %2.2 | yön/süre |
+| ücret (1bp/taraf) | $53.45 | $16.50 | %3.0 | MX token |
+| **TOPLAM SÜRTÜNME** | **$812** | **$251** | **%46.3** | |
+
+Kaymasız brüt kâr ≈ **$2475**, gerçekleşen $1755. **Aradaki $720 kayma.**
+Ücret onun yanında $53 — yani **kayma ücretin 13 katı** ve iki oturumdur
+ücret eksenini tartışıyorduk.
+
+**Kol başına yük, ve burada bir sürpriz var:**
+
+| kol | ort stop | giriş kayması, kolun kârının %'si |
+|---|---|---|
+| squeeze | %1.94 | **%51.4** |
+| bb | %2.59 | %37.9 |
+| donchian | %4.95 | %15.8 |
+
+Kayma R cinsinden `kayma/stop` olduğu için **dar stoplu squeeze kolu kârının
+yarısını kaymaya ödüyor**. Ve maker girişi deneyi şu an **yalnız donchian'da**
+açık; squeeze kontrol grubu olarak `force_market`'ta tutuluyor.
+
+## 4. Ölçek karşılaştırması — bu, tartışmayı bitiriyor
+
+| fikir | değeri |
+|---|---|
+| CAP 3.0 (kayma düşülmüş, net) | +$15 |
+| MAX_POSITIONS 9 | +$35 (barı geçmiyor) |
+| kol ağırlıklandırma | $0 (çürütüldü) |
+| funding filtresi | $0 (reddedildi) |
+| **ulaşılabilir sürtünme tasarrufu** | **+$475 = $147/yıl = kârın %27'si** |
+
+**Yürütme maliyeti, bu oturumda bulunan en iyi strateji fikrinden 32 KAT büyük.**
+
+## 📌 YENİ ÖNCELİK SIRASI
+
+1. **ÇIKIŞ KAYMASINI ÖLÇ.** Hiç ölçülmedi. `exchange.py:fetch_close_fill()`
+   tam bu iş için yazıldı (gerçek dolum VWAP + gerçek ücret). Yukarıdaki
+   $302'lik çıkış kalemi **donchian giriş ölçümünden ödünç alınmış bir
+   varsayımdır**, ölçüm değil.
+2. **SÜRE ÇIKIŞLARINI LİMİTE ÇEVİR.** 360 işlem (%23). Süre çıkışı **acil
+   değildir** — 30 bar önceden bellidir, piyasa emri olmak zorunda değil.
+   Kimse fark etmemiş. Yıllık ~$26, ve risk ~sıfır.
+3. **MAKER GİRİŞİNİ SQUEEZE'E TAŞI** — donchian denemesi Ekim'de hüküm verince.
+   Squeeze'in kaymadan kaybı oransal olarak donchian'ın **3 katı**.
+4. **SQUEEZE'İN KENDİ KAYMASINI ÖLÇ.** 15.85bp donchian'dan ölçüldü (n=54);
+   squeeze'e uygulanması bir varsayım. Dar stoplu, küçük nominal işlemlerin
+   kayması farklı olabilir — her iki yönde.
+
+⚠ Bu tabloda kesin olan tek kalem **giriş kayması** (n=54 ölçüm). Diğerleri
+varsayım üzerine kurulu ve her biri ölçülmeden dağıtım yapılmaz. Ama
+**büyüklük sırası** şüphe götürmez: sürtünme, strateji ayarından bir mertebe
+büyük.
