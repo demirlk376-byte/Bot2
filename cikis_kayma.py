@@ -110,6 +110,25 @@ def main():
 
     # ── ÖZ-DENETİM ──
     print(f"\n  {'—' * 76}\n  ÖZ-DENETİM (bulguyu okumadan ÖNCE)")
+
+    # ⚠ 2026-09-10'DA EKLENDİ — ilk sürüm bunu KAÇIRDI.
+    # İlk koşuda 62 SL çıkışının HEPSİ tam +0.00bp çıktı, aralık [+0.0, +0.0].
+    # Guard'ım "TP kayması 5bp'yi aşarsa ölçüm yanlış" diyordu ve bu dejenere
+    # sonuç ondan GEÇTİ ("✓ ölçüm tutarlı" dedi). Oysa 62 gerçek dolumda SIFIR
+    # VARYANS imkânsızdır — defterin dolumu değil SEVİYEYİ yazdığının işareti.
+    # Yanlış yöne bakan bir guard, guard değildir.
+    for sebep, (b, _r) in olculdu.items():
+        if len(b) >= MIN_N and float(np.std(b)) < 1e-9:
+            print(f"    ✗ '{sebep}': {len(b)} işlemin HEPSİ tam {b.mean():+.2f}bp — "
+                  f"SIFIR VARYANS.")
+            print(f"       Bu bir ölçüm DEĞİL. Defter çıkış fiyatını gerçek dolumdan")
+            print(f"       değil HEDEFLENEN SEVİYEDEN yazıyor (main.py:1736 —")
+            print(f"       `exit_price, reason = pos.sl_price, 'sl_hit'`), yani kayma")
+            print(f"       yapısal olarak GÖRÜNMEZ.")
+            print(f"       Teşhis: journalctl -u btc-bot | grep 'GERÇEK dolum'")
+            print(f"       O satır hiç yoksa fetch_close_fill() bir kez bile")
+            print(f"       başarılı olmamıştır ve sessizce eski davranışa düşülüyordur.")
+            sys.exit(2)
     tp = next((v for k, v in olculdu.items() if "tp" in k or "profit" in k), None)
     if tp is None:
         print(f"    ⚠ TP çıkışı yok — ölçümün kendi kontrolü YAPILAMADI.")
