@@ -4706,3 +4706,67 @@ MTF −$433 (0/3), fade −$89/−$131/−$57 (3/3).
 
 Üçünün toplam beklentisi, zaten reddedilmiş olan fade eşiğinin (+$18/yıl)
 altında ve sürtünme eksenindeki $147/yıl'ın **%5-16'sı**.
+
+## ✅ TABAN ŞİŞKİN Mİ? — ÖLÇÜLDÜ, ANA ŞÜPHEM ÇÜRÜDÜ (2026-09-11)
+
+Kullanıcı sordu: *"niye hiçbir şey işe yaramıyor, bu işte bir terslik olmalı."*
+En güçlü şüphem tabanın kendisiydi: ankor bu verinin ÜZERİNDE seçildiyse, her
+yeni fikir hileli bir rakiple yarışıyordur. Ölçüldü (`secim_yanliligi.py`).
+
+### Kanal seçimi: yanlılık YOK
+
+| kanal | tüm veri | 1. yarı | 2. yarı |
+|---|---|---|---|
+| 20 | +$1588 | **+$1037** | +$551 |
+| 30 | +$1593 | +$1014 | +$580 |
+| **40 (canlı)** | **+$1760** | +$1031 | **+$729** |
+| 60 | +$1269 | +$782 | +$487 |
+| 80 | +$1219 | +$751 | +$467 |
+| 120 | +$1175 | +$729 | +$446 |
+
+**İki ayrı sonuç, ikisi de önemli:**
+
+1. **Seçmek işe yaramıyor.** 1. yarının en iyisi kanal 20; 2. yarıda getirisi
+   +$551, altı kanalın ortalaması +$543 → üstünlük yalnız **+$7.79**.
+   Yani "en iyi kanalı seç" stratejisi ileriye hiçbir şey taşımıyor.
+
+2. **Ama kanal 40 gerçekten iyi.** Tüm veride ortalamayı %22.7 geçiyor,
+   **2. yarıda %34.1** — yani üstünlüğü örneklem dışında KAYBOLMUYOR, ARTIYOR.
+   1. yarıda ikinci sırada, 2. yarıda birinci.
+
+→ **Kanal 40'ın üstünlüğü seçim yanlılığı DEĞİL.** Ana şüphem çürüdü.
+
+### Ama başka bir yerde yanlılık GERÇEK: coin seçimi
+
+Bu zaten ölçülmüştü: donchian'ın 7 coini 21 coin içinde ortalama **4.6**'ıncı
+sırada (rastgele seçim 11.0 olurdu) ve `coin_expand`'in yürüyen-ileri testi o
+seçimin ileriye **taşınmadığını** gösterdi. Yani taban, **coin ekseninde**
+şişkin; kanal ekseninde değil.
+
+İleri beklenti bu yüzden ankorun %50-100'ü aralığında — 18/21 coin pozitif
+olduğu için edge geniş ve gerçek, seçim onu BÜYÜTTÜ ama YARATMADI.
+
+## 📌 "NEDEN HİÇBİR ŞEY İŞE YARAMIYOR" — ÖLÇÜLMÜŞ CEVAP
+
+Üç bacak, üçü de bugün ölçüldü:
+
+**1. SÜRTÜNME, dar stoplu her şeyi öldürüyor.** Kayma = 15.85bp/stop.
+donchian 0.032R öder ve edge'i +0.2373R; MTF 0.104R öder ve edge'i +0.0164R.
+Donchian ayakta çünkü stopları **geniş**. Bu hesapta dar stoplu strateji
+yaşayamaz.
+
+**2. 7 KOLTUK, her yeni kolu net bloklayıcı yapıyor.** Kitabın ort R'si
++0.2373; hiçbir adayın kayma-sonrası ort R'si bunu geçmiyor. Koltuk almak
+matematiksel olarak negatif.
+
+**3. ÇEŞİTLENDİRME zaten bedava.** Kitap × 0.80 + %20 nakit: bileşik DD
+%48.78 → %41.26, en kötü ay +5.28 puan, Sharpe sabit, bakım sıfır. İkinci bir
+strateji kurmanın bunun üstüne kattığı puan başına $27.
+
+**Dördüncüsü matematiksel:** edge +0.237R, σ 1.465. 1579 işlemde t≈6.4, yani
+edge sağlam. Ama 300 işleme dokunan bir değişikliğin arkasında beşte bir veri
+var ve tespit edilebilmesi için etkisinin **2.3 kat büyük** olması gerek.
+Küçük ama gerçek iyileştirmeler bu örneklemde GÖRÜNMEZ.
+
+**Terslik yok. Sistem, iyileştirmeye kapalı bir yerde değil — iyileştirmenin
+ÖLÇÜLEBİLİR olmadığı bir yerde.**
