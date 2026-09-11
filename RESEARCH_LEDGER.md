@@ -4450,3 +4450,82 @@ tepeden dip ~$168, mevcut $180 çizgisi anlamlı kalır. Bedeli kâr ~%10.
 ⚠ Bu, oturumun başında RISK_SCALE'i 1.125'ten 1.4'e çıkarırken **kontrol
 etmediğim** şey. O kararı "1.4 ölçekte beklenen maxDD ~%34" diye gerekçe-
 lendirmiştim; doğrusu ~%49'du.
+
+---
+
+# 🎯 KULLANICININ SAHTE-KIRILIM FİLTRELERİ (2026-09-11) — biri kuralı KIRDI ama barı geçmedi
+
+Kullanıcı klasik donchian sahte-kırılım teyit yöntemlerini önerdi. Hepsi güncel
+tabanda (risk %2.80, cap 1.50, 1579 işlem birebir üretildi) test edildi.
+
+## 1. Aynı riskte — kalite artıyor, hacim daha hızlı azalıyor
+
+| varyant | n | WR | ort R | Δ$ | **rastgele silme Δ$** |
+|---|---|---|---|---|---|
+| taban | 1579 | %43.5 | +0.2373 | — | — |
+| ATR tamponu 0.25 | 1451 | %43.8 | +0.2467 | −$93 | **−$145** |
+| ATR tamponu 0.50 | 1265 | %43.6 | +0.2582 | −$266 | **−$342** |
+| **ATR tamponu 1.00** | 951 | **%44.4** | **+0.2867** | −$550 | **−$695** |
+| çoklu mum teyidi 1 bar | 1411 | %42.5 | +0.2027 | −$481 | −$190 |
+| hacim > 1.5x | 1328 | %43.8 | +0.2586 | −$171 | −$275 |
+| MTF günlük EMA50 | 1498 | %43.7 | +0.2393 | −$86 | −$91 |
+
+**⭐ ATR TAMPONU, DEPONUN EN ESKİ KURALINI KIRAN İLK FİLTRE.** 290 denemelik
+permütasyon bulgusu "ne silinirse silinsin, silmek negatif beklentidir" diyordu.
+Tampon **rastgele silmeyi yeniyor** (1.0'da −$550 vs −$695 = +$145 fark) ve ort R
+**monoton** yükseliyor (+%21). Yani gerçekten KALİTE seçiyor, sadece küçültmüyor.
+
+**Çoklu mum teyidi aktif olarak ZARARLI** (ort R 0.2373 → 0.2027, rastgeleden de
+kötü). Retest testiyle aynı mekanizma: beklerken kaçanlar kazananlar oluyor.
+
+**MTF EMA50 rastgeleyle aynı** (−$86 vs −$91) → hiç seçim yapmıyor. Mevcut MTF
+kapısının 1017 sinyalin 0'ını bloklaması tesadüf değilmiş.
+
+## 2. Eşit DRAWDOWN'da — asıl sınav
+
+Tampon maxDD'yi düşürdüğü için **risk bütçesi satın alıyor**. O bütçe riske
+çevrilirse hacim kaybı telafi olur mu? Risk kapasitesi **bileşikte**, kâr
+**sabit-oranda** ölçüldü (iki ayrı uzay — bkz. aşağıdaki ölçü hatası notu).
+
+| varyant | n | eşit-DD riski | sabit kâr | Δ$ | **en kötü ay** |
+|---|---|---|---|---|---|
+| taban | 1579 | %2.80 | +$1755.21 | — | −%26.38 |
+| tampon 0.10 | 1534 | %2.84 | +$1693.84 | −$61 | −%37.51 |
+| **tampon 0.25** | 1451 | **%3.34** | **+$1908.63** | **+$153.41** | **−%36.02** |
+| tampon 0.50 | 1265 | %3.21 | +$1647.89 | −$107 | −%48.48 |
+| tampon 1.00 | 951 | %3.61 | +$1436.80 | −$318 | −%29.87 |
+| hacim 1.5x | 1328 | %2.89 | +$1623.99 | −$131 | −%45.29 |
+
+**Tampon 0.25 eşit drawdown'da +$153 KAZANDIRIYOR** — kalite kazancı gerçek ve
+paraya dönüyor. **Ama en kötü ay −%26.38'den −%36.02'ye gidiyor (9.6 puan).**
+
+Mekanizma: maxDD eşitlendi ama **kuyruk ŞEKLİ eşitlenmedi**. Tamponun drawdown
+tasarrufu daha PÜRÜZSÜZ yoldan geliyor (az işlem, az kümelenme), aylık
+salınımların küçülmesinden değil. Riski %2.80'den %3.34'e çıkarmak her ayı
+büyütüyor ve en kötü ay orantısız büyüyor.
+
+**0/5 ön-kayıtlı barı geçti** (bar: Δ$ ≥ +36 **VE** en kötü ay kötüleşmesin).
+
+## 📌 HÜKÜM
+
+Kullanıcının sezgisi **kısmen doğrulandı ve bu önemli**: ATR tamponu, bu depoda
+rastgele silmeyi yenen ilk filtre. Ama kazancı kuyruğu bozarak alıyor ve bar
+tam olarak bunu yasaklıyor.
+
+**Açık kalan tek soru:** tampon 0.25'in kalite kazancı, riski ARTIRMADAN
+kullanılabilir mi? Yani tamponu uygula, riski %2.80'de bırak — o zaman
+Δ$ −$93 (kayıp) ama maxDD 4 puan, en kötü ay 3.7 puan İYİ. Bu bir kâr
+değil **kuyruk satın alma** işlemidir ve fiyatı puan başına ~$25 —
+bilinen filtreleme doğrusundan ($55-80) ucuz, kol ağırlığından ($4.24) pahalı.
+
+### ⚠ ÜÇ DENEME, İKİ ÖLÇÜ HATASI (ikisi de kendi kendine yakalandı)
+
+1. **Bileşik terminal dolar** kıyaslandı → $605k vs $1.04M. Ledger bunu
+   `growth_sim` notunda zaten "FANTEZİ" diye işaretlemişti.
+2. **CAGR**'a çevrildi → %1319 vs %911. Matematiksel olarak doğru ama **aynı
+   fantezi**: in-sample bileşik patlama üsteldir ve HER bileşik ölçüyü domine
+   eder. Metriği değiştirmek yetmedi, **uzayı** değiştirmek gerekiyordu.
+3. Doğru kurulum: risk kapasitesi bileşikte, kâr sabit-oranda.
+
+Ders: "ölçek-değişmez metrik seç" yetmiyor; bileşik uzayda yapılan hiçbir
+kıyas üstelden kurtulmuyor.
