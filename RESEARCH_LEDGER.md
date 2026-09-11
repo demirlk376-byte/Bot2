@@ -4577,3 +4577,46 @@ ve kırılıma GEÇ giriliyor. Göstergelerin "çalkantılı" dediği bir zemind
 
 **Bir "trend rejimi" kapısı koymak, ort R'si +0.3959 olan en iyi alt kümeyi
 (RANGE) elerdi.** Hibrit anahtar bu veride para kaybettirir.
+
+## ⛔ "PRO DONCHIAN" — UYARLAMALI PERİYOT · BANT SIKIŞMASI · ZAMAN STOPU (2026-09-11)
+
+Kullanıcının kurum-seviyesi donchian önerileri. `pro_donchian.py`, üretici
+`DonchianStrategy.analyze`'dan birebir kopyalandı (1579 işlem üretiyor).
+
+| varyant | n | WR | ort R | Δ$ | ΔmaxDD | Δkötü ay |
+|---|---|---|---|---|---|---|
+| taban | 1579 | %43.6 | +0.2378 | — | — | — |
+| uyarlamalı 20/40/60 (kullanıcının) | 1682 | %41.6 | **+0.1784** | −$417 | +9.89 | −21.08 |
+| uyarlamalı 30/40/50 | 1620 | %42.5 | +0.2021 | −$255 | +10.75 | −5.59 |
+| **uyarlamalı TERS 60/40/20** | 1602 | %43.1 | +0.2066 | **−$226** | +0.18 | −18.16 |
+| bant sıkışma en dar %25 | 1078 | %42.8 | +0.2183 | −$748 | +1.47 | −0.75 |
+| bant sıkışma en dar %50 | 1278 | %43.7 | +0.2421 | −$347 | +1.69 | +0.35 |
+| zaman stopu 6 bar / 1.0 ATR | 1683 | %40.5 | +0.1957 | −$247 | −1.41 | −6.69 |
+| zaman stopu 10 bar / 1.0 ATR | 1625 | %42.1 | +0.2175 | −$115 | −1.26 | −6.52 |
+| uyarlamalı + sıkışma %50 | 1345 | %41.7 | +0.1790 | −$728 | +12.20 | −16.81 |
+
+**0/8 geçti.** Üçünün de sebebi ayrı ve mekanik:
+
+**1. Uyarlamalı periyot — TERS YÖNÜ DE DÜŞÜYOR.** Bu belirleyici: 20/40/60 de
+60/40/20 de kaybettiriyor, yani işaret hatası değil. Kanalı **değiştirmenin
+kendisi** zarar veriyor. Çoklu-horizon bulgusuyla tutarlı: kanal 40 pürüzsüz
+bir optimum ve komşuları (30, 60) makul; ondan sapmak her yönde kötü.
+Mekanizma: kanalı kısaltmak **daha çok ama daha kötü** sinyal üretiyor
+(1579→1682, ort R 0.2378→0.1784). "Erken yakalamak" pratikte "daha küçük
+hareketi yakalamak" ve küçük hareket gürültüye yakın.
+
+**2. Bant sıkışması — SEÇMİYOR, sadece KÜÇÜLTÜYOR.** Kanıt ort R sütununda:
+%25'te 0.2183, %50'de 0.2421, tabanda 0.2378. **Kalite hiç değişmiyor**,
+yalnız hacim yarıya iniyor. Hacim filtresinin 11/11 reddiyle birebir aynı
+imza (orada da 1591 sinyal elendi, WR %43→%43 sabit kaldı).
+
+**3. Zaman stopu — GELİŞMEKTE OLAN KAZANANLARI kesiyor.** Ort R 0.2378'den
+0.1957'ye düşüyor. İlginç yan etki: işlem sayısı ARTIYOR (1579→1683) çünkü
+erken çıkmak koltuğu serbest bırakıyor — ama gelen yeni işlemler kaybı
+kapatmıyor. `early_exit_test`'in 13/13 reddiyle aynı yöne bakıyor.
+
+⚠ BİLİNEN SAPMA: replika ankorla birebir değil. İşlem sayısı tam tutuyor
+(1579) ama kâr $4.49, en kötü ay 3.7 puan farklı. Sebep: ankor EMA200'ü 259
+barlık **pencere içinde** hesaplıyor (`s.analyze`'a dilim veriliyor), replika
+tam seride. Varyantların birbiriyle kıyası geçerli (hepsi aynı üretici), ankor
+rakamlarıyla doğrudan karşılaştırılamaz.
