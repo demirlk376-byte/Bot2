@@ -4529,3 +4529,51 @@ bilinen filtreleme doğrusundan ($55-80) ucuz, kol ağırlığından ($4.24) pah
 
 Ders: "ölçek-değişmez metrik seç" yetmiyor; bileşik uzayda yapılan hiçbir
 kıyas üstelden kurtulmuyor.
+
+## ⛔ ÜÇLÜ REJİM TESPİTİ (ADX + CHOP + KER) — HİPOTEZ TERS ÇIKTI (2026-09-11)
+
+Kullanıcı üç göstergeli hibrit rejim tespiti önerdi: ADX (trend gücü),
+Choppiness Index (fraktal boyut), Kaufman Efficiency Ratio (yol verimliliği).
+ADX ve KER zaten ölçüm tablosundaydı; **CHOP ilk kez hesaplandı**
+(`100·log10(ΣTR₁₄ / (max_hi₁₄−min_lo₁₄)) / log10(14)`, 1579/1579 işlem).
+
+⚠ Bu test rejim TAHMİNİ değil — üç gösterge de **giriş anında gözlenebilir**.
+   Gelecekteki kötü ayı öngörmek ölüydü; anlık durumu okumak ayrı bir soru.
+
+### Tek tek: hiçbiri monoton değil
+
+| gösterge | çeyrek 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| ADX | +0.157 | **+0.342** | +0.217 | +0.234 |
+| CHOP (sağ = çalkantılı) | +0.336 | +0.146 | +0.193 | **+0.274** |
+| KER(20) | +0.145 | **+0.283** | +0.277 | +0.245 |
+| KER(50) | **+0.324** | +0.265 | +0.175 | +0.185 |
+
+**KER(50) monoton ama TERS yönde**: en "verimsiz" çeyrek +0.324, en verimli
++0.185. ADX ve KER(20) ortada tepe yapıyor. CHOP U şeklinde.
+
+### Üçü birden: RANGE rejimi TREND rejiminden İYİ
+
+| rejim | n | ort R | WR |
+|---|---|---|---|
+| TREND (ADX↑ CHOP↓ KER↑) | 167 | +0.3487 | %45.5 |
+| **RANGE (ADX↓ CHOP↑ KER↓)** | 89 | **+0.3959** | **%52.8** |
+| diğer | 1323 | +0.2126 | — |
+| genel | 1579 | +0.2373 | %43.5 |
+
+Fark **−0.0472**, z = **−0.25** → anlamlı değil, ama yön hipotezin **tersi**.
+
+### 📌 ASIL BULGU: U ŞEKLİ, monotonluk değil
+
+Her iki UÇ da genel ortalamayı geçiyor (+0.3487 ve +0.3959 vs +0.2373), ORTA
+bölge (n=1323) ise +0.2126 ile en kötüsü. Yani sistem rejimin **belirgin**
+olduğu anlarda iyi, **belirsiz** olduğu anlarda kötü — trendli mi yatay mı
+olduğu fark etmiyor.
+
+**Mekanizma, kullanıcının kendi "gecikme" şikâyetiyle tutarlı ama sonucu
+ters çeviriyor:** ADX/KER zaten yüksekken hareket büyük ölçüde olmuş demektir
+ve kırılıma GEÇ giriliyor. Göstergelerin "çalkantılı" dediği bir zeminden
+çıkan gerçek bir kırılımın önünde ise daha çok yol var.
+
+**Bir "trend rejimi" kapısı koymak, ort R'si +0.3959 olan en iyi alt kümeyi
+(RANGE) elerdi.** Hibrit anahtar bu veride para kaybettirir.
