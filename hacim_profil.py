@@ -109,7 +109,7 @@ def va_serileri(d, N=200, kova=50, va=0.70, mod="spread", maske=None):
 # ─────────────────────────── sinyal + simülasyon ────────────────────────────
 
 def uret(d, atr_arr, VAL, VAH, k=1.5, sl_a=2.0, rr=2.5, mh=30, fee=1e-4,
-         yon="iki", volma=None):
+         yon="iki", volma=None, sig="seviye"):
     """VA kırılımı sinyalleri → (entry_ns, exit_ts, R, sl_pct) listesi.
     d: resample edilmiş OHLCV. volma: [i-20,i) hacim ortalaması (shift(1))."""
     hi = d["high"].values; lo = d["low"].values; cl = d["close"].values
@@ -123,10 +123,15 @@ def uret(d, atr_arr, VAL, VAH, k=1.5, sl_a=2.0, rr=2.5, mh=30, fee=1e-4,
         if i <= occ or i >= n - 1: continue
         a = atr_arr[i]
         if not np.isfinite(a) or a <= 0: continue
-        c = cl[i]
-        if c > VAH[i]: d_ = 1
-        elif c < VAL[i]: d_ = -1
-        else: continue
+        c = cl[i]; cp = cl[i - 1]
+        if sig == "capraz":       # TAZE kirilim: onceki kapanis seviyenin icinde/altinda
+            if c > VAH[i] and cp <= VAH[i]: d_ = 1
+            elif c < VAL[i] and cp >= VAL[i]: d_ = -1
+            else: continue
+        else:                     # seviye: kapanis VA disinda (donchian konvansiyonu)
+            if c > VAH[i]: d_ = 1
+            elif c < VAL[i]: d_ = -1
+            else: continue
         if yon == "long" and d_ != 1: continue
         if yon == "short" and d_ != -1: continue
         e = c; sld = sl_a * a
