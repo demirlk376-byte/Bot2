@@ -4620,3 +4620,89 @@ kapatmıyor. `early_exit_test`'in 13/13 reddiyle aynı yöne bakıyor.
 barlık **pencere içinde** hesaplıyor (`s.analyze`'a dilim veriliyor), replika
 tam seride. Varyantların birbiriyle kıyası geçerli (hepsi aynı üretici), ankor
 rakamlarıyla doğrudan karşılaştırılamaz.
+
+---
+
+# 🔬 ÜÇ YENİ STRATEJİ AİLESİ (2026-09-11) — 480 HÜCRE, GEÇEN 0
+
+Kullanıcının önerdiği aileler çok-ajanlı taramada kuruldu, ölçüldü ve her
+pozitif bulgu ayrı bir ajan tarafından çürütülmeye çalışıldı. Karar ajanı
+alt-ajanların rakamlarına güvenmeden **bağımsız yeniden hesap** yaptı.
+
+| aile | hücre | geçen | en iyi Δ$ | öldüren şey |
+|---|---|---|---|---|
+| hacim profili / Value Area | 228 | 0 | +$71 (bar +36) | en kötü ay −0.54 |
+| MTF pullback girişi | 144 | 0 | +$31 | tetik bilgi taşımıyor |
+| rejim-hibrit (fade karışımı) | 108 | 0 | −$88 | nakit kontrolü yeniyor |
+
+## 1. ⭐ YAPISAL BULGU: DAR STOP = KAYMA ÖLÜMÜ
+
+Kayma R cinsinden `15.85bp / stop_mesafesi` olarak işliyor. Stop ne kadar
+darsa ceza o kadar ağır:
+
+| kol | ort stop | kaymanın R bedeli | kolun edge'i |
+|---|---|---|---|
+| donchian (4h) | %4.96 | **0.032R** | +0.2373R |
+| hacim profili (1h) | %2.29 | 0.069R | +0.1273R |
+| MTF pullback (1h) | %1.53 | **0.104R** | **+0.0164R** |
+
+**MTF'in tüm edge'i kaymanın altıda biri.** Kayma dahil edilince en iyi hücre
++$139'dan **−$1426**'ya düşüyor. Hacim profilinde edge'in %66'sı kaymaya
+gidiyor.
+
+**Bu, donchian'ın neden ayakta kaldığını da açıklıyor: stopları GENİŞ.**
+Bu hesap boyutunda dar stoplu hiçbir 1h stratejisi sürtünmeyi atlatamaz.
+Daha önce ölçülen "squeeze kârının %51.4'ünü kaymaya ödüyor" bulgusunun
+genel hâli bu.
+
+## 2. ⭐ ÇEŞİTLENDİRME FAYDASI ALFA DEĞİL, ARİTMETİK
+
+Rejim-hibrit ajanı kimsenin kurmadığı kontrolü ekledi: riski fade'e değil
+**NAKDE** kaydırmak. Kitap × 0.80, kalan %20 nakit:
+
+```
+bileşik maxDD  %48.78 → %41.26     en kötü ay  +5.28 puan
+Sharpe         DEĞİŞMİYOR          bakım yükü  SIFIR
+```
+
+Fade'in nakdin **üstüne** kattığı artık puan başına **$27.07**. Kıyas:
+2026-09-09'un kol-ağırlığı adayı $4.24/puandı ve o bile barı geçememişti.
+
+Ve tam bir tersinme var: **sürtünmeyi atlatan tek fade hücresi (ADX<15 rr2.5,
++$34/3.24yıl) çeşitlendirmede nakitten KÖTÜ; çeşitlendiren hücre (ADX<25)
+standalone para kaybediyor.**
+
+## 3. MTF TETİĞİ BİLGİ TAŞIMIYOR (permütasyon)
+
+Aynı trend-uygun barlardan aynı sayıda **rastgele** giriş: +$189 ± $302.
+Gerçek tetik: +$139 → **z = −0.17**. EMA20 pullback tetiği rastgeleden
+**anlamlı KÖTÜ** (z = −2.04). Tek değişkenli test depo dersini doğruladı:
+aynı trend evreninde "devamda gir" (+$377), "geri çekilmede gir"i yeniyor.
+
+## 4. 7 ORTAK KOLTUK HER YENİ KOLU NET BLOKLAYICI YAPIYOR
+
+Kitabın ort R'si **+0.2373**. Hiçbir adayın kayma-sonrası ort R'si bunu
+geçmiyor (VP en iyi +0.1491). Dolayısıyla yeni kol koltuk aldığında
+**matematiksel olarak** negatif. VP tam riskte 27-668 kitap işlemini
+blokluyor; fade ADX<25 rr2.5 285 işlem (kitabın %18'i, −$448) → net −$671.
+
+## 5. fade_test.py'de BEŞ ÖLÇÜM SORUNU BULUNDU
+
+(1) koltuk rekabeti hiç ölçülmemiş (occ yalnız coin-içi), (2) fade %2.25/cap1.0
+ile ölçülmüş ama canlı %2.80/cap1.50, (3) `book_monthly()` BB/LTC kolunu
+dışarıda bırakıyor ve ankor boyutu kullanıyor, (4) yıl-yıl GİRİŞ yılına,
+aylık ÇIKIŞ ayına göre kesiliyor, (5) "birlikte $" satırında risk eşitleme yok.
+İki hata ters yönlere işaret ediyor ve ADX<15'te birbirini götürüyor: FIFO
+koltukla tam boyutta net katkı **+$4 / −$39 / +$14 ≈ SIFIR**, $18/yıl değil.
+Gerçek korelasyon da düzeltildi: ADX<15'te **−0.13..−0.15** (fade_test −0.22
+diyordu; BB kolunu dışarıda bıraktığı için abartılı).
+
+## 📌 HÜKÜM: HEPSİ RED
+
+Üç bağımsız ajan, üç farklı mekanizma, üç ayrı ölçüm motoru — üçü de aynı üç
+duvara çarptı: **kayma (dar stop), koltuk rekabeti, yürüyen-ileri bozulma.**
+Yürüyen-ileri OOS üç ailede de negatif: VP −$267 (aynı dilimlerde taban +$916),
+MTF −$433 (0/3), fade −$89/−$131/−$57 (3/3).
+
+Üçünün toplam beklentisi, zaten reddedilmiş olan fade eşiğinin (+$18/yıl)
+altında ve sürtünme eksenindeki $147/yıl'ın **%5-16'sı**.

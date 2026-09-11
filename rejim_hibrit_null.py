@@ -10,7 +10,12 @@ Kiyas tabani NAKIT kontrolu (kitap x (1-k)), cunku fade'in savunmasi "nakde gore
 import pickle, heapq, sys
 import numpy as np, pandas as pd
 import deployed_backtest as DB
-exec(open("/home/user/Bot2/_hyb_ana.py").read().split("# ---------- 1)")[0])
+import rejim_hibrit as H
+D = __import__("pickle").load(open(H.ONBELLEK, "rb"))
+FREE = H.FREE; RF, CP, B0 = H.RF, H.CP, H.B0
+seat, seat_oncelikli = H.seat, H.seat_oncelikli
+BOOK_T = [(a, b, c, d, "kitap") for v in D["book"].values() for (a, b, c, d) in v]
+BASE = H.olc(seat(BOOK_T), {"kitap": 1.0})
 
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 4000
 TOHUM = 20260911
