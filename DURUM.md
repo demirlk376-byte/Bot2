@@ -1892,7 +1892,7 @@ bir tercih** — ve gerekçem burada kayıtlı ki ileride bakan yanılmasın.
 | 2 ay üst üste negatif | %4.0 | not et, bekle |
 | **3 ay üst üste negatif** | **%0.8** | **DUR ve bak** |
 | 4 ay üst üste negatif | %0.2 | sistem bozuk say |
-| equity < $180 | — | DUR (kırmızı çizgi, 5d) |
+| equity < tepe × %40 | — | DUR (kırmızı çizgi, 5d — 2026-09-12'de oranlandı) |
 
 3 ay üst üste negatif, ankor doğruysa 125 ayda bir olur. Gerçekleşirse
 "şanssızlık" değil, edge'in beklenenden zayıf olduğunun işaretidir — ve
@@ -2254,16 +2254,34 @@ journalctl -u btc-bot -n 100 --no-pager
 **Durdurmak istersen:** Telegram'dan elle duraklat. Loglarda artık gerçek sebebi
 yazıyor (`manual pause via Telegram`), günlük zarar limitiyle karışmaz.
 
-**Kırmızı çizgi (2026-09-07'de GÜNCELLENDİ):** eski $130 çizgisi ~$190
-bakiyeye göreydi; sermaye $280.38, `RISK_SCALE` 1.4 oldu. Yeni çizgi:
+**Kırmızı çizgi (2026-09-12'de DÜZELTİLDİ — önceki iki sürüm de YANLIŞTI):**
 
-  **equity $180'in altına inerse DUR ve bak.**
+  **TEPE equity'nin %60 altına inerse DUR ve bak.**
+  (tepe $306 iken → **$122**. Tepe büyüdükçe çizgi de büyür.)
 
-Gerekçesi: $184.63 temiz dönem çıpası. Oranın altına inmek "temiz dönemde
-kazanılan her şey geri verildi VE eklenen sermaye yeniyor" demektir — bu artık
-normal drawdown değil. 1.4 ölçekte beklenen maxDD ~%34, yani $306'dan ~$200'e
-inmek HÂLÂ NORMAL; müdahale çizgisi onun altında olmalı ki normal dalgalanmada
-paniğe kapılmayalım.
+⚠ İKİ HATA DÜZELTİLDİ:
+
+**1. Sabit dolar YANLIŞ TASARIMDI.** Ayda $150 ekleniyor; equity büyüdükçe
+sabit bir çizgi anlamsızlaşır. Çizgi artık **tepe equity'ye oranlı** ve
+kendiliğinden ölçekleniyor.
+
+**2. Gerekçedeki maxDD rakamı YANLIŞ BİRİMDEYDİ.** Eski gerekçe "1.4 ölçekte
+beklenen maxDD ~%34" diyordu. O **sabit-oran** rakamı; bot canlıda **equity'ye
+göre boyutlandığı için BİLEŞİKLENİYOR** ve ölçülen bileşik maxDD **%48.78**
+(2026-09-10, `tampon_karar.py`). Sonuç:
+
+| varsayım | $306 tepeden normal dip |
+|---|---|
+| %34 (eski, yanlış birim) | $202 |
+| **%48.78 (ölçülen)** | **$157** |
+| %55 (ileriye dönük makul) | $138 |
+
+**Eski $180 çizgisi normal drawdown'ın ÜSTÜNDEYDİ** — yani önlemek için
+konduğu şey tarafından tetiklenecekti. %60 çizgisi ($122) ölçülen dibin de,
+ileriye dönük makul dibin de altında.
+
+⚠ Aynı kayıt uyarıyor: *"ileriye-dönük DD ~her zaman in-sample'dan KÖTÜ"*.
+%48.78 bir TABAN, tavan değil.
 
 ⚠ Aylık −$81 (en kötü ay) ve −$93 (maxDD) 1.4 ölçekte BEKLENEN rakamlardır.
 
