@@ -5257,3 +5257,44 @@ stop sonrası giriş · TP sonrası giriş · CAP) null döndü.
 aramayı bırak. Sadece **büyüklüğü a priori BİLİNEN** değişiklikleri kovala; onlar istatistik
 gerektirmez. Bugün elde kalan tam da bunlar: maker giriş (+%13.3), timeout-limit çıkış (+%4.8),
 MX token (+%0.6) = yıllık kârın **+%17.2'si**, hiçbiri hipotez değil, hepsi aritmetik.
+
+## 📊 CANLI vs ANKOR — İLK DÜZGÜN R TESTİ (2026-09-12, n=124)
+
+Canlı defterden (`trades.db`, is_paper=0, 2026-06-18 → 2026-09-11) her işlemin R'si
+`yön × (çıkış−giriş) / |giriş−sl|` ile hesaplandı. **Doğru kıyas KAYMALI ankordur** —
+canlı fiyatlar kaymayı zaten içerir, ankorun +0.2373'ü içermez.
+
+| | canlı (n=124) | ankor kaymasız | ankor KAYMALI |
+|---|---|---|---|
+| ort R | **+0.0837** | +0.2373 | **+0.1764** |
+| σ_R | 1.347 | 1.465 | — |
+| kazanma oranı | %37.1 | %43.5 | %43.1 |
+
+| kıyas | fark | z | p |
+|---|---|---|---|
+| kaymasız ankora | −0.1536 | −1.27 | 0.20 |
+| **KAYMALI ankora** | −0.0927 | **−0.77** | **0.44** |
+| kazanma oranı (kaymalıya) | −6.0 puan | −1.35 | 0.18 |
+
+Canlı %95 GA **[−0.1535, +0.3209]** → kaymalı ankor (0.1764) **içeride**, sıfır da içeride.
+→ Canlı beklentinin **%47'si** hızında ama fark şansla açıklanabilir; ayrıca canlı veri tek
+başına botun kârlı olduğunu **kanıtlamıyor** (n yetersiz, alarm değil).
+
+**ÇIKIŞ KARIŞIMI UYUYOR** (asıl güven veren bulgu): sl %50.8 (ankor %52) · tp %24.2 (%25) ·
+max_hold %19.4 (%23). Kazanç/kayıp oranı canlı 9.40/3.83=**2.45** vs ankor 2.49/1.01=**2.47**.
+Yani mekanik doğru çalışıyor; eksik olan varsa sadece ölçek.
+
+**GÜÇ HESABI (günde 1.46 işlem):**
+- **~224 işlem → 2026-11-18**: canlının kârlı olduğu %95 güvenle gösterilebilir.
+- **~811 işlem → 2027-12**: canlı ile ankor AYIRT edilebilir.
+
+→ **KARAR: 2026-11-18'e kadar stratejide değişiklik YOK.** "Bot yavaş" gözlemi bugün
+istatistiksel olarak yok hükmünde; değişiklik yapsak iyileşmeyi ölçemeyiz. Arada tek iş
+sürtünme kolu (7-21 Ekim maker kararı), çünkü büyüklüğü a priori bilinir.
+
+**YAN DÜZELTME — `external_close` tezi ÖLÇÜLDÜ ve KÜÇÜLDÜ.** Hipotez: mutabakat döngüsü
+çıkışı bayat `current_price`'tan yazıyor, bu yüzden sapmalar sıfıra kırpılıyor (desen doğruydu:
+canlı +1.79R vs backtest +2.49R, −0.44R vs −1.00R, −0.65R vs −1.00R). AMA ölçüm:
+**124 işlemin yalnız 4'ü external_close, toplam +$0.50, ve `exit_price_estimated` damgası 0/124.**
+İşlemlerin %97'si (sl_hit/tp_hit/max_hold) mutabakat yoluna hiç uğramıyor. Etki işlem başına
+gerçek ama toplam ihmal edilebilir. Ledger'ın "16 uyum sapması" dosyası bununla KAPANMADI.
