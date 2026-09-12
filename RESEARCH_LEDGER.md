@@ -4990,3 +4990,50 @@ sıfıra yakın.
 
 **Getiri, elimizdeki bilgiyle iyileştirilemiyor. Yalnız oynaklık
 iyileştirilebiliyor, ve onun da en iyi aracı nakit.**
+
+## ✅ CANLI-ÖZEL KAPILAR ÖLÇÜLDÜ — %28 SAPMANIN SEBEBİ DEĞİL (2026-09-12)
+
+Hipotez: `uyum_testi.py` canlı ile backtest arasında **%72 eşleşme** ölçmüştü
+(aracın kendi eşiği "<%70 ise hüküm verme", yani %72 iyi değil, sınırda).
+O %28 hiç açıklanmadı. Şüphem: canlıda VAR ama ankorda YOK olan kapılar.
+
+İki tane bulundu ve ikisi de gerçekten ankorda yok:
+- **Ardışık kayıp cooldown'ı** (`consecutive_loss_limit=2`, `cooldown_minutes=240`)
+- **Korelasyon tavanı** (`max_correlated_direction=2`, grup {BTC,ETH,SOL})
+
+### Ölçüm: ikisi birlikte %0.2 etki yapıyor
+
+| kapı | atlanan işlem | atlananın değeri |
+|---|---|---|
+| cooldown (coin anahtarlı — **canlı hâli**) | **3** | −$13.94 |
+| korelasyon tavanı | **0** | $0.00 |
+| **ikisi birden** | **3** | **−$13.94** |
+
+Uyum oranı **%99.8**. Yani bu kapılar %28 sapmanın sebebi **değil** —
+%0.2'sini açıklıyorlar. **Hipotez çürüdü.**
+
+Üstelik cooldown para **kazandırıyor** (+$13.94), çünkü atladığı 3 işlem
+zararlıymış. Bu şans eseri: bugün ölçtüğüm 3-stop/24-saat versiyonu +$294
+kaybettiriyordu.
+
+### ⭐ YAN BULGU: cooldown'ın KAPSAMI kritik ve doğru ayarlanmış
+
+| anahtar | atlanan | değeri |
+|---|---|---|
+| **coin başına (canlı)** | 3 | **−$13.94** ✓ |
+| kol başına | 54 | **+$54.55** ✗ |
+
+Cooldown **kol** bazlı olsaydı yılda ~$17 kaybettirirdi. `execution.py:266`
+docstring'i bu kapsamı açıkça düzeltmiş ("bu docstring cooldown'ın hesap
+genelinde olduğunu iddia ediyordu, abartıydı"). O düzeltme para kazandırmış.
+
+### 📌 %28 SAPMA HÂLÂ AÇIK
+
+Elenen şüpheli: canlı-özel kapılar. Kalan adaylar (VPS gerektirir):
+zamanlama/anket farkı · canlı taze veri vs önbellek farkı · emir reddi
+(min-notional, marjin) · `uyum_testi`'nin eşleşme penceresinin kenar etkileri
+(n=68'de 19 sapma, bir kısmı pencere sınırında olabilir).
+
+⚠ Bu, ankorun canlıyı temsil etmesi açısından ÖNEMLİ: 34+ eksen ankora karşı
+ölçüldü. Ankor ile canlı arasında açıklanmamış %28'lik bir fark varsa, o
+ölçümlerin hepsi bir miktar kaygan zeminde duruyor.
