@@ -4770,3 +4770,45 @@ Küçük ama gerçek iyileştirmeler bu örneklemde GÖRÜNMEZ.
 
 **Terslik yok. Sistem, iyileştirmeye kapalı bir yerde değil — iyileştirmenin
 ÖLÇÜLEBİLİR olmadığı bir yerde.**
+
+## ⛔ REJİM ANAHTARLAMA — KESİN EŞİKLERLE TEST EDİLDİ (2026-09-12)
+
+Kullanıcı somut eşikler verdi: Trend modu = ADX>25 · CHOP<45 · KER>0.35
+(en az 2 onay); Range modu = ADX<20 VEYA CHOP>55. Donchian yalnız trend
+modunda açık olacak.
+
+| mod | n | pay | ort R | WR | toplam $ |
+|---|---|---|---|---|---|
+| TREND (2/3 onay) | 664 | %42.1 | **+0.2372** | %43.4 | +$815 |
+| RANGE | 543 | %34.4 | +0.1945 | %43.5 | +$472 |
+| **ikisi de değil** | 466 | %29.5 | **+0.2466** | %42.5 | +$474 |
+| taban | 1579 | %100 | +0.2373 | %43.5 | +$1755 |
+
+**Trend modunun ort R'si tabanla BİREBİR AYNI** (+0.2372 vs +0.2373). Kural
+hiçbir şey ayırmıyor. En iyi alt küme "ikisi de değil" grubu.
+
+**Kapı uygulansa 915 işlem ve +$940 silinirdi.**
+
+Üç gösterge tek tek, kullanıcının kendi eşikleriyle:
+
+| eşik | n | ort R | karşıtı | fark |
+|---|---|---|---|---|
+| ADX>25 | 688 | +0.2257 | +0.2462 | **−0.0205** |
+| CHOP<45 | 850 | +0.2306 | +0.2452 | **−0.0146** |
+| KER>0.35 | 644 | +0.2480 | +0.2299 | +0.0180 |
+
+İkisi ters yönde. Bu, 2026-09-11'deki üçlü rejim testiyle tutarlı: sistem
+rejimin BELİRGİN olduğu uçlarda iyi, trendli mi yatay mı olduğu fark etmiyor.
+
+### 3 ardışık stop → 24 saat kilit
+
+Simüle edildi: **446 işlem atlanırdı, değeri +$294.31.** Kilit para yakıyor.
+Not: canlıda zaten `CONSECUTIVE_LOSS_LIMIT=2` + `COOLDOWN_MINUTES=240` var,
+yani bu fikrin daha yumuşak bir sürümü uygulanmış durumda.
+
+### Neden hepsi aynı yöne düşüyor
+
+Bir kapı ancak kestiği alt kümenin ort R'si NEGATİF ise para kazandırır.
+Burada kesilen kümelerin ort R'si sırasıyla +0.2466 (rejim kapısı) ve
++0.66/işlem (kilit). Pozitif beklentili işlemleri silmek, tanımı gereği
+zarardır — deponun 290 denemelik permütasyon bulgusunun aynısı.
