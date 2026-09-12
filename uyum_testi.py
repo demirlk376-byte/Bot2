@@ -301,6 +301,44 @@ def main():
         print(f"    En olası adaylar: giriş kayması (ölçülen 15.32bp), çıkışların")
         print(f"    seviye fiyatından kaydedilmesi, ücret farkı.")
     en = sorted(fark, key=lambda f: abs(f[0] - f[1]), reverse=True)[:5]
+    # ── ÇIKIŞ SEBEBİNE GÖRE SAPMA (2026-09-12'de eklendi) ───────────────────
+    # İlk koşuda en büyük 5 sapmanın 4'ü `external_close` çıktı ve 3'ünde CANLI
+    # backtest'ten İYİ görünüyordu (−0.08 vs −1.00 gibi). Bu bir üstün performans
+    # DEĞİL, muhtemelen defter hatası: mutabakat (main.py:1739) sl_hit/tp_hit
+    # şartları o anda tutmuyorsa çıkışı GÜNCEL FİYATTAN yazıyor. Stop dolduktan
+    # sonra fiyat toparlanmışsa kayıp OLDUĞUNDAN KÜÇÜK kaydediliyor.
+    # Bu, "sistematik sapma yok" hükmünü MASKELEYEBİLİR — o yüzden hüküm
+    # satırının yanında çıkış-sebebi kırılımı da basılıyor.
+    from collections import defaultdict
+    kova = defaultdict(list)
+    for r, b in eslesen:
+        e = float(r["entry_price"] or 0); x = float(r["exit_price"] or 0)
+        sl = float(r["sl_price"] or 0)
+        if e <= 0 or x <= 0 or sl <= 0: continue
+        d = 1 if x > sl else -1
+        sld = abs(e - sl)
+        if sld <= 0: continue
+        cr = (x - e) / sld * (1 if (r["side"] or "").lower() in ("buy", "long") else -1)
+        kova[(r["exit_reason"] or "?")].append(cr - b["R"])
+    if kova:
+        print(f"\n  ÇIKIŞ SEBEBİNE GÖRE SAPMA (canlı R − backtest R):")
+        print(f"    {'sebep':<16s} {'n':>4s} {'ort sapma':>10s}  yorum")
+        for sb, v in sorted(kova.items(), key=lambda kv: -abs(np.mean(kv[1]))):
+            a = float(np.mean(v))
+            not_ = ""
+            if sb == "external_close" and a > 0.10:
+                not_ = "⚠ canlı İYİ görünüyor — defter hatası şüphesi"
+            print(f"    {sb:<16s} {len(v):>4d} {a:>+10.4f}  {not_}")
+        ec = kova.get("external_close", [])
+        if ec and float(np.mean(ec)) > 0.10:
+            duz = float(np.sum(ec))
+            print(f"\n    ⚠ {len(ec)} external_close işleminde toplam "
+                  f"{duz:+.2f}R FAZLA yazılmış olabilir")
+            print(f"      → eşleşen {len(eslesen)} işlemde ort R'yi "
+                  f"{duz/len(eslesen):+.4f} şişiriyor.")
+            print(f"      Sebep: fetch_close_fill() 30 gün boyunca hiç başarılı")
+            print(f"      olmadı (2026-09-11'de düzeltildi, veri henüz birikmedi).")
+
     print(f"\n  EN BÜYÜK 5 SAPMA:")
     for rc_, rb_, r, b in en:
         print(f"    {str(r['entry_time'])[:16]} {r['symbol'].split('/')[0]:<5s} "

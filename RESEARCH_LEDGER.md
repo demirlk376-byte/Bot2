@@ -5037,3 +5037,68 @@ zamanlama/anket farkı · canlı taze veri vs önbellek farkı · emir reddi
 ⚠ Bu, ankorun canlıyı temsil etmesi açısından ÖNEMLİ: 34+ eksen ankora karşı
 ölçüldü. Ankor ile canlı arasında açıklanmamış %28'lik bir fark varsa, o
 ölçümlerin hepsi bir miktar kaygan zeminde duruyor.
+
+## ✅ UYUM TESTİ DÜZELTİLDİ — ANKORUN ZEMİNİ DOĞRULANDI, AMA BİR ÇEKİNCEYLE (2026-09-12)
+
+Üç araç kusuru düzeltilip yeniden koşuldu (VPS, taze veri):
+
+| ölçü | önce | sonra |
+|---|---|---|
+| eşleşme | 51/74 (%69) | **58/74 (%78)** |
+| ankorda olmayan kol | 5 (`mean_rev`) | **0** |
+| gerçek ayrışma | 18 | **16** |
+
+Etiket düzeltmesi (`mean_rev` → `bb`) 5 sahte ayrışmayı temizledi ve kapsama
+%70 eşiğini geçtiği için **hüküm ilk kez verilebildi**:
+
+```
+n=58 eşleşmiş işlem
+canlı ort R    +0.0997
+backtest ort R +0.1137
+FARK           −0.0140 ± 0.0535 (%95)   z = −0.51
+✓ SİSTEMATİK SAPMA YOK
+```
+
+**Ankorun 34+ eksende kullanılan zemini DOĞRULANDI.** Bu, bu oturumun en
+önemli tek sonucu: bugüne kadarki bütün ölçümler geçerli bir tabana oturuyor.
+
+### ⚠ AMA BİR ÇEKİNCE VAR VE KÜÇÜK DEĞİL
+
+En büyük 5 sapmanın **4'ü `external_close`**, ve **3'ünde canlı backtest'ten
+İYİ** görünüyor:
+
+| coin | canlı | backtest | fark | sebep |
+|---|---|---|---|---|
+| SOL | −0.08R | −1.00R | **+0.92** | external_close |
+| ICP | −0.44R | −1.00R | **+0.56** | external_close |
+| ETH | −0.65R | −1.00R | **+0.35** | external_close |
+
+`external_close`, mutabakatın (main.py:1739) sl_hit/tp_hit şartlarını o anda
+tutturamayıp çıkışı **güncel fiyattan** yazması demek. Stop dolduktan SONRA
+fiyat toparlanmışsa, defter gerçek dolumu değil **toparlanmış fiyatı**
+kaydediyor — yani **kayıp olduğundan küçük görünüyor**.
+
+Bu üç işlem gerçekte −1.00R olsaydı:
+
+```
+canlı ort R  +0.0997 → +0.0681
+fark         −0.0140 → −0.0456
+z            −0.51   → ~−1.7
+```
+
+Hâlâ güven aralığı içinde ama **"sapma yok" hükmü, defterin kayıpları küçük
+yazmasıyla kısmen maskelenmiş olabilir.**
+
+Ve bu tam olarak 2026-09-11'de düzelttiğim `fetch_close_fill` hatası:
+fonksiyon 30 gün boyunca hiç başarılı olmadı, o yüzden bu üç işlemde de gerçek
+dolum okunamadı. Düzeltme canlıda henüz veri üretmedi.
+
+**Araca çıkış-sebebi kırılımı eklendi**: artık sapmalar `exit_reason` bazında
+ayrı raporlanıyor ve `external_close` pozitif yönde saparsa açıkça
+"defter hatası şüphesi" diye işaretleniyor.
+
+### 📌 Sıradaki ölçüm
+
+`fetch_close_fill` düzeltmesi birkaç hafta veri ürettikten sonra uyum testi
+yeniden koşulmalı. O zaman `external_close` sapması kaybolmalı; kaybolmazsa
+sebep başka yerdedir. Kalan 16 gerçek ayrışma da o koşuda yeniden sayılacak.
