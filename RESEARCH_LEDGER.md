@@ -5201,3 +5201,59 @@ stop testini (kaymasız yapılmıştı) geçersiz kılabilirdi. Ölçüldü:
 | 4.0 | %9.60 | +528 | −342 |
 
 **2×ATR kayma dâhil edilince de optimum.** Optimum kaymıyor, mevcut ayar doğru.
+
+---
+
+## ⛔ TP SONRASI YENİDEN GİRİŞ — ÖLDÜ (2026-09-12, `tp_devam.py`)
+
+Depoda **stop sonrası** yeniden giriş test edilmişti (−$112 / −$96). Bu farklı: pozisyon açık
+tutulmuyor, kâr TP'de bankaya yazılıyor, sonra KENDİ −1R tavanı olan yeni pozisyon açılıyor.
+Dayanağı ölçülmüş bir gözlem: TP'de çıkan işlemler sonraki 30 barda ort **+4.90R**'ye gidiyor,
+%62'si yarım R'den fazla devam ediyor.
+
+Taban birebir üretildi: 1579 işlem · kaymasız $+1755.21 · kaymalı $+1331.66 · maxDD %27.98 ·
+en kötü ay %−26.38 (kıyas geçerli).
+
+| varyant | n | WR | ort R | kaymasız Δ$ | KAYMALI Δ$ | ΔmaxDD | Δkötüay |
+|---|---|---|---|---|---|---|---|
+| 1x devam · rr 2.5 | 1698 | %42.6 | +0.2270 | +57.95 | **+40.10** | −2.78 | **−5.52** |
+| 1x devam · rr 2.0 | 1715 | %42.7 | +0.2190 | +2.75 | −18.57 | −1.74 | −5.52 |
+| 1x devam · rr 1.5 | 1722 | %42.9 | +0.2083 | −89.33 | −112.18 | −2.07 | −5.52 |
+| 2x devam · rr 2.5 | 1722 | %42.4 | +0.2222 | +45.98 | +24.95 | −3.80 | −5.52 |
+| 3x devam · rr 2.5 | 1731 | %42.3 | +0.2206 | +42.36 | +20.10 | −3.17 | −5.52 |
+
+**ÜÇ BAĞIMSIZ RET:**
+
+1. **Kâr gürültü tavanının altında.** 5 hücrenin σ'sı 61.5 → tavan σ√(2ln5)=**±110**. En iyi
+   hücre +40.10, tavanın yalnız **%36'sı**. Yıllık kârın %+3.01'i.
+2. **En kötü ay 5.5 puan derinleşiyor** (−%26.28 → −%31.90). Ön-kayıtlı bar tek başına reddediyor.
+3. **rr'ye duyarsız** — kanıtlandı, hata değil: Δkötüay üç varyantta da bire bir −5.52 çünkü
+   2025-12'de TP sonrası girilen pozisyonların HİÇBİRİ hiçbir hedefe (2.5/2.0/1.5R) ulaşmıyor,
+   hepsi −1R oluyor. Sinyal yok, sadece ekstra maruziyet.
+
+Kaymasız +$57.95 → kaymalı +$40.10: kazancın **%31'i sürtünmeye** gidiyor.
+İlginç yan bulgu: maxDD HER varyantta iyileşiyor (−1.7..−3.8 puan) — seansın deseni yine
+tekrarlıyor (müdahaleler volatiliteyi düşürüyor, getiriyi değil).
+
+## 📐 NEDEN HİÇBİR ŞEY İŞE YARAMIYOR — TESPİT TABANI (2026-09-12)
+
+Kullanıcının "bu işte bir terslik olmalı" sorusunun niceliksel cevabı. Terslik yok; **veri sınırı** var.
+
+n=1579, σ_R=1.465, edge=+0.2373R → ort R'nin standart hatası **0.0369R**.
+
+| eşik | görülebilir en küçük iyileşme | mevcut edge'in |
+|---|---|---|
+| %90 güven | +0.0606R | %26'sı |
+| %95 güven (2σ) | +0.0723R | **%30'u** |
+| çoklu-test sonrası (~%99) | +0.0959R | %40'ı |
+| ay-blok korelasyonu dahil | ~+0.10R | ~%43'ü |
+
+**Edge'i %30'dan az iyileştiren hiçbir fikir bu veride görünemez.** Gerçekten +%15 kazandıran bir
+filtre bile null döner. Bu yüzden 12 fikir ailesi (giriş filtresi · çıkış varyantı · zaman stopu ·
+kısmi TP · rejim anahtarlama · kötü-ay kapısı · genişlik · korelasyon tavanı · mean-reversion ·
+stop sonrası giriş · TP sonrası giriş · CAP) null döndü.
+
+**AKSİYON SONUCU — arama stratejisi değişiyor:** tespit tabanının altındaki iyileştirmeleri
+aramayı bırak. Sadece **büyüklüğü a priori BİLİNEN** değişiklikleri kovala; onlar istatistik
+gerektirmez. Bugün elde kalan tam da bunlar: maker giriş (+%13.3), timeout-limit çıkış (+%4.8),
+MX token (+%0.6) = yıllık kârın **+%17.2'si**, hiçbiri hipotez değil, hepsi aritmetik.
