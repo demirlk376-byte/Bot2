@@ -4858,3 +4858,72 @@ beklentisi pozitif kalıyor.
 
 Bir duraklama ancak atladığı kümenin toplamı NEGATİF ise kazandırır.
 36 hücrenin 36'sında pozitif.
+
+## ⛔ KOŞULLU ÇIKIŞ (aşırı şişmiş girişlerde trailing / scale-out) — VARSAYIM TERS ÇIKTI (2026-09-12)
+
+Kullanıcı: *"RSI 80 üzerindeyse veya fiyat EMA200'den aşırı uzaksa, ters
+sinyali beklemek yerine sert trailing ya da kademeli kâr al devreye girsin."*
+
+Bu, daha önce reddedilenden farklıydı: trailing (10/10) ve kısmi TP (−$191)
+**bütün** işlemlere uygulanmıştı; buradaki fikir **hedeflenmiş**. Önce
+ön koşul soruldu: "aşırı şişme" diye bir kategori var mı?
+
+### ⭐ ÖN KOŞUL DÜŞTÜ — ve ters yönde
+
+Fikrin temeli "bu girişler daha çok geri veriyor ve devamı gelmiyor"du.
+Ölçüldü, **tam tersi**:
+
+| ölçü | RSI>70 (n=555) | dışarıda | tez ne diyordu |
+|---|---|---|---|
+| ort R | **+0.331** | +0.186 | daha kötü olmalı |
+| elde tutma (R/MFE) | **%20.5** | %14.0 | daha düşük olmalı |
+| çıkış sonrası devam | **2.20** | 1.97 | daha düşük olmalı |
+| yıl-yıl | 4/4 pozitif | — | — |
+
+**Aşırı şişmiş girişler işlemlerin %35'i ama net kârın %54'ü** (+$946/$1755).
+
+### "Aşırı şişme" bir KATEGORİ değil, MEDYAN
+
+Donchian'da yön düzeltilmiş RSI: p5=63.6, **medyan 69.7**, p95=82.3, dağılım
+**tek tepeli**. "RSI>70" donchian işlemlerinin **%48'i**. Bir kırılım
+stratejisi **tanımı gereği** aşırı alımda girer. Ayrı bir tür değil, aynı
+türün üst yarısı.
+
+### Kapı "hedeflenmiş" değil, genel
+
+Kullanıcının VEYA kapısı (RSI>70 VEYA ema200_atr>4):
+
+| kapsam | pay |
+|---|---|
+| işlemler | %56.7 |
+| net kâr | %56.0 |
+| **en iyi %1'lik dilim** | **%93.8** |
+| en iyi %5'lik dilim | %83.5 |
+
+Yani 10/10 düşen genel trailing ile **pratikte aynı yüzey**. "Bu farklı çünkü
+koşullu" gerekçesi sayısal olarak geçersiz.
+
+### Ve yön ters: trailing tam orada daha çok kazanan keser
+
+TP ile kazananların tepesinden 1R+ geri çekilme oranı: e200>4 kesitinde
+**%63.1**, dışarıda %53.1. Kurtarılacak whipsaw oranı ise her kesitte tabanla
+**aynı** (%22.3 vs %22.6).
+
+### Sonuç: iki müdahale de düştü
+
+**Trailing:** görevin birebir tarifinde (TP duruyor) **40/40 negatif**, en iyi
+−$9. Karar ajanı bağımsız kodla yeniden koştu: **40/40 negatif**, en iyi
+−$40.53. İki bağımsız uygulama aynı işareti verdi.
+
+**Scale-out: 72/72 negatif** ve YAPISAL. Kayıp kapatılan oranla **tam doğrusal**
+ölçekleniyor (`ΔR = f·(x − brütR)`), yani eşik/etkileşim etkisi yok, sadece
+ölçek. Eşli t değerlerinin hiçbiri pozitif değil (−3.67 … −1.41); saf gürültüde
+yarısı pozitif olmalıydı.
+
+### ⚠ Izgaradaki tek pozitif rakam fikre ait DEĞİL
+
++$222.08 görünen hücre atribüsyonla çözüldü: **+$233.97'si koşullu TP
+kaldırmadan** geliyor, trailing **−$11.88 götürüyor**. Ve en kötü ayı
+%−26.38'den **%−45.01**'e taşıyor. TP kaldırma zaten reddedilmişti
+(en kötü ay −21% → −29.7%). Yürüyen-ileri OOS'ta o kol bile toplam +$26.56
+= **0.09 sigma**.
