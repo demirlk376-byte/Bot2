@@ -53,7 +53,20 @@ def taze_cek(coin, gun=200):
     p = UYUM.format(coin=coin)
     if os.path.exists(p):
         m = pd.read_csv(p, index_col=0, parse_dates=True)
-        print(f"    {coin}: {p} var ({len(m)} bar), yeniden çekilmedi")
+        # ⚠ 2026-09-12: önbellek BİR DAHA YENİLENMİYORDU. Araç eskidikçe taze
+        #    veri geride kalıyor ve o pencereden SONRAKİ her canlı işlem
+        #    "backtest'te YOK" diye sayılıyor — sahte ayrışma üretiyor.
+        #    Sessizce yanlış cevap vermektense DURUYORUZ.
+        son = pd.Timestamp(m.index.max())
+        if son.tzinfo is None:
+            son = son.tz_localize("UTC")
+        yas = (pd.Timestamp.now(tz="UTC") - son).total_seconds() / 86400
+        if yas > 2.0:
+            print(f"    ✗ {coin}: önbellek {yas:.1f} GÜN eski (son bar {son:%Y-%m-%d %H:%M}).")
+            print(f"      Bu dosyayla koşmak SAHTE AYRIŞMA üretir. Sil ve yeniden koş:")
+            print(f"        rm data/*_uyum_1h.csv")
+            sys.exit(2)
+        print(f"    {coin}: {p} var ({len(m)} bar, {yas:.1f} gün taze)")
         return m
     import ccxt
     ex = ccxt.mexc({"options": {"defaultType": "swap"}, "enableRateLimit": True})
@@ -78,12 +91,22 @@ def taze_cek(coin, gun=200):
     return m
 
 
+# Canlı defter ile ankor AYNI KOLA FARKLI AD veriyor. 2026-09-12'de yakalandı:
+# teşhis 5 işlemi "ankorda olmayan kol {'mean_rev': 5}" diye raporladı, oysa o
+# kol ankorda VAR — adı `bb`. Etiket uyuşmazlığı olduğu için eşleştirme
+# (b["kol"] == k) o işlemleri ASLA eşleştiremiyordu ve hepsi "ayrışma" diye
+# sayılıyordu. Tek yönlü, sessiz, ve %28'in bir kısmını tek başına açıklıyor.
+_KOL_ESLEK = {"mean_rev": "bb", "meanrev": "bb", "mean-reversion": "bb",
+              "bollinger": "bb", "donch": "donchian", "sqz": "squeeze"}
+
+
 def _kol(js):
     try:
         d = json.loads(js or "{}")
-        return str(d.get("strategy") or d.get("sleeve") or "?")
+        ham = str(d.get("strategy") or d.get("sleeve") or "?").strip().lower()
     except Exception:
         return "?"
+    return _KOL_ESLEK.get(ham, ham)
 
 
 def main():
@@ -135,6 +158,22 @@ def main():
                             # bar başlangıcı + tf = canlının GERÇEKTEN girdiği an
                             "e": pd.Timestamp(t[0], tz="UTC") + KAPANIS[kol_ad],
                             "x": pd.Timestamp(t[1]), "R": t[2], "slp": t[3]})
+    # ⚠ ISINMA KAPSAMASI: A.gen range(260, n-1) ile başlıyor — ilk 260 bar
+    #    sinyal üretmez. Taze veri `bas`tan hemen önce başlıyorsa, `bas`ı izleyen
+    #    ilk haftaların sinyalleri EKSİK olur ve canlı işlemleri sahte ayrışma
+    #    gibi görünür. Donchian 4h'te 260 bar = 43 GÜN.
+    ilk_bar = min((pd.Timestamp(v.index.min()) for v in veri.values()), default=None)
+    if ilk_bar is not None:
+        if ilk_bar.tzinfo is None:
+            ilk_bar = ilk_bar.tz_localize("UTC")
+        isinma_biter = ilk_bar + pd.Timedelta(hours=4) * 260
+        if isinma_biter > bas:
+            print(f"\n  ⚠ ISINMA UYARISI: taze veri {ilk_bar:%Y-%m-%d} başlıyor, "
+                  f"donchian ısınması {isinma_biter:%Y-%m-%d}'e kadar sürüyor —")
+            print(f"    ama karşılaştırma {bas:%Y-%m-%d}'ten başlıyor. Aradaki "
+                  f"{(isinma_biter-bas).days} günün sinyalleri EKSİK sayılacak.")
+            print(f"    Daha uzun veri çek (taze_cek gun= parametresi) ya da "
+                  f"bu dönemi hükümden düş.")
     bek = [b for b in bek if b["e"] >= bas]
     bek.sort(key=lambda b: b["e"])
 
