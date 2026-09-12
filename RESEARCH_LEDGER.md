@@ -5148,3 +5148,56 @@ BTC'nin 0.75'inin üstündedir.
 
 ⚠ BİLEŞİK KIYAS: botun sabit-oran maxDD'si %27.35, bileşik hâli **%48.78** —
 yani BTC'nin %52.97'siyle aynı mertebede. Aynı drawdown'da 3.5 kat getiri.
+
+## 💸 SÜRTÜNME AZALTMA PLANI — ne kadarı GERÇEKTEN alınabilir (2026-09-12)
+
+Kullanıcı yüzdeyle konuşulmasını istedi. Her şey **yıllık brüt kârın yüzdesi**.
+
+| kalem | yıllık % | alınabilir | dayanak |
+|---|---|---|---|
+| giriş kayması | **%24.2** | %13.3 gerçekçi (%21.7 iyimser) | ÖLÇÜLDÜ 15.85bp n=54 |
+| çıkış kayması SL | %12.4 | **%0** | TAHMİN · stop piyasa emri, kaçınılmaz |
+| çıkış kayması SÜRE | %4.8 | %4.8 | TAHMİN · limit yapılabilir |
+| ücret | %3.0 | %0.6 | MX indirimi ~%20 |
+| funding | %2.2 | %0 | yön/süreye bağlı |
+| **TOPLAM** | **%46.6** | **%17.2 gerçekçi** | |
+
+### ⚠ ÖNCEKİ RAKAMIMDA HATA: MX indirimi %7.9 DEĞİL %0.6
+
+Daha önce MX token indirimini "yıllık kârın %7.9'u" yazmıştım. **Yanlış.**
+Ücretin TAMAMI %3.0; indirim onun %20'si = **%0.6**. Eski rakam ($43/yıl)
+canlı hesabın ücret ölçümünden geliyordu ve ankor tabanına çevrilmemişti.
+İki farklı taban karıştırılmıştı.
+
+### Sıralama — değer × kesinlik
+
+**1. Maker girişi (%13.3 gerçekçi).** Havuzun en büyüğü. Donchian'da
+2026-09-09'dan beri açık, hüküm Ekim'de. Squeeze kontrol grubu — oranlı yükü
+3 kat büyük olduğu için hüküm olumluysa oraya taşımak asıl kazanç.
+İyimser %21.7 (dolum %100), gerçekçi %13.3 (dolum ~%65, ters seçim düşülmüş).
+
+**2. Süre çıkışlarını limite çevirmek (%4.8).** Süre çıkışı 30 bar önceden
+belli, piyasa emri olmak zorunda değil. AMA bu rakam bir TAHMİN — çıkış
+kayması hiç ölçülmedi. `fetch_close_fill` 2026-09-11'de düzeltildi, birkaç
+hafta veri birikmesi gerekiyor. **Ölçmeden kod değiştirilmez.**
+
+**3. MX token (%0.6).** Küçük ama bedava, kullanıcı tarafında.
+
+**4. SL çıkış kayması (%12.4) — ALINAMAZ.** Stop piyasa emridir; limit stop
+dolmama riski taşır ve o çok daha pahalıdır.
+
+**5. Funding (%2.2) — kontrol yok.**
+
+### ✅ Stop genişliği zaten optimal (kayma dâhil doğrulandı)
+
+Kayma `bp/stop` olarak işlediği için geniş stoplar daha az öder — bu, eski
+stop testini (kaymasız yapılmıştı) geçersiz kılabilirdi. Ölçüldü:
+
+| sl_atr | ort stop | kaymalı $ | Δ |
+|---|---|---|---|
+| 1.5 | %3.77 | +870 | −201 |
+| **2.0 (canlı)** | %4.96 | **+1072** | **0** |
+| 2.5 | %6.11 | +804 | −66 |
+| 4.0 | %9.60 | +528 | −342 |
+
+**2×ATR kayma dâhil edilince de optimum.** Optimum kaymıyor, mevcut ayar doğru.
