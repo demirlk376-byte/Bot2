@@ -173,13 +173,45 @@ def main():
     kaps = len(eslesen) / max(len(kapali), 1)
     print(f"  eşleşen {len(eslesen)}/{len(kapali)} (%{kaps*100:.0f}) · "
           f"eşleşmeyen {len(eslesmeyen)}")
-    for r in eslesmeyen[:6]:
-        print(f"    ⚠ backtest'te YOK: {str(r['entry_time'])[:16]} "
-              f"{r['symbol'].split('/')[0]} {_kol(r['strategy_scores'])}")
+    # ── EŞLEŞMEYENLERİN TEŞHİSİ (2026-09-12'de eklendi) ─────────────────────
+    # Önceki sürüm yalnız ilk 6'sını listeliyordu ve "%28 eşleşmiyor" diye
+    # açıklanmamış bir rakam bırakıyordu. Oysa eşleşmemenin ÜÇ AYRI sebebi var
+    # ve üçü TAMAMEN farklı şeyler:
+    #   (a) KOL ANKORDA YOK — canlıda ORB/AsiaBO/FVG/IFVG/S-R açıksa ankor o
+    #       sinyali hiç üretmez. Bu bir uyumsuzluk DEĞİL, kapsam farkıdır.
+    #   (b) COIN ANKORDA YOK — evren dışı bir coin.
+    #   (c) KOL ve COIN ANKORDA VAR ama sinyal yok → GERÇEK AYRIŞMA. Asıl
+    #       endişe budur ve yalnız bu sayı "uyum sorunu" diye raporlanmalı.
+    ANKOR_KOL = {"donchian", "squeeze", "bb"}
+    ANKOR_COIN = set(A.DONCH) | set(A.SQZ) | set(A.BB_COINS)
+    from collections import Counter
+    kol_yok, coin_yok, gercek = [], [], []
+    for r in eslesmeyen:
+        c = r["symbol"].split("/")[0]; k = _kol(r["strategy_scores"])
+        if k not in ANKOR_KOL: kol_yok.append((c, k))
+        elif c not in ANKOR_COIN: coin_yok.append((c, k))
+        else: gercek.append((c, k, str(r["entry_time"])[:16]))
     if eslesmeyen:
-        print(f"  → Eşleşmeyen işlem, canlının backtest'in ÜRETMEDİĞİ bir sinyalle")
-        print(f"    işlem açtığı anlamına gelir. Az sayıda ise zamanlama/veri")
-        print(f"    kayması, çok ise GERÇEK bir ayrışmadır.")
+        print(f"\n  EŞLEŞMEYENLERİN TEŞHİSİ ({len(eslesmeyen)} işlem):")
+        print(f"    (a) ankorda OLMAYAN kol   : {len(kol_yok):>3d}  "
+              f"{dict(Counter(k for _, k in kol_yok)) if kol_yok else ''}")
+        print(f"    (b) ankorda OLMAYAN coin  : {len(coin_yok):>3d}  "
+              f"{dict(Counter(c for c, _ in coin_yok)) if coin_yok else ''}")
+        print(f"    (c) GERÇEK AYRIŞMA        : {len(gercek):>3d}  ← asıl endişe")
+        for c, k, t in gercek[:8]:
+            print(f"        {t}  {c:<5s} {k}")
+        if kol_yok or coin_yok:
+            print(f"    → (a) ve (b) uyumsuzluk DEĞİL, KAPSAM farkı: canlıda ankorun")
+            print(f"      modellemediği kol/coin çalışıyor. Ankorun canlıyı temsil")
+            print(f"      etmediği anlamına gelir ve bu AYRI bir sorundur.")
+        if gercek:
+            print(f"    → (c) canlının, ankorun ÜRETMEDİĞİ bir sinyalle işlem açması.")
+            print(f"      Sebep adayları: taze veri vs önbellek farkı · zaman damgası ·")
+            print(f"      gösterge penceresi. Bu sayı büyükse ankor GÜVENİLMEZ.")
+        # asıl uyum oranı: kapsam farkı hariç
+        temiz = len(eslesen) / max(len(eslesen) + len(gercek), 1)
+        print(f"\n    KAPSAM FARKI HARİÇ gerçek uyum: %{temiz*100:.0f} "
+              f"({len(eslesen)}/{len(eslesen)+len(gercek)})")
 
     if kaps < 0.70:
         print(f"\n  ⛔ Kapsama %70'in ALTINDA — sistematik sapma hükmü VERİLMEZ.")
