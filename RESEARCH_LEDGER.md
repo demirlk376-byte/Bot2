@@ -4812,3 +4812,49 @@ Bir kapı ancak kestiği alt kümenin ort R'si NEGATİF ise para kazandırır.
 Burada kesilen kümelerin ort R'si sırasıyla +0.2466 (rejim kapısı) ve
 +0.66/işlem (kilit). Pozitif beklentili işlemleri silmek, tanımı gereği
 zarardır — deponun 290 denemelik permütasyon bulgusunun aynısı.
+
+## ⛔ DRAWDOWN TETİKLİ DURAKLAMA — 36 HÜCRE, GEÇEN 0, VE DRAWDOWN'I KÖTÜLEŞTİRİYOR (2026-09-12)
+
+Kullanıcı: *"bot %5 zarar ettiğinde rejim tekrar düzelene kadar tradeleri
+durdursak nasıl olur?"*
+
+`dd_durdur.py`: tetik equity'nin tepeden düşüşü; karar YALNIZ o ana kadar
+KAPANMIŞ işlemlerden (nedensel). Üç yeniden-başlama ailesi × 4 tetik = 36 hücre.
+
+### Sonuç: 36/36 düştü, ve 36/36'sında atlanan işlemler KÂRLIYDI
+
+| tetik | yeniden başlama | atlanan | atlananın değeri | Δ$ | ΔmaxDD |
+|---|---|---|---|---|---|
+| %5 | ADX≥20 olunca | 78 | **+$114** | −$114 | +0.89 |
+| %5 | 7 gün sonra | 376 | **+$961** | −$961 | +21.15 |
+| **%5** | **DD %0'a inince** | **463** | **+$1119** | **−$1119** | **+29.02** |
+| %10 | 3 gün sonra | 72 | +$152 | −$152 | +4.11 |
+| %20 | 1 gün sonra | 9 | +$78 | −$78 | +0.77 |
+
+En agresif hâlinde **kârın %64'ü** siliniyor.
+
+### ⭐ ASIL BULGU: DURAKLAMA maxDD'Yİ KÖTÜLEŞTİRİYOR
+
+Sezgiye tamamen ters ve 36 hücrenin çoğunda böyle: %5 tetik + DD %0 kuralında
+maxDD **%27.35 → %56.37** (+29 puan). Mekanizma: duraklama tam dipte devreye
+giriyor ve **toparlanmayı kaçırıyor**; equity aşağıda kalınca drawdown hem
+DAHA UZUN sürüyor hem DAHA DERİN ölçülüyor.
+
+Bu, `pf_killswitch`'in (2026-07-27, 27/27 red) kayıtlı mekanizmasının aynısı:
+*"aylık PnL ortalamaya döner (−0.345), kill-switch tam dipte küçültür,
+toparlanmayı küçük pozisyonla karşılar."*
+
+Ve 2026-09-10'da gün bazında bağımsız olarak ölçülmüştü: gün-gün otokorelasyon
+**−0.018**, ve **zararlı bir gün ertesi günü hafifçe İYİ öngörüyor**
+(%50.6 vs taban %52.6). Yani kötü gitmek, devamının kötü geleceği anlamına
+gelmiyor — tam tersi.
+
+### Neden hiçbir yeniden-başlama kuralı kurtarmıyor
+
+Üç aile de denendi: sabit süre (1/3/7 gün), equity toparlanması (%3/%1/%0'a
+inince), rejim (ADX≥20/25/30). **Hiçbiri işe yaramıyor** çünkü sorun ne zaman
+geri döneceğinde değil, **durmanın kendisinde**: durulan pencerede işlemlerin
+beklentisi pozitif kalıyor.
+
+Bir duraklama ancak atladığı kümenin toplamı NEGATİF ise kazandırır.
+36 hücrenin 36'sında pozitif.
