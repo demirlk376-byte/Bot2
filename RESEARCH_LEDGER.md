@@ -4927,3 +4927,66 @@ kaldırmadan** geliyor, trailing **−$11.88 götürüyor**. Ve en kötü ayı
 %−26.38'den **%−45.01**'e taşıyor. TP kaldırma zaten reddedilmişti
 (en kötü ay −21% → −29.7%). Yürüyen-ileri OOS'ta o kol bile toplam +$26.56
 = **0.09 sigma**.
+
+## 🔭 KENDİ ÜÇ FİKRİM (2026-09-12) — ve ortaya çıkan DESEN
+
+Kullanıcı "sen de bir fikir bulsan" dedi. Bugünkü ölçümlerden üç fikir türettim
+ve üçünü de aynı hakemden geçirdim.
+
+**Fikir 1 — REJİM NETLİĞİ.** Gün boyu tekrarlanan U şeklinden: uçlar iyi
+(trend +0.3487, range +0.3959), orta kötü (n=1323, +0.2126). Netlik =
+üç göstergenin medyandan uzaklığı; netliğe orantılı boyut, Σrisk sabit.
+→ Δ$ +$52.60 (kaymalı). **Null ortalaması +$59.29, p=0.5625.**
+Gerçek değer null ORTALAMASININ ALTINDA. U şekli gürültüymüş. **ÖLÜ.**
+
+**Fikir 2 — KAYMA FARKINDA BOYUTLANDIRMA.** Kaymanın R bedeli `15.85bp/stop`
+olarak TAM BİLİNİYOR ama boyutlandırma onu hiç hesaba katmıyor. Çok kayma
+ödeyene az bahis koy (Σrisk sabit).
+
+| ölçü | gerçek | null ort | p |
+|---|---|---|---|
+| Δ$ | +$28.76 | +$60.31 | **0.7698** |
+| ΔmaxDD | **−2.85** | +0.94 | **0.0295** |
+
+**Kâr tarafı ölü** (null'dan kötü). **Ama drawdown düşüşü ANLAMLI.**
+
+**Fikir 3 — KAYMA DÜŞÜLÜNCE OPTİMAL CAP.** `pw_cap` kaymasız ölçmüştü; kayma
+dar stopluları 3.5 kat ağır vurduğu ve CAP tam onlara bahis koyduğu için
+optimum kayabilirdi. Kaymalı doz-yanıt:
+
+| CAP | kaymalı kâr | Δ | maxDD | en kötü ay |
+|---|---|---|---|---|
+| 0.75 | +$1108 | −$224 | %22.80 | −%29.04 |
+| 1.50 (canlı) | +$1332 | — | %34.27 | −%32.62 |
+| 3.00 | **+$1452** | **+$120** | %36.65 | −%32.27 |
+
+Kayma dahil bile **yüksek CAP hâlâ kazanıyor** — optimum kaymıyor. Ama
+CAP 3.0'da maxDD +2.38 puan, bar +2. Kıl payı kalıyor, ve zaten marjin
+duvarına takılı.
+
+Kombinasyon tablosu (CAP × kayma-farkında güç, 9 hücre): **geçen 0.**
+En yakını CAP 2.5 · güç 0.0 → Δ$ +$34.61 (bar +36), maxDD +0.81, kötü ay +1.90.
+
+### 📌 ORTAYA ÇIKAN DESEN — oturumun en derin bulgusu
+
+**İstatistiksel testten geçen HER müdahale oynaklığı azaltıyor, HİÇBİRİ
+getiriyi artırmıyor.** Dört bağımsız vaka:
+
+| müdahale | kâr etkisi | oynaklık etkisi |
+|---|---|---|
+| kol ağırlıklandırma (09-09) | p=0.06 (yok) | aylık std **p=0.026** |
+| nakit kontrolü (09-11) | Sharpe DEĞİŞMİYOR | DD %48.78→%41.26 |
+| kayma-farkında boyut (09-12) | p=0.77 (yok) | maxDD **p=0.0295** |
+| ATR tamponu (09-11) | kaliteyi artırıyor | hacmi kaybediyor |
+
+Bu tesadüf değil, **bilgi kısıtı**: hangi işlemin kazanacağını bilmiyoruz
+(4 kanal, hepsi null), ama hangi işlemin OYNAK olacağını biliyoruz (stop
+mesafesi, eşzamanlılık, kayma yükü — hepsi giriş anında kesin).
+
+**Ve pratik sonucu acı:** oynaklık azaltma zaten NAKİTTE bedava. Kitap × 0.80
+maxDD'yi 7.5 puan düşürüyor, Sharpe'ı değiştirmiyor, bakım yükü sıfır.
+Karmaşık boyutlandırma şemalarının nakdin üstüne kattığı istatistiksel olarak
+sıfıra yakın.
+
+**Getiri, elimizdeki bilgiyle iyileştirilemiyor. Yalnız oynaklık
+iyileştirilebiliyor, ve onun da en iyi aracı nakit.**
