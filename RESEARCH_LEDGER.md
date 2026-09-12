@@ -5102,3 +5102,49 @@ ayrı raporlanıyor ve `external_close` pozitif yönde saparsa açıkça
 `fetch_close_fill` düzeltmesi birkaç hafta veri ürettikten sonra uyum testi
 yeniden koşulmalı. O zaman `external_close` sapması kaybolmalı; kaybolmazsa
 sebep başka yerdedir. Kalan 16 gerçek ayrışma da o koşuda yeniden sayılacak.
+
+## ✅ UYUM AYRIŞMASI — ÜÇ HİPOTEZ ELENDİ (2026-09-12)
+
+Kalan 16 gerçek ayrışmanın sebebi arandı. Üçü de yerelde ölçüldü ve **üçü de
+elendi**:
+
+**1. Veri farkı — ELENDİ.** Ankorun önbelleği (`_fut_1h.csv`) ile borsadan
+taze çekilen (`_uyum_1h.csv`) veri 12 coinde, coin başına ~3600 örtüşen barda
+karşılaştırıldı: **ortalama sapma 0.0000 bp, farklı kapanış sayısı 0, eksik
+bar 0.** Ankor ile canlı **aynı mumları** görüyor.
+
+**2. Gösterge penceresi — ELENDİ.** Canlı `get_candles(confirm_tf, 260)` ile
+260 bar çekiyor; backtest `d.iloc[max(0,i-259):i+1]` ile 260 bar veriyor.
+Birebir aynı. (EMA200 pencereye duyarlıdır, o yüzden bu gerçek bir şüpheliydi.)
+
+**3. MTF kapısı — ELENDİ.** DURUM "canlıda 1017 sinyalin 0'ını blokluyor"
+diyordu; backtest'te de **2004 sinyalin yalnız 1'ini** blokluyor. Fark yok.
+
+**Kalan tek makul açıklama: OCCUPANCY CASCADE.** `A.gen` coin başına
+`if i <= occ: continue` uyguluyor; canlı da coin başına tek pozisyon tutuyor.
+Çıkış zamanlaması ufak bir farkla kayarsa, sonraki sinyaller birinde bastırılıp
+diğerinde açılır ve fark **zincirleme** büyür. Bu bir kusur değil, iki
+sistemin aynı kuralı biraz farklı anlarda uygulamasının doğal sonucu.
+Doğrulaması canlı işlem listesi gerektirir (VPS).
+
+## 📊 AL-TUT KIYASI — hiç sorulmamıştı (2026-09-12)
+
+Bot çalıştırmaya değer mi? 3.24 yıl, aynı dönem:
+
+| strateji | yıllık getiri | maxDD | aylık std | **Sharpe** |
+|---|---|---|---|---|
+| **BOT** (sabit-oran) | **%104.8** | %27.35 | %31.45 | **2.54** |
+| al-tut BTC | %29.9 | %52.97 | %13.88 | 0.75 |
+| al-tut SOL | %47.4 | %76.26 | %27.23 | 0.81 |
+| al-tut ETH | **%−0.0** | %67.56 | %19.39 | 0.30 |
+
+**Bot, BTC'yi al-tut etmeye göre risk-ayarlı 3.4 kat iyi**, ve drawdown'ı
+yarısı. ETH al-tut 3.24 yılda **tam sıfır** getirmiş, üstelik %67 drawdown'la.
+
+⚠ ÇEKİNCE: botun rakamları ÖRNEKLEM İÇİ (config bu veriye bakılarak seçildi),
+al-tut'un ise hiç parametresi yok. Yani kıyas botun lehine yanlı. Ama ileri
+beklenti ankorun %50-100'ü olsa bile Sharpe ~1.3-2.5 aralığında kalır ve
+BTC'nin 0.75'inin üstündedir.
+
+⚠ BİLEŞİK KIYAS: botun sabit-oran maxDD'si %27.35, bileşik hâli **%48.78** —
+yani BTC'nin %52.97'siyle aynı mertebede. Aynı drawdown'da 3.5 kat getiri.
