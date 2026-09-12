@@ -1,6 +1,6 @@
 # 📊 Paper Demo V2 — Teknik + Makro Filtre
 
-Son güncelleme: **2026-09-12 19:03 UTC** · Fear & Greed: **63 (Açgözlülük)**
+Son güncelleme: **2026-09-12 21:22 UTC** · Fear & Greed: **63 (Açgözlülük)**
 
 V1 (saf teknik) ile karşılaştırma: makro filtre sinyali ONAYLAMAK için gerekli.
 
