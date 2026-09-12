@@ -5298,3 +5298,58 @@ canlı +1.79R vs backtest +2.49R, −0.44R vs −1.00R, −0.65R vs −1.00R). A
 **124 işlemin yalnız 4'ü external_close, toplam +$0.50, ve `exit_price_estimated` damgası 0/124.**
 İşlemlerin %97'si (sl_hit/tp_hit/max_hold) mutabakat yoluna hiç uğramıyor. Etki işlem başına
 gerçek ama toplam ihmal edilebilir. Ledger'ın "16 uyum sapması" dosyası bununla KAPANMADI.
+
+## ⛔ AYRI KOLTUK HAVUZU + 1D TREND KOLU (2026-09-12, `ayri_havuz.py` + `ayri_aile.py`)
+
+Kullanıcı: *"yeni bir strateji kur bunların yanına."* Önce neden bunun İSTATİSTİKSEL
+OLARAK DAHA KOLAY bir problem olduğu: mevcut edge'i iyileştirmek tespit tabanı gereği
+%30'luk sıçrama ister; YENİ bir kolun sadece sıfırı geçmesi yeterlidir (kendi örneklemiyle).
+
+**MİMARİ FİKİR (yeni):** ledger 1D trend kolunu reddetmişti ama gerekçe edge değil YER
+DEĞİŞTİRMEYDİ (ankorun 459 işlemini itip yerine daha az koyuyor). Yer değiştirme ORTAK 7
+koltuğun sonucu — konfigürasyon, doğa kanunu değil. Önceki üç tasarımın üçü de kolu ortak
+havuza soktu. **Ayrı havuz + toplam risk eşitleme hiç denenmedi.**
+
+Yöntem: KÂR sabit-kesir uzayında, RİSK bileşik uzayda; C konfigürasyonu A'nın bileşik
+maxDD'sine (%52.23, kayma dahil) ikili aramayla eşitlendikten SONRA kâr kıyaslandı.
+Parametre koşmadan önce IZGARA ORTASINA sabitlendi (ch50/sl2/rr3/mh40g/ema200), argmax yok.
+
+**MİMARİ ÇALIŞTI:**
+| | toplam $ | Δ$ | TEST Δ$ | kitap işlem |
+|---|---|---|---|---|
+| A yalnız kitap | 1331.66 | — | — | 1579 |
+| B ORTAK 7 koltuk | 1148.27 | **−183.39** | — | 1297 (282 itildi) |
+| C AYRI S=2 | 1431.66 | **+100.01** | +37.74 | 1579 |
+
+Ortak havuzda −$183 (ledger'ın reddi canlı ölçekte yeniden üretildi), ayrı havuzda +$100.
+**Fark tamamen yer değiştirme.** Mimari teşhis DOĞRU.
+
+**AMA AİLE TESTİ KOLU ÖLDÜRDÜ (270 kombinasyon, ayrı havuz):**
+| | TÜM medyan Δ$ | TEST medyan Δ$ | TEST pozitif | yazı-turadan | TRAIN/TEST |
+|---|---|---|---|---|---|
+| S=1 | +33.94 | +2.64 | %55.9 | +1.94σ (p=0.053) | 12× |
+| S=2 | +59.11 | +4.50 | %54.4 | +1.45σ (p=0.148) | 12× |
+| S=3 | +95.67 | +5.09 | %54.4 | +1.45σ (p=0.148) | 18× |
+
+270 hücre BAĞIMSIZ DEĞİL (aynı fiyat/coin, örtüşen sinyaller); etkin df 10-20 olsa 0.3σ.
+TEST medyan kazancı taban TEST kârının yalnız **%0.42-0.82'si**. Izgara-ortası hücrenin
++$37.74'ü, medyanı +$4.50 ve aralığı [−173,+116] olan dağılımın ÜST KUYRUĞU.
+**ASIL KATİL: TRAIN/TEST 12-18× ayrışma** — kol 2023-24'te kazanıyor, 2025-26'da kazanmıyor.
+Yürüyen-ileri bozulma; VP/MTF/fade'i öldüren aynı duvar. → **1D TREND KOLU RED.**
+
+**KENDİ HATAM:** geçme kuralımı ("TEST medyanı>0 VE pozitif oran>%50") zayıf kalibre
+ettim — yazı-tura bunu yarı yarıya geçer. Doğru kural pozitif oranın şansa göre ANLAMLI
+yüksek olmasını istemeliydi. Kural sonradan değil, bir dahaki sefere önceden sıkılaştırılacak.
+
+### ✅ İKİ ŞEY SAĞ KALDI (kol öldü, bunlar ölmedi)
+
+1. **GENİŞ STOP KAYMA AVANTAJI ÖLÇÜLDÜ.** 1D kolun kaymalı ort R'si **+0.2016**, kitabın
+   **+0.1764'ünün ÜSTÜNDE** — kayma kola 0.016R'ye, kitaba 0.061R'ye mal oluyor
+   (maliyet = 15.85bp/stop_mesafesi). Ledger'ın "hiçbir aday kitabı geçmiyor" kuralını
+   kıran İLK aday. Kol edge sönmesinden öldü, kaymadan değil.
+   → **Gelecek her aday için tasarım kuralı: GENİŞ STOP. Dar stoplu aday baştan elenir**
+   (VP/MTF/fade'in üçü de dar stoptan öldü).
+2. **AYRI HAVUZ MİMARİSİ ÇALIŞIYOR ve test edilmiş halde duruyor** (`ayri_havuz.py`).
+   Kitabı hiç bozmadan (1579 işlem aynen kalıyor) yeni kol ekleyip toplam riski sabit
+   tutuyor. **İçi boş ama sınanmış bir kap:** dayanıklı edge'i ve geniş stopu olan
+   herhangi bir kol bulunursa kabul mekanizması HAZIR, yeniden kurulması gerekmiyor.
