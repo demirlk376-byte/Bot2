@@ -5353,3 +5353,58 @@ yüksek olmasını istemeliydi. Kural sonradan değil, bir dahaki sefere öncede
    Kitabı hiç bozmadan (1579 işlem aynen kalıyor) yeni kol ekleyip toplam riski sabit
    tutuyor. **İçi boş ama sınanmış bir kap:** dayanıklı edge'i ve geniş stopu olan
    herhangi bir kol bulunursa kabul mekanizması HAZIR, yeniden kurulması gerekmiyor.
+
+## 🚨 ANKOR CANLININ TAMAMI DEĞİL — %72'si (2026-09-13, canlı trades.db)
+
+Ledger "Ankor artık canlının TAMAMI" diyordu (BB kolu eklendiğinde yazılmış).
+**YANLIŞ.** Canlı bot YEDİ kol çalıştırıyor, ankor ÜÇÜNÜ modelliyor:
+
+| kol | n | ort R | σ | WR | toplam $ | ankorda var mı |
+|---|---|---|---|---|---|---|
+| donchian | 56 | +0.3504 | 1.571 | %41.1 | +61.03 | ✓ |
+| orb | 21 | −0.3829 | 0.787 | %23.8 | −4.00 | ✗ |
+| squeeze | 19 | −0.2822 | 1.300 | %26.3 | −19.02 | ✓ |
+| mean_rev | 14 | +0.5234 | 1.195 | %57.1 | +17.25 | ✓ |
+| fvg | 10 | −0.3265 | 1.087 | %30.0 | −0.45 | ✗ |
+| asia_bo | 4 | +0.0189 | 0.237 | %50.0 | −1.61 | ✗ |
+| sr_breakout | 1 | −1.0000 | — | %0 | −1.89 | ✗ |
+
+**BULGU 1 — ÖNCEKİ CANLI-ANKOR KIYASI KİRLİYDİ, DÜZELTİLDİ.**
+2026-09-12'de "canlı ort R +0.0837, kaymalı ankora −0.77σ, beklentinin %47'si"
+bildirilmişti. O hesap 124 işlemin HEPSİNİ kullandı — ankorun modellemediği 36
+işlem dahil. Temiz ayrım:
+
+| grup | n | ort R | SE |
+|---|---|---|---|
+| ANKOR kolları | 89 | **+0.2426** | 0.157 |
+| ankor DIŞI | 36 | **−0.3397** | 0.139 |
+
+ANKOR kolları vs kaymalı ankor (+0.1764): **+0.42σ** (canlı DAHA İYİ)
+ANKOR kolları vs kaymasız ankor (+0.2373): **+0.03σ** (neredeyse birebir)
+ANKOR kolları vs ücret-düzeltilmiş brüt (+0.2450): −0.02σ
+
+→ **"Canlı beklentinin yarısında" endişesi ÖLÇÜM KİRLİLİĞİYDİ.** Canlı, ankorun
+modellediği kollarda tam beklendiği gibi çalışıyor.
+⚠ İKİ UYARI: (a) SE 0.157 → GA ±0.31, hâlâ sıfırı kapsıyor; bu "çelişki yok"
+demek, "doğrulandı" değil. (b) Canlı fiyatlar kaymayı içermeli, o zaman canlının
+ankorun ALTINDA çıkması gerekirdi; çıkmıyor. Üç açıklama ayırt edilemiyor:
+15.85bp yüksek olabilir · MAKER_ENTRY=true gerçekten çalışıyor olabilir · n küçük.
+
+**BULGU 2 — ANKOR DIŞI DÖRT KOL ANLAMLI ZARARDA.** ort R −0.3397, n=36,
+**z=−2.45, p≈0.014**. Grup performansa göre DEĞİL, "ankorun modellemediği kollar"
+diye ÖNCEDEN tanımlandı → seçim yanlılığı yok.
+Dolar zararı küçük (−$7.95, küçük boyutlanıyorlar) AMA koltuk tüketiyorlar ve
+`orb_risk_pct=0.05 × RISK_SCALE 1.4 = %7` (donchian'ın %2.8'inin 2.5 katı) →
+boyut büyürse zarar ölçeklenir.
+→ AKSİYON DEĞİL, ÖLÇÜM SIRASI: bu dört kol KRONOS'ta ayrı ayrı ölçülmeli.
+Kâr artışı yeni edge bulmakta değil, zarar eden kolu kapatmakta olabilir.
+
+**BULGU 3 — cooldown ÇALIŞIYOR, hipotezim çürüdü.** "Anahtar uyuşmazlığı"
+hipotezi YANLIŞ: strategy_scores['strategy'] düzgün yazılıyor ve journalctl 60
+günde 2 cooldown kaydı gösteriyor. KRONOS'ta cooldown'un 1723→240 yapması ise
+canlı hızla (günde 1.46 ≈ cooldown'suz 1.44) çelişiyor — sebep henüz bulunmadı,
+açık kalem.
+
+**BU SEANSTA KOD OKUMAYA DAYANAN ÜÇ TAHMİNİM DE YANLIŞ ÇIKTI** (hayalet blokaj
+büyüktür · CVD verisi yoktur · cooldown anahtarı uyuşmuyor). Üçünü de ÖLÇÜM
+düzeltti. Kural: kod okuma hipotez üretir, hüküm vermez.
