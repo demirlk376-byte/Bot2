@@ -156,15 +156,6 @@ def kos(df, ad, sl_atr, rr, mh, lb_list, thr_list):
         ozet([t for t in tr if t["dir"] == -1], f"   -> SHORT bacak")
 
 
-if __name__ == "__main__":
-    h = load_1h([f"{SCRATCH}/BTCUSDT-1m-*.csv", "/home/user/Bot2/BTCUSDT-1m-*.csv"])
-    print(f"BTC 1h yuklendi: {len(h)} bar  {h.index[0]} -> {h.index[-1]}")
-    print(f"ort buy_ratio={h['buy_ratio'].mean():.4f}  TRAIN/TEST siniri={SPLIT.date()}")
-    kos(h, "BTC 1H", 2.0, 2.0, 24, [10, 20, 40], [0.55, 0.60])
-    kos(resample_tf(h, "4h"), "BTC 4H", 2.0, 2.0, 24, [10, 20], [0.55, 0.60])
-    kos(resample_tf(h, "1D"), "BTC 1D", 2.0, 2.0, 20, [10, 20], [0.55, 0.60])
-
-
 # ── KONTROL TESTI (ayri calistir: python3 cvd_arsiv_denetim.py kontrol) ──────
 def ham_ekstrem(df, lb):
     """CVD SARTI YOK: sadece yeni lb-bar dip -> long, yeni tepe -> short."""
@@ -193,3 +184,20 @@ def kontrol():
             ozet([t for t in t1 if t["dir"] == 1],  "CVD-filtreli LONG")
             ozet([t for t in t0 if t["dir"] == -1], "HAM yeni-tepe SHORT (CVD yok)")
             ozet([t for t in t1 if t["dir"] == -1], "CVD-filtreli SHORT")
+
+
+def olcum():
+    h = load_1h([f"{SCRATCH}/BTCUSDT-1m-*.csv", "/home/user/Bot2/BTCUSDT-1m-*.csv"])
+    print(f"BTC 1h yuklendi: {len(h)} bar  {h.index[0]} -> {h.index[-1]}")
+    print(f"ort buy_ratio={h['buy_ratio'].mean():.4f}  TRAIN/TEST siniri={SPLIT.date()}")
+    kos(h, "BTC 1H", 2.0, 2.0, 24, [10, 20, 40], [0.55, 0.60])
+    kos(resample_tf(h, "4h"), "BTC 4H", 2.0, 2.0, 24, [10, 20], [0.55, 0.60])
+    kos(resample_tf(h, "1D"), "BTC 1D", 2.0, 2.0, 20, [10, 20], [0.55, 0.60])
+
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "kontrol":
+        kontrol()
+    else:
+        olcum()
