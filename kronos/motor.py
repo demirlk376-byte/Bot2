@@ -80,6 +80,10 @@ class Islem:
 
 
 # ═══════════════════════════ MOTOR ═══════════════════════════
+def k_sig_var(k, i):
+    return k.sinyal(i) is not None
+
+
 class Kronos:
     """Tek zaman çizgisi. Her damgada: ÖNCE çıkışlar (koltuk boşalır),
     SONRA girişler (koltuk O AN sorulur) — canlı botun sırası."""
@@ -110,8 +114,10 @@ class Kronos:
         cooldown: dict[str, pd.Timestamp] = {}
         gun_durdu: set = set()
         gun_pnl: dict = {}
+        gun_bas: dict = {}          # gün başı equity (canlı fren buna göre ölçer)
         equity = a.bal0
         islemler: list[Islem] = []
+        self.sayac = dict(sinyal=0, cd_engel=0, gun_engel=0, koltuk_engel=0, acildi=0)
 
         j, N = 0, len(ol)
         while j < N:
@@ -120,6 +126,7 @@ class Kronos:
             grup = ol[j:e]
             simdi = pd.Timestamp(ts, tz="UTC")
             gun = simdi.date()
+            if gun not in gun_bas: gun_bas[gun] = equity
 
             # ─── 1) ÇIKIŞLAR ───
             cikan = set()
@@ -162,7 +169,7 @@ class Kronos:
 
             # canlı kapı: günlük zarar freni
             if a.gunluk_zarar_pct > 0 and gun not in gun_durdu:
-                if gun_pnl.get(gun, 0.0) <= -a.gunluk_zarar_pct * a.bal0:
+                if gun_pnl.get(gun, 0.0) <= -a.gunluk_zarar_pct * gun_bas[gun]:
                     gun_durdu.add(gun)
 
             # ─── 2) GİRİŞLER ───
@@ -170,20 +177,27 @@ class Kronos:
                 if ki in acik: continue
                 if (not a.ayni_bar_giris) and ki in cikan: continue
                 if a.hayalet_blokaj and i <= engel.get(ki, -1): continue
-                if gun in gun_durdu: continue
+                if gun in gun_durdu:
+                    if k_sig_var(self.kollar[ki], i): self.sayac["gun_engel"] += 1
+                    continue
                 k = self.kollar[ki]
                 anah = f"{k.ad}:{k.coin}"
                 cd = cooldown.get(anah)
-                if cd is not None and simdi < cd: continue
+                if cd is not None and simdi < cd:
+                    if k.sinyal(i) is not None: self.sayac["cd_engel"] += 1
+                    continue
 
                 sg = k.sinyal(i)                      # ← pencere(i) DIŞINA çıkamaz
                 if sg is None: continue
+                self.sayac["sinyal"] += 1
                 yon, sld, rr, mh = sg
                 if len(acik) >= a.maxpos:
+                    self.sayac["koltuk_engel"] += 1
                     if a.hayalet_blokaj:
                         engel[ki] = min(i + mh, k.besleme.n - 1)
                     continue
                 _h, _l, cl = k.besleme.bar(i)
+                self.sayac["acildi"] += 1
                 acik[ki] = dict(yon=yon, e=cl, sld=sld, slp=cl - yon * sld,
                                 tp=cl + yon * rr * sld, i0=i, mh=mh, sl_pct=sld / cl)
                 if a.hayalet_blokaj: engel[ki] = min(i + mh, k.besleme.n - 1)
