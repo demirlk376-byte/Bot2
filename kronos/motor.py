@@ -52,6 +52,12 @@ class Ayar:
     cap: float = 1.50                      # POSITION_CAP_FRACTION
     bal0: float = 190.0
     kayma_bp: float = 0.0                  # 15.85 → giriş kayması uygula
+    funding: dict = field(default_factory=dict)   # {coin: pd.Series(rate, index=dt)}
+                                           # Canlıda 8 saatte bir ödenir; ANKORDA HİÇ YOK.
+                                           # R bedeli = Σrate / sl_pct (kaymayla aynı yapı):
+                                           # notional = eff*BAL0/sl_pct olduğu için
+                                           # funding_$ / (eff*BAL0) = Σrate / sl_pct.
+                                           # long rate>0 iken ÖDER, short ALIR.
     # canlı kapılar (ankorda YOK)
     ardisik_zarar_limiti: int = 0          # 0 = kapalı; canlı 2
     cooldown_dk: int = 240
@@ -87,6 +93,15 @@ class Islem:
 
 
 # ═══════════════════════════ MOTOR ═══════════════════════════
+def _funding_R(ser, t0, t1, yon, sl_pct):
+    """[t0, t1] arasındaki funding ödemelerinin R cinsinden bedeli.
+    long (yon=+1) pozitif oranda ÖDER → R'den düşülür."""
+    if ser is None or sl_pct <= 0: return 0.0
+    m = ser.loc[(ser.index > t0) & (ser.index <= t1)]
+    if len(m) == 0: return 0.0
+    return float(yon * m.sum() / sl_pct)
+
+
 def k_sig_var(k, i):
     return k.sinyal(i) is not None
 
@@ -158,6 +173,9 @@ class Kronos:
 
                 R = p["yon"] * (ep - p["e"]) / p["sld"] - 2 * a.fee * p["e"] / p["sld"]
                 if kayma: R -= kayma / p["sl_pct"]
+                if a.funding:
+                    R -= _funding_R(a.funding.get(k.coin), k.besleme.zaman(p["i0"]),
+                                    k.besleme.zaman(i), p["yon"], p["sl_pct"])
                 eff = min(a.riskf, a.cap * p["sl_pct"])
                 taban = equity if a.bilesik_boyut else a.bal0
                 pnl = R * eff * taban
@@ -225,6 +243,9 @@ class Kronos:
             _h, _l, cl = k.besleme.bar(i)
             R = p["yon"] * (cl - p["e"]) / p["sld"] - 2 * a.fee * p["e"] / p["sld"]
             if kayma: R -= kayma / p["sl_pct"]
+            if a.funding:
+                R -= _funding_R(a.funding.get(k.coin), k.besleme.zaman(p["i0"]),
+                                k.besleme.zaman(i), p["yon"], p["sl_pct"])
             eff = min(a.riskf, a.cap * p["sl_pct"])
             taban = equity if a.bilesik_boyut else a.bal0
             islemler.append(Islem(k.ad, k.coin, p["yon"], k.besleme.zaman(p["i0"]),

@@ -138,3 +138,24 @@ def canli_kollar(src="local", kadar=None):
     for n, c in enumerate(A.SQZ):   ks.append(SqueezeKol(c, src, n, kadar))
     for n, c in enumerate(A.BB_COINS): ks.append(BbKol(c, src, n, kadar))
     return ks
+
+
+def funding_yukle(coinler=None, tercih="bnc"):
+    """{coin: pd.Series(rate, index=UTC dt)} — Binance tam kapsam (*_funding_bnc.csv),
+    yoksa MEXC kısmi (*_funding.csv). Kapsam dışı coin sessizce ATLANMAZ: uyarı basar."""
+    import glob, os
+    out = {}
+    for f in sorted(glob.glob("/home/user/Bot2/data/*_funding*.csv")):
+        b = os.path.basename(f)
+        coin = b.split("_funding")[0]
+        bnc = b.endswith("_bnc.csv")
+        if coin in out and not bnc: continue          # bnc tercih edilir
+        if coinler and coin not in coinler: continue
+        d = pd.read_csv(f)
+        ix = pd.to_datetime(d["dt"], utc=True, format="mixed")
+        d = pd.Series(d["rate"].values, index=ix).sort_index()
+        out[coin] = d
+    if coinler:
+        eksik = [c for c in coinler if c not in out]
+        if eksik: print(f"  ⚠ funding verisi YOK: {eksik} → bu coinlerde funding SIFIR sayılır")
+    return out
