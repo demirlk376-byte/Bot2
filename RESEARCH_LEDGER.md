@@ -5457,3 +5457,62 @@ Bulunmadan bu kollar hakkında hüküm verilemez.
 dikkatli ölçümle küçüldü ya da tersine döndü. Bu turda hata BENDEYDİ ve bir
 workflow ajanı buldu. Ayrıca "bağlantı hatası" teşhisim de yanlıştı — n=266
 günlük frenin kanayan kitapta DOĞRU çalışmasıydı.
+
+## ⛔ İKİ TASARIM KURALIM DA ÇÜRÜDÜ (2026-09-14, `kural_olc.py`) — 1712 işlem
+
+Kalibre edilmiş tabandan (ortR +0.1451) sonra iki "kural" ilan etmiştim. İkisi de YANLIŞ.
+
+### KURAL 1 "GENİŞ STOP AVANTAJDIR" → **YANLIŞ**
+
+| stop | n | ham ortR | kayma R | sürtünme sonrası |
+|---|---|---|---|---|
+| %0.39–1.94 | 343 | **+0.3153** | 0.1326 | +0.1795 |
+| %1.94–3.12 | 342 | +0.2698 | 0.0644 | **+0.2002** ← EN İYİ |
+| %3.12–4.35 | 342 | +0.1818 | 0.0431 | +0.1340 |
+| %4.36–5.79 | 342 | +0.1919 | 0.0319 | +0.1538 |
+| %5.80–18.58 | 343 | **+0.0869** | 0.0209 | **+0.0582** ← EN KÖTÜ |
+
+Kayma tarafı doğru (geniş stop az öder) AMA **ham edge ters yönde ve daha güçlü**:
+dar stop +0.3153 vs geniş stop +0.0869 (4 kat). Net optimum ORTADA (%2-3);
+en geniş dilim en kötüsü. → "Dar stoplu aday baştan elenir" kuralı GERİ ALINDI.
+(2026-09-12'de 1D trend kolu için yazılan "geniş stop kayma avantajı" notu da
+bu ışıkta okunmalı: kolun +0.2016'sı kayma avantajından değil, kendi edge'inden.)
+
+### KURAL 2 "UZUN TUTUŞ PAHALI (funding)" → **BÜYÜKLÜK OLARAK YANLIŞ**
+
+| tutuş | n | ham ortR | funding R | sürtünme sonrası |
+|---|---|---|---|---|
+| 1–12h | 363 | −0.1078 | 0.0016 | −0.1926 |
+| 13–25h | 328 | −0.0027 | 0.0019 | −0.0703 |
+| 26–48h | 446 | +0.3082 | 0.0048 | +0.2414 |
+| 52–96h | 238 | +0.2464 | 0.0119 | +0.1957 |
+| 100–120h | 337 | +0.5993 | 0.0092 | +0.5555 |
+
+funding↔tutuş korelasyonu +0.121, eğim +0.000081R/saat. **funding kaymayı ancak
+~726 saat (~30 gün) tutuştan sonra geçer.** 24 günlük bir kol ~0.0465R öderdi.
+→ "funding 1D trend kolunu öldürür" ÖNGÖRÜM MUHTEMELEN YANLIŞ; +0.2016'yı
+tabanın (+0.1451) altına indirmeye yetmez. (Kesin hüküm için kol yeniden koşulmalı.)
+
+### ⚠ METODOLOJİK UYARI — tutuş dilimleri TASARIM KURALI ÜRETEMEZ
+Tutuş süresi bir SEÇİM değil SONUÇ: hızlı stop olan işlem kısa, TP'ye giden uzun
+görünür. "Uzun tutanlar +0.5555 kazanıyor" tautolojiye yakın — sonuca koşullanma.
+Stop genişliği ise GİRİŞTE belirlenir (sl_atr × ATR / fiyat), o yüzden Kural 1'in
+dilimlemesi geçerli, Kural 2'ninki değil.
+
+### ✅ GERÇEK BULGU — KAYMA KOL BAZINDA ÇOK EŞİTSİZ
+
+| kol | n | stop medyan | ham ortR | kayma R | kaymanın ham edge'e oranı |
+|---|---|---|---|---|---|
+| **squeeze** | 404 | %1.69 | +0.2350 | **0.1109** | **%47** |
+| bb | 175 | %2.16 | +0.1786 | 0.0745 | %42 |
+| donchian | 1133 | %4.66 | +0.2046 | 0.0375 | %18 |
+
+**Squeeze ham edge'inin ~yarısını kaymaya veriyor.** Donchian ise en az etkilenen kol
+(%18) — 2026-09-14'te maker girişi kapatılan kol tam da oydu. Karar kullanıcınındı ve
+verildi; bu satır yalnızca rakamı kayda geçiriyor. Kayma azaltmanın değeri squeeze'de
+donchian'ın ~2.6 katı.
+
+### DESEN (beşinci kez)
+Kod okumaya veya ilk sezgiye dayanan her genelleme ölçümle çürüdü. Bu turda çürüyen
+şey benim ilan ettiğim TASARIM KURALLARIYDI — hem de kalibrasyonun hemen ardından,
+"artık kurallarımız var" dediğim yerde.
