@@ -1,6 +1,6 @@
 # Sistem Durumu
 
-*Son güncelleme: 2026-09-09*
+*Son güncelleme: 2026-09-14*
 
 **Özet sayfası (telefondan okumak için):**
 https://claude.ai/code/artifact/2bde810a-b5ed-4adf-b01a-be868027eb34
@@ -18,12 +18,53 @@ MAX_RISK_PCT=0.02          POSITION_CAP_FRACTION=1.5      ← 2026-08-12'de değ
 MAX_POSITIONS=7            CONSECUTIVE_LOSS_LIMIT=2
 COOLDOWN_MINUTES=240       DAILY_MAX_LOSS_PCT=0.35
 FIXED_MARGIN_USDT=0        MAKER_ENTRY=true
-MARGIN_MODE=isolated       DONCHIAN_MAKER_ENTRY=true      ← 2026-09-09'da açıldı
+MARGIN_MODE=isolated       DONCHIAN_MAKER_ENTRY=false     ← 2026-09-14'te KAPATILDI
 ```
 
 Gerçekleşen risk/işlem = MAX_RISK_PCT × RISK_SCALE = **%2.80** (çıpa %2.25).
 Bu satır bayatlarsa `ayar_dogrula.py` yakalar — ama ancak `deployed_backtest.py`
 içindeki `CANLI_*` sabitleri de güncellenirse. İkisi birlikte güncellenir.
+
+### 2026-09-14 — MARKET GİRİŞE GEÇİLDİ
+
+`DONCHIAN_MAKER_ENTRY=false`. Donchian artık sinyal barı kapanışında **anında
+market** giriyor (squeeze ve S/R zaten öyleydi). 7-21 Ekim maker deneyi **iptal**.
+
+**Kullanıcı kararı**, gerekçe: sadelik ve maker'ın gecikme riski. Bilinen bedeli
+yıllık kârın ~%13.3'ü (maker giriş kalemi). Bir kez uyarıldı, karar tekrarlandı.
+
+**Yan faydası ölçüm tarafında:** artık 15.85bp kayma GERÇEKTEN ödeniyor ve ücret
+her iki tarafta taker 1bp — yani KRONOS'un varsayımları **doğru oldu**, "maker
+doluş oranı" diye bir bilinmeyen kalmadı.
+
+---
+
+## 1b. ÖN-KAYITLI TABAN (KRONOS, 2026-09-14)
+
+Bundan sonra **her fikir buna kıyaslanır**. Ölçen: `kronos_market.py`.
+
+```
+Ayar(maxpos=7, riskf=0.028, cap=1.50, bal0=1000, kayma_bp=15.85,
+     funding=funding_yukle(...), ayni_bar_giris=True, ardisik_zarar_limiti=2,
+     cooldown_dk=240, gunluk_zarar_pct=0.35, tek_pozisyon_per_coin=True)
+```
+
+| | ort R | aylık | bileşik maxDD | en kötü ay |
+|---|---|---|---|---|
+| kaymasız + fundingsiz | +0.2091 | %+22.03 | %42.27 | −29.21 |
+| + 15.85bp kayma | +0.1506 | %+16.15 | %50.31 | −34.48 |
+| **+ funding = TABAN** | **+0.1451** | **%+15.54** | **%51.58** | **−34.39** |
+
+Sürtünme: kayma **−%28.0** · funding **−%3.6** · toplam **−%30.6**.
+Funding küçük çünkü bazı coinlerde oran negatif (long funding ALIYOR).
+
+**TESPİT TABANI YÜKSELDİ:** edge +0.1451, SE 0.0354 → görülebilir en küçük
+iyileşme +0.0694R = **edge'in %48'i**. (Eski şişkin tabanda %29'du.)
+
+`DURUM.md` satır 88'deki eski "dürüst ankor +0.190" ile tutarlı: fark kayma
+13.4→15.85bp (−0.009R) ve aynı-bar girişi (−0.023R) ile açıklanıyor.
+
+---
 
 Üç kol çalışıyor:
 
