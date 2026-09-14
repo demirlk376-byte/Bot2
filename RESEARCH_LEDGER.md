@@ -5516,3 +5516,54 @@ donchian'ın ~2.6 katı.
 Kod okumaya veya ilk sezgiye dayanan her genelleme ölçümle çürüdü. Bu turda çürüyen
 şey benim ilan ettiğim TASARIM KURALLARIYDI — hem de kalibrasyonun hemen ardından,
 "artık kurallarımız var" dediğim yerde.
+
+## ⛔ 1D TREND KOLU — FUNDING'LE YENİDEN, VE AYRI HAVUZ MİMARİSİNDE KUSUR (2026-09-14)
+
+`gunluk_kol.py` / `gunluk_funding.py` / `gunluk_ilke.py` (workflow ajanı yazdı, ben koştum).
+Taban birebir doğrulandı (n=1712, ortR +0.1451, %+621.78, bDD %51.58, kötüay −34.39).
+
+### 1. "FUNDING UZUN TUTAN KOLU ÖLDÜRÜR" ÖNGÖRÜM → **YANLIŞ, 2.4× ABARTI**
+Tahmin 0.065R idi, **ölçülen +0.0269R**. Kol kayma+funding sonrası **+0.2176**
+(kısıtsız) / **+0.2680** (7 koltuk) — taban +0.1451'in belirgin üstünde.
+
+**MEKANİZMA TÜRETİLDİ ve ÖLÇÜLDÜ:** `f_R = Σrate / sl_pct`. Σrate tutuşla DOĞRUSAL
+artar AMA sl_pct de artar (stop = k×ATR, ATR horizonla ~√t büyür). Ölçülen:
+sl_pct ~ tutuş^**0.598**, funding_R ~ tutuş^**0.390** ≈ 1−0.598 ✓ (teori tutuyor).
+| kol | tutuş (gün) | ödeme/işlem | sl_pct | funding R |
+|---|---|---|---|---|
+| squeeze 1h | 0.86 | 2.6 | %1.95 | +0.0031 |
+| donchian 4h | 2.59 | 7.8 | %5.14 | +0.0074 |
+| günlük 1D | 16.64 | 50.0 | %12.07 | +0.0269 |
+Tutuş 8.2×, ödeme 8.2× ama funding R yalnız **4.97×** — payda yutuyor.
+→ **"Funding uzun horizonu cezalandırır" TASARIM KURALI YANLIŞ.** Uzun horizon
+funding'i geniş stopla amortize eder.
+
+### 2. KOL YİNE DE GEÇMEDİ — ama funding yüzünden değil
+| S | kol n | ΔortR | Δtoplam% | ΔTEST% | kötü ay% |
+|---|---|---|---|---|---|
+| 1 | 44 | +0.0036 | +35.40 | +13.01 | −37.18 |
+| 2 | 84 | +0.0071 | +69.61 | +19.04 | −35.41 |
+| 3 | 117 | +0.0110 | +103.86 | +34.24 | −36.22 |
+(a) ΔortR ≥ +0.0694 → en iyi +0.0110, **6× uzak**. (c) en kötü ay HEPSİNDE kötüleşiyor.
+
+### 3. 🚨 AYRI HAVUZ MİMARİSİNDE KUSUR — "sıfır itme" iddiası YANLIŞ
+Mimari (2026-09-12) "kitabı hiç bozmadan kol ekler" diye sunulmuştu. **MEXC NETTED
+KISITINI MODELLEMİYOR** (execution.py:403, bir sembol = bir net pozisyon). Günlük kol
+SOL'u 24 gün tutarsa kitabın SOL donchian'ı o süre giremez.
+**ÖLÇÜLDÜ:** S=2'de kitabın **214/1712 işlemi (%12.5)** o coin meşgulken açılmış;
+bu işlemlerin katkısı **%+121.95** = toplam getirinin **%19.6'sı**.
+→ S=2'nin kazancı (+69.61 puan) düşülmesi gereken 121.95 puanın yanında ERİYOR.
+**Netted uygulanınca kol NET NEGATİF.** Mimari, kitapla aynı coinleri kullanan HER
+kol için iyimser; "ayrı havuz çalışıyor" iddiası bu koşulla sınırlandırıldı.
+
+### 4. ⚠ ÖN-KAYITLI BARDA TANIM HATASI (benim)
+Bar (a) "ΔortR ≥ +0.0694" BİRLEŞİK kitabın ortalamasına uygulanıyor. 84 işlemlik bir
+kolun 1712 işlemlik ortalamayı 0.0694 oynatması **yapısal olarak imkânsız**. Aynı
+hatayı CVD ajanı da işaretledi. Bar yanlış tanımlanmış: küçük kollar için ölçüt
+birleşik ortalama DEĞİL, toplam getiri katkısı veya kolun kendi örneklemi olmalı.
+Bir sonraki turda yeniden tanımlanacak.
+
+### DESEN (altıncı kez)
+Bu turda çürüyen şeyler: funding öngörüm (2.4× abartı), "funding uzun horizonu
+cezalandırır" kuralı, "ayrı havuz sıfır itme yapar" iddiam, ve kendi ön-kayıtlı barım.
+Dördü de BENİM ürettiğim genellemelerdi.
