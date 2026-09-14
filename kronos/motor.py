@@ -57,6 +57,13 @@ class Ayar:
     cooldown_dk: int = 240
     gunluk_zarar_pct: float = 0.0          # 0 = kapalı; canlı 0.35
     # ankor uyumu için
+    tek_pozisyon_per_coin: bool = False    # CANLI GERÇEĞİ: MEXC netted modda bir
+                                           # sembol = bir net pozisyon. execution.py:403
+                                           # "One-position-per-symbol guard (LIVE/netted
+                                           # only)". Ankorun 3 kolu AYRIK coinlerde
+                                           # çalıştığı için ankoru HİÇ etkilemez; ek
+                                           # kollar aynı coinlerde olduğu için onları
+                                           # canlıdaki gibi bloklar.
     ayni_bar_giris: bool = True            # False = ankorun `i <= occ` kuralı
     hayalet_blokaj: bool = False           # True = ankor taklidi
     bilesik_boyut: bool = False            # True = canlı equity'den boyutla
@@ -117,7 +124,7 @@ class Kronos:
         gun_bas: dict = {}          # gün başı equity (canlı fren buna göre ölçer)
         equity = a.bal0
         islemler: list[Islem] = []
-        self.sayac = dict(sinyal=0, cd_engel=0, gun_engel=0, koltuk_engel=0, acildi=0)
+        self.sayac = dict(sinyal=0, cd_engel=0, gun_engel=0, koltuk_engel=0, coin_engel=0, acildi=0)
 
         j, N = 0, len(ol)
         while j < N:
@@ -194,6 +201,10 @@ class Kronos:
                 sg = k.sinyal(i)                      # ← pencere(i) DIŞINA çıkamaz
                 if sg is None: continue
                 self.sayac["sinyal"] += 1
+                if a.tek_pozisyon_per_coin and any(
+                        self.kollar[o].coin == k.coin for o in acik):
+                    self.sayac["coin_engel"] = self.sayac.get("coin_engel", 0) + 1
+                    continue
                 yon, sld, rr, mh = sg
                 if len(acik) >= a.maxpos:
                     self.sayac["koltuk_engel"] += 1
