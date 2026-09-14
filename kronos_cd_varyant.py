@@ -1,98 +1,52 @@
-"""KRONOS çekirdeği: Besleme (nedensellik zırhı) + olay döngüsü + kapılar."""
+"""
+kronos_cd_varyant.py — KRONOS motorunun cooldown SEMANTIGINI parametrelestiren
+AYRI bir varyant motoru.  kronos/ ALTINA DOKUNULMAZ.
+
+kos() gövdesi kronos/motor.py'den BIREBIR kopyalanmistir; TEK fark cooldown
+bloklarinin parametrelenmesi ve iç sayaçlarin genisletilmesidir.  Denklik
+`cd_olcum.py` icinde VaryantKronos(varsayilan ayar) == Kronos(ayni ayar)
+karsilastirmasiyla KOSARAK dogrulanir.
+
+Parametreler (VAyar):
+  anahtar_kapsam : "kol_coin" (canlinin/kronos'un hali) | "kol" | "coin" | "genel"
+  sifirla_tetikte: True  -> cooldown tetiklenince ardisik-zarar sayaci 0'lanir
+                   False -> (mevcut hal) sayac kalir, HER sonraki kayip
+                            cooldown'u yeniden kurar ("cirnik/ratchet")
+  yeniden_baslat_gun : >0 ise her N gunde bir cooldown+streak sozlukleri
+                       SIFIRLANIR (systemd Restart=always benzetimi).
+                       Canlida bu sozlukler yalnizca BELLEKTE.
+  zaman_birimi   : "auto"  -> damgalar()'in i8 degeri indeksin GERCEK biriminden
+                             (pandas 3'te 'us') Timestamp'e cevrilir. DOGRU.
+                   "bozuk" -> kronos/motor.py'deki gibi pd.Timestamp(ts, tz="UTC")
+                             yani i8 NANOSANIYE sanilir.  pandas 3.0'da indeks
+                             birimi MIKROSANIYE oldugu icin butun zaman ekseni
+                             1000x SIKISIR: 3.3 yil -> 1.2 gun, 240dk cooldown ->
+                             166 GERCEK GUN, gun=simdi.date() -> 2 farkli gun.
+                             Yalniz A/B kaniti icin var.
+"""
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Optional
 import numpy as np
 import pandas as pd
 
-
-# ═══════════════════════════ NEDENSELLİK ZIRHI ═══════════════════════════
-class Besleme:
-    """Veriyi tutar ama YALNIZCA `i` barına kadar gösterir.
-
-    Strateji ham seriye erişemez — `_d` isim-karartmalı ve `pencere()` dışında
-    hiçbir yol yok. `i+1` ve sonrası fiziksel olarak dilime giremez.
-    """
-    __slots__ = ("_d", "_hi", "_lo", "_cl", "_idx", "n")
-
-    def __init__(self, d: pd.DataFrame):
-        self._d = d
-        self._hi = d["high"].values
-        self._lo = d["low"].values
-        self._cl = d["close"].values
-        self._idx = d.index
-        self.n = len(d)
-
-    def pencere(self, i: int, geriye: Optional[int] = None) -> pd.DataFrame:
-        """i DAHİL, i+1 ASLA. geriye=None → baştan i'ye kadar."""
-        if i < 0 or i >= self.n:
-            raise IndexError(f"pencere({i}) sınır dışı (n={self.n})")
-        bas = 0 if geriye is None else max(0, i - geriye + 1)
-        return self._d.iloc[bas:i + 1]
-
-    # ── bar ölçümü: AÇIK pozisyonun o bardaki yolu. Gelecek değil, ŞİMDİ. ──
-    def bar(self, i: int):
-        return self._hi[i], self._lo[i], self._cl[i]
-
-    def zaman(self, i: int) -> pd.Timestamp:
-        return self._idx[i]
-
-    def damgalar(self) -> np.ndarray:
-        return self._idx.asi8
-
-
-# ═══════════════════════════ AYAR ve İŞLEM ═══════════════════════════
-@dataclass
-class Ayar:
-    """Canlı botun kapıları. Varsayılanlar deployed_backtest ankoruyla aynı;
-    gerçek canlı değerler .env'den gelmeli (VPS)."""
-    maxpos: int = 7
-    fee: float = 0.0001                    # taraf başına
-    riskf: float = 0.028                   # canlı RISK_PER_TRADE x RISK_SCALE
-    cap: float = 1.50                      # POSITION_CAP_FRACTION
-    bal0: float = 190.0
-    kayma_bp: float = 0.0                  # 15.85 → giriş kayması uygula
-    # canlı kapılar (ankorda YOK)
-    ardisik_zarar_limiti: int = 0          # 0 = kapalı; canlı 2
-    cooldown_dk: int = 240
-    gunluk_zarar_pct: float = 0.0          # 0 = kapalı; canlı 0.35
-    # ankor uyumu için
-    ayni_bar_giris: bool = True            # False = ankorun `i <= occ` kuralı
-    hayalet_blokaj: bool = False           # True = ankor taklidi
-    bilesik_boyut: bool = False            # True = canlı equity'den boyutla
+from kronos.motor import Ayar, Islem, k_sig_var
 
 
 @dataclass
-class Islem:
-    kol: str
-    coin: str
-    yon: int
-    giris_ts: pd.Timestamp
-    cikis_ts: pd.Timestamp
-    giris: float
-    cikis: float
-    sld: float                              # stop mesafesi (fiyat)
-    R: float
-    sl_pct: float
-    neden: str
-    eff: float = 0.0
-    pnl: float = 0.0
+class VAyar(Ayar):
+    anahtar_kapsam: str = "kol_coin"
+    sifirla_tetikte: bool = False
+    yeniden_baslat_gun: float = 0.0
+    zaman_birimi: str = "auto"        # "auto" = DOGRU · "bozuk" = motor.py taklidi
 
 
-# ═══════════════════════════ MOTOR ═══════════════════════════
-def k_sig_var(k, i):
-    return k.sinyal(i) is not None
+class VaryantKronos:
+    """kronos.Kronos ile ayni; cooldown semantigi parametreli."""
 
-
-class Kronos:
-    """Tek zaman çizgisi. Her damgada: ÖNCE çıkışlar (koltuk boşalır),
-    SONRA girişler (koltuk O AN sorulur) — canlı botun sırası."""
-
-    def __init__(self, kollar, ayar: Ayar = None):
+    def __init__(self, kollar, ayar: VAyar = None):
         self.kollar = list(kollar)
-        self.a = ayar or Ayar()
+        self.a = ayar or VAyar()
 
-    # ── olay çizelgesi: (damga, kol_önceliği, coin_sırası, kol_no, bar_no) ──
     def _cizelge(self):
         ol = []
         for ki, k in enumerate(self.kollar):
@@ -103,36 +57,66 @@ class Kronos:
         ol.sort(key=lambda x: (x[0], x[1], x[2]))
         return ol
 
+    def _anahtar(self, k):
+        m = self.a.anahtar_kapsam
+        if m == "kol_coin":
+            return f"{k.ad}:{k.coin}"
+        if m == "kol":
+            return k.ad
+        if m == "coin":
+            return k.coin
+        return "GENEL"
+
+    def _birim(self):
+        """damgalar() i8'inin GERCEK birimi. pandas 3'te 'us'."""
+        if self.a.zaman_birimi != "auto":
+            return None                       # None = motor.py'nin (bozuk) yolu
+        u = getattr(self.kollar[0].besleme._idx, "unit", "ns")
+        for k in self.kollar:                 # tum kollar ayni birimde olmali
+            if getattr(k.besleme._idx, "unit", "ns") != u:
+                raise ValueError("kollar farkli zaman biriminde")
+        return u
+
     def kos(self):
         a = self.a
+        BIRIM = self._birim()
         kayma = a.kayma_bp / 1e4
         ol = self._cizelge()
         acik: dict[int, dict] = {}
         engel: dict[int, int] = {}
-        # canlı kapı durumu
         seri_zarar: dict[str, int] = {}
         cooldown: dict[str, pd.Timestamp] = {}
         gun_durdu: set = set()
         gun_pnl: dict = {}
-        gun_bas: dict = {}          # gün başı equity (canlı fren buna göre ölçer)
+        gun_bas: dict = {}
         equity = a.bal0
         islemler: list[Islem] = []
-        self.sayac = dict(sinyal=0, cd_engel=0, gun_engel=0, koltuk_engel=0, acildi=0)
+        self.sayac = dict(sinyal=0, cd_engel=0, gun_engel=0, koltuk_engel=0, acildi=0,
+                          cd_tetik=0, restart=0)
+        self.tetikler = []       # (ts, anahtar, streak)
+        self.engeller = []       # (ts, anahtar)
+        son_restart = None
 
         j, N = 0, len(ol)
         while j < N:
             ts = ol[j][0]; e = j
             while e < N and ol[e][0] == ts: e += 1
             grup = ol[j:e]
-            # ⚠ simdi'yi HAM TAMSAYIDAN URETME. pandas 3.0'da DatetimeIndex.asi8
-            # MIKROSANIYE dondurur ama pd.Timestamp(int) NANOSANIYE sayar → zaman
-            # ekseni 1200x sikisir (1200 gun → 1 gun), cooldown 240dk fiilen 166 gun
-            # olur ve gunluk fren TUM-TARIH frenine doner. Gercek indeksten al.
-            simdi = self.kollar[grup[0][3]].besleme.zaman(grup[0][4])
+            simdi = (pd.Timestamp(ts, tz="UTC") if BIRIM is None
+                     else pd.Timestamp(ts, unit=BIRIM, tz="UTC"))
             gun = simdi.date()
             if gun not in gun_bas: gun_bas[gun] = equity
 
-            # ─── 1) ÇIKIŞLAR ───
+            # ── systemd Restart benzetimi: bellek-ici kapi durumu ucar ──
+            if a.yeniden_baslat_gun > 0:
+                if son_restart is None:
+                    son_restart = simdi
+                elif (simdi - son_restart).total_seconds() >= a.yeniden_baslat_gun * 86400:
+                    seri_zarar.clear(); cooldown.clear()
+                    son_restart = simdi
+                    self.sayac["restart"] += 1
+
+            # ─── 1) CIKISLAR ───
             cikan = set()
             for _ns, _p, _s, ki, i in grup:
                 p = acik.get(ki)
@@ -161,22 +145,24 @@ class Kronos:
                                       p["sl_pct"], neden, eff, pnl))
                 del acik[ki]; cikan.add(ki)
 
-                # canlı kapı: ardışık zarar → cooldown
                 if a.ardisik_zarar_limiti > 0:
-                    anah = f"{k.ad}:{k.coin}"
+                    anah = self._anahtar(k)
                     if pnl < 0:
                         seri_zarar[anah] = seri_zarar.get(anah, 0) + 1
                         if seri_zarar[anah] >= a.ardisik_zarar_limiti:
                             cooldown[anah] = simdi + pd.Timedelta(minutes=a.cooldown_dk)
+                            self.sayac["cd_tetik"] += 1
+                            self.tetikler.append((simdi, anah, seri_zarar[anah]))
+                            if a.sifirla_tetikte:
+                                seri_zarar[anah] = 0
                     else:
                         seri_zarar[anah] = 0
 
-            # canlı kapı: günlük zarar freni
             if a.gunluk_zarar_pct > 0 and gun not in gun_durdu:
                 if gun_pnl.get(gun, 0.0) <= -a.gunluk_zarar_pct * gun_bas[gun]:
                     gun_durdu.add(gun)
 
-            # ─── 2) GİRİŞLER ───
+            # ─── 2) GIRISLER ───
             for _ns, _p, _s, ki, i in grup:
                 if ki in acik: continue
                 if (not a.ayni_bar_giris) and ki in cikan: continue
@@ -185,13 +171,15 @@ class Kronos:
                     if k_sig_var(self.kollar[ki], i): self.sayac["gun_engel"] += 1
                     continue
                 k = self.kollar[ki]
-                anah = f"{k.ad}:{k.coin}"
+                anah = self._anahtar(k)
                 cd = cooldown.get(anah)
                 if cd is not None and simdi < cd:
-                    if k.sinyal(i) is not None: self.sayac["cd_engel"] += 1
+                    if k.sinyal(i) is not None:
+                        self.sayac["cd_engel"] += 1
+                        self.engeller.append((simdi, f"{k.ad}:{k.coin}"))
                     continue
 
-                sg = k.sinyal(i)                      # ← pencere(i) DIŞINA çıkamaz
+                sg = k.sinyal(i)
                 if sg is None: continue
                 self.sayac["sinyal"] += 1
                 yon, sld, rr, mh = sg
@@ -207,7 +195,6 @@ class Kronos:
                 if a.hayalet_blokaj: engel[ki] = min(i + mh, k.besleme.n - 1)
             j = e
 
-        # veri bitiminde açık kalanlar
         for ki, p in acik.items():
             k = self.kollar[ki]
             i = min(p["i0"] + p["mh"], k.besleme.n - 1)

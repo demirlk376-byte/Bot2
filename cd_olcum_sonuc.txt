@@ -1,0 +1,45 @@
+============================================================================================================
+COOLDOWN CELISKISI — KRONOS olcumu
+veri: 2023-04-06 00:00:00+00:00 -> 2026-07-20 18:00:00+00:00  = 1201.8 gun · 12 kol
+CANLI referans: 124 islem / 85 gun = 1.46/gun · 2 cooldown tetikleme (%1.6)
+============================================================================================================
+
+### A) DENKLIK — VaryantKronos, kronos.Kronos ile ayni mi?
+  cooldown YOK           kronos n=1723  varyant n=1723  BIREBIR AYNI: True
+  cooldown 2/240dk       kronos n=240   varyant n=240   BIREBIR AYNI: True
+
+### B) TETIKLEME vs ENGEL (canlinin journalctl'i TETIKLEME sayar)
+  cooldown YOK      : n=1723  gunluk=1.43 sayac={'sinyal': 1762, 'cd_engel': 0, 'gun_engel': 0, 'koltuk_engel': 39, 'acildi': 1723, 'cd_tetik': 0, 'restart': 0}
+  cooldown 2/240dk  : n=240   gunluk=0.20 sayac={'sinyal': 240, 'cd_engel': 3006, 'gun_engel': 0, 'koltuk_engel': 0, 'acildi': 240, 'cd_tetik': 77, 'restart': 0}
+  → KRONOS TETIKLEME = 77  ·  ENGEL(sinyal) = 3006
+  → tetikleme/islem = 77/240 = %32.1   (CANLI: 2/124 = %1.6)
+  → cooldown YOK kosusunda bitisik LL cifti (=beklenen tetikleme) = 571
+  ENGEL kol dagilimi   : {'squeeze': 375, 'bb': 301, 'donchian': 2330}
+  TETIK kol dagilimi   : {'squeeze': 23, 'bb': 6, 'donchian': 48}
+  islem/kol cooldownSUZ : {'squeeze': 406, 'bb': 184, 'donchian': 1133}
+  islem/kol cooldownLU  : {'squeeze': 85, 'bb': 38, 'donchian': 117}
+
+### C) ANAHTAR YOGUNLUGU
+  KRONOS aktif anahtar sayisi = 12 · toplam islem = 1721
+  anahtar basina islem: bb:LTC=184, donchian:ETH=167, donchian:ADA=165, donchian:SOL=164, donchian:NEAR=162, donchian:ICP=159, donchian:BNB=159, donchian:BCH=156, squeeze:XRP=137, squeeze:XLM=109, squeeze:DOGE=103, squeeze:TRX=56
+  ort=143.4 medyan=159 min=56 max=184
+  KRONOS kayip orani q=0.583 · iid model beklenen tetikleme = Σ(n_k−1)·q² = 580.5  · GERCEK 571
+
+  --- CANLI'ya ayni formul (7 kol, kol bazli n ve WR verilen) ---
+  canli N=125 · agirlikli kayip orani q=0.632
+  K (aktif anahtar)        Σ(n_k−1)   beklenen tetik
+  7                             118             47.1
+  12                            113             45.1
+  20                            105             41.9
+  30                             95             37.9
+  40                             85             33.9
+  50                             75             30.0
+  60                             65             26.0
+  70                             55             22.0
+  84                             41             16.4
+  (K = en az 1 islem gormus (kol:coin) anahtari; Σ(n_k−1)=N−K)
+  → CANLI GOZLENEN TETIKLEME = 2.  Hangi K bunu verir?
+     2 = (N−K)·q²  →  K = 120.0  (yani ~5 kol:coin ciftinde 2+ islem, kalan hepsi TEK islem)
+
+### D) VARYANTLAR — hangisi canlinin 1.46/gun'une ve %1.6 tetiklemesine yakin?
+  varyant                                        n   /gun  tetik   %tet  engel         $     ortR
