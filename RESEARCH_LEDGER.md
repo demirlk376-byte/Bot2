@@ -5408,3 +5408,52 @@ açık kalem.
 **BU SEANSTA KOD OKUMAYA DAYANAN ÜÇ TAHMİNİM DE YANLIŞ ÇIKTI** (hayalet blokaj
 büyüktür · CVD verisi yoktur · cooldown anahtarı uyuşmuyor). Üçünü de ÖLÇÜM
 düzeltti. Kural: kod okuma hipotez üretir, hüküm vermez.
+
+## 🔧 KRONOS ZAMAN BİRİMİ HATASI + NETTED KAPISI (2026-09-14)
+
+**HATA (kronos/motor.py:127, benim yazdığım):** `simdi = pd.Timestamp(ts, tz="UTC")`
+— pandas 3.0'da `DatetimeIndex.asi8` MİKROSANİYE döndürür, `pd.Timestamp(int)`
+NANOSANİYE sayar. Ölçüldü: **1200 günlük veri motorda 1 gün** → 240dk cooldown
+fiilen 166 GÜN, `gun = simdi.date()` tüm backtest'i 2 "gün" yapıp günlük freni
+TÜM-TARİH frenine çeviriyor.
+Etki SINIRLI: yalnız kapıları bozuyordu (sıralama ham tamsayıyla, çıkışlar bar
+indeksiyle, kayıtlar gerçek Timestamp'la) → T1/T2/T3 ve kapısız basamaklar
+baştan doğruydu. Düzeltme: `simdi` artık gerçek indeksten (`besleme.zaman(i)`).
+
+**2026-09-13'te bildirilen "cooldown 1723→240" TAMAMEN HATALIYDI.** Doğrusu:
+
+| basamak | n | $ | ort R | bileşik DD | en kötü ay |
+|---|---|---|---|---|---|
+| 0) ankor eşleniği | 1583 | +1314.11 | +0.1736 | %52.23 | −32.62 |
+| 1) + aynı bar girişi | 1723 | +1237.48 | +0.1504 | %51.56 | −37.32 |
+| 2) + cooldown 2/240dk | 1712 | +1227.69 | +0.1506 | %50.31 | −34.48 |
+| 3) + günlük fren %35 | 1712 | +1227.69 | +0.1506 | %50.31 | −34.48 |
+| **ANKOR → TAM CANLI** | **+129** | **−86.42 (%−6.6)** | **−0.0231 (%−13.3)** | −1.92 | −1.86 |
+
+Cooldown gerçek etkisi 11 işlem / −$9.79; günlük fren SIFIR. **Canlı botun iki
+güvenlik kapısı da pratikte pasif.** Gerçeklik kontrolü: motor günde 1.42 işlem,
+canlı 1.46 → TUTUYOR.
+Ayrıca cooldown durumu (`_consecutive_losses`, `_cooldown_until`) YALNIZCA
+BELLEKTE — `database.py`'de yok, `Restart=always` ile her yeniden başlatmada sıfırlanır.
+
+**NETTED KAPISI EKLENDİ** (`execution.py:403` "One-position-per-symbol guard,
+LIVE/netted only"). MEXC tek-yön modda bir sembol = bir net pozisyon. Öngörü:
+ankorun 3 kolu AYRIK coinlerde (donchian 7 / squeeze 4 / bb 1) → ankoru
+etkilememeli. DOĞRULANDI: netted açık/kapalı sonuç BİREBİR aynı, coin_engel 0.
+
+**GERİ ALINAN İDDİA — "ankor dışı dört kol z=−2.45 ile zararda, seansın en güçlü
+ipucu" (2026-09-13).** Büyük örneklemle gerçekçi (limit) dolum modelinde dört
+kolun ort R'si **−0.0135, z=−1.03 — ANLAMLI DEĞİL** (n=10002). Canlıdaki n=36
+muhtemelen gürültü. Ajanın ürettiği "kapatmak +$7434 kazandırır" manşeti de
+GEÇERSİZ: motor o kolları günde 11.3 işlem koşturuyor, canlı 0.42 → **27×**.
+
+**AÇIK KALEM:** dört ek kolun canlı-doğru ölçümü yapılamadı. Netted kapısı
+eklendikten sonra bile motor (kapılarla) 1200 günde 266 işlem, canlı 85 günde 36.
+Fark artık koltuk/netted değil — başka bir canlı kısıt var (kol başına risk
+bütçesi · signal_combiner şartı · bu kolların daha az coinde açık olması).
+Bulunmadan bu kollar hakkında hüküm verilemez.
+
+**DESEN (dördüncü kez):** kod okumaya veya ilk ölçüme dayanan her güçlü iddia,
+dikkatli ölçümle küçüldü ya da tersine döndü. Bu turda hata BENDEYDİ ve bir
+workflow ajanı buldu. Ayrıca "bağlantı hatası" teşhisim de yanlıştı — n=266
+günlük frenin kanayan kitapta DOĞRU çalışmasıydı.
