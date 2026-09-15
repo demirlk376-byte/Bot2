@@ -5604,3 +5604,61 @@ hatası, netted kısıtı eksikliği, ankor %6.6 şişkinliği). Bu desene bakar
 Varlığı, hızlı cevaplarına güvenme eğilimi yaratıyor. Bu seans kanıtı: onlarca
 KRONOS ölçümü kullanıcıya BULGU diye sunuldu, birkaçı motor bozuk olduğu için
 YANLIŞTI. Hızlı ve yanlış, yavaş ve doğrudan pahalıdır.
+
+## ✅ İKİZ CANLIYA OTURDU — ve ANKORDA İKİ OLASI HATA ORTAYA ÇIKTI (2026-09-15)
+
+Kullanıcının PC'sinde tam tarih koşusu (3.3 yıl · 345.389 mum · 49 dk · 1198 gün).
+Motor: `main.py`'nin KENDİSİ, `ExecutionEngine`'in KENDİSİ, `PaperExchange` dolumları.
+
+### İKİZ vs CANLI — uyuşuyor
+| | İKİZ | CANLI | ankor |
+|---|---|---|---|
+| işlem/gün | **1.48** | **1.46** | 1.42 |
+| kazanma | %42.8 | %37-43 | %43.5 |
+| sl_hit | %50.5 | %52 | %52 |
+| tp_hit | %28.8 | %25 | %25 |
+| max_hold | %20.6 | %23 | %23 |
+| ort R | +0.1132 (σ 1.326) | — | +0.1451 |
+
+ort R farkı −0.032; SE = 1.326/√1775 = 0.0315 → **tam 1σ, istatistiksel olarak aynı.**
+1775 işlem · $10.000 → $124.644 (bileşik).
+
+### ⚠ KOL DAĞILIMINDA AYRIŞMA → ANKORDA İKİ OLASI HATA
+| kol | İKİZ | ankor |
+|---|---|---|
+| donchian | 1195 | 1133 ✓ |
+| mean_rev | **482** | 175 |
+| squeeze | **98** | 404 |
+
+**1. SQUEEZE COİNLERİ.** `config.py:272` varsayılanı `("BTC/USDT:USDT",
+"SOL/USDT:USDT")`; `deployed_backtest.SQZ = ["XRP","DOGE","TRX","XLM"]`.
+`.env`'de `SQUEEZE_SYMBOLS` yoksa varsayılan geçerli ve BTC listede olmadığı için
+squeeze **yalnız SOL'da** çalışır → 98 işlem. Ankorun dört coin varsayımı yanlış olur.
+
+**2. BB HAFTA İÇİ.** `config.py:420` varsayılanı `bb_weekday_enabled=True`; ankor
+"YALNIZ hafta sonu (BB_WEEKDAY_ENABLED=false)" diyor (deployed_backtest.py:64).
+`.env`'de o anahtar yoksa BB **hafta içi de** çalışır → 482 işlem.
+
+İkisi de İKİZ'deki farkı tam açıklıyor. **DOĞRULANMADI** — VPS `.env` gerekiyor.
+Doğrulanırsa ANKOR BAŞTAN BERİ GERÇEKTE ÇALIŞMAYAN BİR BOTU MODELLİYOR demektir
+ve bu projedeki bütün araştırma onun üstüne kuruluydu.
+
+### İKİZ'i buraya getiren harness hataları (hepsi BENİM, üretimde değil)
+1. sanal saat modül modül elle yamalanmıştı, `portfolio.py` atlanmıştı →
+   `entry_time` gerçek tarihten, karşılaştırma sanal tarihten → **max-hold çıkışı
+   hiç tetiklenmedi** (ort R −0.17). Artık tüm proje modülleri otomatik taranıyor.
+2. `daily_reset_loop` çalıştırılmıyordu → günlük zarar freni bir kez düşünce
+   KALICI oldu, bot **125. günde durup 3 yıl hiç işlem açmadı**.
+3. `position_reconciliation_loop`'un `enforce_daily_loss()` çağrısı eksikti.
+4. WAL checkpoint yapılmıyordu → işlemler `.db`'ye değil `-wal`'a yazılıyordu
+   (ölçüldü: 12 KB vs 264 KB); temizlik `-wal`/`-shm` bırakıyordu → "database or
+   disk is full".
+5. Veritabanı ve CSV yolları Linux'a sabitlenmişti → Windows'ta çalışmıyordu.
+
+**YAN BULGU:** `on_candle_close` paper modda `check_sl_tp(candle.high, candle.low)`
+çağırıyor — bar-içi yüksek/düşük ZATEN kullanılıyor. Dolum modeli doğru.
+
+**ÜRETİM KUSURU (dokunulmadı):** `execution.py` maker limit emrini `timeout=`/`poll=`
+ile çağırıyor ama `PaperExchange.place_limit_order` bunları almıyor (LiveExchange
+alıyor) → **paper modda maker girişi olan her kol sessizce düşüyor.** Canlıyı
+etkilemez; paper demo koşuları eksik çalışıyor.
