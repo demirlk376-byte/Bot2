@@ -12,12 +12,26 @@ powershell -NoProfile -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest
 if errorlevel 1 ( echo   HATA: indirilemedi. & pause & exit /b 1 )
 
 echo   [2/4] Aciliyor...
+REM ⚠ .env'i KORU: klasoru silmeden once yedekle, actiktan sonra geri koy.
+REM (Ilk surum klasoru komple siliyordu ve kullanicinin kopyaladigi .env
+REM  her guncellemede uçuyordu -> "konfigurasyon: .env YOK" uyarisi.)
+set "ENVYEDEK="
+if exist "%HEDEF%\.env" (
+  copy /y "%HEDEF%\.env" "%TEMP%\ikiz_env_yedek" >nul
+  set "ENVYEDEK=1"
+)
 if exist "%HEDEF%" rmdir /s /q "%HEDEF%"
 powershell -NoProfile -Command "$ErrorActionPreference='Stop'; Expand-Archive -Path '%ZIP%' -DestinationPath '%TEMP%\ikizx' -Force" 2>nul
 if errorlevel 1 ( echo   HATA: acilamadi. & pause & exit /b 1 )
 for /d %%D in ("%TEMP%\ikizx\*") do move "%%D" "%HEDEF%" >nul
 rmdir /s /q "%TEMP%\ikizx" 2>nul
 del "%ZIP%" 2>nul
+
+if defined ENVYEDEK (
+  copy /y "%TEMP%\ikiz_env_yedek" "%HEDEF%\.env" >nul
+  del "%TEMP%\ikiz_env_yedek" >nul
+  echo        .env korundu ve geri konuldu.
+)
 
 cd /d "%HEDEF%"
 echo   [3/4] Paketler kontrol ediliyor...
