@@ -15,11 +15,15 @@ echo   [2/4] Aciliyor...
 REM ⚠ .env'i KORU: klasoru silmeden once yedekle, actiktan sonra geri koy.
 REM (Ilk surum klasoru komple siliyordu ve kullanicinin kopyaladigi .env
 REM  her guncellemede uçuyordu -> "konfigurasyon: .env YOK" uyarisi.)
+REM .env VE uretilmis sonuc dosyalarini koru
 set "ENVYEDEK="
 if exist "%HEDEF%\.env" (
   copy /y "%HEDEF%\.env" "%TEMP%\ikiz_env_yedek" >nul
   set "ENVYEDEK=1"
 )
+if not exist "%TEMP%\ikiz_veri" mkdir "%TEMP%\ikiz_veri" >nul 2>&1
+if exist "%HEDEF%\ikiz_tam_islemler.csv" copy /y "%HEDEF%\ikiz_tam_islemler.csv" "%TEMP%\ikiz_veri\" >nul
+if exist "%HEDEF%\ikiz_trades.db" copy /y "%HEDEF%\ikiz_trades.db" "%TEMP%\ikiz_veri\" >nul
 if exist "%HEDEF%" rmdir /s /q "%HEDEF%"
 powershell -NoProfile -Command "$ErrorActionPreference='Stop'; Expand-Archive -Path '%ZIP%' -DestinationPath '%TEMP%\ikizx' -Force" 2>nul
 if errorlevel 1 ( echo   HATA: acilamadi. & pause & exit /b 1 )
@@ -31,6 +35,10 @@ if defined ENVYEDEK (
   copy /y "%TEMP%\ikiz_env_yedek" "%HEDEF%\.env" >nul
   del "%TEMP%\ikiz_env_yedek" >nul
   echo        .env korundu ve geri konuldu.
+)
+if exist "%TEMP%\ikiz_veri\*" (
+  copy /y "%TEMP%\ikiz_veri\*" "%HEDEF%\" >nul 2>&1
+  echo        onceki kosu sonuclari korundu.
 )
 
 cd /d "%HEDEF%"
