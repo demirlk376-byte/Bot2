@@ -4,11 +4,20 @@ PaperExchange.fetch_ohlcv/watch_ticker bu nesneye devrediyor (exchange.py),
 yani ONA HİÇ DOKUNMADAN veri kaynağını geçmişe çevirmiş oluyoruz.
 Emirler, SL/TP tetikleme, bakiye — hepsi PaperExchange'in doğrulanmış kodunda kalır.
 
-NEDENSELLİK: `saat.simdi`'den SONRA kapanan hiçbir mum servis edilmez. Bu sınıf
-geleceği veremez; `fetch_ohlcv` daima kesim uygular.
+NEDENSELLİK: `saat.simdi`'den SONRA kapanan hiçbir mum servis edilmez.
+
+⚡ HIZ: ilk sürüm her çağrıda 28.800 satırlık seriye TAM BOOLEAN MASKE uyguluyordu
+   (`d[d.index + pd.Timedelta(...) <= simdi]`), üstelik her seferinde yeni bir
+   indeks dizisi tahsis ederek. Olay başına 3 böyle işlem × 345 bin olay =
+   milyarlarca satır karşılaştırması → 64 olay/sn.
+   Artık: kapanış damgaları BİR KEZ numpy dizisine çevriliyor, konum
+   `np.searchsorted` ile O(log n) bulunuyor, satırlar dilimden okunuyor.
+   Bu, botun kendi işini (gösterge + strateji) değiştirmez; yalnız benim
+   beslemedeki israfı kaldırır.
 """
 from __future__ import annotations
 from typing import Optional
+import numpy as np
 import pandas as pd
 import fast_bt
 
@@ -16,12 +25,31 @@ _TF_SN = {"1m": 60, "5m": 300, "15m": 900, "30m": 1800,
           "1h": 3600, "4h": 14400, "1d": 86400, "1D": 86400}
 
 
+class _Seri:
+    """Tek (sembol, zaman dilimi) için numpy'a düzleştirilmiş seri."""
+    __slots__ = ("ts_ns", "kapanis_ns", "o", "h", "l", "c", "v", "n", "df")
+
+    def __init__(self, df: pd.DataFrame, sn: int):
+        self.df = df
+        self.ts_ns = df.index.asi8.astype("int64")
+        # pandas 3.0'da asi8 MİKROSANİYE olabilir — birimi indeksten al.
+        birim = getattr(df.index, "unit", "ns")
+        carp = {"s": 1_000_000_000, "ms": 1_000_000, "us": 1_000, "ns": 1}[birim]
+        self.ts_ns = self.ts_ns * carp
+        self.kapanis_ns = self.ts_ns + sn * 1_000_000_000
+        self.o = df["open"].to_numpy(dtype="float64")
+        self.h = df["high"].to_numpy(dtype="float64")
+        self.l = df["low"].to_numpy(dtype="float64")
+        self.c = df["close"].to_numpy(dtype="float64")
+        self.v = df["volume"].to_numpy(dtype="float64")
+        self.n = len(df)
+
+
 class ReplayFeed:
     def __init__(self, saat, semboller, source="local"):
-        """semboller: canlı sembol adları ('SOL/USDT:USDT' gibi) → coin ('SOL')."""
         self.saat = saat
         self._ham = {}
-        self._cache = {}
+        self._seriler = {}
         for s in semboller:
             coin = s.split("/")[0]
             try:
@@ -29,12 +57,21 @@ class ReplayFeed:
             except Exception as e:
                 raise RuntimeError(f"ReplayFeed: {coin} verisi yüklenemedi: {e}")
 
-    def _seri(self, symbol: str, timeframe: str) -> pd.DataFrame:
+    def _s(self, symbol: str, timeframe: str) -> _Seri:
         k = (symbol, timeframe)
-        if k not in self._cache:
+        if k not in self._seriler:
             d = self._ham[symbol]
-            self._cache[k] = d if timeframe == "1h" else fast_bt.resample(d, timeframe)
-        return self._cache[k]
+            if timeframe != "1h":
+                d = fast_bt.resample(d, timeframe)
+            self._seriler[k] = _Seri(d, _TF_SN[timeframe])
+        return self._seriler[k]
+
+    def _seri(self, symbol: str, timeframe: str) -> pd.DataFrame:
+        """Eski API (sürücü olay listesi için) — DataFrame döndürür."""
+        return self._s(symbol, timeframe).df
+
+    def _simdi_ns(self) -> int:
+        return int(self.saat.simdi.timestamp() * 1_000_000_000)
 
     def kapsam(self, symbol: str):
         d = self._ham[symbol]
@@ -43,26 +80,20 @@ class ReplayFeed:
     async def fetch_ohlcv(self, symbol, timeframe, since=None, limit=100):
         """ccxt biçimi: [[ts_ms, o, h, l, c, v], ...].
 
-        ⚠ Gerçek borsa SON satırda HENÜZ KAPANMAMIŞ mumu döndürür ve DataManager
-        onu atar (data.py:230 notu). Aynı davranışı taklit ediyoruz: saatin içinde
-        bulunduğu OLUŞMAKTA olan mum da eklenir — ama YALNIZ saate kadarki
-        bilgisiyle (o ana kadarki high/low/close). Gelecek asla sızmaz."""
-        d = self._seri(symbol, timeframe)
-        sn = _TF_SN[timeframe]
-        simdi = self.saat.simdi
-        kapanmis = d[d.index + pd.Timedelta(seconds=sn) <= simdi]
-        if len(kapanmis) == 0:
+        Gerçek borsa SON satırda HENÜZ KAPANMAMIŞ mumu döndürür ve DataManager
+        onu atar (data.py:230). Aynı davranış: kapanmışların ardına, saatin
+        içinde bulunduğu oluşmakta olan mum eklenir. Gelecek asla sızmaz."""
+        s = self._s(symbol, timeframe)
+        now = self._simdi_ns()
+        k = int(np.searchsorted(s.kapanis_ns, now, side="right"))   # kapanmış sayısı
+        if k <= 0:
             return []
-        out = kapanmis.tail(limit)
-        rows = [[int(t.timestamp() * 1000), float(r.open), float(r.high),
-                 float(r.low), float(r.close), float(r.volume)]
-                for t, r in zip(out.index, out.itertuples())]
-        # oluşmakta olan mum (borsa davranışı) — DataManager bunu atar
-        olusan = d[(d.index <= simdi) & (d.index + pd.Timedelta(seconds=sn) > simdi)]
-        if len(olusan):
-            t = olusan.index[-1]; r = olusan.iloc[-1]
-            rows.append([int(t.timestamp() * 1000), float(r.open), float(r.high),
-                         float(r.low), float(r.close), float(r.volume)])
+        i0 = max(0, k - limit)
+        rows = [[int(s.ts_ns[i] // 1_000_000), s.o[i], s.h[i], s.l[i], s.c[i], s.v[i]]
+                for i in range(i0, k)]
+        # oluşmakta olan mum: açılışı <= şimdi, kapanışı > şimdi → tam k indeksi
+        if k < s.n and s.ts_ns[k] <= now:
+            rows.append([int(s.ts_ns[k] // 1_000_000), s.o[k], s.h[k], s.l[k], s.c[k], s.v[k]])
         return rows
 
     async def watch_ticker(self, symbol: str) -> dict:
@@ -70,10 +101,10 @@ class ReplayFeed:
         return {"last": p, "close": p, "symbol": symbol}
 
     async def get_current_price(self, symbol: str) -> float:
-        d = self._seri(symbol, "1h")
-        m = d[d.index <= self.saat.simdi]
-        if len(m) == 0:
+        s = self._s(symbol, "1h")
+        i = int(np.searchsorted(s.ts_ns, self._simdi_ns(), side="right")) - 1
+        if i < 0:
             raise RuntimeError(f"ReplayFeed: {symbol} için {self.saat.simdi} öncesi veri yok")
-        return float(m["close"].iloc[-1])
+        return float(s.c[i])
 
     async def close(self): pass

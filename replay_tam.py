@@ -8,10 +8,10 @@ Bu, iki motorun UZLASIP UZLASMADIGI testidir:
 Isinma: veri basindan baslanir (2023-04-06). Ilk ~43 gun donchian'in 260 adet
 4h bari birikene kadar sinyal uretmez — canli bot ilk kurulusunda da oyleydi.
 """
-import asyncio, sys, time, json, logging
+import asyncio, sys, time, json, logging, os
 logging.basicConfig(level=logging.ERROR)
 sys.path.insert(0, "/home/user/Bot2")
-DBP = "/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db"
+DBP = os.environ.get("REPLAY_DB", "/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db")
 
 async def ana():
     from replay.kos import kur, sur

@@ -1,6 +1,6 @@
 """replay_hiz.py — REPLAY tam tarihte ne kadar surer? KRONOS'a gerek var mi sorusu
 buna baglı. 60 gunluk olculu kosu -> tam tarihe (1200 gun) ekstrapolasyon."""
-import asyncio, sys, time, logging
+import asyncio, sys, time, logging, os
 logging.basicConfig(level=logging.ERROR)
 sys.path.insert(0, "/home/user/Bot2")
 
@@ -26,7 +26,7 @@ async def ana():
           f"{'YAPILAMAZ' if 270*tah/3600 > 24 else 'yapilabilir'}")
     b = await M.exchange.get_balance()
     import sqlite3
-    DBP="/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db"
+    DBP=os.environ.get("REPLAY_DB","/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db")
     c = sqlite3.connect(f"file:{DBP}?mode=ro", uri=True)
     nt = c.execute("SELECT COUNT(*) FROM trades").fetchone()[0]
     nk = c.execute("SELECT COUNT(*) FROM trades WHERE exit_time IS NOT NULL").fetchone()[0]

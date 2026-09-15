@@ -57,7 +57,7 @@ def _ortam(coinler):
         "PAPER_MODE": "true", "DRY_RUN": "false",
         "TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": "",
         "NTFY_TOPIC": "", "WEB_DASHBOARD": "false",
-        "DB_PATH": "/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db",
+        "DB_PATH": os.environ.get("REPLAY_DB", "/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db"),
     })
     if coinler:
         os.environ["SYMBOLS"] = ",".join(coinler)
