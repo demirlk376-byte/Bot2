@@ -163,6 +163,17 @@ async def kur(baslangic, coinler=None, source="local", env_ek=None):
             raise
     X.PaperExchange.set_rest_exchange = _yakala
 
+    # ⚠ CANLI EKRANI (Rich Live) KAPAT: monitor.Dashboard.start() terminali ele
+    # geçiriyor ve İkiz'in sonuç satırları onun altında kalıyor ("burada durdu
+    # sanırım" — aslında bitmişti). Replay'de görsel panel gereksiz; kapatmak
+    # karar mantığına DOKUNMAZ, yalnız çizimi engeller.
+    try:
+        import monitor as _mon
+        _mon.Dashboard.start = lambda self: None
+        _mon.Dashboard.stop = lambda self: None
+    except Exception:
+        pass
+
     # kurulum biter bitmez dur: start_feeds ilk çağrıldığında
     _asil_start = data_mod.DataManager.start_feeds
     data_mod.DataManager.start_feeds = _kurulumda_dur
