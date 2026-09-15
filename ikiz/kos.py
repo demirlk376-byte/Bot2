@@ -252,11 +252,25 @@ async def sur(M, saat, feed, bitis=None, ilerleme_her=2000):
     # durup bir daha hiç işlem açmadı (93 işlem, ort R −0.17).
     # Burada sanal gün değişiminde aynı iki çağrı yapılır.
     son_gun = None
+    _son_ns = None
 
     n = 0
     for ns, sym in olay:
         t = pd.Timestamp(ns, tz="UTC")
         saat.ayarla((t + pd.Timedelta(seconds=sn)).to_pydatetime())
+
+        # ⚠ MUTABAKAT DONGUSU'nun karar etkisi olan parcasi: canlida
+        # position_reconciliation_loop her 2 dakikada executor.enforce_daily_loss()
+        # cagiriyor (main.py:1622) — gunluk zarar freni boylece POZISYON ACIKKEN de
+        # tetiklenip emergency_close_all yapabiliyor. Surucu o donguyu
+        # calistirmadigi icin fren yalnizca YENI GIRIS denemesinde bakiliyordu.
+        # Damga basina bir kez cagiriyoruz (canliya gore seyrek ama yon ayni).
+        if ns != _son_ns:
+            _son_ns = ns
+            try:
+                await M.executor.enforce_daily_loss()
+            except Exception:
+                pass
 
         _g = saat.simdi.date()
         if son_gun is not None and _g != son_gun:
