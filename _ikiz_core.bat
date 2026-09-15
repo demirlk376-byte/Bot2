@@ -1,53 +1,44 @@
 @echo off
-chcp 65001 >nul
-REM Ortak cekirdek. %1 = kosulacak python dosyasi.
+setlocal
+REM ============================================================
+REM  IKIZ ortak cekirdek. %1 = kosulacak python dosyasi.
+REM  ONEMLI: bu dosya SAF ASCII olmali. Turkce karakter veya
+REM  sembol (UTF-8 cok baytli) CMD'nin ayristiricisini bozuyor
+REM  ve "'DAL' is not recognized" gibi hatalar veriyor.
+REM ============================================================
+
 set "DAL=claude/btc-intraday-trading-engine-U2C8A"
 set "ZIPURL=https://github.com/demirlk376-byte/Bot2/archive/refs/heads/%DAL%.zip"
 set "HEDEF=%USERPROFILE%\Desktop\IKIZ"
 set "ZIP=%TEMP%\ikiz.zip"
+set "SAKLA=%TEMP%\ikiz_sakla"
 
 echo.
 echo   [1/4] En son kod indiriliyor...
-powershell -NoProfile -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest -Uri '%ZIPURL%' -OutFile '%ZIP%' -UseBasicParsing" 2>nul
-if errorlevel 1 ( echo   HATA: indirilemedi. & pause & exit /b 1 )
+powershell -NoProfile -Command "$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri '%ZIPURL%' -OutFile '%ZIP%' -UseBasicParsing" 2>nul
+if errorlevel 1 goto :indirme_hatasi
 
 echo   [2/4] Aciliyor...
-REM ⚠ .env'i KORU: klasoru silmeden once yedekle, actiktan sonra geri koy.
-REM (Ilk surum klasoru komple siliyordu ve kullanicinin kopyaladigi .env
-REM  her guncellemede uçuyordu -> "konfigurasyon: .env YOK" uyarisi.)
-REM .env VE uretilmis sonuc dosyalarini koru
-set "ENVYEDEK="
-if exist "%HEDEF%\.env" (
-  copy /y "%HEDEF%\.env" "%TEMP%\ikiz_env_yedek" >nul
-  set "ENVYEDEK=1"
-)
-if not exist "%TEMP%\ikiz_veri" mkdir "%TEMP%\ikiz_veri" >nul 2>&1
-if exist "%HEDEF%\ikiz_tam_islemler.csv" copy /y "%HEDEF%\ikiz_tam_islemler.csv" "%TEMP%\ikiz_veri\" >nul
-if exist "%HEDEF%\ikiz_trades.db" copy /y "%HEDEF%\ikiz_trades.db" "%TEMP%\ikiz_veri\" >nul
-if exist "%HEDEF%" rmdir /s /q "%HEDEF%"
+REM Kullanici dosyalarini sakla (.env ve uretilmis sonuclar)
+if not exist "%SAKLA%" mkdir "%SAKLA%" >nul 2>&1
+if exist "%HEDEF%\.env" copy /y "%HEDEF%\.env" "%SAKLA%\" >nul 2>&1
+if exist "%HEDEF%\ikiz_tam_islemler.csv" copy /y "%HEDEF%\ikiz_tam_islemler.csv" "%SAKLA%\" >nul 2>&1
+if exist "%HEDEF%\ikiz_trades.db" copy /y "%HEDEF%\ikiz_trades.db*" "%SAKLA%\" >nul 2>&1
+
+if exist "%TEMP%\ikizx" rmdir /s /q "%TEMP%\ikizx" 2>nul
 powershell -NoProfile -Command "$ErrorActionPreference='Stop'; Expand-Archive -Path '%ZIP%' -DestinationPath '%TEMP%\ikizx' -Force" 2>nul
-if errorlevel 1 ( echo   HATA: acilamadi. & pause & exit /b 1 )
+if errorlevel 1 goto :acma_hatasi
+
+REM Yeni kodu yerine koy (eski klasor ancak BURADA silinir)
+if exist "%HEDEF%" rmdir /s /q "%HEDEF%"
 for /d %%D in ("%TEMP%\ikizx\*") do move "%%D" "%HEDEF%" >nul
 rmdir /s /q "%TEMP%\ikizx" 2>nul
-del "%ZIP%" 2>nul
-REM ⚠ ACMA BASARILI MI? Degilse DUR -- yarim klasor birakma (bir kez
-REM  klasoru silip kodu koyamadi ve kullanicinin CSV'si ucup gitti).
-if not exist "%HEDEF%\ikiz_tam.py" (
-  echo.
-  echo   HATA: kod acilamadi. Klasor eksik kaldi.
-  echo   Cozum: %HEDEF% klasorunu silip ZIP'i elle indir.
-  pause & exit /b 1
-)
+del "%ZIP%" >nul 2>&1
+if not exist "%HEDEF%\ikiz_tam.py" goto :acma_hatasi
 
-if defined ENVYEDEK (
-  copy /y "%TEMP%\ikiz_env_yedek" "%HEDEF%\.env" >nul
-  del "%TEMP%\ikiz_env_yedek" >nul
-  echo        .env korundu ve geri konuldu.
-)
-if exist "%TEMP%\ikiz_veri\*" (
-  copy /y "%TEMP%\ikiz_veri\*" "%HEDEF%\" >nul 2>&1
-  echo        onceki kosu sonuclari korundu.
-)
+REM Kullanici dosyalarini geri koy
+copy /y "%SAKLA%\*" "%HEDEF%\" >nul 2>&1
+rmdir /s /q "%SAKLA%" 2>nul
 
 cd /d "%HEDEF%"
 echo   [3/4] Paketler kontrol ediliyor...
@@ -56,7 +47,20 @@ py -m pip install -q -r requirements.txt
 echo   [4/4] Kosu basliyor: %1
 echo.
 py %1
+goto :bitti
 
+:indirme_hatasi
+echo.
+echo   HATA: kod indirilemedi. Internet baglantisini kontrol et.
+goto :bitti
+
+:acma_hatasi
+echo.
+echo   HATA: arsiv acilamadi. Eski klasor KORUNDU, veri kaybi yok.
+echo   Cozum: ZIP'i tarayicidan elle indir.
+goto :bitti
+
+:bitti
 echo.
 echo   ================================================
 echo    BITTI. Ekrandaki tabloyu Claude'a gonder.
