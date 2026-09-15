@@ -36,14 +36,7 @@ async def ana():
 
     print("\n=== 2) mumları sür (2025-06-01 → 2025-07-01) ===")
     n = await sur(M, saat, feed, bitis="2025-07-01", ilerleme_her=2000)
-    # ⚠ get_balance() SERBEST bakiye — acik pozisyonlarin marji dusulmus halde.
-    # Gercek olcut EQUITY: serbest + kilitli marj + gerceklesmemis PnL.
-    b1 = await M.exchange.get_balance()
-    try:
-        b1 = b1 + sum(getattr(p_, "margin_used", 0.0) for p_ in M.exchange.get_open_positions())              + await M.exchange.get_total_unrealized_pnl()
-    except Exception:
-        pass
-    acik = M.portfolio.get_open_positions()
+    b1, serbest, marj, upnl = await _equity(M)
     print(f"\n  {n} mum işlendi · HESAP DEĞERİ ${b0:,.2f} → ${b1:,.2f} ({(b1/b0-1)*100:+.2f}%)")
     print(f"    serbest ${serbest:,.2f} + kilitli marj ${marj:,.2f} + gerçekleşmemiş ${upnl:+,.2f}")
     print(f"  açık pozisyon {len(acik)}")
