@@ -5662,3 +5662,52 @@ ve bu projedeki bütün araştırma onun üstüne kuruluydu.
 ile çağırıyor ama `PaperExchange.place_limit_order` bunları almıyor (LiveExchange
 alıyor) → **paper modda maker girişi olan her kol sessizce düşüyor.** Canlıyı
 etkilemez; paper demo koşuları eksik çalışıyor.
+
+## 🎯 İKİZ DOĞRULANDI (2026-09-15) — canlı bot kodu, geçmiş veri, uyuşuyor
+
+Kullanıcının PC'sinde tam tarih koşusu (3.3 yıl · 345.389 mum · 51 dk · 1198 gün).
+Motor: `main.py`'nin KENDİSİ + `ExecutionEngine` + `PaperExchange`. Karar
+mantığının hiçbir satırı yeniden yazılmadı.
+
+| | **İKİZ** | CANLI | ankor |
+|---|---|---|---|
+| işlem/gün | **1.48** | **1.46** | 1.42 |
+| ort R | **+0.1581** (σ 1.400) | — | +0.1451 |
+| kazanma | %42.2 | %37-43 | %43.5 |
+| donchian | 1195 | — | 1133 |
+| squeeze | 424 | — | 404 |
+| mean_rev | 159 | — | 175 |
+| sl / tp / max_hold | %51.7 / %30.5 / %17.8 | — | %52 / %25 / %23 |
+
+ort R farkı +0.013; SE = 1.400/√1778 = 0.0332 → **0.39σ, istatistiksel olarak aynı.**
+1778 işlem · $10.000 → $301.115 (bileşik).
+NOT: ankor İKİZ'e göre hafif **kötümser** çıktı (+0.1451 vs +0.1581), iyimser değil.
+
+### Doğrulamaya giden yolda bulunan HARNESS hataları (hepsi benim, üretimde değil)
+1. sanal saat elle modül modül yamalanmış, `portfolio.py` atlanmıştı → `entry_time`
+   gerçek tarihten okunuyordu → **max-hold çıkışı hiç tetiklenmedi** (ort R −0.17).
+   Çözüm: yüklü tüm proje modülleri otomatik taranıyor.
+2. `daily_reset_loop` çalıştırılmıyordu → günlük fren bir kez düşünce KALICI oldu,
+   bot **125. günde durdu ve 3 yıl hiç işlem açmadı** (93 işlem).
+3. `position_reconciliation_loop`'un `enforce_daily_loss()` çağrısı eksikti.
+4. WAL checkpoint yapılmıyordu → işlemler `.db` yerine `-wal`'da kalıyordu
+   (12 KB vs 264 KB); temizlik `-wal`/`-shm` bırakıyordu → "disk is full".
+5. DB ve CSV yolları Linux'a sabitlenmişti → Windows'ta çalışmıyordu.
+6. **CANLI_ENV elle yazılmıştı ve `SQUEEZE_SYMBOLS` + `BB_WEEKDAY_ENABLED`
+   eksikti** → squeeze 404 yerine 98, mean_rev 175 yerine 482 işlem.
+   Çözüm: gerçek `.env` varsa O kullanılıyor; elle liste yalnız yedek.
+7. `.bat` her güncellemede klasörü silip kullanıcının `.env`'ini uçuruyordu.
+
+### Yan bulgular
+- `on_candle_close` paper modda `check_sl_tp(candle.high, candle.low)` çağırıyor →
+  bar-içi yüksek/düşük ZATEN kullanılıyor, dolum modeli doğru.
+- **ÜRETİM KUSURU (dokunulmadı):** `execution.py` maker limit emrini
+  `timeout=`/`poll=` ile çağırıyor, `PaperExchange.place_limit_order` bunları
+  almıyor (LiveExchange alıyor) → **paper modda maker girişli her kol sessizce
+  düşüyor.** Canlıyı etkilemez; paper demo koşuları eksik çalışıyor.
+- Çapraz-makine belirlenimcilik: aynı kod+veri, Windows ve Linux'ta **kuruşu
+  kuruşuna aynı** sonuç ($8.320,76).
+
+### HÜKÜM
+**İKİZ araştırma için hazır.** Bundan sonra her fikir bu motorda sınanır.
+KRONOS emekli (2026-09-15'te silindi, git geçmişinde duruyor).
