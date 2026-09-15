@@ -29,7 +29,7 @@ async def ana():
     print(f"\n  {n} mum işlendi · bakiye ${b0:,.2f} → ${b1:,.2f} ({(b1/b0-1)*100:+.2f}%)")
     print(f"  açık pozisyon {len(acik)}")
     import sqlite3, os
-    DBP = "/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db"
+    from ikiz import db_yolu; DBP = db_yolu()
     if os.path.exists(DBP):
         c = sqlite3.connect(f"file:{DBP}?mode=ro", uri=True)
         n_t = c.execute("SELECT COUNT(*) FROM trades").fetchone()[0]

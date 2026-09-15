@@ -26,7 +26,7 @@ async def ana():
           f"{'YAPILAMAZ' if 270*tah/3600 > 24 else 'yapilabilir'}")
     b = await M.exchange.get_balance()
     import sqlite3
-    DBP=os.environ.get("REPLAY_DB","/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db")
+    from ikiz import db_yolu; DBP = db_yolu()
     c = sqlite3.connect(f"file:{DBP}?mode=ro", uri=True)
     nt = c.execute("SELECT COUNT(*) FROM trades").fetchone()[0]
     nk = c.execute("SELECT COUNT(*) FROM trades WHERE exit_time IS NOT NULL").fetchone()[0]

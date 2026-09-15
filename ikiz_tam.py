@@ -11,7 +11,8 @@ Isinma: veri basindan baslanir (2023-04-06). Ilk ~43 gun donchian'in 260 adet
 import asyncio, sys, time, json, logging, os
 logging.basicConfig(level=logging.ERROR)
 sys.path.insert(0, "/home/user/Bot2")
-DBP = os.environ.get("REPLAY_DB", "/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db")
+from ikiz import db_yolu
+DBP = db_yolu()
 
 async def ana():
     from ikiz.kos import kur, sur

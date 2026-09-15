@@ -15,7 +15,22 @@ kısıtını mimaride unutmuştum. Gerçek kod koşsaydı o kısıt zaten içind
   besleme.py  — ReplayFeed: fetch_ohlcv/watch_ticker geçmiş CSV'den, saate göre
   kos.py      — sürücü: main()'i kurulum bitene kadar koşturur, sonra mumları sürer
 """
+import os as _os
+
+
+def db_yolu() -> str:
+    """İkiz'in işlem veritabanı. TAŞINABİLİR olmalı — Windows/macOS/Linux.
+
+    Öncelik: REPLAY_DB ortam değişkeni → yoksa ÇALIŞMA DİZİNİ altında
+    `ikiz_trades.db`. (İlk sürüm Linux'a özgü /tmp/claude-0/... yolunu
+    sabitlemişti; Windows'ta `sqlite3.OperationalError: unable to open
+    database file` veriyordu.)"""
+    y = _os.environ.get("REPLAY_DB")
+    if y: return y
+    return _os.path.join(_os.getcwd(), "ikiz_trades.db")
+
+
 from .saat import SanalSaat, sanal_datetime
 from .besleme import ReplayFeed
 
-__all__ = ["SanalSaat", "sanal_datetime", "ReplayFeed"]
+__all__ = ["SanalSaat", "sanal_datetime", "ReplayFeed", "db_yolu"]

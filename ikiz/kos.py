@@ -21,7 +21,9 @@ import asyncio, os, sys, contextlib
 from datetime import timezone
 import pandas as pd
 
-BITTI = "__replay_kurulum_bitti__"
+from . import db_yolu as _db
+
+BITTI = "__ikiz_kurulum_bitti__"
 
 
 class _Dur(Exception):
@@ -57,7 +59,7 @@ def _ortam(coinler):
         "PAPER_MODE": "true", "DRY_RUN": "false",
         "TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": "",
         "NTFY_TOPIC": "", "WEB_DASHBOARD": "false",
-        "DB_PATH": os.environ.get("REPLAY_DB", "/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db"),
+        "DB_PATH": _db(),
     })
     if coinler:
         os.environ["SYMBOLS"] = ",".join(coinler)
@@ -70,7 +72,12 @@ async def kur(baslangic, coinler=None, source="local", env_ek=None):
 
     _ortam(coinler)
     if env_ek: os.environ.update(env_ek)
-    if os.path.exists("/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db"): os.remove("/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db")
+    _y = _db()
+    _d = os.path.dirname(_y)
+    if _d: os.makedirs(_d, exist_ok=True)
+    if os.path.exists(_y):
+        try: os.remove(_y)
+        except OSError: pass
 
     # ⚠ ÜRETİM KUSURU TELAFİSİ (exchange.py'ye DOKUNULMADAN):
     # execution.py maker limit emrini `timeout=` ve `poll=` ile çağırıyor
