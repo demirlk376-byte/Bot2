@@ -75,9 +75,14 @@ async def kur(baslangic, coinler=None, source="local", env_ek=None):
     _y = _db()
     _d = os.path.dirname(_y)
     if _d: os.makedirs(_d, exist_ok=True)
-    if os.path.exists(_y):
-        try: os.remove(_y)
-        except OSError: pass
+    # ⚠ WAL ve SHM DE SILINMELI. database.py `PRAGMA journal_mode=WAL` kullanıyor;
+    # yalnız .db silinince bir sonraki koşu BAYAT -wal dosyasını miras alıyor ve
+    # SQLite "database or disk is full" veriyor (Windows) / "disk I/O error"
+    # (Linux). İşlemler sessizce yazılamıyor.
+    for _ek in ("", "-wal", "-shm"):
+        if os.path.exists(_y + _ek):
+            try: os.remove(_y + _ek)
+            except OSError: pass
 
     # ⚠ ÜRETİM KUSURU TELAFİSİ (exchange.py'ye DOKUNULMADAN):
     # execution.py maker limit emrini `timeout=` ve `poll=` ile çağırıyor
@@ -263,6 +268,17 @@ async def sur(M, saat, feed, bitis=None, ilerleme_her=2000):
             b = await M.exchange.get_balance()
             print(f"    {t.date()} · {n}/{len(olay)} · bakiye ${b:,.2f} · "
                   f"acik {len(M.portfolio.get_open_positions())}")
+
+    # ⚠ WAL → ANA DOSYA. Sürücü main()'i aniden durdurduğu için bağlantı düzgün
+    # kapanmıyor ve SQLite hiç checkpoint yapmıyor: işlemler .db'de değil
+    # -wal dosyasında kalıyor (ölçüldü: .db 12 KB, -wal 264 KB). Okuyucu da
+    # "1 işlem" görüyordu. Koşu bitince açıkça aktar.
+    try:
+        await M.db._db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        await M.db._db.commit()
+        print("  WAL → ana veritabanına aktarıldı")
+    except Exception as _e:
+        print(f"  ⚠ WAL aktarımı başarısız: {_e}")
     return n
 
 
