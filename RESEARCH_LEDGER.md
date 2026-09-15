@@ -5567,3 +5567,40 @@ Bir sonraki turda yeniden tanımlanacak.
 Bu turda çürüyen şeyler: funding öngörüm (2.4× abartı), "funding uzun horizonu
 cezalandırır" kuralı, "ayrı havuz sıfır itme yapar" iddiam, ve kendi ön-kayıtlı barım.
 Dördü de BENİM ürettiğim genellemelerdi.
+
+## ⚖️ KRONOS'UN KADERİ — ÖN-KAYITLI KARAR KURALI (2026-09-15)
+
+Kullanıcı iki kez sordu: "KRONOS'a gerek var mı?" Cevabı sonuca bakıp uydurmamak
+için ölçüt ÖNCEDEN yazılıyor.
+
+### Önceki savunmam ZAYIFLADI
+"270 hücrelik tarama KRONOS olmadan yapılamaz (249 saat)" demiştim. **270 sayısını
+sorgulamadım** — o sadece birinin seçtiği ızgara boyutu. Aile medyanını kestirmek
+için 15-20 hücre yeter: 20 × 55 dk = 18 saat, 4 çekirdekte **4.6 saat**. REPLAY
+coin bazında paralelleşmez (koltuklar ortak) ama **fikir bazında paralelleşir**.
+→ "İmkânsız" dediğim şey imkânsız değilmiş.
+
+### ASIL ÖLÇÜT: taban değil, SIRALAMA
+Bir eleme aracının işi tabanı yeniden üretmek DEĞİL, **fikirleri doğru sıralamak**.
+İki motor tabanda birebir uyuşup "A mı B mi daha iyi" sorusunda ters cevap
+verebilir. Dolayısıyla KRONOS'u tutmak için TEK koşu yetmez.
+
+### KARAR KURALI
+**KRONOS TUTULUR** ancak ve ancak:
+ (1) tam tarih koşusunda REPLAY ile uyuşursa: işlem/gün farkı < %10, ort R farkı
+     < 0.02, kol dağılımı oranları < %15 sapma; VE
+ (2) EN AZ 3 farklı fikirde (ör. bir filtre, bir kol ekleme, bir parametre
+     değişikliği) ikisi AYNI İŞARETİ ve benzer büyüklüğü verirse — yani
+     sıralamayı koruyorsa.
+Aksi halde **KRONOS EMEKLİ EDİLİR**; tek motor REPLAY olur, taramalar daha az
+hücreyle ve paralel koşularak yapılır.
+
+### ÖN TAHMİNİM (kayda geçsin, sonradan değiştirilmesin)
+KRONOS'un şimdiye kadar yapılan HER kontrolünde bir kusur bulundu (zaman birimi
+hatası, netted kısıtı eksikliği, ankor %6.6 şişkinliği). Bu desene bakarak
+(1)'i geçme ihtimalini DÜŞÜK görüyorum. Geçmezse emekli edilecek.
+
+### KRONOS'UN GİZLİ MALİYETİ
+Varlığı, hızlı cevaplarına güvenme eğilimi yaratıyor. Bu seans kanıtı: onlarca
+KRONOS ölçümü kullanıcıya BULGU diye sunuldu, birkaçı motor bozuk olduğu için
+YANLIŞTI. Hızlı ve yanlış, yavaş ve doğrudan pahalıdır.
