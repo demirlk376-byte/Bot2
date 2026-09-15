@@ -5711,3 +5711,45 @@ NOT: ankor İKİZ'e göre hafif **kötümser** çıktı (+0.1451 vs +0.1581), iy
 ### HÜKÜM
 **İKİZ araştırma için hazır.** Bundan sonra her fikir bu motorda sınanır.
 KRONOS emekli (2026-09-15'te silindi, git geçmişinde duruyor).
+
+## ⛔ COİN SEÇİMİ — İKİZ'LE İLK TEST, KESİN RET (2026-09-16, `ikiz_coin_analiz.py`)
+
+İKİZ doğrulandıktan sonraki **ilk taktik testi.** Veri: kullanıcının PC'sindeki tam
+koşu (1778 işlem · 2023-04 → 2026-07). Seçim TRAIN'den (960 işlem), karar
+TEST'ten (818 işlem).
+
+### TRAIN sıralaması (2023-04 → 2024-12)
+BNB +0.0147 · ADA +0.0835 · TRX +0.0907 · ICP +0.0913 · LTC +0.0998 · XRP +0.1430
+NEAR +0.1789 · XLM +0.1833 · BCH +0.1834 · ETH +0.2450 · SOL +0.2868 · DOGE +0.3820
+
+### TEST sıralaması (2025-01 → 2026-07)
+DOGE +0.0234 · NEAR +0.0326 · XRP +0.0786 · BCH +0.0791 · BNB +0.0838 · ADA +0.1339
+TRX +0.1512 · ETH +0.1602 · LTC +0.2458 · SOL +0.2596 · ICP +0.2669 · XLM +0.3681
+
+### KARAR — TRAIN'de kötüleri atsaydık TEST'te ne olurdu?
+TEST tabanı: 818 işlem · ort R **+0.1519** · PnL +$365.096
+
+| kural | atılan | TEST n | TEST ortR | ΔortR | ΔPnL |
+|---|---|---|---|---|---|
+| TRAIN ortR < 0.05 | BNB | 732 | +0.1599 | +0.0080 | **−$320** |
+| TRAIN ortR < 0.10 | ADA,BNB,ICP,LTC,TRX | 471 | +0.1343 | **−0.0176** | **−$161.177** |
+
+Beş kötü coini atmak **$161 bin kaybettiriyor**. Tek coin atmada ΔortR ile ΔPnL
+**ters işaretli** → ikisi de gürültü.
+
+### ASIL KANIT — SIRA KORELASYONU SIFIRIN ALTINDA
+TRAIN vs TEST ort R: **Spearman −0.098 · Pearson −0.120**
+Geçmişte iyi olan coin gelecekte iyi olmuyor; rastgeleden bile hafif kötü.
+- **DOGE**: TRAIN'in EN İYİSİ (+0.3820) → TEST'in EN KÖTÜSÜ (+0.0234)
+- **ICP**: TRAIN sondan 4. (+0.0913) → TEST 2. en iyi (+0.2669)
+- **XLM**: TRAIN 8. (+0.1833) → TEST EN İYİ (+0.3681)
+
+### HÜKÜM
+**Coin seçimi bu sistemde bilgi taşımıyor — ne ekleme ne çıkarma yönünde.**
+2026-07-29'da `breadth_expand.py` coin EKLEMEK için aynı sonucu vermişti
+(ΔTEST hepsinde negatif); şimdi coin ÇIKARMAK için de aynısı çıktı. Simetrik.
+→ Coin listesine DOKUNULMAYACAK. Bu eksen kapandı.
+
+**METODOLOJİK NOT:** Bu, İKİZ'le alınan ilk hüküm ve fikri DOĞRU şekilde öldürdü.
+Tüm veriye bakıp "BNB kötü, kapat" deseydik kullanıcıya zarar ettirecektik.
+TRAIN/TEST ayrımı olmasa bu tuzağa düşülürdü.
