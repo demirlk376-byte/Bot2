@@ -3,6 +3,24 @@ import asyncio, sys, logging
 logging.basicConfig(level=logging.WARNING)
 sys.path.insert(0, "/home/user/Bot2")
 
+
+async def _equity(M):
+    """GERCEK hesap degeri = serbest bakiye + kilitli marj + gerceklesmemis PnL.
+
+    get_balance() yalnizca SERBEST nakdi dondurur; acik pozisyonlarin marji
+    dusulmus haldedir. Bu yuzden 3 pozisyon acikken ekranda "-%23" gorunuyordu
+    ama hesap aslinda +%10 kardaydi (kapanmis 8 islem +$1.028, kilitli marj
+    $3.355). Kullaniciyi yaniltmasin diye EQUITY bildiriliyor.
+    """
+    b = await M.exchange.get_balance()
+    try:
+        marj = sum(getattr(p, "margin_used", 0.0) for p in M.exchange.get_open_positions())
+        upnl = await M.exchange.get_total_unrealized_pnl()
+        return b + marj + upnl, b, marj, upnl
+    except Exception:
+        return b, b, 0.0, 0.0
+
+
 async def ana():
     from ikiz.kos import kur, sur
     print("=== 1) main() kurulumu ===")
@@ -26,7 +44,8 @@ async def ana():
     except Exception:
         pass
     acik = M.portfolio.get_open_positions()
-    print(f"\n  {n} mum işlendi · bakiye ${b0:,.2f} → ${b1:,.2f} ({(b1/b0-1)*100:+.2f}%)")
+    print(f"\n  {n} mum işlendi · HESAP DEĞERİ ${b0:,.2f} → ${b1:,.2f} ({(b1/b0-1)*100:+.2f}%)")
+    print(f"    serbest ${serbest:,.2f} + kilitli marj ${marj:,.2f} + gerçekleşmemiş ${upnl:+,.2f}")
     print(f"  açık pozisyon {len(acik)}")
     import sqlite3, os
     from ikiz import db_yolu; DBP = db_yolu()

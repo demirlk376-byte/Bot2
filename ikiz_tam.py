@@ -14,6 +14,24 @@ sys.path.insert(0, "/home/user/Bot2")
 from ikiz import db_yolu
 DBP = db_yolu()
 
+
+async def _equity(M):
+    """GERCEK hesap degeri = serbest bakiye + kilitli marj + gerceklesmemis PnL.
+
+    get_balance() yalnizca SERBEST nakdi dondurur; acik pozisyonlarin marji
+    dusulmus haldedir. Bu yuzden 3 pozisyon acikken ekranda "-%23" gorunuyordu
+    ama hesap aslinda +%10 kardaydi (kapanmis 8 islem +$1.028, kilitli marj
+    $3.355). Kullaniciyi yaniltmasin diye EQUITY bildiriliyor.
+    """
+    b = await M.exchange.get_balance()
+    try:
+        marj = sum(getattr(p, "margin_used", 0.0) for p in M.exchange.get_open_positions())
+        upnl = await M.exchange.get_total_unrealized_pnl()
+        return b + marj + upnl, b, marj, upnl
+    except Exception:
+        return b, b, 0.0, 0.0
+
+
 async def ana():
     from ikiz.kos import kur, sur
     t0 = time.time()
@@ -45,8 +63,10 @@ async def ana():
     for k,g in d.groupby("kol"):
         print(f"    {k:<12s} n={len(g):>5d}  ortR {g.R.mean():+.4f}  PnL ${g.pnl_usdt.sum():+9,.2f}")
     print(f"\n  cikis nedeni: {d.exit_reason.value_counts().to_dict()}")
-    b = await M.exchange.get_balance()
-    print(f"\n  bakiye $10,000 -> ${b:,.2f}")
+    b, serbest, marj, upnl = await _equity(M)
+    print(f"\n  HESAP DEGERI (equity) $10,000 -> ${b:,.2f}")
+    print(f"    serbest ${serbest:,.2f} + kilitli marj ${marj:,.2f} "
+          f"+ gerceklesmemis ${upnl:+,.2f}")
     csvp = os.path.join(os.getcwd(), "ikiz_tam_islemler.csv")
     d.to_csv(csvp, index=False)
     print(f"  islem listesi -> {csvp}")
