@@ -288,6 +288,7 @@ async def sur(M, saat, feed, bitis=None, ilerleme_her=2000):
     ctf = M.config.strategy.confirm_tf
     SN = {"1m":60,"5m":300,"15m":900,"30m":1800,"1h":3600,"4h":14400,"1d":86400}
     sn = SN[tf]
+    _ctf_sn = SN.get(ctf, 0) if ctf != tf else 0
 
     bas = pd.Timestamp(saat.simdi)
     olay = []
@@ -345,6 +346,14 @@ async def sur(M, saat, feed, bitis=None, ilerleme_her=2000):
                 await M.exchange.update_price(px, sym)
             if hasattr(M.exchange, "check_sl_tp_tick"):
                 await M.exchange.check_sl_tp_tick(sym, px)
+            # ⚠ 4h poll'u SEYRELTMEYİ DENEDİM, GERİ ALDIM (2026-09-15).
+            # "Çağrıların %75'i boşa gidiyor, seyreltmek risksiz" demiştim —
+            # ÖLÇÜM ÇÜRÜTTÜ: 16 işlem → 11 işlem, bakiye değişti. Sebep: 4h
+            # tamponu İLK beslendiğinde 49 mumu birden alıyor; seyrek çağırınca
+            # o ilk dolum farklı anda oluyor, donchian'ın analiz ettiği ilk 4h
+            # bar kayıyor ve diziler oradan ayrışıyor.
+            # Ayrıca CANLIDA o poll döngüsü 30 SANİYEDE BİR çalışıyor → sık
+            # çağırmak canlıya daha sadık. Hız için sadakat feda edilmez.
             await dm._poll_once(ctf)          # 4h ONCE (donchian onu okuyor)
             await dm._poll_once(tf)           # 1h → on_candle_close tetikler
         except Exception as e:
