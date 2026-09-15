@@ -70,6 +70,15 @@ async def kur(baslangic, coinler=None, source="local", env_ek=None):
     from ikiz.saat import SanalSaat, sanal_datetime
     from ikiz.besleme import ReplayFeed
 
+    # Kurulumda `PaperExchange: rest_exchange not set` / `Failed to load initial
+    # candles` uyarilari BEKLENEN: besleme main() offline moda dustukten SONRA
+    # takiliyor. Ekrani kirletmesinler; gercek hatalar gorunur kalsin.
+    import logging as _lg
+    _susturulan = {}
+    for _ad in ("data", "ccxt", "aiosqlite", "asyncio"):
+        _lgr = _lg.getLogger(_ad); _susturulan[_ad] = _lgr.level
+        _lgr.setLevel(_lg.CRITICAL)
+
     _ortam(coinler)
     if env_ek: os.environ.update(env_ek)
     _y = _db()
@@ -201,6 +210,9 @@ async def kur(baslangic, coinler=None, source="local", env_ek=None):
         _asil_set(M.exchange, f)
         feed_kutu["f"] = f
 
+    for _ad, _lv in _susturulan.items():
+        _lg.getLogger(_ad).setLevel(_lv)
+
     if "f" not in feed_kutu:
         h = feed_kutu.get("hata", "set_rest_exchange hiç çağrılmadı")
         raise RuntimeError(f"ReplayFeed takılamadı → {h}")
@@ -223,7 +235,30 @@ async def sur(M, saat, feed, bitis=None, ilerleme_her=2000):
     Muhafızın amacı ÖLÜ BESLEME yakalamak; replay'de besleme yapısal olarak taze,
     o yüzden 0 döndürmek SADIK olan davranıştır.
     """
+    # RUTIN gurultuyu ele, GERCEK uyarilari birak. "BB skipped: regime=..." her
+    # mumda her coin icin basiliyor ve ilerleme cubugunu bozuyor; ama
+    # "Trading halted (Daily loss limit reached)" gibi satirlar TESHIS icin
+    # kritik (125-gun hatasini o satir ele vermisti) — onlar korunuyor.
+    import logging as _lg
+
+    class _Gurultu(_lg.Filter):
+        _ELE = ("BB skipped: regime=", "skipped: Slot", "already occupied",
+                "BB skipped: low volume", "Donchian skipped: Slot")
+        def filter(self, kayit):
+            m = kayit.getMessage()
+            return not any(x in m for x in self._ELE)
+
+    _f = _Gurultu()
+    for _ad in ("main", "execution"):
+        _lg.getLogger(_ad).addFilter(_f)
+
     import time as _t
+    _bas = _t.time()
+
+    def _dk(sn):
+        sn = max(0, int(sn))
+        return f"{sn//60}dk {sn%60:02d}sn" if sn < 3600 else f"{sn//3600}sa {(sn%3600)//60:02d}dk"
+
     from data import DataManager
     DataManager.staleness_seconds = lambda self: 0.0
     DataManager.price_age_seconds = lambda self: 0.0
@@ -295,10 +330,22 @@ async def sur(M, saat, feed, bitis=None, ilerleme_her=2000):
         except Exception as e:
             print(f"    ⚠ {t} {sym}: {type(e).__name__}: {e}")
         n += 1
-        if ilerleme_her and n % ilerleme_her == 0:
+        if n % 500 == 0 or n == len(olay):
+            _gecen = _t.time() - _bas
+            _oran = n / len(olay)
+            _kalan = (_gecen / _oran - _gecen) if _oran > 0 else 0
+            _dolu = int(_oran * 28)
+            _cubuk = "█" * _dolu + "░" * (28 - _dolu)
             b = await M.exchange.get_balance()
-            print(f"    {t.date()} · {n}/{len(olay)} · bakiye ${b:,.2f} · "
-                  f"acik {len(M.portfolio.get_open_positions())}")
+            _ap = len(M.portfolio.get_open_positions())
+            sys.stdout.write(
+                f"\r  [{_cubuk}] %{_oran*100:5.1f}  {t.date()}  "
+                f"{n//1000}k/{len(olay)//1000}k  "
+                f"gecen {_dk(_gecen)}  kalan ~{_dk(_kalan)}  "
+                f"${b:,.0f}  acik {_ap}   ")
+            sys.stdout.flush()
+
+    sys.stdout.write("\n"); sys.stdout.flush()
 
     # ⚠ WAL → ANA DOSYA. Sürücü main()'i aniden durdurduğu için bağlantı düzgün
     # kapanmıyor ve SQLite hiç checkpoint yapmıyor: işlemler .db'de değil
