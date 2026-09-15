@@ -41,6 +41,11 @@ CANLI_ENV = {
     "SYMBOLS": "SOL,ETH,ADA,NEAR,BCH,ICP,BNB,XRP,DOGE,TRX,XLM,LTC",
     "DONCHIAN_SYMBOLS": "SOL,ETH,ADA,NEAR,BCH,ICP,BNB",
     "BB_SYMBOLS": "LTC",
+    # ⚠ 2026-09-15'te EKSİK oldukları ölçüldü: yokken kod varsayılanlarına
+    # düşülüyordu (squeeze → BTC+SOL yani yalnız SOL, BB → hafta içi de açık).
+    # Sonuç: squeeze 404 yerine 98, mean_rev 175 yerine 482 işlem.
+    "SQUEEZE_SYMBOLS": "XRP,DOGE,TRX,XLM",
+    "BB_WEEKDAY_ENABLED": "false",
     "MAX_POSITIONS": "7", "POSITION_CAP_FRACTION": "1.5",
     "MAX_RISK_PCT": "0.02", "RISK_SCALE": "1.4",
     "DAILY_MAX_LOSS_PCT": "0.35", "LEVERAGE": "10",
@@ -54,7 +59,22 @@ CANLI_ENV = {
 
 
 def _ortam(coinler):
-    os.environ.update(CANLI_ENV)
+    """Ortamı kur.
+
+    EN SAĞLAM YOL: gerçek `.env` dosyasını çalışma dizinine koymak. config.py
+    `load_dotenv()` ile onu okur ve ELLE YAZILMIŞ LİSTEYE GEREK KALMAZ.
+    (2026-09-15 dersi: elle yazdığım listede SQUEEZE_SYMBOLS ve
+    BB_WEEKDAY_ENABLED eksikti; kod varsayılanlarına düşüldü ve kol dağılımı
+    bozuldu. Elle kopyalanan konfigürasyon er geç eksik kalır.)
+
+    `.env` yoksa CANLI_ENV yedeği kullanılır — ama eksik olabileceği UYARILIR."""
+    gercek = os.path.exists(os.path.join(os.getcwd(), ".env"))
+    if gercek:
+        print("  konfigürasyon: GERÇEK .env dosyası bulundu ve kullanılacak ✓")
+    else:
+        print("  ⚠ konfigürasyon: .env YOK → elle yazılmış CANLI_ENV yedeği.")
+        print("    Tam sadakat için VPS'teki .env'i bu klasöre kopyala.")
+        os.environ.update(CANLI_ENV)
     os.environ.update({
         "PAPER_MODE": "true", "DRY_RUN": "false",
         "TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": "",

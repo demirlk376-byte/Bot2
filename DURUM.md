@@ -18,7 +18,7 @@ MAX_RISK_PCT=0.02          POSITION_CAP_FRACTION=1.5      ← 2026-08-12'de değ
 MAX_POSITIONS=7            CONSECUTIVE_LOSS_LIMIT=2
 COOLDOWN_MINUTES=240       DAILY_MAX_LOSS_PCT=0.35
 FIXED_MARGIN_USDT=0        MAKER_ENTRY=true
-MARGIN_MODE=isolated       DONCHIAN_MAKER_ENTRY=false     ← 2026-09-14'te KAPATILDI
+MARGIN_MODE=isolated       DONCHIAN_MAKER_ENTRY=false     ← 2026-09-14 UYGULANDI (restart 14:26 UTC)
 ```
 
 Gerçekleşen risk/işlem = MAX_RISK_PCT × RISK_SCALE = **%2.80** (çıpa %2.25).
@@ -30,7 +30,8 @@ içindeki `CANLI_*` sabitleri de güncellenirse. İkisi birlikte güncellenir.
 `DONCHIAN_MAKER_ENTRY=false`. Donchian artık sinyal barı kapanışında **anında
 market** giriyor (squeeze ve S/R zaten öyleydi). 7-21 Ekim maker deneyi **iptal**.
 
-**Kullanıcı kararı**, gerekçe: sadelik ve maker'ın gecikme riski. Bilinen bedeli
+**UYGULANDI ve DOĞRULANDI** (VPS .env + `systemctl show` restart damgası
+Mon 2026-09-14 14:26:20 UTC). **Kullanıcı kararı**, gerekçe: sadelik ve maker'ın gecikme riski. Bilinen bedeli
 yıllık kârın ~%13.3'ü (maker giriş kalemi). Bir kez uyarıldı, karar tekrarlandı.
 
 **Yan faydası ölçüm tarafında:** artık 15.85bp kayma GERÇEKTEN ödeniyor ve ücret
