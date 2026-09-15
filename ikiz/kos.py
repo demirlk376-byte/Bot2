@@ -245,10 +245,27 @@ async def sur(M, saat, feed, bitis=None, ilerleme_her=2000):
     olay.sort()
     print(f"  {len(olay)} mum olayi · {len(ctxs)} coin · tf={tf} confirm={ctf}")
 
+    # ⚠ GÜNLÜK SIFIRLAMA. Canlıda `daily_reset_loop` her gece yarısı
+    # executor.reset_daily() çağırıyor ve o da _trading_halted.clear() yapıyor
+    # (execution.py:224). Sürücü o döngüyü çalıştırmadığı için GÜNLÜK ZARAR
+    # FRENİ bir kez düşünce KALICI oluyordu: 3.3 yıllık koşuda bot 125. günde
+    # durup bir daha hiç işlem açmadı (93 işlem, ort R −0.17).
+    # Burada sanal gün değişiminde aynı iki çağrı yapılır.
+    son_gun = None
+
     n = 0
     for ns, sym in olay:
         t = pd.Timestamp(ns, tz="UTC")
         saat.ayarla((t + pd.Timedelta(seconds=sn)).to_pydatetime())
+
+        _g = saat.simdi.date()
+        if son_gun is not None and _g != son_gun:
+            try:
+                await M.executor.capture_daily_start()
+                M.executor.reset_daily()
+            except Exception as _e:
+                print(f"    ⚠ günlük sıfırlama: {type(_e).__name__}: {_e}")
+        son_gun = _g
         ctx = ctxs[sym]
         dm = ctx.data_mgr
         try:

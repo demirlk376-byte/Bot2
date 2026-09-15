@@ -47,8 +47,9 @@ async def ana():
     print(f"\n  cikis nedeni: {d.exit_reason.value_counts().to_dict()}")
     b = await M.exchange.get_balance()
     print(f"\n  bakiye $10,000 -> ${b:,.2f}")
-    d.to_csv("/home/user/Bot2/replay_tam_islemler.csv", index=False)
-    print(f"  islem listesi -> replay_tam_islemler.csv")
+    csvp = os.path.join(os.getcwd(), "ikiz_tam_islemler.csv")
+    d.to_csv(csvp, index=False)
+    print(f"  islem listesi -> {csvp}")
     print(f"{'='*92}")
 
 asyncio.run(ana())
