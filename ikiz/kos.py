@@ -104,8 +104,38 @@ async def kur(baslangic, coinler=None, source="local", env_ek=None):
 
     import main as M
     import execution as E, risk as R
-    for mod in (M, E, R, data_mod):
-        if hasattr(mod, "datetime"): mod.datetime = SD
+
+    # ⚠ ZAMANI SANALLAŞTIRMA — TEK TEK MODÜL SAYMA.
+    # İlk sürümde main/execution/risk/data sayılmıştı ve portfolio.py atlanmıştı;
+    # sonuç: `entry_time` GERÇEK tarihten (2026), karşılaştırma SANAL tarihten
+    # (2023) geliyordu → yaş negatif → MAX-HOLD ÇIKIŞI HİÇ TETİKLENMEDİ.
+    # Ankorda max_hold çıkışları işlemlerin %23'ü ve KÂRLI (+0.56R); yokluğunda
+    # o pozisyonlar stoplarına kadar gidiyordu (ort R −0.17, kazanma %29).
+    # Artık: yüklü TÜM proje modülleri taranır. İleride eklenen modül de kapsanır.
+    import os as _os, sys as _sys
+    _kok = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    _yamali = []
+    for _ad, _m in list(_sys.modules.items()):
+        if _m is None or _ad.startswith("ikiz"): continue
+        _dosya = getattr(_m, "__file__", None)
+        if not _dosya or not _os.path.abspath(_dosya).startswith(_kok): continue
+        if isinstance(getattr(_m, "datetime", None), type):
+            _m.datetime = SD; _yamali.append(_ad)
+    print(f"  sanal saat: {len(_yamali)} modül yamalandı → {sorted(_yamali)}")
+
+    def _saati_yay():
+        """main() importlarını tetikledikten SONRA tekrar tara (portfolio,
+        database, signal_combiner gibi geç yüklenen modüller için)."""
+        yeni_ = []
+        for ad_, m_ in list(_sys.modules.items()):
+            if m_ is None or ad_.startswith("ikiz"): continue
+            d_ = getattr(m_, "__file__", None)
+            if not d_ or not _os.path.abspath(d_).startswith(_kok): continue
+            dt_ = getattr(m_, "datetime", None)
+            if isinstance(dt_, type) and dt_ is not SD:
+                m_.datetime = SD; yeni_.append(ad_)
+        if yeni_: print(f"  sanal saat (2. tur): {sorted(yeni_)}")
+    _saati_yay()
 
     # feed'i PaperExchange'e taktırmak için: main set_rest_exchange(rest_ex) çağırıyor.
     # O çağrının argümanını BİZİMKİYLE değiştiriyoruz.
@@ -139,6 +169,8 @@ async def kur(baslangic, coinler=None, source="local", env_ek=None):
         data_mod.DataManager.start_feeds = _asil_start
 
     # offline moda dusulduyse feed hic takilmamis olur → ELLE tak
+    _saati_yay()   # main() sirasinda gec yuklenen moduller icin son tur
+
     if "f" not in feed_kutu and "hata" not in feed_kutu and getattr(M, "exchange", None) is not None:
         # symbol_ctxs main()'in GERCEKTEN kurdugu semboller — en guvenilir kaynak
         semb = list(M.symbol_ctxs.keys()) or list(M.config.exchange.symbols or [])
