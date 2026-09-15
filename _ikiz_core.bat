@@ -30,6 +30,14 @@ if errorlevel 1 ( echo   HATA: acilamadi. & pause & exit /b 1 )
 for /d %%D in ("%TEMP%\ikizx\*") do move "%%D" "%HEDEF%" >nul
 rmdir /s /q "%TEMP%\ikizx" 2>nul
 del "%ZIP%" 2>nul
+REM ⚠ ACMA BASARILI MI? Degilse DUR -- yarim klasor birakma (bir kez
+REM  klasoru silip kodu koyamadi ve kullanicinin CSV'si ucup gitti).
+if not exist "%HEDEF%\ikiz_tam.py" (
+  echo.
+  echo   HATA: kod acilamadi. Klasor eksik kaldi.
+  echo   Cozum: %HEDEF% klasorunu silip ZIP'i elle indir.
+  pause & exit /b 1
+)
 
 if defined ENVYEDEK (
   copy /y "%TEMP%\ikiz_env_yedek" "%HEDEF%\.env" >nul

@@ -19,8 +19,37 @@ import numpy as np, pandas as pd
 SPLIT = pd.Timestamp("2025-01-01", tz="UTC")
 
 
+def _dbden():
+    """CSV yoksa DOĞRUDAN veritabanından oku. DB birincil kaynak, CSV türev —
+    ve bat bir kez CSV'yi uçurduğu için bu yol daha sağlam. WAL'daki veriler de
+    okunur (aynı dizindeki -wal dosyası otomatik birleşir)."""
+    import sqlite3
+    from ikiz import db_yolu
+    y = db_yolu()
+    if not os.path.exists(y):
+        return None
+    c = sqlite3.connect(y)                    # ro DEĞİL: WAL'ı birleştirebilsin
+    try:
+        c.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    except Exception:
+        pass
+    d = pd.read_sql(
+        "SELECT symbol,side,entry_price,exit_price,sl_price,quantity,"
+        "entry_time,exit_time,pnl_usdt,exit_reason,strategy_scores "
+        "FROM trades WHERE exit_time IS NOT NULL", c)
+    c.close()
+    print(f"  kaynak: {y} ({len(d)} kapanmış işlem)")
+    return d
+
+
 def yukle(yol):
-    d = pd.read_csv(yol)
+    if os.path.exists(yol):
+        print(f"  kaynak: {yol}")
+        d = pd.read_csv(yol)
+    else:
+        d = _dbden()
+        if d is None or not len(d):
+            sys.exit("⛔ Ne CSV ne de veritabanı bulundu. Önce `2_TAM_KOSU.bat` koş.")
     d["giris"] = pd.to_datetime(d.entry_time, utc=True, format="mixed")
     d["cikis"] = pd.to_datetime(d.exit_time, utc=True, format="mixed")
     d["coin"] = d.symbol.str.split("/").str[0]
@@ -43,8 +72,6 @@ def tablo(d, baslik):
 
 def main():
     yol = sys.argv[1] if len(sys.argv) > 1 else "ikiz_tam_islemler.csv"
-    if not os.path.exists(yol):
-        sys.exit(f"⛔ {yol} yok. Önce `py ikiz_tam.py` koş.")
     d = yukle(yol)
     print(f"\n{'='*82}\n=== COİN ANALİZİ · {len(d)} işlem · "
           f"{d.giris.min().date()} → {d.cikis.max().date()} ===")
