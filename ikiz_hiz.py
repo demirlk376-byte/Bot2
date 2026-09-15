@@ -5,7 +5,7 @@ logging.basicConfig(level=logging.ERROR)
 sys.path.insert(0, "/home/user/Bot2")
 
 async def ana():
-    from replay.kos import kur, sur
+    from ikiz.kos import kur, sur
     t0 = time.time()
     M, saat, feed = await kur("2025-04-01", source="local")
     t_kur = time.time() - t0

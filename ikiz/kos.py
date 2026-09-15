@@ -65,12 +65,30 @@ def _ortam(coinler):
 
 async def kur(baslangic, coinler=None, source="local", env_ek=None):
     """main()'i kurulum bitene kadar koşturur. Döner: (main_modulu, saat, feed)."""
-    from replay.saat import SanalSaat, sanal_datetime
-    from replay.besleme import ReplayFeed
+    from ikiz.saat import SanalSaat, sanal_datetime
+    from ikiz.besleme import ReplayFeed
 
     _ortam(coinler)
     if env_ek: os.environ.update(env_ek)
     if os.path.exists("/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db"): os.remove("/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db")
+
+    # ⚠ ÜRETİM KUSURU TELAFİSİ (exchange.py'ye DOKUNULMADAN):
+    # execution.py maker limit emrini `timeout=` ve `poll=` ile çağırıyor
+    # (LiveExchange.place_limit_order bunları alıyor, satır 1006-1010) ama
+    # PaperExchange.place_limit_order ALMIYOR (satır 204-207). Sonuç: PAPER
+    # MODDA maker girişi olan HER kol TypeError alıp sessizce düşüyor
+    # ("BB skipped: got an unexpected keyword argument 'timeout'").
+    # Bu canlıyı etkilemez ama paper demo koşuları eksik çalışıyor demektir.
+    # İkiz'de sadakat için parametreleri YUTAN bir sarmalayıcı takılır;
+    # üretim dosyası değiştirilmez.
+    import exchange as _X
+    if "timeout" not in _X.PaperExchange.place_limit_order.__code__.co_varnames:
+        _asil_limit = _X.PaperExchange.place_limit_order
+        async def _limit_shim(self, symbol, side, amount, limit_price, params,
+                              timeout=45.0, poll=3.0, fallback_market=True):
+            return await _asil_limit(self, symbol, side, amount, limit_price,
+                                     params, fallback_market=fallback_market)
+        _X.PaperExchange.place_limit_order = _limit_shim
 
     import data as data_mod
     saat = SanalSaat(pd.Timestamp(baslangic, tz="UTC").to_pydatetime())

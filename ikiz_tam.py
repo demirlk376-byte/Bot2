@@ -14,7 +14,7 @@ sys.path.insert(0, "/home/user/Bot2")
 DBP = os.environ.get("REPLAY_DB", "/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/replay_trades.db")
 
 async def ana():
-    from replay.kos import kur, sur
+    from ikiz.kos import kur, sur
     t0 = time.time()
     M, saat, feed = await kur("2023-04-06", source="local")
     print(f"kurulum {time.time()-t0:.0f}s · {len(M.symbol_ctxs)} coin", flush=True)

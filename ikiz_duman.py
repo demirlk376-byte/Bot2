@@ -4,7 +4,7 @@ logging.basicConfig(level=logging.WARNING)
 sys.path.insert(0, "/home/user/Bot2")
 
 async def ana():
-    from replay.kos import kur, sur
+    from ikiz.kos import kur, sur
     print("=== 1) main() kurulumu ===")
     M, saat, feed = await kur("2025-06-01", source="local")
     print(f"  ✓ kuruldu · coin sayısı {len(M.symbol_ctxs)} · borsa {type(M.exchange).__name__}")
