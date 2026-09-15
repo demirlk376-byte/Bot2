@@ -44,9 +44,9 @@ cd /d "%HEDEF%"
 echo   [3/4] Paketler kontrol ediliyor...
 py -m pip install -q -r requirements.txt
 
-echo   [4/4] Kosu basliyor: %1
+echo   [4/4] Kosu basliyor: %*
 echo.
-py %1
+py %*
 goto :bitti
 
 :indirme_hatasi
