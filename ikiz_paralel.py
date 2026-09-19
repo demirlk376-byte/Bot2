@@ -12,8 +12,12 @@ birbirine karışmaz.
 Kullanım:
   py ikiz_paralel.py risk          → RISK_SCALE taraması (1.0 / 1.4 / 1.75 / 2.0)
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
+
+Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
+kendi ikiz_<ad>.log dosyasına CANLI yazar — Not Defteri ile açıp
+bakabilirsin, CMD penceresine dokunmana gerek yok.
 """
-import os, sys, json, subprocess, time
+import os, sys, io, re, json, subprocess, time, threading
 from concurrent.futures import ThreadPoolExecutor
 
 KOK = os.path.dirname(os.path.abspath(__file__))
@@ -43,21 +47,48 @@ def kos(ad_ve_env):
     env["PYTHONUTF8"] = "1"
     env["REPLAY_DB"] = os.path.join(KOK, f"ikiz_{ad}.db")
     env["IKIZ_ETIKET"] = ad
+    gunluk = os.path.join(KOK, f"ikiz_{ad}.log")
     t0 = time.time()
-    p = subprocess.run([sys.executable, os.path.join(KOK, "ikiz_tam.py")],
-                       env=env, cwd=KOK, capture_output=True, text=True,
-                       errors="replace")
+    # ⚠ capture_output=True KULLANMA. Ciktiyi bellekte tutuyordu, yani
+    # kosu bitene kadar (1+ saat) HICBIR ilerleme gorunmuyordu ve kullanici
+    # donmus mu koşuyor mu ayirt edemiyordu. Dosyaya yaz: hem canli izlenir,
+    # hem CMD kapansa bile kayit kalir.
+    with io.open(gunluk, "w", encoding="utf-8", errors="replace") as f:
+        p = subprocess.run([sys.executable, os.path.join(KOK, "ikiz_tam.py")],
+                           env=env, cwd=KOK, stdout=f,
+                           stderr=subprocess.STDOUT)
     sure = (time.time() - t0) / 60
-    if p.returncode != 0:
-        # ⚠ HATAYI GOSTER. Ilk surum yalniz stdout basiyordu; dort kosu da
-        # rc=1 ile aninda dustu ve sebep GORUNMEDI.
-        cikti = ("--- STDERR (son 25 satir) ---\n"
-                 + "\n".join([x for x in p.stderr.split("\n") if x.strip()][-25:])
-                 + "\n--- STDOUT (son 10 satir) ---\n"
-                 + "\n".join([x for x in p.stdout.split("\n") if x.strip()][-10:]))
-    else:
-        cikti = "\n".join([x for x in p.stdout.split("\n") if x.strip()][-30:])
+    satirlar = _satirlar(gunluk)
+    n = 30 if p.returncode == 0 else 40
+    cikti = "\n".join(satirlar[-n:])
     return ad, ek, sure, cikti, p.returncode
+
+
+def _satirlar(yol):
+    """Gunlugu satirlara ayir. ⚠ ilerleme cubugu \r kullaniyor; yalniz \n ile
+    bolersek tek dev satir cikar ve son durum gorunmez. Ikisiyle de bol."""
+    try:
+        with io.open(yol, encoding="utf-8", errors="replace") as f:
+            ham = f.read()
+    except OSError:
+        return []
+    return [x.strip() for x in re.split(r"[\r\n]+", ham) if x.strip()]
+
+
+def _nabiz(tarama, bitti, aralik=120):
+    """Her 2 dk'da bir her kosunun son satirini bas -- kullanici donup
+    kalmadigini gorsun."""
+    while not bitti.is_set():
+        bitti.wait(aralik)
+        if bitti.is_set():
+            break
+        parcalar = []
+        for ad, _ in tarama:
+            sat = _satirlar(os.path.join(KOK, f"ikiz_{ad}.log"))
+            son = sat[-1][-58:] if sat else "basliyor..."
+            parcalar.append(f"  {ETIKET_ADI.get(ad, ad):<14s} {son}")
+        print(f"\n[{time.strftime('%H:%M:%S')}] hala kosuyor:\n"
+              + "\n".join(parcalar), flush=True)
 
 
 def main():
@@ -70,14 +101,17 @@ def main():
     print(f"  çekirdek: {os.cpu_count()} · her koşu ~50 dk · toplam ~{50*max(1,len(tarama)//en_fazla+1)} dk")
     for ad, ek in tarama:
         print(f"    {ETIKET_ADI.get(ad, ad):<14s} {ek}")
-    print(f"{'='*84}\n  başladı, çıktılar koşular bitince gelecek...\n", flush=True)
+    print(f"{'='*84}\n  başladı. Her 2 dk'da bir durum satırı gelecek.\n  Canlı takip: ikiz_<ad>.log dosyalarını Not Defteri ile aç.\n", flush=True)
 
     t0 = time.time()
+    bitti = threading.Event()
+    threading.Thread(target=_nabiz, args=(tarama, bitti), daemon=True).start()
     with ThreadPoolExecutor(max_workers=en_fazla) as ex:
         for ad, ek, sure, cikti, rc in ex.map(kos, tarama):
             print(f"\n{'─'*84}\n### {ETIKET_ADI.get(ad, ad)}  ({ek})  ·  {sure:.0f} dk  ·  "
                   f"{'OK' if rc == 0 else f'HATA rc={rc}'}\n{'─'*84}")
             print(cikti, flush=True)
+    bitti.set()
     print(f"\n{'='*84}\nTOPLAM {(time.time()-t0)/60:.0f} dk\n{'='*84}")
 
 
