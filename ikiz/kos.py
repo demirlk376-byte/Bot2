@@ -74,7 +74,14 @@ def _ortam(coinler):
     else:
         print("  ⚠ konfigürasyon: .env YOK → elle yazılmış CANLI_ENV yedeği.")
         print("    Tam sadakat için VPS'teki .env'i bu klasöre kopyala.")
-        os.environ.update(CANLI_ENV)
+        # ⚠ update() DEĞİL, setdefault(). update() ÇAĞIRANIN verdiği değeri
+        # EZİYORDU: ikiz_paralel.py dört alt sürece RISK_SCALE 1.00/1.40/
+        # 1.75/2.00 gönderiyordu, bu satır dördünü de 1.4'e çeviriyordu ve
+        # tarama SESSİZCE aynı koşuyu dört kez yapıyordu (2026-09-19: dört
+        # satır da 1778 işlem / +0.1581 / MAR 3.29 çıktı, 5 saat boşa gitti).
+        # CANLI_ENV bir YEDEK; zaten verilmiş bir değişkene dokunmamalı.
+        for _k, _v in CANLI_ENV.items():
+            os.environ.setdefault(_k, _v)
     os.environ.update({
         "PAPER_MODE": "true", "DRY_RUN": "false",
         "TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": "",
@@ -83,6 +90,15 @@ def _ortam(coinler):
     })
     if coinler:
         os.environ["SYMBOLS"] = ",".join(coinler)
+
+    # ⚠ KOŞU KENDİ AYARINI BİLDİRSİN. Yukarıdaki hata SESSİZ olduğu için
+    # 5 saat sürdü: tablo geldi, dört satır aynıydı, sebebi ancak sonradan
+    # anlaşıldı. Artık her koşu hangi ayarla koştuğunu BAŞTA yazıyor.
+    _izle = ("RISK_SCALE", "MAX_RISK_PCT", "MAX_POSITIONS",
+             "POSITION_CAP_FRACTION", "DAILY_MAX_LOSS_PCT", "LEVERAGE")
+    print("  ETKİN AYAR · " + " · ".join(
+        f"{k}={os.environ.get(k, '(yok)')}" for k in _izle))
+    print(f"  veritabanı: {os.environ['DB_PATH']}")
 
 
 async def kur(baslangic, coinler=None, source="local", env_ek=None):

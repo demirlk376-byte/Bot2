@@ -119,6 +119,22 @@ def main():
               f"{s['yillik']*100:>9.1f}{s['maxdd']*100:>8.1f}{s['mar']:>7.2f}")
     print("-" * 104)
 
+    # ⚠ SESSİZ BAŞARISIZLIK MUHAFIZI. 2026-09-19: dört koşu da aynı ayarla
+    # koştu (ikiz/kos.py:77 CANLI_ENV çağıranın RISK_SCALE'ini EZİYORDU) ve bu
+    # tablo dört ÖZDEŞ satır bastı. Tablo geldiği için sonuç doğru sanıldı;
+    # oysa tarama hiç yapılmamıştı ve 5 saat boşa gitti. Bir daha sessizce
+    # geçmesin: aynı sonuç = tarama olmamış demektir.
+    imza = {(s["n"], round(s["son"], 2), round(s["ortR"], 6)) for s in sonuc}
+    if len(sonuc) > 1 and len(imza) == 1:
+        print("\n  " + "!" * 88)
+        print("  !! TARAMA YAPILMAMIŞ: tüm koşular BİREBİR aynı sonucu verdi.")
+        print("  !! Farklı ayarlar alt süreçlere ULAŞMAMIŞ demektir; bu tablo")
+        print("  !! risk sorusu hakkında hiçbir şey söylemez.")
+        print("  !! Koşu başındaki 'ETKİN AYAR' satırını kontrol et: her koşu")
+        print("  !! kendi RISK_SCALE değerini yazmalı.")
+        print("  " + "!" * 88)
+        return
+
     # ⚠ MAR = yillik getiri / en derin dusus. Karsilastirmanin ASIL sutunu bu.
     # Cunku riski buyutunce bakiye sutunu HER ZAMAN buyur; tek basina bakmak
     # "daha cok risk her zaman daha iyi" yanlis sonucunu verir.

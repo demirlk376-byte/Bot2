@@ -34,3 +34,15 @@ async def ana():
     print(f"  gunde {nt/60:.2f} islem  (CANLI 1.46 · KRONOS 1.42)")
 
 asyncio.run(ana())
+
+# ⚠ SÜREÇ KENDİLİĞİNDEN ÇIKMIYOR — bu satır olmadan burada SONSUZA KADAR asılı
+# kalır. aiosqlite veritabanı bağlantısını bir ARKA PLAN THREAD'inde koşturuyor
+# ve o thread daemon DEĞİL; close() çağrılmadıkça yaşamaya devam ediyor. Python
+# çıkarken threading._shutdown içinde onun bitmesini bekler ve asla bitmez.
+# (py-spy, 2026-09-19: dört paralel süreç de tam orada, 4 saat, sıfır CPU.)
+# Tek koşuda çıktı doğrudan ekrana bastığı için kusur GÖRÜNMÜYORDU; paralel
+# koşuda çıktı süreç bitene kadar tutulduğundan koşu HİÇ sonuç vermiyordu.
+# İşlemler sur() sonunda zaten WAL'den ana dosyaya aktarıldı, yazılacak bir şey
+# kalmadı — o yüzden sert çıkış güvenli.
+sys.stdout.flush(); sys.stderr.flush()
+os._exit(0)
