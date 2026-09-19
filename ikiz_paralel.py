@@ -45,6 +45,12 @@ def kos(ad_ve_env):
     # kosu calisip paralel kosu dusuyordu. UTF-8'i zorla.
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUTF8"] = "1"
+    # ⚠ stdout DOSYAYA baglandiginda Python 8 KB'lik BLOK tamponu kullanir:
+    # kosu basindaki satirlar (ETKIN AYAR dahil) dakikalarca diske inmez, o
+    # yuzden 2 dakikalik ayar dogrulamasi ilk nabizda bos doner. logging ise
+    # stderr'e satir satir yazdigi icin gorunur -- gunluk dolu ama print'ler
+    # eksik gorunuyordu. Tamponu kapat.
+    env["PYTHONUNBUFFERED"] = "1"
     env["REPLAY_DB"] = os.path.join(KOK, f"ikiz_{ad}.db")
     env["IKIZ_ETIKET"] = ad
     gunluk = os.path.join(KOK, f"ikiz_{ad}.log")
