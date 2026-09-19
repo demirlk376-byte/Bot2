@@ -12,6 +12,8 @@ birbirine karışmaz.
 Kullanım:
   py ikiz_paralel.py risk          → ust aralik: %2.0 / %2.8 / %3.5 / %4.0
   py ikiz_paralel.py dusuk         → alt aralik: %1.0 / %1.4 / %1.7 / %2.0
+  py ikiz_paralel.py filtre        → filtreler: ADX32 / korel1 / tutus24 / guven
+  py ikiz_paralel.py hepsi         → ikisi birden, 8 surec, ayni 51 dk
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -44,7 +46,36 @@ DUSUK_TARAMA = [
     ("risk20", {"RISK_SCALE": "1.00"}),    # islem basina %2.0  ← ortak capa
 ]
 
-ETIKET_ADI = {"risk10": "%1.0", "risk14": "%1.4", "risk17": "%1.7",
+# ⚠ FILTRE TARAMASI. Hepsi ZATEN URETIM KODUNDA, env ile aciliyor -- yeni kod
+# yok, dolayisiyla canli sadakat garantisi bozulmuyor. RISK_SCALE verilmiyor:
+# CANLI_ENV 1.4'e (canli %2.8) dolduruyor, yani hepsi mevcut %2.8 satiriyla
+# DOGRUDAN karsilastirilabilir.
+#
+# ⚠ ORDERFLOW/CVD BURADA YOK. main.py:2106 -- order-flow toplayici yalniz
+# GOZLEM modunda, ticarete hic etki etmiyor; ustelik watchTrades canli tick
+# akisi istiyor ve gecmis tick verimiz yok. Test edilemez, kosu bosa giderdi.
+#
+# Guc sirasi: donchian 1195/1777 islem (%67), o yuzden tum kollari etkileyen
+# ayarlar sectim. mean_rev'e ozel ayarlar (ornegin SNIPER_MIN_GRADE) yalnizca
+# 159 islemi etkiliyor -- bu veride ayirt edilemeyecek kadar kucuk.
+FILTRE_TARAMA = [
+    # ADX rejim kapisi 28 -> 32: daha guclu trend sarti, daha az ama daha
+    # secili giris. Tum kollari etkiler.
+    ("adx32",  {"ADX_TRENDING_THRESHOLD": "32.0"}),
+    # Ayni yonde en fazla 2 korele pozisyon -> 1. Kripto neredeyse tek blok
+    # hareket ettigi icin bu, gizli yogunlasma riskini keser.
+    ("korel1", {"MAX_CORRELATED_DIRECTION": "1"}),
+    # Max tutus 48 -> 24 mum. Cikislarin %17.9'u (318/1777) max_hold; yarisi
+    # ne yapar?
+    ("hold24", {"MAX_HOLD_CANDLES": "24"}),
+    # Sinyal guvenine gore boyutlandirma (execution.py:495). Boyut degisikligi
+    # oldugu icin -- risk taramasi gibi -- gurultu esigine tabi degil.
+    ("guven",  {"CONFIDENCE_SIZING": "true"}),
+]
+
+ETIKET_ADI = {"adx32": "ADX 32", "korel1": "korel 1", "hold24": "tutus 24",
+              "guven": "guven boyut",
+              "risk10": "%1.0", "risk14": "%1.4", "risk17": "%1.7",
               "risk20": "%2.0", "risk28": "%2.8 (CANLI)",
               "risk35": "%3.5", "risk40": "%4.0"}
 
@@ -153,9 +184,15 @@ def main():
     hangi = sys.argv[1] if len(sys.argv) > 1 else "risk"
     en_fazla = int(sys.argv[2]) if len(sys.argv) > 2 else min(8, os.cpu_count() or 4)
     try:
-        tarama = {"risk": RISK_TARAMA, "dusuk": DUSUK_TARAMA}[hangi]
+        tarama = {"risk": RISK_TARAMA, "dusuk": DUSUK_TARAMA,
+                  "filtre": FILTRE_TARAMA,
+                  # 8 kosu birden: makinede 24 is parcacigi var, ilk tarama
+                  # yalniz 4'unu kullandi ve yine 51 dk surdu. Risk sorusu ile
+                  # filtre sorusu AYNI 51 dakikada cevaplanir.
+                  "hepsi": DUSUK_TARAMA + FILTRE_TARAMA}[hangi]
     except KeyError:
-        print(f"bilinmeyen tarama: {hangi}  (secenekler: risk, dusuk)")
+        print(f"bilinmeyen tarama: {hangi}  "
+              f"(secenekler: risk, dusuk, filtre, hepsi)")
         return
 
     print(f"\n{'='*84}")
