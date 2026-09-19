@@ -396,12 +396,19 @@ async def sur(M, saat, feed, bitis=None, ilerleme_her=2000):
     # kapanmıyor ve SQLite hiç checkpoint yapmıyor: işlemler .db'de değil
     # -wal dosyasında kalıyor (ölçüldü: .db 12 KB, -wal 264 KB). Okuyucu da
     # "1 işlem" görüyordu. Koşu bitince açıkça aktar.
-    try:
-        await M.db._db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-        await M.db._db.commit()
-        print("  WAL → ana veritabanına aktarıldı")
-    except Exception as _e:
-        print(f"  ⚠ WAL aktarımı başarısız: {_e}")
+    # ⚠ TRUNCATE kipi WAL dosyasını sıfırlamak için TAM kilit ister; koşu
+    # sonunda hâlâ açık bir okuyucu varsa "database table is locked" verip
+    # HİÇBİR ŞEY aktarmıyor (2026-09-19'da dört koşuda da oldu). PASSIVE kipi
+    # kilit beklemez, elinden geldiği kadarını aktarır — veri güvenliği için
+    # yeterli. Önce TRUNCATE dene, olmazsa PASSIVE'e düş.
+    for _kip in ("TRUNCATE", "PASSIVE"):
+        try:
+            await M.db._db.execute(f"PRAGMA wal_checkpoint({_kip})")
+            await M.db._db.commit()
+            print(f"  WAL → ana veritabanına aktarıldı ({_kip})")
+            break
+        except Exception as _e:
+            print(f"  ⚠ WAL aktarımı ({_kip}) başarısız: {_e}")
     return n
 
 
