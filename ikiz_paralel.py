@@ -75,13 +75,50 @@ def _satirlar(yol):
     return [x.strip() for x in re.split(r"[\r\n]+", ham) if x.strip()]
 
 
+def _ayar_dogrula(tarama):
+    """⚠ ILK 2 DAKIKADA taramanin GERCEKTEN farkli ayarlarla kostugunu
+    dogrula. 2026-09-19'da dort kosu da ayni ayarla kostu (CANLI_ENV caginin
+    RISK_SCALE'ini eziyordu) ve bu ancak 5 SAAT sonra, sonuc tablosunda dort
+    ozdes satir gorunce anlasildi. Kosu kendi ayarini basta yaziyor; burada
+    okuyup karsilastiriyoruz. Ayni cikarsa kosmaya devam etmenin anlami yok."""
+    bulunan = {}
+    for ad, _ in tarama:
+        for sat in _satirlar(os.path.join(KOK, f"ikiz_{ad}.log")):
+            if "ETKİN AYAR" in sat:
+                bulunan[ad] = sat
+                break
+    if len(bulunan) < len(tarama):
+        return  # hepsi henuz yazmadi; sonraki nabizda tekrar bakilir
+    print("\n  --- AYAR DOGRULAMA ---")
+    for ad, sat in bulunan.items():
+        print(f"  {ETIKET_ADI.get(ad, ad):<14s} {sat.strip()}")
+    if len(set(bulunan.values())) == 1:
+        print("\n  " + "!" * 84)
+        print("  !! TUM KOSULAR AYNI AYARDA. Tarama yapilmiyor, kosu bosa gidiyor.")
+        print("  !! Pencereyi kapat, kodu guncelle (git pull) ve tekrar basla.")
+        print("  " + "!" * 84, flush=True)
+    else:
+        print("  ayarlar farkli ✓ tarama gercek.\n", flush=True)
+
+
 def _nabiz(tarama, bitti, aralik=120):
     """Her 2 dk'da bir her kosunun son satirini bas -- kullanici donup
     kalmadigini gorsun."""
+    dogrulandi = False
     while not bitti.is_set():
         bitti.wait(aralik)
         if bitti.is_set():
             break
+        if not dogrulandi:
+            try:
+                _ayar_dogrula(tarama)
+                dogrulandi = all(
+                    any("ETKİN AYAR" in x for x in
+                        _satirlar(os.path.join(KOK, f"ikiz_{ad}.log")))
+                    for ad, _ in tarama)
+            except Exception as e:
+                print(f"  (ayar dogrulama atlandi: {type(e).__name__}: {e})")
+                dogrulandi = True
         parcalar = []
         for ad, _ in tarama:
             sat = _satirlar(os.path.join(KOK, f"ikiz_{ad}.log"))
