@@ -10,7 +10,8 @@ Her alt süreç kendi ortam değişkenleriyle ve KENDİ veritabanıyla çalış�
 birbirine karışmaz.
 
 Kullanım:
-  py ikiz_paralel.py risk          → RISK_SCALE taraması (1.0 / 1.4 / 1.75 / 2.0)
+  py ikiz_paralel.py risk          → ust aralik: %2.0 / %2.8 / %3.5 / %4.0
+  py ikiz_paralel.py dusuk         → alt aralik: %1.0 / %1.4 / %1.7 / %2.0
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -30,7 +31,21 @@ RISK_TARAMA = [
     ("risk35", {"RISK_SCALE": "1.75"}),    # islem basina %3.5
     ("risk40", {"RISK_SCALE": "2.00"}),    # islem basina %4.0
 ]
-ETIKET_ADI = {"risk20": "%2.0", "risk28": "%2.8 (CANLI)",
+# ⚠ ALT ARALIK. Ilk tarama (2026-09-19) MAR'in SOL KENARDA hala yukseldigini
+# gosterdi: %4.0 -> 2.53, %3.5 -> 2.79, %2.8 -> 3.29, %2.0 -> 3.89. Yani en iyi
+# denge test edilen aralikta DEGIL, altinda. Ayrica son bakiye ~%3.3'te tepe
+# yapiyor -> bu stratejinin TAM KELLY noktasi orasi; yarim Kelly ~%1.65.
+# Bu tarama o bolgeyi olcer. %2.0 ortak capa: iki taramanin ayni sonucu
+# vermesi kosunun tekrarlanabilirligini de dogrular.
+DUSUK_TARAMA = [
+    ("risk10", {"RISK_SCALE": "0.50"}),    # islem basina %1.0
+    ("risk14", {"RISK_SCALE": "0.70"}),    # islem basina %1.4
+    ("risk17", {"RISK_SCALE": "0.85"}),    # islem basina %1.7  ~yarim Kelly
+    ("risk20", {"RISK_SCALE": "1.00"}),    # islem basina %2.0  ← ortak capa
+]
+
+ETIKET_ADI = {"risk10": "%1.0", "risk14": "%1.4", "risk17": "%1.7",
+              "risk20": "%2.0", "risk28": "%2.8 (CANLI)",
               "risk35": "%3.5", "risk40": "%4.0"}
 
 
@@ -137,7 +152,11 @@ def _nabiz(tarama, bitti, aralik=120):
 def main():
     hangi = sys.argv[1] if len(sys.argv) > 1 else "risk"
     en_fazla = int(sys.argv[2]) if len(sys.argv) > 2 else min(8, os.cpu_count() or 4)
-    tarama = {"risk": RISK_TARAMA}[hangi]
+    try:
+        tarama = {"risk": RISK_TARAMA, "dusuk": DUSUK_TARAMA}[hangi]
+    except KeyError:
+        print(f"bilinmeyen tarama: {hangi}  (secenekler: risk, dusuk)")
+        return
 
     print(f"\n{'='*84}")
     print(f"=== PARALEL KOŞU · {len(tarama)} konfigürasyon · en fazla {en_fazla} süreç ===")
