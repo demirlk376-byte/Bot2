@@ -8,7 +8,7 @@ Bu, iki motorun UZLASIP UZLASMADIGI testidir:
 Isinma: veri basindan baslanir (2023-04-06). Ilk ~43 gun donchian'in 260 adet
 4h bari birikene kadar sinyal uretmez — canli bot ilk kurulusunda da oyleydi.
 """
-import asyncio, sys, time, json, logging, os
+import asyncio, sys, time, json, logging, os, inspect
 logging.basicConfig(level=logging.ERROR)
 sys.path.insert(0, "/home/user/Bot2")
 from ikiz import db_yolu
@@ -25,10 +25,22 @@ async def _equity(M):
     """
     b = await M.exchange.get_balance()
     try:
-        marj = sum(getattr(p, "margin_used", 0.0) for p in M.exchange.get_open_positions())
-        upnl = await M.exchange.get_total_unrealized_pnl()
+        marj = sum(getattr(p, "margin_used", 0.0)
+                   for p in M.exchange.get_open_positions())
+        # ⚠ PaperExchange.get_total_unrealized_pnl SENKRON (exchange.py:376,
+        # `def`, `async def` degil). Bunu await etmek "object float can't be
+        # used in 'await' expression" firlatiyordu; asagidaki genis except onu
+        # YUTUYOR ve fonksiyon sessizce marj=0/upnl=0 donuyordu -- yani tam
+        # olarak onlemek icin yazildigi hataya dusuyordu. 2026-09-19'da kosu
+        # "HESAP DEGERI $266.112" yazdi; gercegi $396.601'di, aradaki $130.489
+        # hala acik 3 pozisyonun kilitli marjiydi. Ikisini de destekle.
+        _u = M.exchange.get_total_unrealized_pnl()
+        upnl = await _u if inspect.isawaitable(_u) else _u
         return b + marj + upnl, b, marj, upnl
-    except Exception:
+    except Exception as e:
+        print(f"  ⚠ equity okunamadi ({type(e).__name__}: {e}) "
+              f"-> yalniz SERBEST nakit gosteriliyor, acik pozisyonlarin "
+              f"marji HARIC")
         return b, b, 0.0, 0.0
 
 

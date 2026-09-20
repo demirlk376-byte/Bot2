@@ -85,7 +85,19 @@ def olc(d):
 
 
 def main():
-    yollar = sys.argv[1:] or sorted(glob.glob(os.path.join(KOK, "ikiz_*.db")))
+    # ⚠ kalibi DARALT. "ikiz_*.db" klasordeki ALAKASIZ veritabanlarini da
+    # yutuyordu: 8 islemlik bir dosya tabloya "trades" diye girdi ve MAR 35.55
+    # ile "en iyi" ilan edildi. Yalnizca ETIKET'te tanimli tarama kosulari.
+    if sys.argv[1:]:
+        yollar = sys.argv[1:]
+    else:
+        yollar, atlanan = [], []
+        for y in sorted(glob.glob(os.path.join(KOK, "ikiz_*.db"))):
+            ad = os.path.splitext(os.path.basename(y))[0].replace("ikiz_", "")
+            (yollar if ad in ETIKET else atlanan).append(y)
+        if atlanan:
+            print("  (tarama kosusu olmayan dosyalar atlandi: "
+                  + ", ".join(os.path.basename(a) for a in atlanan) + ")")
     if not yollar:
         print("ikiz_*.db bulunamadi. Bu betigi IKIZ klasorunde calistir.")
         return
@@ -110,6 +122,9 @@ def main():
     print(f"\n{'='*104}")
     print("=== RISK TARAMASI · kar/drawdown dengesi ===")
     print(f"  baslangic ${BAL0:,.0f} · bilesik boyutlama (bot bakiyeden hesapliyor)")
+    print("  bakiye = GERCEKLESMIS deger (kapanmis islemler). Kosu sonunda hala")
+    print("  acik pozisyon varsa botun 'serbest nakit' satiri bundan DUSUK olur;")
+    print("  aradaki fark o pozisyonlarda kilitli marjdir.")
     print(f"{'='*104}")
     bas = f"{'risk':<12s}{'islem':>7s}{'gunde':>7s}{'ort R':>9s}{'kazan%':>8s}"
     bas += f"{'bakiye':>14s}{'yillik%':>9s}{'maxDD%':>8s}{'MAR':>7s}"
