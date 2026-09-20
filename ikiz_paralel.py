@@ -14,6 +14,7 @@ Kullanım:
   py ikiz_paralel.py dusuk         → alt aralik: %1.0 / %1.4 / %1.7 / %2.0
   py ikiz_paralel.py filtre        → filtreler: ADX32 / korel1 / tutus24 / guven
   py ikiz_paralel.py hepsi         → ikisi birden, 8 surec, ayni 51 dk
+  py ikiz_paralel.py birlesik      → korel1 x 4 risk + 4 saf risk, 8 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -73,7 +74,26 @@ FILTRE_TARAMA = [
     ("guven",  {"CONFIDENCE_SIZING": "true"}),
 ]
 
-ETIKET_ADI = {"adx32": "ADX 32", "korel1": "korel 1", "hold24": "tutus 24",
+# ⚠ BIRLESIK TARAMA. korel1 iki yarida da GECTI (TRAIN dMAR +1.69, TEST +0.59)
+# ve mekanizmasi es zamanli korele pozisyonu azaltip oynaklik suruklenmesini
+# dusurmek -- yani ZATEN bir risk azaltmasi iceriyor. Bu yuzden korel1'i ayrica
+# dusuk riskle birlestirmek FAZLA temkinli olabilir; olcmeden oneremem.
+# Ayrica dort saf dusuk-risk kosusu (kazayla silinmisti) geri aliniyor: ayni
+# 52 dakikada iki soru birden cevaplanir.
+BIRLESIK_TARAMA = [
+    ("kor28", {"MAX_CORRELATED_DIRECTION": "1", "RISK_SCALE": "1.40"}),
+    ("kor24", {"MAX_CORRELATED_DIRECTION": "1", "RISK_SCALE": "1.20"}),
+    ("kor20", {"MAX_CORRELATED_DIRECTION": "1", "RISK_SCALE": "1.00"}),
+    ("kor17", {"MAX_CORRELATED_DIRECTION": "1", "RISK_SCALE": "0.85"}),
+    ("risk10", {"RISK_SCALE": "0.50"}),
+    ("risk14", {"RISK_SCALE": "0.70"}),
+    ("risk17", {"RISK_SCALE": "0.85"}),
+    ("risk20", {"RISK_SCALE": "1.00"}),
+]
+
+ETIKET_ADI = {"kor28": "korel+%2.8", "kor24": "korel+%2.4",
+              "kor20": "korel+%2.0", "kor17": "korel+%1.7",
+              "adx32": "ADX 32", "korel1": "korel 1", "hold24": "tutus 24",
               "guven": "guven boyut",
               "risk10": "%1.0", "risk14": "%1.4", "risk17": "%1.7",
               "risk20": "%2.0", "risk28": "%2.8 (CANLI)",
@@ -189,10 +209,11 @@ def main():
                   # 8 kosu birden: makinede 24 is parcacigi var, ilk tarama
                   # yalniz 4'unu kullandi ve yine 51 dk surdu. Risk sorusu ile
                   # filtre sorusu AYNI 51 dakikada cevaplanir.
-                  "hepsi": DUSUK_TARAMA + FILTRE_TARAMA}[hangi]
+                  "hepsi": DUSUK_TARAMA + FILTRE_TARAMA,
+                  "birlesik": BIRLESIK_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
-              f"(secenekler: risk, dusuk, filtre, hepsi)")
+              f"(secenekler: risk, dusuk, filtre, hepsi, birlesik)")
         return
 
     print(f"\n{'='*84}")

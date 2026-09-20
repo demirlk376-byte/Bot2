@@ -124,10 +124,22 @@ async def kur(baslangic, coinler=None, source="local", env_ek=None):
     # yalnız .db silinince bir sonraki koşu BAYAT -wal dosyasını miras alıyor ve
     # SQLite "database or disk is full" veriyor (Windows) / "disk I/O error"
     # (Linux). İşlemler sessizce yazılamıyor.
+    # ⚠ SILME, YEDEKLE. Eski surum dosyayi DOGRUDAN siliyordu; bir tarama
+    # baslatilip bitmeden kapatilirsa onceki kosunun sonucu yerine YENISI
+    # KONMADAN yok oluyordu. 2026-09-20'de tam bu oldu: dort dusuk-risk
+    # veritabani (1778'er islem) 28 KB bos semaya dondu, cunku F_DUSUK_TARAMA
+    # baslatilip erken kapatilmisti. Simdi son saglam kosu bir nesil saklaniyor.
+    _yedek = (_y[:-3] if _y.endswith(".db") else _y) + ".yedek.db"
+    for _ek in ("", "-wal", "-shm"):
+        if os.path.exists(_yedek + _ek):
+            try: os.remove(_yedek + _ek)
+            except OSError: pass
     for _ek in ("", "-wal", "-shm"):
         if os.path.exists(_y + _ek):
-            try: os.remove(_y + _ek)
-            except OSError: pass
+            try: os.replace(_y + _ek, _yedek + _ek)
+            except OSError:
+                try: os.remove(_y + _ek)
+                except OSError: pass
 
     # ⚠ ÜRETİM KUSURU TELAFİSİ (exchange.py'ye DOKUNULMADAN):
     # execution.py maker limit emrini `timeout=` ve `poll=` ile çağırıyor
