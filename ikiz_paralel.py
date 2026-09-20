@@ -27,6 +27,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 KOK = os.path.dirname(os.path.abspath(__file__))
 
+# Tam tarih (345.389 mum olayi) icin kaba sure tahmini. 2026-09-20'de
+# indicators.py numpy'a tasinip CandleBuffer.to_dataframe onbelleklenince
+# olculen hiz 61 -> 166 olay/sn oldu (2.74 kat), yani ~50 dk -> ~20 dk.
+DK_TAHMIN = 20
+
 # RISK_SCALE × MAX_RISK_PCT(0.02) = işlem başına risk
 # ⚠ etiket dosya adina giriyor → % ve Turkce karakter KULLANMA
 RISK_TARAMA = [
@@ -260,7 +265,15 @@ def main():
 
     print(f"\n{'='*84}")
     print(f"=== PARALEL KOŞU · {len(tarama)} konfigürasyon · en fazla {en_fazla} süreç ===")
-    print(f"  çekirdek: {os.cpu_count()} · her koşu ~50 dk · toplam ~{50*max(1,len(tarama)//en_fazla+1)} dk")
+    # ⚠ SABIT METIN TUTMA. Burada "~50 dk" yaziyordu ve indikatorler numpy'a
+    # tasinip mum tablosu onbelleklendikten sonra (2026-09-20, 2.74 kat) YANLIS
+    # kaldi: kullanici 20 dakikalik kosuda 50 dakika bekleyecegini sandi.
+    # Gercek sureyi ilerleme cubugu olcuyor; buradaki yalnizca kaba bir on
+    # tahmindir ve olculen hizdan turetilir.
+    _tur = max(1, (len(tarama) + en_fazla - 1) // en_fazla)
+    print(f"  çekirdek: {os.cpu_count()} · her koşu ~{DK_TAHMIN} dk · "
+          f"{_tur} tur · kaba toplam ~{DK_TAHMIN*_tur} dk "
+          f"(kesin süreyi ilerleme çubuğu gösterir)")
     for ad, ek in tarama:
         print(f"    {ETIKET_ADI.get(ad, ad):<14s} {ek}")
     print(f"{'='*84}\n  başladı. Her 2 dk'da bir durum satırı gelecek.\n  Canlı takip: ikiz_<ad>.log dosyalarını Not Defteri ile aç.\n", flush=True)
