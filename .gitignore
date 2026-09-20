@@ -22,3 +22,7 @@ data/*_fut_15m.csv
 data/*_fut_1m.csv
 data/*_bnc_*.csv
 .para_ekle_snapshot.json
+
+# SQLite WAL yan dosyalari (kosu sirasinda olusur, surume girmez)
+*.db-wal
+*.db-shm
