@@ -6,6 +6,7 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Callable, Awaitable, Optional
 
+import numpy as np
 import pandas as pd
 
 from config import StrategyConfig
@@ -35,6 +36,14 @@ class CandleBuffer:
         self.timeframe = timeframe
         self._buf: deque[Candle] = deque(maxlen=maxlen)
         self._lock = asyncio.Lock()
+        # ⚠ to_dataframe SONUCU ONBELLEKTE. Tampon yalnizca update() ile
+        # degisiyor; her cagride yeniden kurmak bosa is. Profil (2026-09-20):
+        # get_candles -> to_dataframe 20 gunluk kosunun %15'i (13.3s / 91s),
+        # 6329 cagri, her biri 260 satirlik sozluk listesinden DataFrame
+        # kuruyordu. Onbellek update()'te GECERSIZ kiliniyor.
+        # pandas 3.x'te Copy-on-Write varsayilan, yani cagiran dondurulen
+        # tabloyu degistirse bile onbellek bozulmaz.
+        self._df: Optional[pd.DataFrame] = None
 
     async def update(self, candle: Candle) -> bool:
         async with self._lock:
@@ -42,27 +51,34 @@ class CandleBuffer:
                 return False
             if self._buf and self._buf[-1].timestamp == candle.timestamp:
                 self._buf[-1] = candle
+                self._df = None
                 return False
             self._buf.append(candle)
+            self._df = None
             return True
 
     def to_dataframe(self) -> pd.DataFrame:
+        if self._df is not None:
+            return self._df
         if not self._buf:
             return pd.DataFrame(columns=["open", "high", "low", "close", "volume"])
-        rows = [
-            {
-                "timestamp": c.timestamp,
-                "open": c.open,
-                "high": c.high,
-                "low": c.low,
-                "close": c.close,
-                "volume": c.volume,
-            }
-            for c in self._buf
-        ]
-        df = pd.DataFrame(rows)
-        df.index = pd.to_datetime(df["timestamp"], unit="ms")
-        df.drop(columns=["timestamp"], inplace=True)
+        # ⚠ SUTUN SIRASI, dtype ve INDEKS ADI eskisiyle birebir ayni olmali.
+        # Eski surum sozluk listesinden kuruyor, sonra index'e `df["timestamp"]`
+        # Series'ini atiyordu -- bu indekse "timestamp" ADINI veriyor. Ad
+        # dusurulurse indekse ada gore bakan her yer sessizce degisirdi.
+        n = len(self._buf)
+        ts = np.empty(n, dtype="int64")
+        o = np.empty(n); h = np.empty(n); l = np.empty(n)
+        c_ = np.empty(n); v = np.empty(n)
+        for i, k in enumerate(self._buf):
+            ts[i] = k.timestamp
+            o[i] = k.open; h[i] = k.high; l[i] = k.low
+            c_[i] = k.close; v[i] = k.volume
+        df = pd.DataFrame(
+            {"open": o, "high": h, "low": l, "close": c_, "volume": v},
+            index=pd.DatetimeIndex(pd.to_datetime(ts, unit="ms"), name="timestamp"),
+        )
+        self._df = df
         return df
 
     def latest_close(self) -> float:

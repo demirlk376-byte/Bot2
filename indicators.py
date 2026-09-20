@@ -44,21 +44,70 @@ def bollinger_bands(
     return upper, middle, lower
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# ⚠ rsi/atr/adx HIZLANDIRILDI, HESABI DEGISMEDI (2026-09-20).
+#
+# Profil: 20 gunluk ikiz kosusunda adx 26.3s, rsi 20.4s, yani toplam surenin
+# yarisi. Ama harcanan sure MATEMATIK degildi -- numpy'nin asil hesabi 1.1s,
+# geri kalani pandas nesne yuku (Series.__init__ 332 bin cagri, __finalize__
+# 883 bin). Tampon 260 mumla sinirli, yani diziler minik; her ara adimda bir
+# Series kurmak hesabin kendisinden pahaliya geliyordu.
+#
+# COZUM: elemanlar arasi islemler numpy'da, `ewm` AYNEN pandas'ta. ewm asil
+# ustel yumusatmayi C'de yapiyor ve onun kendine ozgu NaN/yuvarlama davranisi
+# var; yeniden yazmak sonucu son bitte kaydirabilirdi. Boylece Series sayisi
+# indikator basina ~12'den 1-2'ye dusuyor, sonuc BIT DUZEYINDE ayni kaliyor.
+#
+# Bunu iddia degil TEST soyluyor: tests/test_indicators_hiz.py eski surumleri
+# referans tutup gercek BTC verisinde TAM ESITLIK ariyor (NaN'lar ayni yerde,
+# sayilar son bite kadar ayni). Tek bit saparsa test duser.
+# ──────────────────────────────────────────────────────────────────────────
+
+def _dizi(s: pd.Series) -> np.ndarray:
+    return np.asarray(s, dtype="float64")
+
+
+def _ewm(arr: np.ndarray, period: int) -> np.ndarray:
+    """pandas'in ewm(alpha=1/period, adjust=False).mean() hesabi -- AYNEN.
+
+    Indeks verilmiyor: ewm indeksi kullanmiyor, varsayilan RangeIndex kurmak
+    gercek indeksi kopyalamaktan ucuz."""
+    return pd.Series(arr).ewm(alpha=1 / period, adjust=False).mean().to_numpy()
+
+
+def _geri_kaydir(a: np.ndarray) -> np.ndarray:
+    """Series.shift(1) karsiligi: bas NaN, kalan bir saga kayik."""
+    out = np.empty_like(a)
+    out[0] = np.nan
+    out[1:] = a[:-1]
+    return out
+
+
 def rsi(close: pd.Series, period: int = 14) -> pd.Series:
-    delta = close.diff()
-    gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=0)
-    avg_gain = gain.ewm(alpha=1 / period, adjust=False).mean()
-    avg_loss = loss.ewm(alpha=1 / period, adjust=False).mean()
-    rs = avg_gain / avg_loss.replace(0, np.nan)
+    c = _dizi(close)
+    delta = c - _geri_kaydir(c)
+    # clip(lower=0) / -clip(upper=0) karsiligi; NaN her ikisinde de NaN kalir
+    gain = np.maximum(delta, 0.0)
+    loss = -np.minimum(delta, 0.0)
+    avg_gain = _ewm(gain, period)
+    avg_loss = _ewm(loss, period)
+    rs = avg_gain / np.where(avg_loss == 0.0, np.nan, avg_loss)
     out = 100 - (100 / (1 + rs))
     # Zero-loss window (unbroken up-run) → RSI = 100, not NaN. Otherwise the
     # strongest-momentum candles — exactly where the overbought guard should
     # bite — get a NaN RSI that silently bypasses the extreme-RSI filters.
-    out = out.where(avg_loss != 0, 100.0)
+    out = np.where(avg_loss != 0.0, out, 100.0)
     # Flat window (no gain AND no loss) → neutral 50, not 100.
-    out = out.mask((avg_gain == 0) & (avg_loss == 0), 50.0)
-    return out
+    out = np.where((avg_gain == 0.0) & (avg_loss == 0.0), 50.0, out)
+    return pd.Series(out, index=close.index)
+
+
+def _atr_dizi(h: np.ndarray, l: np.ndarray, c: np.ndarray, period: int) -> np.ndarray:
+    prev_close = _geri_kaydir(c)
+    # concat(...).max(axis=1) skipna=True ile calisiyordu: ilk satirda kaydirma
+    # kaynakli NaN'lar atlanip h-l aliniyordu. np.fmax de NaN'i atlar.
+    tr = np.fmax(np.fmax(h - l, np.abs(h - prev_close)), np.abs(l - prev_close))
+    return _ewm(tr, period)
 
 
 def atr(
@@ -67,11 +116,10 @@ def atr(
     close: pd.Series,
     period: int = 14,
 ) -> pd.Series:
-    prev_close = close.shift(1)
-    tr = pd.concat(
-        [high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1
-    ).max(axis=1)
-    return tr.ewm(alpha=1 / period, adjust=False).mean()
+    return pd.Series(
+        _atr_dizi(_dizi(high), _dizi(low), _dizi(close), period),
+        index=close.index,
+    )
 
 
 def adx(
@@ -80,25 +128,22 @@ def adx(
     close: pd.Series,
     period: int = 14,
 ) -> pd.Series:
-    prev_high = high.shift(1)
-    prev_low = low.shift(1)
+    h, l, c = _dizi(high), _dizi(low), _dizi(close)
 
-    up_move = high - prev_high
-    down_move = prev_low - low
+    up_move = h - _geri_kaydir(h)
+    down_move = _geri_kaydir(l) - l
 
     plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
     minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0.0)
 
-    plus_dm_s = pd.Series(plus_dm, index=high.index)
-    minus_dm_s = pd.Series(minus_dm, index=high.index)
+    atr_v = _atr_dizi(h, l, c, period)
 
-    atr_s = atr(high, low, close, period)
+    plus_di = 100 * _ewm(plus_dm, period) / atr_v
+    minus_di = 100 * _ewm(minus_dm, period) / atr_v
 
-    plus_di = 100 * plus_dm_s.ewm(alpha=1 / period, adjust=False).mean() / atr_s
-    minus_di = 100 * minus_dm_s.ewm(alpha=1 / period, adjust=False).mean() / atr_s
-
-    dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, np.nan)
-    return dx.ewm(alpha=1 / period, adjust=False).mean()
+    toplam = plus_di + minus_di
+    dx = 100 * np.abs(plus_di - minus_di) / np.where(toplam == 0.0, np.nan, toplam)
+    return pd.Series(_ewm(dx, period), index=close.index)
 
 
 def volume_sma(volume: pd.Series, period: int = 20) -> pd.Series:
