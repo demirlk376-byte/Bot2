@@ -1,21 +1,11 @@
 {
   "coins": {
     "BTC": {
-      "balance": 10082.175422730514,
-      "position": {
-        "direction": -1,
-        "entry": 80688.7,
-        "sl": 82367.96626876478,
-        "tp": 77889.92288539202,
-        "qty": 0.062475758208587535,
-        "atr": 559.7554229215955,
-        "entry_ts": "2026-09-18T15:00:00+00:00",
-        "fng_at_entry": 56,
-        "funding_at_entry": 6e-05
-      },
-      "n_trades": 38,
+      "balance": 10053.495249937157,
+      "position": null,
+      "n_trades": 39,
       "n_wins": 19,
-      "total_pnl": 82.17542273051612,
+      "total_pnl": 53.495249937160374,
       "skipped": 34
     },
     "ETH": {
@@ -27,21 +17,11 @@
       "skipped": 35
     },
     "SOL": {
-      "balance": 9859.255784133737,
-      "position": {
-        "direction": -1,
-        "entry": 111.13,
-        "sl": 114.99793877019725,
-        "tp": 104.68343538300456,
-        "qty": 44.359109979905234,
-        "atr": 1.2893129233990872,
-        "entry_ts": "2026-09-18T15:00:00+00:00",
-        "fng_at_entry": 56,
-        "funding_at_entry": 0.0001
-      },
-      "n_trades": 32,
-      "n_wins": 14,
-      "total_pnl": -140.7442158662684,
+      "balance": 9913.187590047304,
+      "position": null,
+      "n_trades": 33,
+      "n_wins": 15,
+      "total_pnl": -86.81240995270002,
       "skipped": 19
     },
     "BNB": {
