@@ -351,6 +351,17 @@ def main():
     bitti.set()
     print(f"\n{'='*84}\nTOPLAM {(time.time()-t0)/60:.0f} dk\n{'='*84}")
 
+    # ⚠ RAPORU KENDI BAS. Eskiden kullanici taramadan sonra uc ayri .bat
+    # calistirmak zorundaydi (ozet / filtre / donem) ve hangisinin ne yaptigini
+    # hatirlamasi gerekiyordu. Tarama bitti demek sonuclar hazir demek; raporu
+    # beklemenin bir sebebi yok.
+    try:
+        import ikiz_rapor
+        ikiz_rapor.main()
+    except Exception as e:
+        print(f"\n  (rapor uretilemedi: {type(e).__name__}: {e})")
+        print("  elle: py ikiz_rapor.py")
+
 
 if __name__ == "__main__":
     main()
