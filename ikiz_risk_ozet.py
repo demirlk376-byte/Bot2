@@ -23,7 +23,15 @@ ETIKET = {"risk10": "%1.0", "risk14": "%1.4", "risk17": "%1.7",
           "risk40": "%4.0", "adx32": "ADX 32", "korel1": "korel 1",
           "hold24": "tutus 24", "guven": "guven boyut",
           "kor28": "korel+%2.8", "kor24": "korel+%2.4",
-          "kor20": "korel+%2.0", "kor17": "korel+%1.7"}
+          "kor20": "korel+%2.0", "kor17": "korel+%1.7",
+          "trail10": "takip 1.0",
+          "trail15": "takip 1.5",
+          "be05": "basabas 0.5",
+          "bt": "basabas+takip",
+          "rr15": "RR 1.5",
+          "buf05": "tampon 0.5",
+          "adxr25": "ADX yatay 25",
+          "cl1": "1 zarar/8sa"}
 
 
 def oku(yol):

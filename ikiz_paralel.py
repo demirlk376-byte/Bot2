@@ -15,6 +15,7 @@ Kullanım:
   py ikiz_paralel.py filtre        → filtreler: ADX32 / korel1 / tutus24 / guven
   py ikiz_paralel.py hepsi         → ikisi birden, 8 surec, ayni 51 dk
   py ikiz_paralel.py birlesik      → korel1 x 4 risk + 4 saf risk, 8 surec
+  py ikiz_paralel.py geriverme     → acik karin geri verilmesi, 8 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -91,7 +92,37 @@ BIRLESIK_TARAMA = [
     ("risk20", {"RISK_SCALE": "1.00"}),
 ]
 
-ETIKET_ADI = {"kor28": "korel+%2.8", "kor24": "korel+%2.4",
+# ⚠ GERI VERME TARAMASI. Hedef net: yukselis bitip fiyat bayrak/sikisma
+# cizerken acik karin geri verilmesi. Mevcut ayarlar bunu neredeyse hic
+# engellemiyor:
+#   trailing_atr_mult = 2.0  -> zirvenin 2xATR altina kadar geri vermeye izin
+#   breakeven_atr_mult = 1.0 -> basabasa ancak 1xATR kar sonra cekiliyor
+#   donchian_buffer_atr = 0  -> bayrak icindeki SAHTE kirilimlar hic filtresiz
+#   cikislarin %17.8'i max_hold -> zamani dolup kapananlar
+#
+# Tarama ayni zamanda TESHIS: hangi grup kazanirsa sorunun kaynagi odur.
+#   trail*/be* kazanirsa -> sorun ACIK KARIN solmasi (cikis tarafi)
+#   buf/adxr/cl kazanirsa -> sorun CHOP'TA ACILAN YENI ISLEMLER (giris tarafi)
+GERIVERME_TARAMA = [
+    # --- cikis tarafi: kari kilitle ---
+    ("trail10", {"TRAILING_ATR_MULT": "1.0"}),                  # dar takip
+    ("trail15", {"TRAILING_ATR_MULT": "1.5"}),
+    ("be05",    {"BREAKEVEN_ATR_MULT": "0.5"}),                 # erken basabas
+    ("bt",      {"BREAKEVEN_ATR_MULT": "0.5",
+                 "TRAILING_ATR_MULT": "1.25"}),                 # ikisi birden
+    ("rr15",    {"DONCHIAN_RR": "1.5"}),                        # kari erken al
+    # --- giris tarafi: chop'ta islem acma ---
+    ("buf05",   {"DONCHIAN_BUFFER_ATR": "0.5"}),                # guclu kirilim sart
+    ("adxr25",  {"ADX_RANGING_THRESHOLD": "25.0"}),             # daha cok "yatay" say
+    ("cl1",     {"CONSECUTIVE_LOSS_LIMIT": "1",
+                 "COOLDOWN_MINUTES": "480"}),                   # chop'tan hizli cik
+]
+
+ETIKET_ADI = {"trail10": "takip 1.0", "trail15": "takip 1.5",
+              "be05": "basabas 0.5", "bt": "basabas+takip",
+              "rr15": "RR 1.5", "buf05": "tampon 0.5",
+              "adxr25": "ADX yatay 25", "cl1": "1 zarar/8sa",
+              "kor28": "korel+%2.8", "kor24": "korel+%2.4",
               "kor20": "korel+%2.0", "kor17": "korel+%1.7",
               "adx32": "ADX 32", "korel1": "korel 1", "hold24": "tutus 24",
               "guven": "guven boyut",
@@ -210,10 +241,12 @@ def main():
                   # yalniz 4'unu kullandi ve yine 51 dk surdu. Risk sorusu ile
                   # filtre sorusu AYNI 51 dakikada cevaplanir.
                   "hepsi": DUSUK_TARAMA + FILTRE_TARAMA,
-                  "birlesik": BIRLESIK_TARAMA}[hangi]
+                  "birlesik": BIRLESIK_TARAMA,
+                  "geriverme": GERIVERME_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
-              f"(secenekler: risk, dusuk, filtre, hepsi, birlesik)")
+              f"(secenekler: risk, dusuk, filtre, hepsi, "
+              f"birlesik, geriverme)")
         return
 
     print(f"\n{'='*84}")

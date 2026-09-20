@@ -27,11 +27,20 @@ BOLME = pd.Timestamp("2025-01-01", tz="UTC")
 TEMEL_AD = "risk28"
 SIRA = ["risk10", "risk14", "risk17", "risk20", "risk28", "risk35", "risk40",
         "korel1", "kor17", "kor20", "kor24", "kor28",
-        "adx32", "hold24", "guven"]
+        "adx32", "hold24", "guven",
+        "trail10", "trail15", "be05", "bt", "rr15", "buf05", "adxr25", "cl1"]
 ETIKET = {"risk10": "%1.0", "risk14": "%1.4", "risk17": "%1.7", "risk20": "%2.0",
           "risk28": "%2.8 CANLI", "risk35": "%3.5", "risk40": "%4.0",
           "korel1": "korel 1", "kor28": "korel+%2.8", "kor24": "korel+%2.4",
           "kor20": "korel+%2.0", "kor17": "korel+%1.7",
+          "trail10": "takip 1.0",
+          "trail15": "takip 1.5",
+          "be05": "basabas 0.5",
+          "bt": "basabas+takip",
+          "rr15": "RR 1.5",
+          "buf05": "tampon 0.5",
+          "adxr25": "ADX yatay 25",
+          "cl1": "1 zarar/8sa",
           "adx32": "ADX 32", "hold24": "tutus 24",
           "guven": "guven boyut"}
 

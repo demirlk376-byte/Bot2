@@ -27,9 +27,18 @@ import pandas as pd, numpy as np
 KOK = os.path.dirname(os.path.abspath(__file__))
 TEMEL = os.path.join(KOK, "ikiz_risk28.db")      # canli ayar (%2.8)
 BOLME = pd.Timestamp("2025-01-01", tz="UTC")     # TRAIN | TEST
-ADAYLAR = ["korel1", "adx32", "hold24", "guven"]
+ADAYLAR = ["trail10", "trail15", "be05", "bt", "rr15",
+           "buf05", "adxr25", "cl1", "korel1", "adx32", "hold24", "guven"]
 ETIKET = {"korel1": "korel 1", "adx32": "ADX 32", "hold24": "tutus 24",
-          "guven": "guven boyut"}
+          "guven": "guven boyut",
+          "trail10": "takip 1.0",
+          "trail15": "takip 1.5",
+          "be05": "basabas 0.5",
+          "bt": "basabas+takip",
+          "rr15": "RR 1.5",
+          "buf05": "tampon 0.5",
+          "adxr25": "ADX yatay 25",
+          "cl1": "1 zarar/8sa"}
 
 
 def oku(yol):
