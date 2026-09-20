@@ -315,6 +315,7 @@ class StrategyConfig:
     donchian_vol_mult: float = 0.0     # kirilim hacmi SMA'nin kac kati olsun
     donchian_vol_lookback: int = 20    # hacim ortalamasinin geriye bakisi
     donchian_obv: bool = False         # OBV de yeni uc yapmali mi
+    donchian_adx_min: float = 0.0      # kirilimda 4h ADX en az kac olsun (0=kapali)
     donchian_symbols: list[str] | None = ("BTC/USDT:USDT",)  # validated BTC-only
     donchian_mtf_enabled: bool = False   # günlük EMA20 trend hizası filtresi (backtest:
     #   rr2.5 üstünde +$42, PF1.49→1.53, her yıl≥; ters-günlük-trend breakout'ları eler)
@@ -506,6 +507,7 @@ def load_config() -> AppConfig:
         donchian_vol_mult=_getfloat("DONCHIAN_VOL_MULT", 0.0),
         donchian_vol_lookback=_getint("DONCHIAN_VOL_LOOKBACK", 20),
         donchian_obv=_getbool("DONCHIAN_OBV", False),
+        donchian_adx_min=_getfloat("DONCHIAN_ADX_MIN", 0.0),
         donchian_mtf_enabled=_getbool("DONCHIAN_MTF", False),
         donchian_symbols=donchian_symbols,
     )

@@ -2006,6 +2006,7 @@ async def main() -> None:
                     vol_mult=config.strategy.donchian_vol_mult,
                     vol_lookback=config.strategy.donchian_vol_lookback,
                     obv_confirm=config.strategy.donchian_obv,
+                    adx_min=config.strategy.donchian_adx_min,
                 )
                 if config.strategy.donchian_enabled
                 and (

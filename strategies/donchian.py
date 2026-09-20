@@ -46,7 +46,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from indicators import atr as atr_fn, ema as ema_fn, obv as obv_fn
+from indicators import atr as atr_fn, ema as ema_fn, obv as obv_fn, adx as adx_fn
 
 DEFAULT_CHANNEL = 40
 DEFAULT_RR = 2.0
@@ -61,6 +61,11 @@ DEFAULT_RETEST_BARS = 0     # kac bar icinde seviyeye geri donus (retest) aransi
 DEFAULT_VOL_MULT = 0.0      # kirilim barinin hacmi SMA20'nin kac kati olsun
 DEFAULT_VOL_LOOKBACK = 20
 DEFAULT_OBV_CONFIRM = False # OBV de yeni uc yapmali mi
+# ⚠ ADX BU KOLDA HIC UYGULANMAMIS. main.py:681'de rejim kapisi (bo_allowed)
+# yalniz ORB/Asia/S-R/Squeeze kollarinda; Donchian ondan MUAF ve kodun
+# gerekcesi main.py:678'de yazili: "NOT regime-gated - its own EMA200 trend
+# filter is the regime filter". Gerekce makul ama SINANMAMIS. 0 = kapali.
+DEFAULT_ADX_MIN = 0.0
 # Max hold in PRIMARY-tf (1h) candles: 30 x 4h bars = 120h (5 days).
 MAX_HOLD_1H_CANDLES = 120
 
@@ -93,6 +98,7 @@ class DonchianStrategy:
         vol_mult: float = DEFAULT_VOL_MULT,
         vol_lookback: int = DEFAULT_VOL_LOOKBACK,
         obv_confirm: bool = DEFAULT_OBV_CONFIRM,
+        adx_min: float = DEFAULT_ADX_MIN,
     ):
         self._channel = channel
         self._rr = rr
@@ -104,6 +110,7 @@ class DonchianStrategy:
         self._vol_mult = float(vol_mult)
         self._vol_lookback = max(2, int(vol_lookback))
         self._obv_confirm = bool(obv_confirm)
+        self._adx_min = float(adx_min)
 
     def _min_bars(self) -> int:
         # Need the channel lookback plus enough history for EMA200 to settle.
@@ -202,6 +209,10 @@ class DonchianStrategy:
             if not tamam:
                 son_sebep = neden
                 continue
+            tamam, neden = self._adx_tamam(df, k)
+            if not tamam:
+                son_sebep = neden
+                continue
 
             sl = c - yon * sl_dist
             tp = c + yon * self._rr * sl_dist
@@ -247,6 +258,23 @@ class DonchianStrategy:
         oran = float(v[son]) / ort
         if oran < self._vol_mult:
             return False, f"hacim zayif ({oran:.2f}x < {self._vol_mult:.2f}x)"
+        return True, ""
+
+    def _adx_tamam(self, df, k):
+        """Kirilim barinda 4h ADX esigin uzerinde olmali: zayif trendde gelen
+        kirilimlari pas gec. ADX, stratejinin KENDI gordugu 4h veriden
+        hesaplanir (1h rejim degeri degil) -- kol 4h'te calisiyor."""
+        if self._adx_min <= 0:
+            return True, ""
+        a = adx_fn(df["high"], df["low"], df["close"]).to_numpy(dtype="float64")
+        son = -(k + 1)
+        if -son > len(a):
+            return False, "ADX gecmisi yetersiz"
+        v = float(a[son])
+        if not np.isfinite(v):
+            return False, "ADX hazir degil"
+        if v < self._adx_min:
+            return False, f"ADX zayif ({v:.1f} < {self._adx_min:.1f})"
         return True, ""
 
     def _obv_tamam(self, df, k, yon):

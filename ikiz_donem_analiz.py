@@ -25,11 +25,12 @@ KOK = os.path.dirname(os.path.abspath(__file__))
 BAL0 = 10_000.0
 BOLME = pd.Timestamp("2025-01-01", tz="UTC")
 TEMEL_AD = "risk28"
-SIRA = ["taban", 'teyit1', 'teyit2', 'retest2', 'retest4', 'hacim15', 'hacim20', 'obv', 'hacim_obv', 'be_don', 'be_all', 'be15', 'tr30', 'tr20', 'tr15', 'tr20g', 'be_tr', "risk10", "risk14", "risk17", "risk20", "risk28", "risk35", "risk40",
+SIRA = ["taban", "adx20", "adx25", 'teyit1', 'teyit2', 'retest2', 'retest4', 'hacim15', 'hacim20', 'obv', 'hacim_obv', 'be_don', 'be_all', 'be15', 'tr30', 'tr20', 'tr15', 'tr20g', 'be_tr', "risk10", "risk14", "risk17", "risk20", "risk28", "risk35", "risk40",
         "korel1", "kor17", "kor20", "kor24", "kor28",
         "adx32", "hold24", "guven",
         "trail10", "trail15", "be05", "bt", "rr15", "buf05", "adxr25", "cl1"]
 ETIKET = {"taban": "TABAN canli",
+          "adx20": "ADX>=20", "adx25": "ADX>=25",
           "teyit1": "teyit 1 bar",
           "teyit2": "teyit 2 bar",
           "retest2": "retest 2b",

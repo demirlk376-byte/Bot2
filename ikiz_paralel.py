@@ -174,9 +174,14 @@ DONCHIAN_TARAMA = [
     ("hacim20",   {"DONCHIAN_VOL_MULT": "2.0"}),
     ("obv",       {"DONCHIAN_OBV": "true"}),            # OBV de yeni uc yapmali
     ("hacim_obv", {"DONCHIAN_VOL_MULT": "1.5", "DONCHIAN_OBV": "true"}),
+    # ⚠ ADX bu kolda HIC denenmemis (main.py:681 rejim kapisi Donchian'i
+    # kapsamiyor). Bugunku iki ADX kosum squeeze/mean_rev'i etkiledi.
+    ("adx20", {"DONCHIAN_ADX_MIN": "20"}),
+    ("adx25", {"DONCHIAN_ADX_MIN": "25"}),
 ]
 
-ETIKET_ADI = {"teyit1": "teyit 1 bar", "teyit2": "teyit 2 bar",
+ETIKET_ADI = {"adx20": "ADX>=20", "adx25": "ADX>=25",
+              "teyit1": "teyit 1 bar", "teyit2": "teyit 2 bar",
               "retest2": "retest 2b", "retest4": "retest 4b",
               "hacim15": "hacim 1.5x", "hacim20": "hacim 2.0x",
               "obv": "OBV teyit", "hacim_obv": "hacim+OBV",

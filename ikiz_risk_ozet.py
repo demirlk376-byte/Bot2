@@ -19,6 +19,7 @@ import pandas as pd, numpy as np
 KOK = os.path.dirname(os.path.abspath(__file__))
 BAL0 = 10_000.0
 ETIKET = {"taban": "TABAN canli",
+          "adx20": "ADX>=20", "adx25": "ADX>=25",
           "teyit1": "teyit 1 bar",
           "teyit2": "teyit 2 bar",
           "retest2": "retest 2b",

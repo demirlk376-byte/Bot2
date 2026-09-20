@@ -185,3 +185,33 @@ def test_obv_gosterge_tanimi():
     v = pd.Series([100.0, 200.0, 300.0, 400.0, 500.0])
     o = obv_fn(c, v).tolist()
     assert o == [0.0, 200.0, -100.0, -100.0, 400.0]
+
+
+def test_adx_filtresi_varsayilanda_KAPALI():
+    """⚠ ADX bu kolda tarihsel olarak HIC uygulanmamis (main.py:681 rejim
+    kapisi Donchian'i kapsamiyor). Varsayilan 0 = kapali kalmali."""
+    d4 = _veri()
+    a, b = DonchianStrategy(), DonchianStrategy(adx_min=0.0)
+    for alt, atr_val in _pencereler(d4, adim=5):
+        assert a.analyze(alt, atr_val).direction == b.analyze(alt, atr_val).direction
+
+
+def test_adx_filtresi_imkansiz_esikte_hepsini_eler():
+    d4 = _veri()
+    s = DonchianStrategy(adx_min=999.0)
+    for alt, atr_val in _pencereler(d4, adim=5):
+        assert s.analyze(alt, atr_val).direction == 0, "imkansiz ADX esigi gecildi"
+
+
+def test_adx_filtresi_sinyalleri_AZALTIR():
+    """Saf bir filtre: gecikme yok, yalnizca eleyebilir."""
+    d4 = _veri()
+    taban, filtreli = DonchianStrategy(), DonchianStrategy(adx_min=25.0)
+    t = f = 0
+    for alt, atr_val in _pencereler(d4, adim=2):
+        if taban.analyze(alt, atr_val).direction != 0:
+            t += 1
+        if filtreli.analyze(alt, atr_val).direction != 0:
+            f += 1
+    assert f <= t, f"ADX filtresi sinyal ARTIRMIS: {f} > {t}"
+    assert t > 0, "karsilastirma icin sinyal yok"
