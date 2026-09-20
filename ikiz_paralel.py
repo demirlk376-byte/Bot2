@@ -17,6 +17,7 @@ Kullanım:
   py ikiz_paralel.py birlesik      → korel1 x 4 risk + 4 saf risk, 8 surec
   py ikiz_paralel.py geriverme     → acik karin geri verilmesi, 8 surec
   py ikiz_paralel.py cikis         → basabas/ATR takibi, 9 surec
+  py ikiz_paralel.py donchian      → sahte-kirilim filtreleri, 9 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -158,7 +159,28 @@ CIKIS_TARAMA = [
                  "TRAIL_SLEEVES": "donchian,squeeze", "TRAIL_ATR_MULT": "2.0"}),
 ]
 
-ETIKET_ADI = {"taban": "TABAN (canli)",
+# ⚠ DONCHIAN SAHTE-KIRILIM TARAMASI. Kullanicinin listesinden GERCEKTEN YENI
+# olanlar. Listenin yarisi zaten koddaydi: kapanis teyidi (donchian kirilimi
+# close ile siniyor), ATR tamponu (buffer_atr, bugun 0.5 denendi -> TRAIN
+# +13.35 / TEST -1.10, uydurma), EMA200+gunluk MTF trend hizasi (stratejinin
+# cekirdegi), ADX rejim kapisi (bugun iki kez denendi, ikisi de kaldi).
+DONCHIAN_TARAMA = [
+    ("taban",     {}),                                  # dogrulama capasi
+    ("teyit1",    {"DONCHIAN_CONFIRM_BARS": "1"}),      # 1 bar seviyeyi korusun
+    ("teyit2",    {"DONCHIAN_CONFIRM_BARS": "2"}),
+    ("retest2",   {"DONCHIAN_RETEST_BARS": "2"}),       # 2 bar icinde geri donus
+    ("retest4",   {"DONCHIAN_RETEST_BARS": "4"}),
+    ("hacim15",   {"DONCHIAN_VOL_MULT": "1.5"}),        # hacim SMA20'nin 1.5 kati
+    ("hacim20",   {"DONCHIAN_VOL_MULT": "2.0"}),
+    ("obv",       {"DONCHIAN_OBV": "true"}),            # OBV de yeni uc yapmali
+    ("hacim_obv", {"DONCHIAN_VOL_MULT": "1.5", "DONCHIAN_OBV": "true"}),
+]
+
+ETIKET_ADI = {"teyit1": "teyit 1 bar", "teyit2": "teyit 2 bar",
+              "retest2": "retest 2b", "retest4": "retest 4b",
+              "hacim15": "hacim 1.5x", "hacim20": "hacim 2.0x",
+              "obv": "OBV teyit", "hacim_obv": "hacim+OBV",
+              "taban": "TABAN (canli)",
               "be_don": "BE donchian", "be_all": "BE don+sq",
               "be15": "BE 1.5R", "tr30": "takip 3xATR",
               "tr20": "takip 2xATR", "tr15": "takip 1.5xATR",
@@ -295,11 +317,12 @@ def main():
                   "hepsi": DUSUK_TARAMA + FILTRE_TARAMA,
                   "birlesik": BIRLESIK_TARAMA,
                   "geriverme": GERIVERME_TARAMA,
-                  "cikis": CIKIS_TARAMA}[hangi]
+                  "cikis": CIKIS_TARAMA,
+                  "donchian": DONCHIAN_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
-              f"birlesik, geriverme, cikis)")
+              f"birlesik, geriverme, cikis, donchian)")
         return
 
     print(f"\n{'='*84}")

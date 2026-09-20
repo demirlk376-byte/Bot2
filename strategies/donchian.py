@@ -46,13 +46,21 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from indicators import atr as atr_fn, ema as ema_fn
+from indicators import atr as atr_fn, ema as ema_fn, obv as obv_fn
 
 DEFAULT_CHANNEL = 40
 DEFAULT_RR = 2.0
 DEFAULT_SL_ATR = 2.0
 DEFAULT_EMA_TREND = 200
 DEFAULT_BUFFER_ATR = 0.0
+# ⚠ SAHTE-KIRILIM FILTRELERI — HEPSI VARSAYILAN KAPALI.
+# Varsayilanlarla analyze() bugunku davranisin BIT BIT AYNISINI uretir; her
+# biri yalnizca .env ile acilir ve once IKIZ'de olculur.
+DEFAULT_CONFIRM_BARS = 0    # kirilimdan sonra kac bar seviyenin otesinde KAPANSIN
+DEFAULT_RETEST_BARS = 0     # kac bar icinde seviyeye geri donus (retest) aransin
+DEFAULT_VOL_MULT = 0.0      # kirilim barinin hacmi SMA20'nin kac kati olsun
+DEFAULT_VOL_LOOKBACK = 20
+DEFAULT_OBV_CONFIRM = False # OBV de yeni uc yapmali mi
 # Max hold in PRIMARY-tf (1h) candles: 30 x 4h bars = 120h (5 days).
 MAX_HOLD_1H_CANDLES = 120
 
@@ -80,16 +88,32 @@ class DonchianStrategy:
         sl_atr: float = DEFAULT_SL_ATR,
         ema_trend: int = DEFAULT_EMA_TREND,
         buffer_atr: float = DEFAULT_BUFFER_ATR,
+        confirm_bars: int = DEFAULT_CONFIRM_BARS,
+        retest_bars: int = DEFAULT_RETEST_BARS,
+        vol_mult: float = DEFAULT_VOL_MULT,
+        vol_lookback: int = DEFAULT_VOL_LOOKBACK,
+        obv_confirm: bool = DEFAULT_OBV_CONFIRM,
     ):
         self._channel = channel
         self._rr = rr
         self._sl_atr = sl_atr
         self._ema_trend = ema_trend
         self._buffer_atr = buffer_atr
+        self._confirm_bars = max(0, int(confirm_bars))
+        self._retest_bars = max(0, int(retest_bars))
+        self._vol_mult = float(vol_mult)
+        self._vol_lookback = max(2, int(vol_lookback))
+        self._obv_confirm = bool(obv_confirm)
 
     def _min_bars(self) -> int:
         # Need the channel lookback plus enough history for EMA200 to settle.
-        return max(self._channel + 2, self._ema_trend)
+        # Teyit/retest filtreleri kirilim barini GERIYE kaydirdigi icin o kadar
+        # ek bar, hacim filtresi de kendi geriye bakisi kadar bar ister.
+        gecikme = max(self._confirm_bars, self._retest_bars)
+        gerek = self._channel + 2 + gecikme
+        if self._vol_mult > 0:
+            gerek = max(gerek, self._channel + 2 + gecikme + self._vol_lookback)
+        return max(gerek, self._ema_trend)
 
     def analyze(self, df: pd.DataFrame, atr_val: float) -> DonchianSignal:
         """df: recent 4h OHLCV (DatetimeIndex, columns open/high/low/close).
@@ -99,15 +123,9 @@ class DonchianStrategy:
         if atr_val is None or atr_val <= 0:
             return DonchianSignal(0, 0.0, "ATR not available")
 
-        high = df["high"].values
-        low = df["low"].values
-        close = df["close"].values
-
-        # Channel over the prior `channel` bars, EXCLUDING the just-closed bar.
-        chan_high = float(np.max(high[-(self._channel + 1):-1]))
-        chan_low = float(np.min(low[-(self._channel + 1):-1]))
-        if chan_high <= chan_low:
-            return DonchianSignal(0, 0.0, "degenerate channel")
+        high = df["high"].to_numpy(dtype="float64")
+        low = df["low"].to_numpy(dtype="float64")
+        close = df["close"].to_numpy(dtype="float64")
 
         ema_series = ema_fn(df["close"], self._ema_trend)
         ema_now = float(ema_series.iloc[-1])
@@ -118,31 +136,134 @@ class DonchianStrategy:
         buf = self._buffer_atr * atr_val
         sl_dist = self._sl_atr * atr_val
 
-        # Long: fresh close above the channel, aligned with the HTF uptrend.
-        if c > chan_high + buf and c > ema_now:
-            sl = c - sl_dist
-            tp = c + self._rr * sl_dist
+        # ⚠ KIRILIM BARI NEREDE ARANIR.
+        #   retest kapali, confirm=k  -> kirilim TAM k bar once olmali ve o
+        #     gunden beri HER bar seviyenin otesinde KAPANMIS olmali
+        #     (k=0 ise kirilim bu bardadir = bugunku davranis).
+        #   retest=r                  -> kirilim son r barin herhangi birinde
+        #     olabilir; GUNCEL bar seviyeye geri donup (fitil dokunusu) yine
+        #     otesinde kapanmis olmali.
+        # Her iki halde de kanal, kirilim barindan ONCEKI barlardan kuruluyor;
+        # kirilim bari da sonrasi da kanala DAHIL DEGIL -> gelecege bakis yok.
+        if self._retest_bars > 0:
+            adaylar = range(1, self._retest_bars + 1)
+        else:
+            adaylar = (self._confirm_bars,)
+
+        son_sebep = f"no breakout (close {c:.0f})"
+        for k in adaylar:
+            ch, cl = self._kanal(high, low, k)
+            if ch is None:
+                son_sebep = "insufficient data for channel"
+                continue
+            if ch <= cl:
+                son_sebep = "degenerate channel"
+                continue
+
+            kirilim_c = float(close[-(k + 1)])
+            if kirilim_c > ch + buf:
+                yon, seviye = 1, ch
+            elif kirilim_c < cl - buf:
+                yon, seviye = -1, cl
+            else:
+                continue
+
+            # Trend hizasi (EMA200) -- stratejinin kilit saglamlik kaldiraci.
+            if (yon == 1 and not c > ema_now) or (yon == -1 and not c < ema_now):
+                son_sebep = "EMA200 trend hizasi yok"
+                continue
+
+            if self._retest_bars > 0:
+                # RETEST: guncel bar seviyeye geri donup otesinde kapanmali.
+                # Dokunus fitille sinanir (low/high) -- bu bar KAPANMIS oldugu
+                # icin fitili bilmek gelecege bakis DEGIL.
+                dokundu = (low[-1] <= seviye) if yon == 1 else (high[-1] >= seviye)
+                otede = (c > seviye) if yon == 1 else (c < seviye)
+                if not (dokundu and otede):
+                    son_sebep = f"retest yok ({k} bar once kirilim)"
+                    continue
+                etiket = f"retest@{k}b"
+            else:
+                # COKLU MUM TEYIDI: kirilimdan sonraki her bar seviyenin
+                # OTESINDE KAPANMIS olmali (k=0 ise kontrol edilecek bar yok).
+                sonrakiler = close[-k:] if k > 0 else np.empty(0)
+                tutuyor = (bool(np.all(sonrakiler > seviye)) if yon == 1
+                           else bool(np.all(sonrakiler < seviye)))
+                if not tutuyor:
+                    son_sebep = f"teyit yok ({k} bar seviyeyi korumadi)"
+                    continue
+                etiket = f"teyit{k}b" if k > 0 else "kapanis"
+
+            tamam, neden = self._hacim_tamam(df, k)
+            if not tamam:
+                son_sebep = neden
+                continue
+            tamam, neden = self._obv_tamam(df, k, yon)
+            if not tamam:
+                son_sebep = neden
+                continue
+
+            sl = c - yon * sl_dist
+            tp = c + yon * self._rr * sl_dist
+            ad = "long" if yon == 1 else "short"
+            karsi = "high" if yon == 1 else "low"
             return DonchianSignal(
-                direction=1, strength=0.80,
-                reason=(f"Donchian long: close {c:.0f} > channel high "
-                        f"{chan_high:.0f} (EMA200 {ema_now:.0f})"),
+                direction=yon, strength=0.80,
+                reason=(f"Donchian {ad} [{etiket}]: close {c:.0f} vs channel "
+                        f"{karsi} {seviye:.0f} (EMA200 {ema_now:.0f})"),
                 sl_price=sl, tp_price=tp, entry_price=c,
-                channel_high=chan_high, channel_low=chan_low,
+                channel_high=ch, channel_low=cl,
             )
 
-        # Short: fresh close below the channel, aligned with the HTF downtrend.
-        if c < chan_low - buf and c < ema_now:
-            sl = c + sl_dist
-            tp = c - self._rr * sl_dist
-            return DonchianSignal(
-                direction=-1, strength=0.80,
-                reason=(f"Donchian short: close {c:.0f} < channel low "
-                        f"{chan_low:.0f} (EMA200 {ema_now:.0f})"),
-                sl_price=sl, tp_price=tp, entry_price=c,
-                channel_high=chan_high, channel_low=chan_low,
-            )
+        return DonchianSignal(0, 0.0, son_sebep)
 
-        return DonchianSignal(
-            0, 0.0,
-            f"no breakout (close {c:.0f}, channel {chan_low:.0f}-{chan_high:.0f})",
-        )
+    # -- sahte-kirilim filtrelerinin yardimcilari -------------------------
+
+    def _kanal(self, high, low, k):
+        """k bar onceki bar kirilim bariysa, ONDAN ONCEKI `channel` barin
+        kanali. Kirilim bari ve sonrasi DAHIL DEGIL."""
+        son = -(k + 1)
+        bas = son - self._channel
+        if -bas > len(high):
+            return None, None
+        return float(np.max(high[bas:son])), float(np.min(low[bas:son]))
+
+    def _hacim_tamam(self, df, k):
+        """Kirilim barinin hacmi, ONDAN ONCEKI `vol_lookback` barin
+        ortalamasinin `vol_mult` katindan buyuk olmali. Dusuk hacimli ihlal =
+        sahte kirilimin en yaygin imzasi."""
+        if self._vol_mult <= 0:
+            return True, ""
+        if "volume" not in df.columns:
+            return False, "hacim verisi yok"
+        v = df["volume"].to_numpy(dtype="float64")
+        son = -(k + 1)
+        bas = son - self._vol_lookback
+        if -bas > len(v):
+            return False, "hacim gecmisi yetersiz"
+        ort = float(np.mean(v[bas:son]))
+        if not np.isfinite(ort) or ort <= 0:
+            return False, "hacim ortalamasi sifir"
+        oran = float(v[son]) / ort
+        if oran < self._vol_mult:
+            return False, f"hacim zayif ({oran:.2f}x < {self._vol_mult:.2f}x)"
+        return True, ""
+
+    def _obv_tamam(self, df, k, yon):
+        """Fiyat yeni uc yaparken OBV de yapmali. Yapmiyorsa para girisi yok
+        demektir (uyumsuzluk) ve hareket buyuk ihtimalle sahte."""
+        if not self._obv_confirm:
+            return True, ""
+        if "volume" not in df.columns:
+            return False, "hacim verisi yok (OBV)"
+        o = obv_fn(df["close"], df["volume"]).to_numpy(dtype="float64")
+        son = -(k + 1)
+        bas = son - self._channel
+        if -bas > len(o):
+            return False, "OBV gecmisi yetersiz"
+        pencere = o[bas:son]
+        if yon == 1 and o[son] <= float(np.max(pencere)):
+            return False, "OBV yeni zirve yapmadi (uyumsuzluk)"
+        if yon == -1 and o[son] >= float(np.min(pencere)):
+            return False, "OBV yeni dip yapmadi (uyumsuzluk)"
+        return True, ""

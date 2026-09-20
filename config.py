@@ -309,6 +309,12 @@ class StrategyConfig:
     donchian_sl_atr: float = 2.0      # SL = entry ± 2.0 × ATR(14, 4h)
     donchian_ema_trend: int = 200     # HTF trend filter (EMA200 on 4h)
     donchian_buffer_atr: float = 0.0  # require break beyond channel by this × ATR
+    # ⚠ SAHTE-KIRILIM FILTRELERI — HEPSI VARSAYILAN KAPALI, canli davranis AYNI.
+    donchian_confirm_bars: int = 0     # kirilimdan sonra kac bar seviyeyi korusun
+    donchian_retest_bars: int = 0      # kac bar icinde seviyeye geri donus aransin
+    donchian_vol_mult: float = 0.0     # kirilim hacmi SMA'nin kac kati olsun
+    donchian_vol_lookback: int = 20    # hacim ortalamasinin geriye bakisi
+    donchian_obv: bool = False         # OBV de yeni uc yapmali mi
     donchian_symbols: list[str] | None = ("BTC/USDT:USDT",)  # validated BTC-only
     donchian_mtf_enabled: bool = False   # günlük EMA20 trend hizası filtresi (backtest:
     #   rr2.5 üstünde +$42, PF1.49→1.53, her yıl≥; ters-günlük-trend breakout'ları eler)
@@ -495,6 +501,11 @@ def load_config() -> AppConfig:
         donchian_sl_atr=_getfloat("DONCHIAN_SL_ATR", 2.0),
         donchian_ema_trend=_getint("DONCHIAN_EMA_TREND", 200),
         donchian_buffer_atr=_getfloat("DONCHIAN_BUFFER_ATR", 0.0),
+        donchian_confirm_bars=_getint("DONCHIAN_CONFIRM_BARS", 0),
+        donchian_retest_bars=_getint("DONCHIAN_RETEST_BARS", 0),
+        donchian_vol_mult=_getfloat("DONCHIAN_VOL_MULT", 0.0),
+        donchian_vol_lookback=_getint("DONCHIAN_VOL_LOOKBACK", 20),
+        donchian_obv=_getbool("DONCHIAN_OBV", False),
         donchian_mtf_enabled=_getbool("DONCHIAN_MTF", False),
         donchian_symbols=donchian_symbols,
     )

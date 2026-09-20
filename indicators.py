@@ -146,6 +146,23 @@ def adx(
     return pd.Series(_ewm(dx, period), index=close.index)
 
 
+def obv(close: pd.Series, volume: pd.Series) -> pd.Series:
+    """On-Balance Volume. Kapanis yukselirse hacim EKLENIR, duserse CIKARILIR.
+
+    Amaci: fiyat yeni zirve yaparken paranin da gercekten girip girmedigini
+    gormek. Fiyat zirve yapip OBV yapmiyorsa hareketin arkasinda hacim yok
+    demektir -- sahte kirilimlarin klasik imzasi.
+
+    ⚠ Ilk bar icin yon 0 (onceki kapanis yok). pandas'in diff()'i ile ayni.
+    """
+    c = np.asarray(close, dtype="float64")
+    v = np.asarray(volume, dtype="float64")
+    yon = np.zeros_like(c)
+    fark = c[1:] - c[:-1]
+    yon[1:] = np.sign(fark)
+    return pd.Series(np.cumsum(yon * v), index=close.index)
+
+
 def volume_sma(volume: pd.Series, period: int = 20) -> pd.Series:
     return volume.rolling(period).mean()
 

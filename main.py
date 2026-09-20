@@ -2001,6 +2001,11 @@ async def main() -> None:
                     sl_atr=config.strategy.donchian_sl_atr,
                     ema_trend=config.strategy.donchian_ema_trend,
                     buffer_atr=config.strategy.donchian_buffer_atr,
+                    confirm_bars=config.strategy.donchian_confirm_bars,
+                    retest_bars=config.strategy.donchian_retest_bars,
+                    vol_mult=config.strategy.donchian_vol_mult,
+                    vol_lookback=config.strategy.donchian_vol_lookback,
+                    obv_confirm=config.strategy.donchian_obv,
                 )
                 if config.strategy.donchian_enabled
                 and (
