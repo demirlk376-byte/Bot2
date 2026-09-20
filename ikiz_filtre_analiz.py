@@ -25,7 +25,12 @@ import os, sys, glob, json, sqlite3
 import pandas as pd, numpy as np
 
 KOK = os.path.dirname(os.path.abspath(__file__))
-TEMEL = os.path.join(KOK, "ikiz_risk28.db")      # canli ayar (%2.8)
+# ⚠ temel tercihen AYNI TARAMADAN gelmeli. ikiz_taban.db, geri-verme
+# taramasinda degisiklik icermeyen kosudur; yoksa onceki taramanin canli
+# ayarina (ikiz_risk28.db) dusulur.
+_T1 = os.path.join(KOK, "ikiz_taban.db")
+_T2 = os.path.join(KOK, "ikiz_risk28.db")
+TEMEL = _T1 if os.path.exists(_T1) else _T2
 BOLME = pd.Timestamp("2025-01-01", tz="UTC")     # TRAIN | TEST
 ADAYLAR = ["trail10", "trail15", "be05", "bt", "rr15",
            "buf05", "adxr25", "cl1", "korel1", "adx32", "hold24", "guven"]
@@ -134,7 +139,7 @@ def main():
                     os.path.basename(sys.argv[2]))
         return
     if not os.path.exists(TEMEL):
-        print(f"temel kosu yok: {TEMEL}\n  once B_RISK_TARAMA.bat calistir.")
+        print(f"temel kosu yok: {TEMEL}\n  once L_GERIVERME.bat calistir.")
         return
     temel = oku(TEMEL)
     for ad in ADAYLAR:

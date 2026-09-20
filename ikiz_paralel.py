@@ -104,6 +104,15 @@ BIRLESIK_TARAMA = [
 #   trail*/be* kazanirsa -> sorun ACIK KARIN solmasi (cikis tarafi)
 #   buf/adxr/cl kazanirsa -> sorun CHOP'TA ACILAN YENI ISLEMLER (giris tarafi)
 GERIVERME_TARAMA = [
+    # ⚠ DEGISIKLIK ICERMEYEN TABAN. Iki isi birden goruyor:
+    #   1) filtrelerin karsilastirilacagi referans, AYNI kosuda uretilmis olur
+    #   2) HIZLANDIRMA DOGRULAMASI: indikatorler numpy'a tasindi ve mum tablosu
+    #      onbelleklendi (2026-09-20, 2.74 kat). Birim testler bit duzeyinde
+    #      esitlik gosterdi ama 20 gunluk uctan uca kontrol yalniz 14 islemdi.
+    #      Bu kosu TAM TARIHTE 1778 islem / ort R +0.1581 / MAR 3.29 vermeli --
+    #      hizlandirma oncesi olculen degerler. Sapma varsa hizlandirma geri
+    #      alinir; hiz icin sadakat feda edilmez.
+    ("taban",   {}),
     # --- cikis tarafi: kari kilitle ---
     ("trail10", {"TRAILING_ATR_MULT": "1.0"}),                  # dar takip
     ("trail15", {"TRAILING_ATR_MULT": "1.5"}),
@@ -118,7 +127,7 @@ GERIVERME_TARAMA = [
                  "COOLDOWN_MINUTES": "480"}),                   # chop'tan hizli cik
 ]
 
-ETIKET_ADI = {"trail10": "takip 1.0", "trail15": "takip 1.5",
+ETIKET_ADI = {"taban": "TABAN (canli)", "trail10": "takip 1.0", "trail15": "takip 1.5",
               "be05": "basabas 0.5", "bt": "basabas+takip",
               "rr15": "RR 1.5", "buf05": "tampon 0.5",
               "adxr25": "ADX yatay 25", "cl1": "1 zarar/8sa",
@@ -233,7 +242,7 @@ def _nabiz(tarama, bitti, aralik=120):
 
 def main():
     hangi = sys.argv[1] if len(sys.argv) > 1 else "risk"
-    en_fazla = int(sys.argv[2]) if len(sys.argv) > 2 else min(8, os.cpu_count() or 4)
+    en_fazla = int(sys.argv[2]) if len(sys.argv) > 2 else min(12, os.cpu_count() or 4)
     try:
         tarama = {"risk": RISK_TARAMA, "dusuk": DUSUK_TARAMA,
                   "filtre": FILTRE_TARAMA,
