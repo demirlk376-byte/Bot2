@@ -409,6 +409,20 @@ async def sur(M, saat, feed, bitis=None, ilerleme_her=2000):
             break
         except Exception as _e:
             print(f"  ⚠ WAL aktarımı ({_kip}) başarısız: {_e}")
+
+    # ⚠ BAGLANTIYI KAPAT — yoksa islemler KALICI OLARAK KAYBOLABILIR.
+    # Surucu sonunda os._exit(0) var (aiosqlite'in daemon olmayan thread'i
+    # yuzunden surec aksi halde hic cikmiyor). Ama sert cikis SQLite'in kapanis
+    # yordamini da atliyor: TRUNCATE kilitlenip PASSIVE'e dustuyse -- ki dort
+    # kosuda dustu -- PASSIVE kilit beklemedigi icin HIC aktarmamis olabilir ve
+    # islemler yalnizca -wal dosyasinda kalir. 2026-09-20: dort dusuk-risk
+    # veritabani boyle bosaldi (ozet 1778 islem gordu, bir sonraki arac 0).
+    # close() son bir checkpoint yapar, -wal'i ana dosyaya yedirir ve siler.
+    try:
+        await M.db.close()
+        print("  veritabanı bağlantısı kapatıldı (WAL kalıcılaştı)")
+    except Exception as _e:
+        print(f"  ⚠ veritabanı kapatılamadı: {type(_e).__name__}: {_e}")
     return n
 
 
