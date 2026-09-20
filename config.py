@@ -139,6 +139,15 @@ class RiskConfig:
     breakeven_atr_mult: float = 1.0   # KULLANILMIYOR
     trailing_atr_mult: float = 2.0    # KULLANILMIYOR
 
+    # ⚠ NETTED TEK-POZISYON KURALI. execution.py'deki muhafiz eskiden yalnizca
+    # `not paper_mode` ile calisiyordu; IKIZ kagit modda kostugu icin CANLIDA
+    # YASAK olan seye (ayni coinde ayni anda iki pozisyon) izin veriyordu.
+    # Tam olarak bu kusur 2026-09-14'te KRONOS'un "ayri havuz" iddiasini
+    # gecersiz kilmisti; "gercek kod kossa kisit zaten icinde olur" demistim,
+    # degilmis. "auto" = eski davranis (yalniz canli), "true" = her zaman
+    # uygula (IKIZ bunu kullanir), "false" = hic uygulama.
+    one_per_symbol: str = "auto"
+
     # ── Cikis yonetimi (GERCEKTEN okunuyor) ────────────────────────────────
     # Varsayilanlar bugunku davranisin BIREBIR aynisi: BE yalnizca orb/ifvg'de
     # ve +1R'de, takip kapali. Canliya etki etmez; acmak icin .env gerekir.
@@ -426,6 +435,7 @@ def load_config() -> AppConfig:
         trailing_stop_enabled=_getbool("TRAILING_STOP_ENABLED", True),
         breakeven_atr_mult=_getfloat("BREAKEVEN_ATR_MULT", 1.0),   # KULLANILMIYOR
         trailing_atr_mult=_getfloat("TRAILING_ATR_MULT", 2.0),     # KULLANILMIYOR
+        one_per_symbol=os.getenv("ONE_PER_SYMBOL", "auto").strip().lower(),
         be_sleeves=os.getenv("BE_SLEEVES", "orb,ifvg"),
         be_trigger_r=_getfloat("BE_TRIGGER_R", 1.0),
         trail_sleeves=os.getenv("TRAIL_SLEEVES", ""),

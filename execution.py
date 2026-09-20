@@ -411,7 +411,14 @@ class ExecutionEngine:
             # keeps its own correct, sticky attached stop. Paper tracks positions
             # independently (real per-position SL/TP), so this is live-only — paper and
             # backtests keep full multi-sleeve concurrency.
-            if not self._config.exchange.paper_mode:
+            # ⚠ ARTIK AYARA BAGLI. Eskiden yalnizca `not paper_mode` idi ve bu,
+            # kagit modda kosan REPLAY'i (IKIZ) canlidan AYIRIYORDU: canlinin
+            # yasakladigi es zamanli ayni-coin pozisyonuna backtest izin
+            # veriyordu. ONE_PER_SYMBOL=true ile kural kagit modda da uygulanir.
+            _ops = getattr(self._config.risk, "one_per_symbol", "auto")
+            _uygula = (not self._config.exchange.paper_mode if _ops == "auto"
+                       else _ops == "true")
+            if _uygula:
                 if any(p.symbol == symbol for p in self._portfolio.get_open_positions()):
                     return ExecutionResult(
                         False,

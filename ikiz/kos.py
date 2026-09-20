@@ -83,6 +83,10 @@ def _ortam(coinler):
         for _k, _v in CANLI_ENV.items():
             os.environ.setdefault(_k, _v)
     os.environ.update({
+        # ⚠ CANLI NETTED KISITI ZORLANIR. MEXC one-way modda bir coin = BIR net
+        # pozisyon; uretim muhafizi eskiden yalnizca canlida calisiyordu ve
+        # IKIZ kagit modda kostugu icin o kisit BACKTEST'TE YOKTU.
+        "ONE_PER_SYMBOL": "true",
         "PAPER_MODE": "true", "DRY_RUN": "false",
         "TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": "",
         "NTFY_TOPIC": "", "WEB_DASHBOARD": "false",
