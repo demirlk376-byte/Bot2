@@ -119,7 +119,8 @@ def karsilastir(temel, aday, ad):
     eklenen = aday[aday.anahtar.isin(a_anah - t_anah)]
 
     print(f"\n{'='*94}")
-    print(f"=== {ad}   (temel: canli %2.8 · n={len(temel)} · ort R {mu:+.4f} "
+    print(f"=== {ad}   (temel: {os.path.basename(TEMEL)} · n={len(temel)} "
+          f"· ort R {mu:+.4f} "
           f"· sigma {sg:.3f})")
     print(f"{'='*94}")
     print(f"  aday n={len(aday)}   elenen {len(elenen)}   yeni acilan {len(eklenen)}")

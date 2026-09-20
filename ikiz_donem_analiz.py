@@ -24,7 +24,12 @@ import pandas as pd, numpy as np
 KOK = os.path.dirname(os.path.abspath(__file__))
 BAL0 = 10_000.0
 BOLME = pd.Timestamp("2025-01-01", tz="UTC")
-TEMEL_AD = "risk28"
+# ⚠ TEMEL "taban" OLMALI. Eskiden sabit "risk28" idi ve bu, hukumleri ESKI
+# bir kosuya gore veriyordu: 2026-09-20'de gelecek sizintisi duzeltilince taban
+# 1778 islem/+0.1581'den 1752/+0.1675'e ve TRAIN MAR 5.87'den 9.77'ye tasindi.
+# Hukumler sizintili rakama gore verilince hepsi yanlis cikti. "taban" kosusu
+# her taramada var ve DEGISIKLIK ICERMEZ -- dogru referans odur.
+TEMEL_ADAYLARI = ("taban", "risk28")
 SIRA = ["taban", "adx20", "adx25", 'teyit1', 'teyit2', 'retest2', 'retest4', 'hacim15', 'hacim20', 'obv', 'hacim_obv', 'be_don', 'be_all', 'be15', 'tr30', 'tr20', 'tr15', 'tr20g', 'be_tr', "risk10", "risk14", "risk17", "risk20", "risk28", "risk35", "risk40",
         "korel1", "kor17", "kor20", "kor24", "kor28",
         "adx32", "hold24", "guven",
@@ -133,8 +138,14 @@ def main():
         for x in sorunlu:
             print(f"    {x}")
 
-    if TEMEL_AD not in sonuc:
-        print("temel kosu (ikiz_risk28.db) yok."); return
+    TEMEL_AD = next((a for a in TEMEL_ADAYLARI if a in sonuc), None)
+    if TEMEL_AD is None:
+        print("temel kosu yok (ikiz_taban.db veya ikiz_risk28.db gerekli).")
+        return
+    if TEMEL_AD != "taban":
+        print("\n  ⚠ 'taban' kosusu yok; hukumler ESKI bir referansa gore "
+              "veriliyor.\n    Dogru karsilastirma icin taramayi taban "
+              "kosusuyla birlikte calistir.")
 
     print(f"\n{'='*102}")
     print("=== DONEM BOLMESI · her yari KENDI ICINDE olculdu ===")
