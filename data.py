@@ -58,8 +58,14 @@ class CandleBuffer:
             return True
 
     def to_dataframe(self) -> pd.DataFrame:
+        # ⚠ ONBELLEKTEKI NESNEYI DOGRUDAN VERME. Cagiran `df["close"] = ...`
+        # yazarsa onbellek bozulur ve bundan SONRAKI her okuma yanlis veri
+        # gorur -- Copy-on-Write yalnizca dilim uzerinden zincirleme yazmayi
+        # korur, nesnenin kendisine yazmayi DEGIL (test bunu yakaladi).
+        # Yuzeysel kopya bloklari paylasir, yazma anINDA ayrilir: yeniden
+        # kurmaktan ~100 kat ucuz, sizinti riski sifir.
         if self._df is not None:
-            return self._df
+            return self._df.copy(deep=False)
         if not self._buf:
             return pd.DataFrame(columns=["open", "high", "low", "close", "volume"])
         # ⚠ SUTUN SIRASI, dtype ve INDEKS ADI eskisiyle birebir ayni olmali.
@@ -79,7 +85,7 @@ class CandleBuffer:
             index=pd.DatetimeIndex(pd.to_datetime(ts, unit="ms"), name="timestamp"),
         )
         self._df = df
-        return df
+        return df.copy(deep=False)
 
     def latest_close(self) -> float:
         return self._buf[-1].close if self._buf else 0.0

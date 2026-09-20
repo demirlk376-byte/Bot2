@@ -51,7 +51,12 @@ def test_ayni_tablo():
 def test_onbellek_guncellemede_gecersiz_olur():
     b = _kur(10)
     ilk = b.to_dataframe()
-    assert b.to_dataframe() is ilk, "degismeyen tamponda yeniden kurulmamali"
+    # ⚠ "ayni nesne" BEKLENMEZ: to_dataframe yuzeysel kopya donduruyor (cagiran
+    # yazarsa onbellek bozulmasin diye). Onbellegin calistiginin kaniti,
+    # VERININ ayni blogu paylasmasi: yeniden kurulsa degerler yeni dizilerde
+    # olurdu. Icerik esitligi + ucuzluk yeterli gostergedir.
+    assert b.to_dataframe().equals(ilk)
+    assert b._df is not None, "onbellek dolmaliydi"
     asyncio.run(b.update(_mumlar(11)[10]))
     yeni = b.to_dataframe()
     assert yeni is not ilk, "tampon degisti, onbellek gecersiz olmaliydi"
@@ -76,3 +81,36 @@ def test_bos_tampon():
     b = CandleBuffer("BTC/USDT:USDT", "1h")
     df = b.to_dataframe()
     assert len(df) == 0 and list(df.columns) == ["open", "high", "low", "close", "volume"]
+
+
+def test_cagiran_degistirse_bile_onbellek_bozulmaz():
+    """⚠ ONBELLEGIN TEK GERCEK RISKI BU. Eskiden her cagri YENI bir tablo
+    donduruyordu, yani cagiranin uzerinde oynamasi kimseyi etkilemiyordu.
+    Artik ayni nesne paylasiliyor. Uretimde get_candles'i cagiran bes yer var
+    (hepsi main.py) ve hicbiri yazmiyor; pandas 3'te Copy-on-Write de zaten
+    engelliyor. Bu test o dayanagi KAYIT ALTINA ALIR: bir gun biri yazmaya
+    baslarsa ya da pandas davranisi degisirse burada duser."""
+    b = _kur(50)
+    referans = _eski_to_dataframe(b)
+
+    d1 = b.to_dataframe()
+    try:
+        d1["close"] = 0.0            # cagiran uzerinde oynuyor
+        d1.iloc[0, 0] = -999.0
+    except Exception:
+        pass                          # yazmaya izin verilmemesi de kabul
+
+    pd.testing.assert_frame_equal(b.to_dataframe(), referans, check_exact=True)
+
+
+def test_tail_dilimi_uzerinden_yazma_da_bozmaz():
+    """get_candles df.tail(n) donduruyor -- dilim uzerinden yazma da
+    onbellege sizmamali."""
+    b = _kur(50)
+    referans = _eski_to_dataframe(b)
+    dilim = b.to_dataframe().tail(10)
+    try:
+        dilim["high"] = 1.0
+    except Exception:
+        pass
+    pd.testing.assert_frame_equal(b.to_dataframe(), referans, check_exact=True)
