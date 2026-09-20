@@ -101,8 +101,21 @@ class ReplayFeed:
         return {"last": p, "close": p, "symbol": symbol}
 
     async def get_current_price(self, symbol: str) -> float:
+        """O AN bilinebilecek son kapanis fiyati.
+
+        ⚠ GELECEK SIZINTISI DUZELTILDI (2026-09-20). Eski surum ACILIS
+        damgalarinda (ts_ns) arama yapiyordu, oysa sanal saat mumun KAPANISINA
+        ayarlaniyor (kos.py:353). Kapanis ani bir SONRAKI mumun acilisina esit
+        oldugu icin searchsorted(..., "right") bir indeks ileri kaciyor ve
+        fonksiyon BIR SAAT SONRAKI kapanisi donduruyordu.
+        Olculdu: saat 17:00 iken 28027.70 (17:00-18:00 mumunun kapanisi) dondu;
+        dogrusu 28055.40. Ardisik 1h kapanis farki ortalama 31.5bp, yani
+        modellenen 5bp girisi kaymasinin ~6 kati buyuklukte bir hata.
+        Bu fiyat giris/cikis dolumunda, SL/TP tick kontrolunde ve
+        gerceklesmemis PnL'de kullaniliyordu -> her biri gelecek bilgisi
+        tasiyordu. KAPANIS damgalarinda ara (fetch_ohlcv zaten oyle yapiyor)."""
         s = self._s(symbol, "1h")
-        i = int(np.searchsorted(s.ts_ns, self._simdi_ns(), side="right")) - 1
+        i = int(np.searchsorted(s.kapanis_ns, self._simdi_ns(), side="right")) - 1
         if i < 0:
             raise RuntimeError(f"ReplayFeed: {symbol} için {self.saat.simdi} öncesi veri yok")
         return float(s.c[i])

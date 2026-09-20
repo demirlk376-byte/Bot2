@@ -381,8 +381,16 @@ async def sur(M, saat, feed, bitis=None, ilerleme_her=2000):
             dm._last_price_ts = _t.monotonic()
             if hasattr(M.exchange, "update_price"):
                 await M.exchange.update_price(px, sym)
-            if hasattr(M.exchange, "check_sl_tp_tick"):
-                await M.exchange.check_sl_tp_tick(sym, px)
+            # ⚠ check_sl_tp_tick BILEREK CAGRILMIYOR (2026-09-20).
+            # Canlida o kontrol saniyede bir GERCEK tick'le calisiyor. Replay'de
+            # elimizdeki tek fiyat mumun KAPANISI; onunla cagirmak, AYNI mumun
+            # high/low kontrolunden ONCE calisiyordu. Sonuc: fitille stop'a
+            # degip kapanista hedefi gecen bir mum HEDEF yaziyordu -- canlida
+            # MEXC'in stop-market'i fitilde tetiklenir ve ZARAR yazilir.
+            # Dogru kontrol zaten uretim kodunda: main.py:205
+            # check_sl_tp(candle.high, candle.low) -- mum ici dokunuslari
+            # yakaliyor ve kapanis da [low, high] araliginda oldugu icin
+            # tick kontrolu ZATEN GEREKSIZ.
             # ⚠ 4h poll'u SEYRELTMEYİ DENEDİM, GERİ ALDIM (2026-09-15).
             # "Çağrıların %75'i boşa gidiyor, seyreltmek risksiz" demiştim —
             # ÖLÇÜM ÇÜRÜTTÜ: 16 işlem → 11 işlem, bakiye değişti. Sebep: 4h
