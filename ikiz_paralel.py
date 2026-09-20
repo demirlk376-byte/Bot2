@@ -162,6 +162,9 @@ def kos(ad_ve_env):
     # stderr'e satir satir yazdigi icin gorunur -- gunluk dolu ama print'ler
     # eksik gorunuyordu. Tamponu kapat.
     env["PYTHONUNBUFFERED"] = "1"
+    # ⚠ Bu kosunun DEGISTIRDIGI anahtarlari bildir ki kosu onlari da yazsin;
+    # yoksa ayar dogrulamasi taranan alani goremez (bkz. ikiz/kos.py).
+    env["IKIZ_IZLE"] = ",".join(sorted(ek.keys()))
     env["REPLAY_DB"] = os.path.join(KOK, f"ikiz_{ad}.db")
     env["IKIZ_ETIKET"] = ad
     gunluk = os.path.join(KOK, f"ikiz_{ad}.log")
@@ -211,8 +214,12 @@ def _ayar_dogrula(tarama):
         print(f"  {ETIKET_ADI.get(ad, ad):<14s} {sat.strip()}")
     if len(set(bulunan.values())) == 1:
         print("\n  " + "!" * 84)
-        print("  !! TUM KOSULAR AYNI AYARDA. Tarama yapilmiyor, kosu bosa gidiyor.")
-        print("  !! Pencereyi kapat, kodu guncelle (git pull) ve tekrar basla.")
+        print("  !! TUM KOSULARIN AYAR SATIRI AYNI.")
+        print("  !! Yukaridaki satirlarda taranan anahtarlarin DEGERLERINE bak:")
+        print("  !! " + " / ".join(sorted({k for _, e in tarama for k in e})
+                                   or ["(bu tarama hicbir anahtar degistirmiyor)"]))
+        print("  !! Gercekten ayniysa kosu bosa gidiyor; pencereyi kapat,")
+        print("  !! git pull yapip tekrar basla.")
         print("  " + "!" * 84, flush=True)
     else:
         print("  ayarlar farkli ✓ tarama gercek.\n", flush=True)

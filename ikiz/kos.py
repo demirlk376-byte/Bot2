@@ -94,8 +94,17 @@ def _ortam(coinler):
     # ⚠ KOŞU KENDİ AYARINI BİLDİRSİN. Yukarıdaki hata SESSİZ olduğu için
     # 5 saat sürdü: tablo geldi, dört satır aynıydı, sebebi ancak sonradan
     # anlaşıldı. Artık her koşu hangi ayarla koştuğunu BAŞTA yazıyor.
-    _izle = ("RISK_SCALE", "MAX_RISK_PCT", "MAX_POSITIONS",
-             "POSITION_CAP_FRACTION", "DAILY_MAX_LOSS_PCT", "LEVERAGE")
+    # ⚠ SABIT LISTE YETMEZ. Once yalniz risk ayarlari yaziliyordu; geri-verme
+    # taramasi TRAILING_ATR_MULT / BREAKEVEN_ATR_MULT / DONCHIAN_RR gibi
+    # anahtarlari degistirince dokuz kosunun satiri AYNI gorundu ve "tum
+    # kosular ayni ayarda" YANLIS ALARMI verdi (2026-09-20). Kosucu hangi
+    # anahtarlari taradigini IKIZ_IZLE ile bildiriyor; onlar da yaziliyor.
+    _izle = ["RISK_SCALE", "MAX_RISK_PCT", "MAX_POSITIONS",
+             "POSITION_CAP_FRACTION", "DAILY_MAX_LOSS_PCT", "LEVERAGE"]
+    for _k in os.environ.get("IKIZ_IZLE", "").split(","):
+        _k = _k.strip()
+        if _k and _k not in _izle:
+            _izle.append(_k)
     print("  ETKİN AYAR · " + " · ".join(
         f"{k}={os.environ.get(k, '(yok)')}" for k in _izle))
     print(f"  veritabanı: {os.environ['DB_PATH']}")
