@@ -829,6 +829,13 @@ class ExecutionEngine:
                 # zone edge). order.filled_price below is the actual fill.
                 "intended_entry": float(getattr(signal, "entry_price", 0.0) or setup.entry_price),
             }
+            # ⚠ BASLANGIC STOP'U KALICI KAYDEDILIR. trades.sl_price sutunu stop
+            # tasindikca GUNCELLENIYOR (update_trade_sl), yani sonradan R'yi
+            # ondan hesaplamak YANLIS: basabasa cekilmis bir islemde payda
+            # sifira yakinsar ve R patlar. 2026-09-20'de tam bu oldu -- cikis
+            # yonetimi taramasinda "ort R" sutunu -0.33 / -0.63 gibi anlamsiz
+            # degerler gosterdi. sl0 hic degismez, analiz onu kullanir.
+            scores["sl0"] = float(setup.sl_price)
             # Mark trades whose entry price is an estimate, not a real fill, so the
             # live report never treats them as clean slippage/R:R observations.
             if fill_price_estimated:

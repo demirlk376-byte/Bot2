@@ -42,6 +42,19 @@ ETIKET = {"taban": "TABAN canli",
           "cl1": "1 zarar/8sa"}
 
 
+def _stop_mesafesi(d):
+    """R'nin paydasi: giris ile BASLANGIC stop'u arasi.
+
+    ⚠ sl_price sutunu kullanilmaz -- stop tasinirsa (basabas/ATR takibi) o
+    sutun guncelleniyor ve payda sifira yakinsayip R'yi patlatiyor. Islem
+    acilirken strategy_scores'a yazilan sl0 hic degismez. Eski kosularda sl0
+    yoksa sl_price'a dusulur (o kosularda stop zaten tasinmiyordu)."""
+    sl0 = d.strategy_scores.apply(
+        lambda s: (json.loads(s or "{}") or {}).get("sl0"))
+    taban = sl0.where(sl0.notna(), d.sl_price).astype("float64")
+    return (d.entry_price - taban).abs()
+
+
 def oku(yol):
     """⚠ mode=ro KULLANMA. SQLite bir WAL veritabanini okumak icin -shm
     dosyasina YAZABILMEK zorunda; salt-okunur acilista WAL'daki islemleri
@@ -73,7 +86,7 @@ def olc(d):
     d = d.sort_values("cikis").reset_index(drop=True)
 
     yon  = 1 - 2 * d.side.str.lower().str.startswith("s").astype(int)
-    stop = (d.entry_price - d.sl_price).abs()
+    stop = _stop_mesafesi(d)
     d["R"] = np.where(stop > 0,
                       yon * (d.exit_price - d.entry_price) / stop.replace(0, np.nan),
                       np.nan)
