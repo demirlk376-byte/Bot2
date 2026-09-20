@@ -22,6 +22,11 @@ class Position:
     # Trailing stop state — updated each candle by _update_trailing_stops
     peak_price: float = 0.0       # best price seen since entry (long=high, short=low)
     breakeven_moved: bool = False  # True once SL has been moved to entry price
+    # ⚠ BASLANGIC STOP'U. "1R" girisle ILK stop arasindaki mesafedir; stop bir
+    # kez tasindiktan sonra guncel sl_price'tan hesaplanan R anlamini yitirir
+    # (BE'den sonra sifira yakinsar ve takip esigi sacmalar). Ilk gorulusunde
+    # sabitlenir; yeniden baslatmada guncel stop'a esitlenir (muhafazakar).
+    initial_sl_price: float = 0.0
 
     @property
     def side(self) -> str:

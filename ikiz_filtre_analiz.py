@@ -32,9 +32,17 @@ _T1 = os.path.join(KOK, "ikiz_taban.db")
 _T2 = os.path.join(KOK, "ikiz_risk28.db")
 TEMEL = _T1 if os.path.exists(_T1) else _T2
 BOLME = pd.Timestamp("2025-01-01", tz="UTC")     # TRAIN | TEST
-ADAYLAR = ["trail10", "trail15", "be05", "bt", "rr15",
+ADAYLAR = ['be_don', 'be_all', 'be15', 'tr30', 'tr20', 'tr15', 'tr20g', 'be_tr', "trail10", "trail15", "be05", "bt", "rr15",
            "buf05", "adxr25", "cl1", "korel1", "adx32", "hold24", "guven"]
-ETIKET = {"korel1": "korel 1", "adx32": "ADX 32", "hold24": "tutus 24",
+ETIKET = {"be_don": "BE donchian",
+          "be_all": "BE don+sq",
+          "be15": "BE 1.5R",
+          "tr30": "takip 3xATR",
+          "tr20": "takip 2xATR",
+          "tr15": "takip 1.5xATR",
+          "tr20g": "takip 2x @1R",
+          "be_tr": "BE + takip 2x",
+          "korel1": "korel 1", "adx32": "ADX 32", "hold24": "tutus 24",
           "guven": "guven boyut",
           "trail10": "takip 1.0",
           "trail15": "takip 1.5",

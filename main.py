@@ -1100,6 +1100,24 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
 
     live_moves_ok = config.exchange.stop_move_enabled
 
+    # ⚠ KOL LISTESI ARTIK AYARDAN GELIYOR. Burada sabit ("orb", "ifvg") yaziyordu
+    # ve bu iki kol CANLIDA KAPALI; yani calisan uc kol (donchian 1195, squeeze
+    # 424, mean_rev 159 islem) HICBIR stop yonetimi almiyordu. Pozisyon
+    # acildiktan sonra zarar-kes hic kipirdamiyor: islem +3R'ye gidip -1R'ye
+    # donebiliyor ve bunu engelleyen hicbir sey yok. Kullanicinin "yukselis
+    # bitince kazandigini geri veriyor" gozlemi bir aksaklik degil, bu tasarimin
+    # dogrudan sonucu.
+    # VARSAYILANLAR BUGUNKU DAVRANISIN BIREBIR AYNISI (be=orb,ifvg @1R, takip
+    # kapali) -> canli degismez; acmak icin .env gerekir ve once IKIZ'de olculur.
+    def _kollar(metin: str) -> set:
+        return {x.strip().lower() for x in (metin or "").split(",") if x.strip()}
+
+    be_kollari = _kollar(getattr(config.risk, "be_sleeves", "orb,ifvg"))
+    trail_kollari = _kollar(getattr(config.risk, "trail_sleeves", ""))
+    be_tetik_r = float(getattr(config.risk, "be_trigger_r", 1.0))
+    trail_mult = float(getattr(config.risk, "trail_atr_mult", 0.0))
+    trail_bas_r = float(getattr(config.risk, "trail_start_r", 0.0))
+
     for pos in portfolio.get_open_positions():
         if pos.symbol != symbol:
             continue
@@ -1108,25 +1126,53 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
         # moving their stops would diverge live behaviour from the backtest.
         # (sr_breakout deliberately absent — see docstring.)
         strategy_tag = pos.strategy_scores.get("strategy", "mean_rev")
-        if strategy_tag not in ("orb", "ifvg"):
+        be_acik = strategy_tag in be_kollari
+        trail_acik = (strategy_tag in trail_kollari
+                      and trail_mult > 0 and atr_val > 0)
+        if not (be_acik or trail_acik):
             continue
+
+        # ⚠ "1R" GIRISLE ILK STOP arasindaki mesafedir. Eskiden her seferinde
+        # guncel sl_price'tan hesaplaniyordu; bu yalnizca stop hic tasinmamisken
+        # dogru. Bir kez tasindiktan sonra R kuculur, takip esigi sacmalar ve
+        # stop kendi kendini kovalar. Ilk gorulusunde sabitle.
+        if pos.initial_sl_price <= 0:
+            pos.initial_sl_price = pos.sl_price
+        r_dist = abs(pos.entry_price - pos.initial_sl_price)
+        if r_dist <= 0:
+            continue
+
+        # ⚠ ZIRVE TAKIBI. Position.peak_price alani vardi ama HICBIR YERDE
+        # guncellenmiyordu -- yarim birakilmis altyapi. Takip onsuz calisamaz.
+        if pos.peak_price <= 0:
+            pos.peak_price = pos.entry_price
+        pos.peak_price = (max(pos.peak_price, current_price) if pos.direction == 1
+                          else min(pos.peak_price, current_price))
+
+        kar = ((current_price - pos.entry_price) if pos.direction == 1
+               else (pos.entry_price - current_price))
 
         old_sl = pos.sl_price
         new_sl = old_sl
         be_now = False   # committed to pos.breakeven_moved only after a real move
 
-        # orb / ifvg: BE-only at +1R. After BE there is nothing further to do.
-        if pos.breakeven_moved:
-            continue
-        r_dist = abs(pos.entry_price - pos.sl_price)  # pre-BE ⇒ initial R
-        if r_dist <= 0:
-            continue
-        if pos.direction == 1 and current_price >= pos.entry_price + r_dist:
-            new_sl = max(new_sl, pos.entry_price)
-            be_now = True
-        elif pos.direction == -1 and current_price <= pos.entry_price - r_dist:
-            new_sl = min(new_sl, pos.entry_price)
-            be_now = True
+        if be_acik and not pos.breakeven_moved and kar >= be_tetik_r * r_dist:
+            new_sl = (max(new_sl, pos.entry_price) if pos.direction == 1
+                      else min(new_sl, pos.entry_price))
+            be_now = new_sl != old_sl
+
+        if trail_acik and kar >= trail_bas_r * r_dist:
+            aday = (pos.peak_price - trail_mult * atr_val if pos.direction == 1
+                    else pos.peak_price + trail_mult * atr_val)
+            # ⚠ IKI KURAL. (1) ASLA GEVSETME: stop yalnizca sikilasabilir,
+            # yoksa korumayi geri alir. (2) FIYATIN OTESINE GECME: fiyati
+            # gecmis bir stop bir sonraki mumda ANINDA tetiklenir ve cikisi
+            # gercekte hic islem gormemis bir seviyeden kaydeder -- defteri
+            # kirletir ve testi gercege aykiri hale getirir.
+            if pos.direction == 1:
+                new_sl = max(new_sl, min(aday, current_price * (1 - 1e-9)))
+            else:
+                new_sl = min(new_sl, max(aday, current_price * (1 + 1e-9)))
 
         if new_sl != old_sl:
             if isinstance(exchange, PaperExchange):

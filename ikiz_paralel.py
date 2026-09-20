@@ -16,6 +16,7 @@ Kullanım:
   py ikiz_paralel.py hepsi         → ikisi birden, 8 surec, ayni 51 dk
   py ikiz_paralel.py birlesik      → korel1 x 4 risk + 4 saf risk, 8 surec
   py ikiz_paralel.py geriverme     → acik karin geri verilmesi, 8 surec
+  py ikiz_paralel.py cikis         → basabas/ATR takibi, 9 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -132,7 +133,37 @@ GERIVERME_TARAMA = [
                  "COOLDOWN_MINUTES": "480"}),                   # chop'tan hizli cik
 ]
 
-ETIKET_ADI = {"taban": "TABAN (canli)", "trail10": "takip 1.0", "trail15": "takip 1.5",
+# ⚠ CIKIS YONETIMI TARAMASI. Once TRAILING_ATR_MULT/BREAKEVEN_ATR_MULT'u
+# taradim ve dort kosu da tabanla BIREBIR ayni cikti: o iki ayar hicbir yerde
+# OKUNMUYORDU. Sebep main.py'de sabit kol listesiydi -- stop tasima yalniz
+# orb/ifvg'ye uygulaniyor, ikisi de canlida KAPALI, yani calisan uc kol hic
+# stop yonetimi almiyordu. Mekanizma artik uretim kodunda ve ayarla aciliyor
+# (varsayilan = bugunku davranis).
+CIKIS_TARAMA = [
+    ("taban",   {}),                                     # dogrulama capasi
+    # --- basabasa cekme ---
+    ("be_don",  {"BE_SLEEVES": "orb,ifvg,donchian"}),
+    ("be_all",  {"BE_SLEEVES": "orb,ifvg,donchian,squeeze"}),
+    ("be15",    {"BE_SLEEVES": "orb,ifvg,donchian,squeeze",
+                 "BE_TRIGGER_R": "1.5"}),
+    # --- ATR takibi (zirvenin N x ATR altinda) ---
+    ("tr30",    {"TRAIL_SLEEVES": "donchian,squeeze", "TRAIL_ATR_MULT": "3.0"}),
+    ("tr20",    {"TRAIL_SLEEVES": "donchian,squeeze", "TRAIL_ATR_MULT": "2.0"}),
+    ("tr15",    {"TRAIL_SLEEVES": "donchian,squeeze", "TRAIL_ATR_MULT": "1.5"}),
+    # --- takip yalniz 1R kardan SONRA (erken bogulmayi onler) ---
+    ("tr20g",   {"TRAIL_SLEEVES": "donchian,squeeze", "TRAIL_ATR_MULT": "2.0",
+                 "TRAIL_START_R": "1.0"}),
+    # --- ikisi birden ---
+    ("be_tr",   {"BE_SLEEVES": "orb,ifvg,donchian,squeeze",
+                 "TRAIL_SLEEVES": "donchian,squeeze", "TRAIL_ATR_MULT": "2.0"}),
+]
+
+ETIKET_ADI = {"taban": "TABAN (canli)",
+              "be_don": "BE donchian", "be_all": "BE don+sq",
+              "be15": "BE 1.5R", "tr30": "takip 3xATR",
+              "tr20": "takip 2xATR", "tr15": "takip 1.5xATR",
+              "tr20g": "takip 2x @1R", "be_tr": "BE + takip 2x",
+              "trail10": "takip 1.0", "trail15": "takip 1.5",
               "be05": "basabas 0.5", "bt": "basabas+takip",
               "rr15": "RR 1.5", "buf05": "tampon 0.5",
               "adxr25": "ADX yatay 25", "cl1": "1 zarar/8sa",
@@ -263,11 +294,12 @@ def main():
                   # filtre sorusu AYNI 51 dakikada cevaplanir.
                   "hepsi": DUSUK_TARAMA + FILTRE_TARAMA,
                   "birlesik": BIRLESIK_TARAMA,
-                  "geriverme": GERIVERME_TARAMA}[hangi]
+                  "geriverme": GERIVERME_TARAMA,
+                  "cikis": CIKIS_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
-              f"birlesik, geriverme)")
+              f"birlesik, geriverme, cikis)")
         return
 
     print(f"\n{'='*84}")

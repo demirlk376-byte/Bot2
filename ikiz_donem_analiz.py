@@ -25,11 +25,19 @@ KOK = os.path.dirname(os.path.abspath(__file__))
 BAL0 = 10_000.0
 BOLME = pd.Timestamp("2025-01-01", tz="UTC")
 TEMEL_AD = "risk28"
-SIRA = ["taban", "risk10", "risk14", "risk17", "risk20", "risk28", "risk35", "risk40",
+SIRA = ["taban", 'be_don', 'be_all', 'be15', 'tr30', 'tr20', 'tr15', 'tr20g', 'be_tr', "risk10", "risk14", "risk17", "risk20", "risk28", "risk35", "risk40",
         "korel1", "kor17", "kor20", "kor24", "kor28",
         "adx32", "hold24", "guven",
         "trail10", "trail15", "be05", "bt", "rr15", "buf05", "adxr25", "cl1"]
-ETIKET = {"taban": "TABAN canli", "risk10": "%1.0", "risk14": "%1.4", "risk17": "%1.7", "risk20": "%2.0",
+ETIKET = {"taban": "TABAN canli",
+          "be_don": "BE donchian",
+          "be_all": "BE don+sq",
+          "be15": "BE 1.5R",
+          "tr30": "takip 3xATR",
+          "tr20": "takip 2xATR",
+          "tr15": "takip 1.5xATR",
+          "tr20g": "takip 2x @1R",
+          "be_tr": "BE + takip 2x", "risk10": "%1.0", "risk14": "%1.4", "risk17": "%1.7", "risk20": "%2.0",
           "risk28": "%2.8 CANLI", "risk35": "%3.5", "risk40": "%4.0",
           "korel1": "korel 1", "kor28": "korel+%2.8", "kor24": "korel+%2.4",
           "kor20": "korel+%2.0", "kor17": "korel+%1.7",

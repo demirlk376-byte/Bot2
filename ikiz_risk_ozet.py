@@ -18,7 +18,15 @@ import pandas as pd, numpy as np
 
 KOK = os.path.dirname(os.path.abspath(__file__))
 BAL0 = 10_000.0
-ETIKET = {"taban": "TABAN canli", "risk10": "%1.0", "risk14": "%1.4", "risk17": "%1.7",
+ETIKET = {"taban": "TABAN canli",
+          "be_don": "BE donchian",
+          "be_all": "BE don+sq",
+          "be15": "BE 1.5R",
+          "tr30": "takip 3xATR",
+          "tr20": "takip 2xATR",
+          "tr15": "takip 1.5xATR",
+          "tr20g": "takip 2x @1R",
+          "be_tr": "BE + takip 2x", "risk10": "%1.0", "risk14": "%1.4", "risk17": "%1.7",
           "risk20": "%2.0", "risk28": "%2.8 CANLI", "risk35": "%3.5",
           "risk40": "%4.0", "adx32": "ADX 32", "korel1": "korel 1",
           "hold24": "tutus 24", "guven": "guven boyut",

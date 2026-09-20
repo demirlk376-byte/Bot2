@@ -131,8 +131,22 @@ class RiskConfig:
     # Trailing stop: move SL to breakeven after breakeven_atr_mult×ATR profit,
     # then trail at trailing_atr_mult×ATR below peak price.
     trailing_stop_enabled: bool = True
-    breakeven_atr_mult: float = 1.0   # after 1×ATR profit → SL to entry
-    trailing_atr_mult: float = 2.0    # trail SL at 2×ATR below peak
+    # ⚠ ASAGIDAKI IKI ALAN HICBIR YERDE OKUNMUYOR (2026-09-20'de olculdu).
+    # Isimleri calisiyormus izlenimi veriyor ama _update_trailing_stops onlara
+    # hic bakmiyor; BE esigi R cinsinden ve sabitti. Bunlara dayanarak yapilan
+    # dort tarama kosusu hicbir sey olcmedi. Yerlerine be_/trail_ alanlari
+    # geldi; bunlar eski konfigurasyonlari kirmamak icin duruyor.
+    breakeven_atr_mult: float = 1.0   # KULLANILMIYOR
+    trailing_atr_mult: float = 2.0    # KULLANILMIYOR
+
+    # ── Cikis yonetimi (GERCEKTEN okunuyor) ────────────────────────────────
+    # Varsayilanlar bugunku davranisin BIREBIR aynisi: BE yalnizca orb/ifvg'de
+    # ve +1R'de, takip kapali. Canliya etki etmez; acmak icin .env gerekir.
+    be_sleeves: str = "orb,ifvg"      # basabasa cekilecek kollar
+    be_trigger_r: float = 1.0         # kac R karda basabasa cekilsin
+    trail_sleeves: str = ""           # ATR takibi yapilacak kollar (bos = kapali)
+    trail_atr_mult: float = 0.0       # zirvenin kac ATR altinda takip (0 = kapali)
+    trail_start_r: float = 0.0        # takip kac R kardan sonra devreye girsin
     # Market regime filter: ADX-based strategy routing.
     # Trending (ADX>28) → suppress BB mean-reversion (counter-trend trades fail).
     # Ranging  (ADX<20) → suppress ORB/S/R breakouts (false-breakout rate spikes).
@@ -410,8 +424,13 @@ def load_config() -> AppConfig:
         risk_scale=risk_scale,
         day_max_hold_candles=_getint("DAY_MAX_HOLD_CANDLES", 6),
         trailing_stop_enabled=_getbool("TRAILING_STOP_ENABLED", True),
-        breakeven_atr_mult=_getfloat("BREAKEVEN_ATR_MULT", 1.0),
-        trailing_atr_mult=_getfloat("TRAILING_ATR_MULT", 2.0),
+        breakeven_atr_mult=_getfloat("BREAKEVEN_ATR_MULT", 1.0),   # KULLANILMIYOR
+        trailing_atr_mult=_getfloat("TRAILING_ATR_MULT", 2.0),     # KULLANILMIYOR
+        be_sleeves=os.getenv("BE_SLEEVES", "orb,ifvg"),
+        be_trigger_r=_getfloat("BE_TRIGGER_R", 1.0),
+        trail_sleeves=os.getenv("TRAIL_SLEEVES", ""),
+        trail_atr_mult=_getfloat("TRAIL_ATR_MULT", 0.0),
+        trail_start_r=_getfloat("TRAIL_START_R", 0.0),
         regime_filter_enabled=_getbool("REGIME_FILTER_ENABLED", True),
         adx_trending_threshold=_getfloat("ADX_TRENDING_THRESHOLD", 28.0),
         adx_ranging_threshold=_getfloat("ADX_RANGING_THRESHOLD", 20.0),
