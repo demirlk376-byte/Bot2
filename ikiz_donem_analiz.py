@@ -53,7 +53,7 @@ def yari(d, bas_bakiye, t0, t1):
     drawdown oldugundan KUCUK cikardi."""
     alt = d[(d.cikis >= t0) & (d.cikis < t1)]
     if len(alt) < 5:
-        return None
+        return {"_hata": f"donemde yalniz {len(alt)} islem"}
     eq = pd.concat([pd.Series([bas_bakiye]),
                     bas_bakiye + alt.pnl_usdt.cumsum()], ignore_index=True)
     tepe = eq.cummax()
@@ -61,7 +61,7 @@ def yari(d, bas_bakiye, t0, t1):
     gun = max(1, (alt.cikis.max() - alt.cikis.min()).days)
     buyume = float(eq.iloc[-1]) / bas_bakiye
     if buyume <= 0:
-        return None
+        return {"_hata": f"donem sonu bakiye {eq.iloc[-1]:,.0f} (<=0)"}
     yillik = buyume ** (365.0 / gun) - 1.0
     return {"n": len(alt), "son": float(eq.iloc[-1]), "gun": gun,
             "yillik": yillik, "maxdd": maxdd,
@@ -69,25 +69,40 @@ def yari(d, bas_bakiye, t0, t1):
 
 
 def olc(yol):
-    d = oku(yol)
+    # ⚠ SESSIZCE ATLAMA. Ilk surum sorunlu kosulari None dondurup tablodan
+    # dusuruyordu ve dort risk seviyesi sebebi GORUNMEDEN kayboldu. Artik
+    # her atlama SEBEBIYLE birlikte basiliyor.
+    try:
+        d = oku(yol)
+    except Exception as e:
+        return {"_hata": f"okunamadi: {type(e).__name__}: {e}"}
     if len(d) < 20:
-        return None
+        return {"_hata": f"yalniz {len(d)} kapanmis islem"}
     ilk, son = d.cikis.min(), d.cikis.max() + pd.Timedelta(days=1)
     tr = yari(d, BAL0, ilk, BOLME)
-    if tr is None:
-        return None
+    if "_hata" in tr:
+        return {"_hata": "TRAIN: " + tr["_hata"]}
     te = yari(d, tr["son"], BOLME, son)
-    return {"train": tr, "test": te}
+    return {"train": tr, "test": (None if "_hata" in te else te),
+            "test_hata": te.get("_hata") if "_hata" in te else None}
 
 
 def main():
-    sonuc = {}
+    sonuc, sorunlu = {}, []
     for ad in SIRA:
         y = os.path.join(KOK, f"ikiz_{ad}.db")
-        if os.path.exists(y):
-            s = olc(y)
-            if s:
-                sonuc[ad] = s
+        if not os.path.exists(y):
+            sorunlu.append(f"ikiz_{ad}.db  -> DOSYA YOK")
+            continue
+        s = olc(y)
+        if "_hata" in s:
+            sorunlu.append(f"ikiz_{ad}.db  -> {s['_hata']}")
+        else:
+            sonuc[ad] = s
+    if sorunlu:
+        print("\n  ATLANAN KOSULAR:")
+        for x in sorunlu:
+            print(f"    {x}")
 
     if TEMEL_AD not in sonuc:
         print("temel kosu (ikiz_risk28.db) yok."); return
