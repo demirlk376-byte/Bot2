@@ -19,6 +19,14 @@ import pandas as pd, numpy as np
 KOK = os.path.dirname(os.path.abspath(__file__))
 BAL0 = 10_000.0
 ETIKET = {"taban": "TABAN canli",
+          "t1": "teyit1",
+          "h20": "hacim2.0",
+          "h15": "hacim1.5",
+          "t1h20": "teyit1+h2.0",
+          "t1h15": "teyit1+h1.5",
+          "t1obv": "teyit1+OBV",
+          "t1h20k": "teyit1+h2.0+korel",
+          "t1h20r20": "teyit1+h2.0+%2.0risk",
           "adx20": "ADX>=20", "adx25": "ADX>=25",
           "teyit1": "teyit 1 bar",
           "teyit2": "teyit 2 bar",
@@ -62,6 +70,20 @@ def _stop_mesafesi(d):
         lambda s: (json.loads(s or "{}") or {}).get("sl0"))
     taban = sl0.where(sl0.notna(), d.sl_price).astype("float64")
     return (d.entry_price - taban).abs()
+
+
+def motor_surumu(yol):
+    """Kosunun kod surumu. None = surum yazilmadan once kosmus (ESKI)."""
+    try:
+        con = sqlite3.connect(f"file:{yol}?mode=ro", uri=True, timeout=10)
+        try:
+            r = con.execute(
+                "SELECT value FROM meta WHERE key='motor_surum'").fetchone()
+            return r[0] if r else None
+        finally:
+            con.close()
+    except Exception:
+        return None
 
 
 def oku(yol):
@@ -154,6 +176,7 @@ def main():
             print(f"  {ad}: kapanmis islem yok")
             continue
         s = olc(d); s["ad"] = ETIKET.get(ad, ad)
+        s["motor"] = motor_surumu(y)
         sonuc.append(s)
 
     if not sonuc:
@@ -168,12 +191,32 @@ def main():
     print(f"{'='*104}")
     bas = f"{'risk':<12s}{'islem':>7s}{'gunde':>7s}{'ort R':>9s}{'kazan%':>8s}"
     bas += f"{'bakiye':>14s}{'yillik%':>9s}{'maxDD%':>8s}{'MAR':>7s}"
+    # ⚠ FARKLI MOTOR SURUMLERI AYRI BASILIR. Yan yana koymak yanlis karara
+    # goturur: eski (sizintili) bir kosu tabloda "en iyi" cikabilir.
+    surumler = {}
+    for s in sonuc:
+        surumler.setdefault(s.get("motor"), []).append(s)
+    guncel = max(surumler, key=lambda k: len(surumler[k])) if surumler else None
+    if len(surumler) > 1:
+        print("\n  " + "!" * 96)
+        print("  !! Klasorde BIRDEN COK MOTOR SURUMUNUN sonucu var.")
+        print("  !! Farkli surumler KARSILASTIRILAMAZ (orn. gelecek sizintisi")
+        print("  !! duzeltilince taban 1778/+0.1581 -> 1752/+0.1675 oldu).")
+        for m, g in sorted(surumler.items(), key=lambda kv: -len(kv[1])):
+            etiket = (str(m) if m else "ESKI (surum damgasi yok)")
+            isaret = "  <- guncel" if m == guncel else "  <- ESKI, YOK SAY"
+            print(f"  !!   {etiket:<28s} {len(g):>2d} kosu{isaret}")
+        print("  !! Eskileri silmek icin: ikiz_tani.py ile bak, sonra sil.")
+        print("  " + "!" * 96)
+    sonuc = sorted(sonuc, key=lambda s: (s.get("motor") != guncel, -s["mar"]))
+
     print(bas)
     print("-" * 104)
     for s in sonuc:
+        isaret = "" if s.get("motor") == guncel else "  (ESKI)"
         print(f"{s['ad']:<12s}{s['n']:>7d}{s['gunde']:>7.2f}{s['ortR']:>+9.4f}"
               f"{s['kazanma']*100:>8.1f}{s['son']:>14,.0f}"
-              f"{s['yillik']*100:>9.1f}{s['maxdd']*100:>8.1f}{s['mar']:>7.2f}")
+              f"{s['yillik']*100:>9.1f}{s['maxdd']*100:>8.1f}{s['mar']:>7.2f}{isaret}")
     print("-" * 104)
 
     # ⚠ SESSİZ BAŞARISIZLIK MUHAFIZI. 2026-09-19: dört koşu da aynı ayarla
@@ -195,7 +238,9 @@ def main():
     # ⚠ MAR = yillik getiri / en derin dusus. Karsilastirmanin ASIL sutunu bu.
     # Cunku riski buyutunce bakiye sutunu HER ZAMAN buyur; tek basina bakmak
     # "daha cok risk her zaman daha iyi" yanlis sonucunu verir.
-    en = max(sonuc, key=lambda s: s["mar"] if s["mar"] == s["mar"] else -9e9)
+    # ⚠ "en iyi" YALNIZCA guncel motordan secilir.
+    aday = [s for s in sonuc if s.get("motor") == guncel] or sonuc
+    en = max(aday, key=lambda s: s["mar"] if s["mar"] == s["mar"] else -9e9)
     canli = next((s for s in sonuc if "CANLI" in s["ad"]), None)
     print(f"\n  en iyi MAR (yillik getiri / maxDD): {en['ad']}  "
           f"MAR {en['mar']:.2f}  (yillik %{en['yillik']*100:.1f} · "

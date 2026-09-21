@@ -32,9 +32,17 @@ _T1 = os.path.join(KOK, "ikiz_taban.db")
 _T2 = os.path.join(KOK, "ikiz_risk28.db")
 TEMEL = _T1 if os.path.exists(_T1) else _T2
 BOLME = pd.Timestamp("2025-01-01", tz="UTC")     # TRAIN | TEST
-ADAYLAR = ["adx20", "adx25", 'teyit1', 'teyit2', 'retest2', 'retest4', 'hacim15', 'hacim20', 'obv', 'hacim_obv', 'be_don', 'be_all', 'be15', 'tr30', 'tr20', 'tr15', 'tr20g', 'be_tr', "trail10", "trail15", "be05", "bt", "rr15",
+ADAYLAR = ['t1', 'h20', 'h15', 't1h20', 't1h15', 't1obv', 't1h20k', 't1h20r20', "adx20", "adx25", 'teyit1', 'teyit2', 'retest2', 'retest4', 'hacim15', 'hacim20', 'obv', 'hacim_obv', 'be_don', 'be_all', 'be15', 'tr30', 'tr20', 'tr15', 'tr20g', 'be_tr', "trail10", "trail15", "be05", "bt", "rr15",
            "buf05", "adxr25", "cl1", "korel1", "adx32", "hold24", "guven"]
-ETIKET = {"adx20": "ADX>=20", "adx25": "ADX>=25",
+ETIKET = {"t1": "teyit1",
+          "h20": "hacim2.0",
+          "h15": "hacim1.5",
+          "t1h20": "teyit1+h2.0",
+          "t1h15": "teyit1+h1.5",
+          "t1obv": "teyit1+OBV",
+          "t1h20k": "teyit1+h2.0+korel",
+          "t1h20r20": "teyit1+h2.0+%2.0risk",
+          "adx20": "ADX>=20", "adx25": "ADX>=25",
           "teyit1": "teyit 1 bar",
           "teyit2": "teyit 2 bar",
           "retest2": "retest 2b",

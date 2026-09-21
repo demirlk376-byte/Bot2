@@ -451,6 +451,29 @@ async def sur(M, saat, feed, bitis=None, ilerleme_her=2000):
     # islemler yalnizca -wal dosyasinda kalir. 2026-09-20: dort dusuk-risk
     # veritabani boyle bosaldi (ozet 1778 islem gordu, bir sonraki arac 0).
     # close() son bir checkpoint yapar, -wal'i ana dosyaya yedirir ve siler.
+    # ⚠ MOTOR PARMAK IZI. Farkli motor surumlerinin sonuclari YAN YANA
+    # KONULAMAZ: 2026-09-20'de gelecek sizintisi duzeltilince taban 1778
+    # islem/+0.1581'den 1752/+0.1675'e tasindi. Ama eski kosularin .db
+    # dosyalari klasorde duruyor ve ozet tablosu hepsini tek listede
+    # basiyordu -- eski bir satirin "en iyi" cikmasi mumkundu. Her kosu artik
+    # kendi kod surumunu yaziyor; rapor farkli surumleri AYIRIYOR.
+    try:
+        import hashlib as _h
+        _kok = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        _oz = _h.sha256()
+        for _d in ("ikiz/besleme.py", "ikiz/kos.py", "ikiz/saat.py", "main.py",
+                   "execution.py", "exchange.py", "indicators.py", "data.py",
+                   "portfolio.py", "config.py", "strategies/donchian.py",
+                   "strategies/mean_reversion.py", "strategies/squeeze.py"):
+            try:
+                with open(os.path.join(_kok, _d), "rb") as _f:
+                    _oz.update(_f.read())
+            except OSError:
+                _oz.update(b"?")
+        await M.db.set_meta("motor_surum", _oz.hexdigest()[:12])
+    except Exception as _e:
+        print(f"  ⚠ motor surumu yazilamadi: {type(_e).__name__}: {_e}")
+
     try:
         await M.db.close()
         print("  veritabanı bağlantısı kapatıldı (WAL kalıcılaştı)")

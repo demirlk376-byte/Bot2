@@ -11,6 +11,7 @@ echo ==========================================================
 echo.
 echo   TARAMALAR  (her biri ~25 dk, bitince RAPOR kendi gelir)
 echo     1   Donchian sahte-kirilim filtreleri
+    A   Kazananlarin birlesimi (teyit1 + hacim + korel)
 echo     2   Cikis yonetimi (basabas / ATR takibi)
 echo     3   Risk seviyesi - ust aralik  (%%2.0 - %%4.0)
 echo     4   Risk seviyesi - alt aralik  (%%1.0 - %%2.0)
@@ -28,6 +29,7 @@ set "sec="
 set /p "sec=Secim: "
 
 if "%sec%"=="1" set "ARGS=ikiz_paralel.py donchian" & goto calistir
+if /i "%sec%"=="A" set "ARGS=ikiz_paralel.py eniyi" & goto calistir
 if "%sec%"=="2" set "ARGS=ikiz_paralel.py cikis"    & goto calistir
 if "%sec%"=="3" set "ARGS=ikiz_paralel.py risk"     & goto calistir
 if "%sec%"=="4" set "ARGS=ikiz_paralel.py dusuk"    & goto calistir

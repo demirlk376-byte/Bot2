@@ -17,7 +17,8 @@ Kullanım:
   py ikiz_paralel.py birlesik      → korel1 x 4 risk + 4 saf risk, 8 surec
   py ikiz_paralel.py geriverme     → acik karin geri verilmesi, 8 surec
   py ikiz_paralel.py cikis         → basabas/ATR takibi, 9 surec
-  py ikiz_paralel.py donchian      → sahte-kirilim filtreleri, 9 surec
+  py ikiz_paralel.py donchian      → sahte-kirilim filtreleri, 11 surec
+  py ikiz_paralel.py eniyi         → kazananlarin birlesimi, 9 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -180,7 +181,32 @@ DONCHIAN_TARAMA = [
     ("adx25", {"DONCHIAN_ADX_MIN": "25"}),
 ]
 
-ETIKET_ADI = {"adx20": "ADX>=20", "adx25": "ADX>=25",
+# ⚠ HAYATTA KALANLARIN BIRLESIMI. Donchian taramasinda (duzeltilmis motor,
+# taban MAR 5.00 / TRAIN 9.77 / TEST 3.31) iki fikir IKI YARIDA DA temelden
+# iyi cikti: teyit 1 bar (dMAR TRAIN +5.50 / TEST +0.47) ve hacim 2.0x
+# (+0.13 / +1.60). Hacim 1.5x ve OBV yalniz TEST'te one gecti. ADX ve retest
+# iki yarida da kaybetti. Bu tarama, kazananlarin UST USTE BINIP binmedigini
+# olcer -- iki filtre de ayni sahte kirilimlari eliyorsa birlesim bir sey
+# katmaz, hatta orneklemi gereksiz kuculturur.
+EN_IYI_TARAMA = [
+    ("taban",    {}),
+    ("t1",       {"DONCHIAN_CONFIRM_BARS": "1"}),
+    ("h20",      {"DONCHIAN_VOL_MULT": "2.0"}),
+    ("h15",      {"DONCHIAN_VOL_MULT": "1.5"}),
+    ("t1h20",    {"DONCHIAN_CONFIRM_BARS": "1", "DONCHIAN_VOL_MULT": "2.0"}),
+    ("t1h15",    {"DONCHIAN_CONFIRM_BARS": "1", "DONCHIAN_VOL_MULT": "1.5"}),
+    ("t1obv",    {"DONCHIAN_CONFIRM_BARS": "1", "DONCHIAN_OBV": "true"}),
+    ("t1h20k",   {"DONCHIAN_CONFIRM_BARS": "1", "DONCHIAN_VOL_MULT": "2.0",
+                  "MAX_CORRELATED_DIRECTION": "1"}),
+    ("t1h20r20", {"DONCHIAN_CONFIRM_BARS": "1", "DONCHIAN_VOL_MULT": "2.0",
+                  "RISK_SCALE": "1.00"}),
+]
+
+ETIKET_ADI = {"t1": "teyit1", "h20": "hacim2.0", "h15": "hacim1.5",
+              "t1h20": "teyit1+h2.0", "t1h15": "teyit1+h1.5",
+              "t1obv": "teyit1+OBV", "t1h20k": "teyit1+h2.0+korel",
+              "t1h20r20": "teyit1+h2.0+%2.0risk",
+              "adx20": "ADX>=20", "adx25": "ADX>=25",
               "teyit1": "teyit 1 bar", "teyit2": "teyit 2 bar",
               "retest2": "retest 2b", "retest4": "retest 4b",
               "hacim15": "hacim 1.5x", "hacim20": "hacim 2.0x",
@@ -323,11 +349,12 @@ def main():
                   "birlesik": BIRLESIK_TARAMA,
                   "geriverme": GERIVERME_TARAMA,
                   "cikis": CIKIS_TARAMA,
-                  "donchian": DONCHIAN_TARAMA}[hangi]
+                  "donchian": DONCHIAN_TARAMA,
+                  "eniyi": EN_IYI_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
-              f"birlesik, geriverme, cikis, donchian)")
+              f"birlesik, geriverme, cikis, donchian, eniyi)")
         return
 
     print(f"\n{'='*84}")
