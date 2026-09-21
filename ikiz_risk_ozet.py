@@ -19,6 +19,14 @@ import pandas as pd, numpy as np
 KOK = os.path.dirname(os.path.abspath(__file__))
 BAL0 = 10_000.0
 ETIKET = {"taban": "TABAN canli",
+          "mg": "gercek giris",
+          "mc": "gercek cikis",
+          "mgc": "giris+cikis",
+          "mgcf": "GERCEK maliyet",
+          "mgcf_mk": "gercek + maker",
+          "f_taban": "filtre (eski model)",
+          "f_mgcf": "filtre + GERCEK",
+          "f_mgcf_mk": "filtre + gercek + maker",
           "f": "FILTRE %2.8",
           "f24": "FILTRE %2.4",
           "f20": "FILTRE %2.0",

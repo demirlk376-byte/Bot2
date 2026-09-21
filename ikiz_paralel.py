@@ -20,6 +20,7 @@ Kullanım:
   py ikiz_paralel.py donchian      → sahte-kirilim filtreleri, 11 surec
   py ikiz_paralel.py eniyi         → kazananlarin birlesimi, 9 surec
   py ikiz_paralel.py son           → secilen filtre x risk merdiveni, 9 surec
+  py ikiz_paralel.py maliyet       → kayma/funding/maker, 9 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -214,6 +215,8 @@ EN_IYI_TARAMA = [
 # silinmisti). Bu tarama secilen filtreyi risk merdiveniyle birlikte olcer
 # ve CANLIYA YAZILACAK ayari verir. Bundan sonra tarama YOK -- her yeni
 # tarama uydurma riskini buyutur.
+FILTRE = {"DONCHIAN_CONFIRM_BARS": "1", "DONCHIAN_VOL_MULT": "1.5"}
+
 SON_TARAMA = [
     ("taban",   {}),
     ("f",       {"DONCHIAN_CONFIRM_BARS": "1", "DONCHIAN_VOL_MULT": "1.5"}),
@@ -230,7 +233,44 @@ SON_TARAMA = [
     ("r17",     {"RISK_SCALE": "0.85"}),
 ]
 
-ETIKET_ADI = {"f": "FILTRE %2.8", "f24": "FILTRE %2.4", "f20": "FILTRE %2.0",
+# ⚠ MALIYET TARAMASI. IKIZ surtunmesizdi ve bu, kari SISTEMATIK olarak
+# yuksek gosteriyordu. Olculen gercekler:
+#   giris kaymasi 15.85bp (n=54, %95 [8.34, 23.37]) -- model 5bp varsayiyordu
+#   cikis kaymasi: model SIFIR varsayiyordu, oysa SL stop-market, max_hold market
+#   maker dolum ~%66 -- model %100 varsayiyordu
+#   funding -0.18bp/8sa (12 coin, 2025-10..2026-09) -- model hic yoktu
+# Bu tarama once maliyetin BOYUTUNU olcer, sonra maker girisinin onu geri
+# alip almadigini. TP cikisi kayma odemez (duran limit) -- model o ayrimi yapiyor.
+MALIYET_TARAMA = [
+    ("taban",     {}),                                          # bugunku model
+    ("mg",        {"PAPER_SLIP_GIRIS_BP": "15.85"}),            # gercek giris
+    ("mc",        {"PAPER_SLIP_CIKIS_BP": "15.85"}),            # gercek cikis
+    ("mgc",       {"PAPER_SLIP_GIRIS_BP": "15.85",
+                   "PAPER_SLIP_CIKIS_BP": "15.85"}),
+    ("mgcf",      {"PAPER_SLIP_GIRIS_BP": "15.85",
+                   "PAPER_SLIP_CIKIS_BP": "15.85",
+                   "PAPER_FUNDING_BP_8SA": "0.18"}),            # + funding
+    ("mgcf_mk",   {"PAPER_SLIP_GIRIS_BP": "15.85",
+                   "PAPER_SLIP_CIKIS_BP": "15.85",
+                   "PAPER_FUNDING_BP_8SA": "0.18",
+                   "PAPER_MAKER_DOLUM": "0.66",
+                   "DONCHIAN_MAKER_ENTRY": "true"}),            # maker girisi denemesi
+    ("f_taban",   dict(FILTRE)),                                # filtre, eski model
+    ("f_mgcf",    dict(FILTRE, PAPER_SLIP_GIRIS_BP="15.85",
+                       PAPER_SLIP_CIKIS_BP="15.85",
+                       PAPER_FUNDING_BP_8SA="0.18")),           # filtre, GERCEK maliyet
+    ("f_mgcf_mk", dict(FILTRE, PAPER_SLIP_GIRIS_BP="15.85",
+                       PAPER_SLIP_CIKIS_BP="15.85",
+                       PAPER_FUNDING_BP_8SA="0.18",
+                       PAPER_MAKER_DOLUM="0.66",
+                       DONCHIAN_MAKER_ENTRY="true")),           # filtre + maker
+]
+
+ETIKET_ADI = {"mg": "gercek giris", "mc": "gercek cikis",
+              "mgc": "giris+cikis", "mgcf": "GERCEK maliyet",
+              "mgcf_mk": "gercek + maker", "f_taban": "filtre (eski model)",
+              "f_mgcf": "filtre + GERCEK", "f_mgcf_mk": "filtre + gercek + maker",
+              "f": "FILTRE %2.8", "f24": "FILTRE %2.4", "f20": "FILTRE %2.0",
               "f17": "FILTRE %1.7", "f14": "FILTRE %1.4",
               "r24": "filtresiz %2.4", "r20": "filtresiz %2.0",
               "r17": "filtresiz %1.7",
@@ -383,11 +423,12 @@ def main():
                   "cikis": CIKIS_TARAMA,
                   "donchian": DONCHIAN_TARAMA,
                   "eniyi": EN_IYI_TARAMA,
-                  "son": SON_TARAMA}[hangi]
+                  "son": SON_TARAMA,
+                  "maliyet": MALIYET_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
-              f"birlesik, geriverme, cikis, donchian, eniyi, son)")
+              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet)")
         return
 
     print(f"\n{'='*84}")

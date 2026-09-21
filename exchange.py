@@ -70,6 +70,12 @@ class ExchangeInterface(Protocol):
 # Paper Exchange
 # ---------------------------------------------------------------------------
 
+def _simdi_ts() -> float:
+    """Simdiki zaman (epoch sn). ⚠ datetime.now KULLANILIR, time.time DEGIL:
+    replay'de sanal saat datetime'i yamaliyor, time modulunu yamalamiyor."""
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).timestamp()
+
 @dataclass
 class _PaperPosition:
     id: str
@@ -85,12 +91,35 @@ class _PaperPosition:
     closed: bool = False
     exit_price: float = 0.0
     exit_reason: str = ""
+    # ⚠ Funding tutus SURESINE gore biriktigi icin gerekli. SANAL saatten
+    # aliniyor (replay'de datetime.now yamali) -> gecmis kosuda da dogru.
+    giris_ts: float = 0.0
 
 
 class PaperExchange:
     FEE_RATE = 0.0001       # taker fee (market orders)
     FEE_MAKER = 0.0         # maker fee (limit/post-only orders) — MEXC futures maker = 0%
     SLIPPAGE = 0.0005
+
+    # ── SÜRTÜNME MODELİ (varsayılanlar BUGÜNKÜ davranış) ────────────────────
+    # ⚠ Model canlıyı EKSİK temsil ediyordu ve bu, backtest kârını sistematik
+    # olarak YÜKSEK gösteriyordu:
+    #   • giriş kayması 5bp varsayılıyor — canlıda ÖLÇÜLEN 15.85bp
+    #     (n=54, %95 [8.34, 23.37])
+    #   • çıkışta kayma HİÇ YOK — oysa stop tetiklenince borsa PİYASA emri
+    #     atıyor (LiveExchange orderType=5) ve max_hold/acil kapanış da piyasa
+    #   • maker limit HER ZAMAN doluyor — canlıda ölçülen dolum ~%66
+    #   • funding hiç yok (ölçüldü: 12 coin ort −0.18bp/8sa, küçük ama sıfır değil)
+    # Hepsi env ile açılır; kapalıyken sayılar birebir eskisi gibi kalır.
+    SLIP_GIRIS_BP = float(os.getenv("PAPER_SLIP_GIRIS_BP", "5.0"))
+    SLIP_CIKIS_BP = float(os.getenv("PAPER_SLIP_CIKIS_BP", "0.0"))
+    MAKER_DOLUM_P = float(os.getenv("PAPER_MAKER_DOLUM", "1.0"))
+    FUNDING_BP_8SA = float(os.getenv("PAPER_FUNDING_BP_8SA", "0.0"))
+
+    # ⚠ TP çıkışı kayma ÖDEMEZ: borsada duran LIMIT emri tam seviyeden dolar.
+    # SL (stop-market) ve max_hold/acil (market) öder. Bu ayrım önemli --
+    # hepsine kayma yazmak maliyeti ~%45 fazla gösterirdi (çıkışların %30'u TP).
+    KAYMASIZ_CIKISLAR = ("tp_hit",)
 
     def __init__(self, initial_balance: float, leverage: int = 10):
         self._balance = initial_balance
@@ -128,6 +157,7 @@ class PaperExchange:
             id=pos_id, symbol=symbol, side=side, quantity=quantity,
             entry_price=entry_price, sl_price=sl_price, tp_price=tp_price,
             margin_used=margin, leverage=self._leverage,
+            giris_ts=_simdi_ts(),
         )
 
     async def update_price(self, price: float, symbol: str | None = None) -> None:
@@ -163,7 +193,8 @@ class PaperExchange:
         self, symbol: str, side: str, amount: float, params: dict
     ) -> OrderResult:
         direction = 1 if side == "buy" else -1
-        fill_price = self._price_for(symbol) * (1 + direction * self.SLIPPAGE)
+        fill_price = self._price_for(symbol) * (
+            1 + direction * self.SLIP_GIRIS_BP / 10_000.0)
         margin = (fill_price * amount) / self._leverage
         # Deduct ONLY margin here. Fees (entry via pos.fee_rate + exit taker)
         # are charged once, inside net_pnl at close — deducting the entry fee
@@ -182,6 +213,7 @@ class PaperExchange:
             tp_price=params.get("takeProfitPrice", 0.0),
             margin_used=margin,
             leverage=self._leverage,
+            giris_ts=_simdi_ts(),
         )
         self._positions[pos_id] = pos
 
@@ -207,7 +239,25 @@ class PaperExchange:
     ) -> OrderResult:
         """Maker entry: fill at the limit price with no slippage and the maker
         fee (0% on MEXC futures). In paper mode we assume the resting limit at
-        the just-closed price fills, which mirrors the backtest's maker model."""
+        the just-closed price fills, which mirrors the backtest's maker model.
+
+        ⚠ MAKER_DOLUM_P < 1 ise DOLMAMA modellenir. Canlida duran limit her
+        zaman dolmuyor: olculen dolum orani ~%66 (BB/mean_rev kolu, n=11).
+        Dolmayan emir 45 sn sonra PIYASA yedegine dusuyor (execution.py:636,
+        fallback_market) -> taker ucreti + giris kaymasi odenir. Varsayilan
+        1.0 = bugunku davranis (her zaman dolar).
+
+        Dolup dolmadigi RASTGELE DEGIL, deterministik secilir: ayni kosu ayni
+        sonucu vermeli, yoksa iki kosuyu karsilastiramayiz."""
+        if self.MAKER_DOLUM_P < 1.0:
+            import hashlib
+            _im = f"{symbol}|{side}|{limit_price:.10g}|{amount:.10g}|{self.__dict__.get('_dolum_sayac', 0)}"
+            self._dolum_sayac = self.__dict__.get("_dolum_sayac", 0) + 1
+            _u = int(hashlib.sha256(_im.encode()).hexdigest()[:8], 16) / 0xFFFFFFFF
+            if _u >= self.MAKER_DOLUM_P:
+                if not fallback_market:
+                    return None          # canlida islem ATLANIR
+                return await self.place_market_order(symbol, side, amount, params)
         fill_price = limit_price
         margin = (fill_price * amount) / self._leverage
         # Only margin — all fees are charged once at close via pos.fee_rate
@@ -226,6 +276,7 @@ class PaperExchange:
             margin_used=margin,
             leverage=self._leverage,
             fee_rate=self.FEE_MAKER,
+            giris_ts=_simdi_ts(),
         )
         self._positions[pos_id] = pos
 
@@ -322,6 +373,14 @@ class PaperExchange:
         self, pos: _PaperPosition, exit_price: float, reason: str
     ) -> OrderResult:
         direction = 1 if pos.side == "long" else -1
+
+        # ⚠ ÇIKIŞ KAYMASI. Stop tetiklendiğinde borsa PİYASA emri atıyor ve
+        # fiyat aleyhe kayıyor; max_hold / acil kapanış da piyasa. Sadece TP
+        # (duran limit) tam seviyeden dolar. Kayma HER ZAMAN aleyhe: long
+        # çıkışı daha DÜŞÜKTEN, short çıkışı daha YÜKSEKTEN dolar.
+        if self.SLIP_CIKIS_BP > 0 and reason not in self.KAYMASIZ_CIKISLAR:
+            exit_price = exit_price * (1 - direction * self.SLIP_CIKIS_BP / 10_000.0)
+
         raw_pnl = direction * (exit_price - pos.entry_price) * pos.quantity
         # Use the entry's ACTUAL fee rate (0% for a maker/limit entry, 0.01% for
         # a taker/market entry) plus the taker exit fee — mirrors the live path
@@ -329,6 +388,15 @@ class PaperExchange:
         # bill a phantom entry fee on maker entries and drift the paper equity.
         fees = (pos.entry_price * pos.fee_rate
                 + exit_price * self.FEE_RATE) * pos.quantity
+        # ⚠ FUNDING. 8 saatte bir, NOTIONAL üzerinden. Ölçülen ortalama
+        # −0.18bp/8sa (12 coin, 2025-10..2026-09) -- küçük ama uzun tutuşlarda
+        # birikiyor. Yön bağımsız sabit maliyet olarak yazılıyor: oranın işareti
+        # coine ve döneme göre değişiyor, ortalaması ise net bir gider.
+        if self.FUNDING_BP_8SA > 0 and pos.giris_ts > 0:
+            saat = max(0.0, (_simdi_ts() - pos.giris_ts) / 3600.0)
+            fees += (pos.entry_price * pos.quantity
+                     * self.FUNDING_BP_8SA / 10_000.0 * (saat / 8.0))
+
         net_pnl = raw_pnl - fees
         self._balance += pos.margin_used + net_pnl
 
