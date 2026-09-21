@@ -10,7 +10,67 @@ Kurallar (her test için değişmez):
 - Çok dönem (train/test) + komşu-parametre tutarlılığı + (varsa) çok-coin şartı.
 - Geçen aile önce paper-forward'a girer; canlı ancak orada da yaşarsa.
 
+
+## 2026-09-21 — İKİZ sahte-kırılım filtresi: `teyit1 + hacim1.5` (ADAY, canlıya önerildi)
+
+**Önce motor düzeltmeleri (bunlar olmadan hiçbir sayı geçerli değildi):**
+- `ReplayFeed.get_current_price` BİR SAAT SONRAKİ kapanışı döndürüyordu (açılış
+  damgasında arama, saat kapanışa ayarlı). Giriş/çıkış dolumu ve SL/TP kontrolü
+  o fiyatı kullanıyordu. Düzeltince taban **+$439.573 → +$816.755**, günde işlem
+  1.48 → **1.46** (canlı 1.46 ile birebir). 4 nedensellik testi bekçi olarak eklendi.
+- Sürücü mumun KAPANIŞIYLA stop kontrolü yapıyordu, aynı mumun fitil kontrolünden
+  ÖNCE → fitille stop'a değip kapanışta hedefi geçen mum HEDEF yazıyordu. Kaldırıldı;
+  `main.py:205` high/low kontrolü zaten doğrusunu yapıyor.
+- Netted tek-pozisyon kuralı kâğıt modda atlanıyordu (`execution.py:414`) →
+  `ONE_PER_SYMBOL` ile İKİZ'de zorlanıyor. **2026-09-14'te KRONOS'u geçersiz kılan
+  kusurun aynısı**; "gerçek kod koşsa kısıt içinde olur" varsayımım yanlıştı.
+
+**Bulgu.** Donchian'a iki yeni kapı: kırılımdan sonraki bar seviyeyi korumalı
+(`DONCHIAN_CONFIRM_BARS=1`) ve kırılım hacmi önceki 20 barın ortalamasının 1.5
+katı olmalı (`DONCHIAN_VOL_MULT=1.5`).
+
+| | TRAIN MAR | TEST MAR | TEST maxDD |
+|---|---|---|---|
+| taban (%2.8) | 9.77 | 3.31 | %56.8 |
+| filtre %2.8 | 10.23 | **5.63** | %55.6 |
+| filtre %2.4 | **11.48** | **5.56** | **%49.2** |
+| filtre %2.0 | 11.49 | 5.16 | %42.9 |
+| **filtresiz %2.4** | 9.90 | **3.67** | %50.4 |
+| **filtresiz %2.0** | 10.03 | **3.77** | %43.8 |
+
+**En güçlü kanıt aynı risk seviyesindeki karşılaştırma:** %2.4'te filtreli 5.56 vs
+filtresiz 3.67, %2.0'da 5.16 vs 3.77. Faydanın kaynağı risk boyutlandırması DEĞİL.
+
+**Seçim: `teyit1 + hacim1.5 + RISK_SCALE 1.20 (%2.4)`.** En iyi TEST'i veren %2.8
+değil bu seçildi çünkü %2.8'in TRAIN katkısı zayıf (+0.46); %2.4 iki yarıda da
+güçlü (+1.72 / +2.25) ve maxDD %55.6 → %49.2.
+
+**ÖN KAYITLI CANLI BEKLENTİ (sapma olursa varsayım çürür):**
+- donchian işlem hızı ~%35 düşer (İKİZ: 1173 → 764), toplam günde 1.46 → **~1.13**
+- donchian ortalama R +0.150 → **+0.197**
+- Bu iki sayı 3 ayda tutmuyorsa filtre geri alınır.
+
+**Uyarı:** geçerlilik testinde elenen işlemlerin kötülüğü anlamlılığa ulaşmıyor
+(z −1.36 / −1.51, doğru yön, iki yarıda tutarlı). ~20 ayar tarandı; çoklu
+karşılaştırma nedeniyle canlıda ortalamaya dönüş beklenir. İKİZ kayma ve funding
+modellemiyor → mutlak rakamlar iyimser, göreli kıyas sağlam.
+
 ## 🔒 MÜHÜRLÜ (denendi, geçemedi)
+
+**2026-09-20/21 · İKİZ, 1752 işlem, TRAIN 2023-04→2024-12 / TEST 2025-01→2026-07**
+
+| Fikir | Sonuç | Neden öldü |
+|---|---|---|
+| ATR takibi (1.5/2/3×ATR, ±1R başlangıç) | $10.000 → **$25–$9.152** | Hedefe varan işlem 542 → 199. Geri verme, kazananların hedefe varmasının bedeli |
+| Başabaşa çekme (donchian/squeeze, 1R ve 1.5R) | ΔMAR −3.30/−1.73 ve daha kötüsü | Aynı mekanizma |
+| Güven bazlı boyutlandırma | ΔMAR −3.77 / −0.41 | Çarpan 1.0'ı hiç geçmiyor → kılık değiştirmiş risk kısıntısı |
+| Max tutuş 48 → 24 mum | ΔMAR −5.11 / −1.75 | mean_rev ve squeeze zarara geçiyor |
+| Donchian'a ADX kapısı (≥20, ≥25) | ΔMAR −2.31/−1.66 ve −5.89/−2.40 | Kodun "EMA200 zaten rejim filtresidir" gerekçesi doğrulandı |
+| Retest girişi (2 ve 4 bar) | ΔMAR −6.99/−2.78 ve −6.71/−2.64 | Seçim filtresi olarak çürüdü. "Seviyeden dolum" AYRI bir fikir, test edilmedi |
+| Donchian ATR tamponu 0.5 | TRAIN +9.45 / TEST −1.15 | Ders kitabı uydurma |
+| teyit1 + hacim **2.0** (sert birleşim) | TRAIN +4.42 / TEST −0.46 | Örneklem 1752 → 1125; iki filtrenin sert hali üst üste binince kenar kayboluyor |
+| Korele pozisyon 2 → 1 | TRAIN −2.21 / TEST +0.54 | Sızıntı düzeltilince geçersiz kaldı (sızıntılı motorda geçmişti) |
+
 
 | Tarih | Aile / Fikir | Test | Sonuç | Mühür sebebi |
 |---|---|---|---|---|
