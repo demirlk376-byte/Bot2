@@ -20,7 +20,7 @@ Kullanım:
   py ikiz_paralel.py donchian      → sahte-kirilim filtreleri, 11 surec
   py ikiz_paralel.py eniyi         → kazananlarin birlesimi, 9 surec
   py ikiz_paralel.py son           → secilen filtre x risk merdiveni, 9 surec
-  py ikiz_paralel.py maliyet       → kayma/funding/maker, 9 surec
+  py ikiz_paralel.py maliyet       → kayma/funding/maker + duyarlilik, 11 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -264,9 +264,19 @@ MALIYET_TARAMA = [
                        PAPER_FUNDING="true",
                        PAPER_MAKER_DOLUM="0.66",
                        DONCHIAN_MAKER_ENTRY="true")),           # filtre + maker
+    # ⚠ DUYARLILIK. 15.85bp bir NOKTA TAHMINI; %95 araligi [8.34, 23.37],
+    # yani gercek deger neredeyse 3 kat oynayabilir (n=54). Tek sayiya
+    # dayanip karar vermek, olcmeden konusmakla ayni hata olur. Araligin
+    # IKI UCUNU da kosuyoruz: sonuc uclar arasinda yon degistiriyorsa
+    # karar bu veriyle verilemez.
+    ("f_dusuk",   dict(FILTRE, PAPER_SLIP_GIRIS_BP="8.34",
+                       PAPER_SLIP_CIKIS_BP="8.34", PAPER_FUNDING="true")),
+    ("f_yuksek",  dict(FILTRE, PAPER_SLIP_GIRIS_BP="23.37",
+                       PAPER_SLIP_CIKIS_BP="23.37", PAPER_FUNDING="true")),
 ]
 
-ETIKET_ADI = {"mg": "gercek giris", "mc": "gercek cikis",
+ETIKET_ADI = {"f_dusuk": "filtre+kayma 8.3", "f_yuksek": "filtre+kayma 23.4",
+              "mg": "gercek giris", "mc": "gercek cikis",
               "mgc": "giris+cikis", "mgcf": "GERCEK maliyet",
               "mgcf_mk": "gercek + maker", "f_taban": "filtre (eski model)",
               "f_mgcf": "filtre + GERCEK", "f_mgcf_mk": "filtre + gercek + maker",
