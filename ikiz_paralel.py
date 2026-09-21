@@ -242,40 +242,36 @@ SON_TARAMA = [
 # Bu tarama once maliyetin BOYUTUNU olcer, sonra maker girisinin onu geri
 # alip almadigini. TP cikisi kayma odemez (duran limit) -- model o ayrimi yapiyor.
 MALIYET_TARAMA = [
-    ("taban",     {}),                                          # bugunku model
-    ("mg",        {"PAPER_SLIP_GIRIS_BP": "15.85"}),            # gercek giris
-    ("mc",        {"PAPER_SLIP_CIKIS_BP": "15.85"}),            # gercek cikis
-    ("mgc",       {"PAPER_SLIP_GIRIS_BP": "15.85",
-                   "PAPER_SLIP_CIKIS_BP": "15.85"}),
-    ("mgcf",      {"PAPER_SLIP_GIRIS_BP": "15.85",
-                   "PAPER_SLIP_CIKIS_BP": "15.85",
-                   "PAPER_FUNDING": "true"}),            # + funding
-    ("mgcf_mk",   {"PAPER_SLIP_GIRIS_BP": "15.85",
-                   "PAPER_SLIP_CIKIS_BP": "15.85",
-                   "PAPER_FUNDING": "true",
-                   "PAPER_MAKER_DOLUM": "0.66",
-                   "DONCHIAN_MAKER_ENTRY": "true"}),            # maker girisi denemesi
-    ("f_taban",   dict(FILTRE)),                                # filtre, eski model
-    ("f_mgcf",    dict(FILTRE, PAPER_SLIP_GIRIS_BP="15.85",
-                       PAPER_SLIP_CIKIS_BP="15.85",
-                       PAPER_FUNDING="true")),           # filtre, GERCEK maliyet
-    ("f_mgcf_mk", dict(FILTRE, PAPER_SLIP_GIRIS_BP="15.85",
-                       PAPER_SLIP_CIKIS_BP="15.85",
-                       PAPER_FUNDING="true",
-                       PAPER_MAKER_DOLUM="0.66",
-                       DONCHIAN_MAKER_ENTRY="true")),           # filtre + maker
-    # ⚠ DUYARLILIK. 15.85bp bir NOKTA TAHMINI; %95 araligi [8.34, 23.37],
-    # yani gercek deger neredeyse 3 kat oynayabilir (n=54). Tek sayiya
-    # dayanip karar vermek, olcmeden konusmakla ayni hata olur. Araligin
-    # IKI UCUNU da kosuyoruz: sonuc uclar arasinda yon degistiriyorsa
-    # karar bu veriyle verilemez.
-    ("f_dusuk",   dict(FILTRE, PAPER_SLIP_GIRIS_BP="8.34",
-                       PAPER_SLIP_CIKIS_BP="8.34", PAPER_FUNDING="true")),
-    ("f_yuksek",  dict(FILTRE, PAPER_SLIP_GIRIS_BP="23.37",
-                       PAPER_SLIP_CIKIS_BP="23.37", PAPER_FUNDING="true")),
+    ("taban",    {}),                                    # maliyetsiz capa
+    # ⚠ OLCULEN maliyet: giris 15.85bp (n=54), cikis 0.24bp (n=67, 2026-09-21),
+    # funding gercek oranlardan. Cikis kalemine ONCE giris olcumunu odunc
+    # almistim (15.85bp) -- 66 KAT sisikti ve onceki tablonun buyuk kismini
+    # o hata uretti. Simdi olculen deger.
+    ("m",        {"PAPER_SLIP_GIRIS_BP": "15.85", "PAPER_SLIP_CIKIS_BP": "0.24",
+                  "PAPER_FUNDING": "true"}),
+    ("m_mk",     {"PAPER_SLIP_GIRIS_BP": "15.85", "PAPER_SLIP_CIKIS_BP": "0.24",
+                  "PAPER_FUNDING": "true", "PAPER_MAKER_DOLUM": "0.66",
+                  "DONCHIAN_MAKER_ENTRY": "true"}),
+    ("f_m",      dict(FILTRE, PAPER_SLIP_GIRIS_BP="15.85",
+                      PAPER_SLIP_CIKIS_BP="0.24", PAPER_FUNDING="true")),
+    ("f_m_mk",   dict(FILTRE, PAPER_SLIP_GIRIS_BP="15.85",
+                      PAPER_SLIP_CIKIS_BP="0.24", PAPER_FUNDING="true",
+                      PAPER_MAKER_DOLUM="0.66", DONCHIAN_MAKER_ENTRY="true")),
+    # giris kaymasi hala GENIS araliklı (%95 [8.34, 23.37], n=54) -> uclar
+    ("f_m_dus",  dict(FILTRE, PAPER_SLIP_GIRIS_BP="8.34",
+                      PAPER_SLIP_CIKIS_BP="0.24", PAPER_FUNDING="true")),
+    ("f_m_yuk",  dict(FILTRE, PAPER_SLIP_GIRIS_BP="23.37",
+                      PAPER_SLIP_CIKIS_BP="0.24", PAPER_FUNDING="true")),
+    # maker dolum orani da olculmus degil (n=11) -> kotumser ucu
+    ("f_m_mk50", dict(FILTRE, PAPER_SLIP_GIRIS_BP="15.85",
+                      PAPER_SLIP_CIKIS_BP="0.24", PAPER_FUNDING="true",
+                      PAPER_MAKER_DOLUM="0.50", DONCHIAN_MAKER_ENTRY="true")),
 ]
 
-ETIKET_ADI = {"f_dusuk": "filtre+kayma 8.3", "f_yuksek": "filtre+kayma 23.4",
+ETIKET_ADI = {"m": "OLCULEN maliyet", "m_mk": "olculen + maker",
+              "f_m": "filtre + olculen", "f_m_mk": "filtre + olculen + maker",
+              "f_m_dus": "filtre kayma 8.3", "f_m_yuk": "filtre kayma 23.4",
+              "f_m_mk50": "filtre+maker %50 dolum",
               "mg": "gercek giris", "mc": "gercek cikis",
               "mgc": "giris+cikis", "mgcf": "GERCEK maliyet",
               "mgcf_mk": "gercek + maker", "f_taban": "filtre (eski model)",

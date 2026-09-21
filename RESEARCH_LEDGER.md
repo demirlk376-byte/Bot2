@@ -55,6 +55,47 @@ güçlü (+1.72 / +2.25) ve maxDD %55.6 → %49.2.
 karşılaştırma nedeniyle canlıda ortalamaya dönüş beklenir. İKİZ kayma ve funding
 modellemiyor → mutlak rakamlar iyimser, göreli kıyas sağlam.
 
+
+## 2026-09-21 — Çıkış kayması ÖLÇÜLDÜ: +0.24bp (varsayım 66 KAT şişkinmiş)
+
+`cikis_kayma.py`, VPS, 140 kapanmış canlı işlem, 0 tanesi `exit_price_estimated`
+diye elendi.
+
+| çıkış | n | ort bp | medyan | %95 aralık | ort R |
+|---|---|---|---|---|---|
+| sl_hit | 67 | **+0.24** | +0.00 | [−0.1, +0.6] | +0.0005 |
+| tp_hit | 34 | +0.19 | +0.00 | [−0.2, +0.6] | −0.0000 |
+
+**Öz-denetim geçti:** TP limit emirdir ve ~0 kayma göstermeli — +0.19bp çıktı,
+yani ölçüm tutarlı. (TP'de kayda değer kayma çıksaydı bulgu değil, ölçüm
+hatası olurdu.)
+
+**Benim hatam.** İKİZ sürtünme modelini kurarken çıkış kalemine giriş ölçümünü
+(15.85bp) ÖDÜNÇ aldım. Ölçülen değerin **66 katı**. Dosyanın kendi uyarısı
+şunu diyordu ve ben tam o hatayı yaptım: *"Ölçmeden kod değiştirmek, bu depoda
+sekiz kez yakalanan hatanın aynısıdır."*
+
+Hatanın büyüklüğü (İKİZ, TEST yarısı MAR):
+- taban (maliyetsiz) **3.31**
+- yalnız giriş kayması **1.49**
+- yalnız çıkış kayması **1.20** ← tamamı uydurma
+- ikisi **0.26** ← büyük kısmı uydurma
+
+**Sağlam kalan bulgular:**
+- **Funding ihmal edilebilir**: `GERÇEK maliyet` satırı `giriş+çıkış` ile birebir
+  aynı çıktı (1.55 / 0.26). Eksen kapandı.
+- **Maker girişi kurtarıyor**: aynı maliyet altında TEST MAR 0.26 → **0.76**;
+  filtreyle 1.73 → **2.19**.
+- **Filtre, maliyet gerçek olunca DAHA değerli**: katkısı maliyetsiz dünyada
+  +2.32, gerçek maliyetle +1.47 ve maker'la +1.43 — ikisi de İKİ YARIDA pozitif.
+  Sebep: filtre işlem sayısını azaltıyor, her işlem para yiyor.
+
+**Kalan belirsizlikler (ölçülmedi):**
+- giriş kayması %95 [8.34, 23.37], n=54 — nokta tahmin değil aralık
+- maker dolum oranı ~%66, n=11 — çok küçük örneklem
+- max_hold/manual/external çıkışlarının kayması: referans seviye yok, ölçülemedi
+  (39/140 çıkış). SL de stop-market olduğu için 0.24bp makul vekil.
+
 ## 🔒 MÜHÜRLÜ (denendi, geçemedi)
 
 **2026-09-20/21 · İKİZ, 1752 işlem, TRAIN 2023-04→2024-12 / TEST 2025-01→2026-07**

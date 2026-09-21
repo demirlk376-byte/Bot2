@@ -146,8 +146,12 @@ class PaperExchange:
     # olarak YÜKSEK gösteriyordu:
     #   • giriş kayması 5bp varsayılıyor — canlıda ÖLÇÜLEN 15.85bp
     #     (n=54, %95 [8.34, 23.37])
-    #   • çıkışta kayma HİÇ YOK — oysa stop tetiklenince borsa PİYASA emri
-    #     atıyor (LiveExchange orderType=5) ve max_hold/acil kapanış da piyasa
+    #   • çıkışta kayma HİÇ YOK — stop tetiklenince borsa PİYASA emri atıyor
+    #     (LiveExchange orderType=5). ⚠ 2026-09-21'de ÖLÇÜLDÜ (cikis_kayma.py,
+    #     140 canlı işlem): SL çıkış kayması yalnızca +0.24bp (n=67, %95
+    #     [-0.1,+0.6]). Önce bu kaleme giriş ölçümünü (15.85bp) ÖDÜNÇ almıştım
+    #     -- 66 KAT şişkindi ve sonucun büyük kısmını o hata üretiyordu.
+    #     Öz-denetim geçti: TP (limit emir) +0.19bp, yani ~0 -- ölçüm tutarlı.
     #   • maker limit HER ZAMAN doluyor — canlıda ölçülen dolum ~%66
     #   • funding hiç yok (ölçüldü: 12 coin ort −0.18bp/8sa, küçük ama sıfır değil)
     # Hepsi env ile açılır; kapalıyken sayılar birebir eskisi gibi kalır.
