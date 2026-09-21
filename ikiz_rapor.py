@@ -75,14 +75,25 @@ def _karar_dosyasi():
     import ikiz_donem_analiz as DA
     import ikiz_risk_ozet as OZ
 
-    guncel = OZ._kod_parmak_izi()
-    olcum, temel_ad = {}, None
+    # ⚠ Referans = EN SON kosan kosunun motoru (calisan kodun parmak izi
+    # DEGIL: koda her dokunusta butun kosular gecersiz sayilirdi).
+    mevcut = []
     for ad in DA.SIRA:
         y = os.path.join(KOK, f"ikiz_{ad}.db")
-        if not os.path.exists(y):
-            continue
+        if os.path.exists(y):
+            try:
+                mevcut.append((os.path.getmtime(y), ad, y))
+            except OSError:
+                pass
+    if not mevcut:
+        guncel = None
+    else:
+        guncel = OZ.motor_surumu(max(mevcut)[2])
+
+    olcum, temel_ad = {}, None
+    for _, ad, y in mevcut:
         if OZ.motor_surumu(y) != guncel:
-            continue                      # eski kod -> karsilastirilamaz
+            continue                      # farkli motor -> karsilastirilamaz
         s = DA.olc(y)
         if s and "_hata" not in s and s.get("test"):
             olcum[ad] = s
@@ -93,7 +104,8 @@ def _karar_dosyasi():
     ekle = satirlar.append
     ekle("=" * 78)
     ekle("  K A R A R   -  yalnizca GUNCEL kodla kosmus konfigurasyonlar")
-    ekle(f"  kod parmak izi: {guncel}")
+    ekle(f"  motor: {guncel or '(damgasiz)'}   "
+         f"(en son kosan kosunun motoru referans alindi)")
     ekle("=" * 78)
     if not olcum:
         ekle("  Guncel kodla kosmus konfigurasyon YOK.")

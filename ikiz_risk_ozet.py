@@ -19,6 +19,14 @@ import pandas as pd, numpy as np
 KOK = os.path.dirname(os.path.abspath(__file__))
 BAL0 = 10_000.0
 ETIKET = {"taban": "TABAN canli",
+          "f": "FILTRE %2.8",
+          "f24": "FILTRE %2.4",
+          "f20": "FILTRE %2.0",
+          "f17": "FILTRE %1.7",
+          "f14": "FILTRE %1.4",
+          "r24": "filtresiz %2.4",
+          "r20": "filtresiz %2.0",
+          "r17": "filtresiz %1.7",
           "t1": "teyit1",
           "h20": "hacim2.0",
           "h15": "hacim1.5",
@@ -70,6 +78,14 @@ def _stop_mesafesi(d):
         lambda s: (json.loads(s or "{}") or {}).get("sl0"))
     taban = sl0.where(sl0.notna(), d.sl_price).astype("float64")
     return (d.entry_price - taban).abs()
+
+
+def _en_yeni_surum(sonuc):
+    """En son degistirilen veritabaninin motor surumu."""
+    if not sonuc:
+        return None
+    en = max(sonuc, key=lambda s: s.get("mtime", 0.0))
+    return en.get("motor")
 
 
 def _kod_parmak_izi():
@@ -193,6 +209,10 @@ def main():
             continue
         s = olc(d); s["ad"] = ETIKET.get(ad, ad)
         s["motor"] = motor_surumu(y)
+        try:
+            s["mtime"] = os.path.getmtime(y)
+        except OSError:
+            s["mtime"] = 0.0
         sonuc.append(s)
 
     if not sonuc:
@@ -212,11 +232,15 @@ def main():
     surumler = {}
     for s in sonuc:
         surumler.setdefault(s.get("motor"), []).append(s)
-    # ⚠ "Guncel" cogunluk DEGIL, CALISAN KODUN kendisidir. Ilk surum en cok
-    # kosuya sahip damgayi guncel sayiyordu ve damgasiz (eski) 33 kosu
-    # cogunlukta oldugu icin onlari "guncel", yeni damgalilari "ESKI" ilan
-    # etti -- tam tersi. Parmak izini burada yeniden hesaplayip karsilastir.
-    guncel = _kod_parmak_izi()
+    # ⚠ REFERANS = EN SON KOSAN kosunun motoru.
+    # Iki yanlis denedim: (1) cogunluk oyu -- damgasiz eski kosular
+    # cogunluktaydi ve yenileri "ESKI" ilan etti, tam tersi. (2) calisan
+    # kodun parmak izi -- dogruydu ama FAZLA KATI: 13 kaynak dosyadan
+    # herhangi birine dokununca (config.py'ye bir satir bile) butun kosular
+    # gecersiz sayiliyor ve her seyi yeniden kosmak gerekiyordu.
+    # Dogru olan: en yeni kosu referanstir, ondan FARKLI motorla kosmus
+    # olanlar onunla karsilastirilamaz.
+    guncel = _en_yeni_surum(sonuc)
     if len(surumler) > 1:
         print("\n  " + "!" * 96)
         print("  !! Klasorde BIRDEN COK MOTOR SURUMUNUN sonucu var.")
@@ -227,6 +251,11 @@ def main():
             isaret = ("  <- GUNCEL KOD" if m == guncel
                       else "  <- eski kod, karsilastirma GECERSIZ")
             print(f"  !!   {etiket:<28s} {len(g):>2d} kosu{isaret}")
+        _kod = _kod_parmak_izi()
+        if guncel is not None and _kod != guncel:
+            print(f"  !! Not: su an CALISAN kod ({_kod}) en yeni kosunun")
+            print(f"  !!       motorundan ({guncel}) da farkli -- arada kod")
+            print("  !!       degisti. Karar verecekseniz taramayi yenileyin.")
         print("  !! Eskileri silmek icin: ikiz_tani.py ile bak, sonra sil.")
         print("  " + "!" * 96)
     sonuc = sorted(sonuc, key=lambda s: (s.get("motor") != guncel, -s["mar"]))

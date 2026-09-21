@@ -19,6 +19,7 @@ Kullanım:
   py ikiz_paralel.py cikis         → basabas/ATR takibi, 9 surec
   py ikiz_paralel.py donchian      → sahte-kirilim filtreleri, 11 surec
   py ikiz_paralel.py eniyi         → kazananlarin birlesimi, 9 surec
+  py ikiz_paralel.py son           → secilen filtre x risk merdiveni, 9 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -202,7 +203,38 @@ EN_IYI_TARAMA = [
                   "RISK_SCALE": "1.00"}),
 ]
 
-ETIKET_ADI = {"t1": "teyit1", "h20": "hacim2.0", "h15": "hacim1.5",
+# ⚠ SON TARAMA. Filtre tarafi kapandi: "eniyi" taramasinda dort ayar iki
+# yarida da temelden iyi cikti ve en iyi TEST dengesi teyit1+hacim1.5'te
+# (dMAR TRAIN +0.46 / TEST +2.32). Onemli bulgu: teyit1+hacim2.0 KALDI
+# (TEST -0.46) -- iki filtrenin SERT halleri ust uste binince orneklem
+# 1752'den 1125'e dusuyor ve kenar kayboluyor; yumusak hali (1.5x) birlikte
+# calisiyor.
+# Geriye TEK soru kaldi: risk seviyesi. Risk taramasini duzeltilmis motorda
+# HIC yapmadik (eski kosular sizintiliydi, dusuk-risk veritabanlari da
+# silinmisti). Bu tarama secilen filtreyi risk merdiveniyle birlikte olcer
+# ve CANLIYA YAZILACAK ayari verir. Bundan sonra tarama YOK -- her yeni
+# tarama uydurma riskini buyutur.
+SON_TARAMA = [
+    ("taban",   {}),
+    ("f",       {"DONCHIAN_CONFIRM_BARS": "1", "DONCHIAN_VOL_MULT": "1.5"}),
+    ("f24",     {"DONCHIAN_CONFIRM_BARS": "1", "DONCHIAN_VOL_MULT": "1.5",
+                 "RISK_SCALE": "1.20"}),
+    ("f20",     {"DONCHIAN_CONFIRM_BARS": "1", "DONCHIAN_VOL_MULT": "1.5",
+                 "RISK_SCALE": "1.00"}),
+    ("f17",     {"DONCHIAN_CONFIRM_BARS": "1", "DONCHIAN_VOL_MULT": "1.5",
+                 "RISK_SCALE": "0.85"}),
+    ("f14",     {"DONCHIAN_CONFIRM_BARS": "1", "DONCHIAN_VOL_MULT": "1.5",
+                 "RISK_SCALE": "0.70"}),
+    ("r24",     {"RISK_SCALE": "1.20"}),
+    ("r20",     {"RISK_SCALE": "1.00"}),
+    ("r17",     {"RISK_SCALE": "0.85"}),
+]
+
+ETIKET_ADI = {"f": "FILTRE %2.8", "f24": "FILTRE %2.4", "f20": "FILTRE %2.0",
+              "f17": "FILTRE %1.7", "f14": "FILTRE %1.4",
+              "r24": "filtresiz %2.4", "r20": "filtresiz %2.0",
+              "r17": "filtresiz %1.7",
+              "t1": "teyit1", "h20": "hacim2.0", "h15": "hacim1.5",
               "t1h20": "teyit1+h2.0", "t1h15": "teyit1+h1.5",
               "t1obv": "teyit1+OBV", "t1h20k": "teyit1+h2.0+korel",
               "t1h20r20": "teyit1+h2.0+%2.0risk",
@@ -350,11 +382,12 @@ def main():
                   "geriverme": GERIVERME_TARAMA,
                   "cikis": CIKIS_TARAMA,
                   "donchian": DONCHIAN_TARAMA,
-                  "eniyi": EN_IYI_TARAMA}[hangi]
+                  "eniyi": EN_IYI_TARAMA,
+                  "son": SON_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
-              f"birlesik, geriverme, cikis, donchian, eniyi)")
+              f"birlesik, geriverme, cikis, donchian, eniyi, son)")
         return
 
     print(f"\n{'='*84}")
