@@ -120,18 +120,28 @@ def _kod_parmak_izi():
     return oz.hexdigest()[:12]
 
 
-def motor_surumu(yol):
-    """Kosunun kod surumu. None = surum yazilmadan once kosmus (ESKI)."""
+def _meta(yol, anahtar):
     try:
         con = sqlite3.connect(f"file:{yol}?mode=ro", uri=True, timeout=10)
         try:
-            r = con.execute(
-                "SELECT value FROM meta WHERE key='motor_surum'").fetchone()
+            r = con.execute("SELECT value FROM meta WHERE key=?",
+                            (anahtar,)).fetchone()
             return r[0] if r else None
         finally:
             con.close()
     except Exception:
         return None
+
+
+def motor_surumu(yol):
+    """Kosunun kod surumu. None = surum yazilmadan once kosmus (ESKI)."""
+    return _meta(yol, "motor_surum")
+
+
+def maliyet_ayari(yol):
+    """Kosunun SURTUNME ayari. Farkli maliyetle kosmus konfigurasyonlar
+    karsilastirilamaz -- maliyetsiz bir tabana gore hepsi 'kotu' cikar."""
+    return _meta(yol, "maliyet_ayari") or ""
 
 
 def oku(yol):

@@ -96,6 +96,7 @@ def _karar_dosyasi():
             continue                      # farkli motor -> karsilastirilamaz
         s = DA.olc(y)
         if s and "_hata" not in s and s.get("test"):
+            s["maliyet"] = OZ.maliyet_ayari(y)
             olcum[ad] = s
             if ad in DA.TEMEL_ADAYLARI and temel_ad is None:
                 temel_ad = ad
@@ -115,6 +116,23 @@ def _karar_dosyasi():
         ekle("  Taramayi taban kosusuyla birlikte calistir.")
     else:
         t = olcum[temel_ad]
+        # ⚠ MALIYET GRUPLARI. Maliyetsiz bir tabana gore maliyetli her kosu
+        # "kotu" cikar; 2026-09-21'de bu yuzden "hicbiri gecemedi" yazdi oysa
+        # maker girisi ayni maliyet altinda DORT karsilastirmanin dordunde de
+        # kazaniyordu. Ayni maliyet damgasini tasiyanlar kendi iclerinde
+        # kiyaslanir; grubun tabani o gruptaki en az ayar degistiren kosudur.
+        gruplar = {}
+        for _ad, _v in olcum.items():
+            gruplar.setdefault(_v.get("maliyet", ""), []).append(_ad)
+        if len(gruplar) > 1:
+            ekle("")
+            ekle("  ⚠ FARKLI MALIYET AYARLARI VAR — gruplar ayri kiyaslanmali:")
+            for _m, _lar in gruplar.items():
+                _et = _m if _m else "(damgasiz / maliyetsiz)"
+                ekle(f"    {len(_lar):>2d} kosu · {_et[:70]}")
+            ekle("  Asagidaki dTR/dTE sutunlari TABAN'a goredir; TABAN maliyetsizse")
+            ekle("  maliyetli kosular dogal olarak dusuk cikar -- HUKUM YANILTICIDIR.")
+            ekle("  Ayni gruptakileri birbiriyle karsilastir.")
         ekle(f"  TABAN  TRAIN MAR {t['train']['mar']:5.2f}   "
              f"TEST MAR {t['test']['mar']:5.2f}   "
              f"({t['train']['n'] + t['test']['n']} islem)")

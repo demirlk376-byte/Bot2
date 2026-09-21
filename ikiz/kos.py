@@ -471,6 +471,15 @@ async def sur(M, saat, feed, bitis=None, ilerleme_her=2000):
             except OSError:
                 _oz.update(b"?")
         await M.db.set_meta("motor_surum", _oz.hexdigest()[:12])
+        # ⚠ MALIYET AYARI DA DAMGALANIR. Farkli surtunme ayarlariyla kosmus
+        # konfigurasyonlar KARSILASTIRILAMAZ: maliyetsiz bir tabana gore
+        # maliyetli her kosu "kotu" cikar ve hukum YANILTICI olur
+        # (2026-09-21 maliyet taramasinda tam bu oldu). Rapor bu damgaya gore
+        # GRUPLAYIP grup ICINDE karsilastirir.
+        _mal = "|".join(f"{k}={os.environ.get(k, '')}" for k in (
+            "PAPER_SLIP_GIRIS_BP", "PAPER_SLIP_CIKIS_BP",
+            "PAPER_MAKER_DOLUM", "PAPER_FUNDING", "DONCHIAN_MAKER_ENTRY"))
+        await M.db.set_meta("maliyet_ayari", _mal)
     except Exception as _e:
         print(f"  ⚠ motor surumu yazilamadi: {type(_e).__name__}: {_e}")
 
