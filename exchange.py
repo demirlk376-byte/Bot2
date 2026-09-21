@@ -70,6 +70,46 @@ class ExchangeInterface(Protocol):
 # Paper Exchange
 # ---------------------------------------------------------------------------
 
+_FUNDING_ONBELLEK: dict = {}
+
+
+def _funding_toplami(symbol: str, bas_ts: float, bit_ts: float) -> float:
+    """Tutus suresi boyunca odenen/alinan funding oranlarinin TOPLAMI.
+
+    ⚠ KAYNAK: data/<COIN>_funding_bnc.csv (Binance) -- MEXC gecmisi yalnizca
+    2025-10'dan basliyor, Binance 2023-01'den. Ortusen donemde iki borsa
+    ortalama 0.08bp/8sa farkla ayni seyi soyluyor (12 coin, std 0.11), yani
+    eski donem icin Binance guvenli bir vekil. MEXC dosyasi varsa ve donem
+    onu kapsiyorsa o tercih edilir.
+    Veri yoksa 0.0 doner -- uydurma oran URETMEZ."""
+    coin = symbol.split("/")[0].upper()
+    if coin not in _FUNDING_ONBELLEK:
+        import numpy as _np
+        import pandas as _pd
+        kok = os.path.dirname(os.path.abspath(__file__))
+        seri = None
+        for ad in (f"{coin}_funding_bnc.csv", f"{coin}_funding.csv"):
+            y = os.path.join(kok, "data", ad)
+            if not os.path.exists(y):
+                continue
+            d = _pd.read_csv(y)
+            k = "dt" if "dt" in d.columns else d.columns[0]
+            t = _pd.to_datetime(d[k], utc=True, format="mixed")
+            yeni = (t.astype("int64").to_numpy() / 1e9,
+                    d["rate"].to_numpy(dtype="float64"))
+            if seri is None or len(yeni[0]) > len(seri[0]):
+                seri = yeni
+        _FUNDING_ONBELLEK[coin] = seri
+    seri = _FUNDING_ONBELLEK[coin]
+    if seri is None:
+        return 0.0
+    ts, rt = seri
+    import numpy as _np
+    i = _np.searchsorted(ts, bas_ts, side="right")
+    j = _np.searchsorted(ts, bit_ts, side="right")
+    return float(rt[i:j].sum()) if j > i else 0.0
+
+
 def _simdi_ts() -> float:
     """Simdiki zaman (epoch sn). ⚠ datetime.now KULLANILIR, time.time DEGIL:
     replay'de sanal saat datetime'i yamaliyor, time modulunu yamalamiyor."""
@@ -114,7 +154,7 @@ class PaperExchange:
     SLIP_GIRIS_BP = float(os.getenv("PAPER_SLIP_GIRIS_BP", "5.0"))
     SLIP_CIKIS_BP = float(os.getenv("PAPER_SLIP_CIKIS_BP", "0.0"))
     MAKER_DOLUM_P = float(os.getenv("PAPER_MAKER_DOLUM", "1.0"))
-    FUNDING_BP_8SA = float(os.getenv("PAPER_FUNDING_BP_8SA", "0.0"))
+    FUNDING_ACIK = os.getenv("PAPER_FUNDING", "false").lower() in ("1", "true", "yes")
 
     # ⚠ TP çıkışı kayma ÖDEMEZ: borsada duran LIMIT emri tam seviyeden dolar.
     # SL (stop-market) ve max_hold/acil (market) öder. Bu ayrım önemli --
@@ -392,10 +432,17 @@ class PaperExchange:
         # −0.18bp/8sa (12 coin, 2025-10..2026-09) -- küçük ama uzun tutuşlarda
         # birikiyor. Yön bağımsız sabit maliyet olarak yazılıyor: oranın işareti
         # coine ve döneme göre değişiyor, ortalaması ise net bir gider.
-        if self.FUNDING_BP_8SA > 0 and pos.giris_ts > 0:
-            saat = max(0.0, (_simdi_ts() - pos.giris_ts) / 3600.0)
-            fees += (pos.entry_price * pos.quantity
-                     * self.FUNDING_BP_8SA / 10_000.0 * (saat / 8.0))
+        if self.FUNDING_ACIK and pos.giris_ts > 0:
+            # ⚠ YONE DUYARLI ve GERCEK ORANLARDAN. Ilk yazdigim model herkese
+            # sabit bir maliyet yaziyordu; YANLISTI. Olculen ortalama oran
+            # -0.18bp/8sa, yani ortalamada LONG PARA ALIYOR, short oduyor.
+            # Sabit maliyet long'larin isaretini ters ceviriyordu.
+            # Dogru hesap depoda zaten vardi (denetim_kapilar2.py:70):
+            #   maliyet = yon x (tutus suresindeki oranlarin TOPLAMI) x notional
+            # Negatif cikabilir -- o zaman funding bir GELIRDIR, oyle islenir.
+            toplam = _funding_toplami(pos.symbol, pos.giris_ts, _simdi_ts())
+            yon_ = 1.0 if pos.side == "long" else -1.0
+            fees += yon_ * toplam * pos.entry_price * pos.quantity
 
         net_pnl = raw_pnl - fees
         self._balance += pos.margin_used + net_pnl

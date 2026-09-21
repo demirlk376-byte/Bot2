@@ -249,19 +249,19 @@ MALIYET_TARAMA = [
                    "PAPER_SLIP_CIKIS_BP": "15.85"}),
     ("mgcf",      {"PAPER_SLIP_GIRIS_BP": "15.85",
                    "PAPER_SLIP_CIKIS_BP": "15.85",
-                   "PAPER_FUNDING_BP_8SA": "0.18"}),            # + funding
+                   "PAPER_FUNDING": "true"}),            # + funding
     ("mgcf_mk",   {"PAPER_SLIP_GIRIS_BP": "15.85",
                    "PAPER_SLIP_CIKIS_BP": "15.85",
-                   "PAPER_FUNDING_BP_8SA": "0.18",
+                   "PAPER_FUNDING": "true",
                    "PAPER_MAKER_DOLUM": "0.66",
                    "DONCHIAN_MAKER_ENTRY": "true"}),            # maker girisi denemesi
     ("f_taban",   dict(FILTRE)),                                # filtre, eski model
     ("f_mgcf",    dict(FILTRE, PAPER_SLIP_GIRIS_BP="15.85",
                        PAPER_SLIP_CIKIS_BP="15.85",
-                       PAPER_FUNDING_BP_8SA="0.18")),           # filtre, GERCEK maliyet
+                       PAPER_FUNDING="true")),           # filtre, GERCEK maliyet
     ("f_mgcf_mk", dict(FILTRE, PAPER_SLIP_GIRIS_BP="15.85",
                        PAPER_SLIP_CIKIS_BP="15.85",
-                       PAPER_FUNDING_BP_8SA="0.18",
+                       PAPER_FUNDING="true",
                        PAPER_MAKER_DOLUM="0.66",
                        DONCHIAN_MAKER_ENTRY="true")),           # filtre + maker
 ]
