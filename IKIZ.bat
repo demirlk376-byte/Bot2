@@ -14,6 +14,7 @@ echo     1   Donchian sahte-kirilim filtreleri
     A   Kazananlarin birlesimi (teyit1 + hacim + korel)
     S   SON TARAMA - secilen filtre x risk (canli ayari verir)
     M   MALIYET - kayma / funding / maker girisi
+    K   MAKER SINIRLARI - alt/ust sinir + olculen %27
 echo     2   Cikis yonetimi (basabas / ATR takibi)
 echo     3   Risk seviyesi - ust aralik  (%%2.0 - %%4.0)
 echo     4   Risk seviyesi - alt aralik  (%%1.0 - %%2.0)
@@ -34,6 +35,7 @@ if "%sec%"=="1" set "ARGS=ikiz_paralel.py donchian" & goto calistir
 if /i "%sec%"=="A" set "ARGS=ikiz_paralel.py eniyi" & goto calistir
 if /i "%sec%"=="S" set "ARGS=ikiz_paralel.py son" & goto calistir
 if /i "%sec%"=="M" set "ARGS=ikiz_paralel.py maliyet" & goto calistir
+if /i "%sec%"=="K" set "ARGS=ikiz_paralel.py sinir" & goto calistir
 if "%sec%"=="2" set "ARGS=ikiz_paralel.py cikis"    & goto calistir
 if "%sec%"=="3" set "ARGS=ikiz_paralel.py risk"     & goto calistir
 if "%sec%"=="4" set "ARGS=ikiz_paralel.py dusuk"    & goto calistir

@@ -21,6 +21,7 @@ Kullanım:
   py ikiz_paralel.py eniyi         → kazananlarin birlesimi, 9 surec
   py ikiz_paralel.py son           → secilen filtre x risk merdiveni, 9 surec
   py ikiz_paralel.py maliyet       → kayma/funding/maker + duyarlilik, 11 surec
+  py ikiz_paralel.py sinir         → maker ALT/UST SINIR, 7 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -216,6 +217,10 @@ EN_IYI_TARAMA = [
 # ve CANLIYA YAZILACAK ayari verir. Bundan sonra tarama YOK -- her yeni
 # tarama uydurma riskini buyutur.
 FILTRE = {"DONCHIAN_CONFIRM_BARS": "1", "DONCHIAN_VOL_MULT": "1.5"}
+# Olculen surtunme: giris 15.85bp (n=54), cikis 0.24bp (n=67), funding gercek
+# oranlardan. Bu uclu her maliyet kosusunda AYNI kalir.
+MALIYET = {"PAPER_SLIP_GIRIS_BP": "15.85", "PAPER_SLIP_CIKIS_BP": "0.24",
+           "PAPER_FUNDING": "true"}
 
 SON_TARAMA = [
     ("taban",   {}),
@@ -286,7 +291,30 @@ MALIYET_TARAMA = [
                   "DONCHIAN_MAKER_ENTRY": "true"}),
 ]
 
-ETIKET_ADI = {"f_m_mk27": "filtre+maker %27", "f_m_mk15": "filtre+maker %15",
+# ⚠ MAKER'IN SINIRLARI. 45 saniyelik dolum karari IKIZ'de MODELLENEMEZ:
+# motora 1h/4h mum besliyoruz, mum ICINDEKI emir defteri hareketi veride YOK.
+# Dolum oranini uydurmak yerine IKI UCU hesapliyoruz:
+#   %0   dolum -> hicbir limit dolmaz, hepsi 45sn sonra PIYASADAN girer (ALT SINIR)
+#   %100 dolum -> hepsi maker dolar (UST SINIR)
+# Gercek sonuc bu ikisinin ARASINDA olmak ZORUNDA. Canli loglarda olculen
+# %27 (12 dolan / 32 piyasaya dusen, 60 gun) nerede durdugumuzu soyler.
+# Boylece tek bir uydurma parametre kalmiyor.
+SINIR_TARAMA = [
+    ("taban",     {}),                                    # maliyetsiz capa
+    ("m",         dict(MALIYET)),                         # ALT SINIR: maker yok
+    ("m_mk100",   dict(MALIYET, PAPER_MAKER_DOLUM="1.0",
+                       DONCHIAN_MAKER_ENTRY="true")),     # UST SINIR
+    ("m_mk27",    dict(MALIYET, PAPER_MAKER_DOLUM="0.27",
+                       DONCHIAN_MAKER_ENTRY="true")),     # canlida olculen
+    ("f_m",       dict(MALIYET, **FILTRE)),               # filtre, maker yok
+    ("f_m_mk100", dict(MALIYET, **FILTRE, PAPER_MAKER_DOLUM="1.0",
+                       DONCHIAN_MAKER_ENTRY="true")),
+    ("f_m_mk27",  dict(MALIYET, **FILTRE, PAPER_MAKER_DOLUM="0.27",
+                       DONCHIAN_MAKER_ENTRY="true")),
+]
+
+ETIKET_ADI = {"m_mk100": "maker UST SINIR", "f_m_mk100": "filtre+maker UST SINIR",
+              "f_m_mk27": "filtre+maker %27", "f_m_mk15": "filtre+maker %15",
               "m_mk27": "maker %27 (filtresiz)",
               "m": "OLCULEN maliyet", "m_mk": "olculen + maker",
               "f_m": "filtre + olculen", "f_m_mk": "filtre + olculen + maker",
@@ -450,11 +478,12 @@ def main():
                   "donchian": DONCHIAN_TARAMA,
                   "eniyi": EN_IYI_TARAMA,
                   "son": SON_TARAMA,
-                  "maliyet": MALIYET_TARAMA}[hangi]
+                  "maliyet": MALIYET_TARAMA,
+                  "sinir": SINIR_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
-              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet)")
+              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet, sinir)")
         return
 
     print(f"\n{'='*84}")
