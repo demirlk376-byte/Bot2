@@ -1,0 +1,7 @@
+==============================================================================
+  K A R A R   -  yalnizca GUNCEL kodla kosmus konfigurasyonlar
+  kod parmak izi: 3b1a4c97cc24
+==============================================================================
+  Guncel kodla kosmus konfigurasyon YOK.
+  Taramayi yeniden calistir (menude 1 veya A).
+==============================================================================

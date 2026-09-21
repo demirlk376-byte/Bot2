@@ -49,6 +49,11 @@ def main():
     finally:
         sys.argv = eski_argv
 
+    try:
+        _karar_dosyasi()
+    except Exception as e:
+        print(f"\n  (KARAR.txt uretilemedi: {type(e).__name__}: {e})")
+
     print(f"\n\n{'=' * 100}")
     print("  NASIL OKUNUR")
     print(f"{'=' * 100}")
@@ -60,6 +65,84 @@ def main():
     print("  * Bir fikir ancak DONEM bolmesinde IKI yarida da temelden iyiyse")
     print("    canliya alinir. Tek yarida parlayan sey gecmise uydurulmustur.")
     print(f"{'=' * 100}\n")
+
+
+def _karar_dosyasi():
+    """⚠ TEK EKRANLIK KARAR. Tam rapor binlerce satir ve paylasilmasi zor.
+    Burada YALNIZCA karar icin gereken satirlar var: guncel kodla kosmus
+    konfigurasyonlar, TRAIN/TEST dengeleri ve hukum. Dosyaya da yazilir
+    (KARAR.txt) -- kopyalayip gondermek icin."""
+    import ikiz_donem_analiz as DA
+    import ikiz_risk_ozet as OZ
+
+    guncel = OZ._kod_parmak_izi()
+    olcum, temel_ad = {}, None
+    for ad in DA.SIRA:
+        y = os.path.join(KOK, f"ikiz_{ad}.db")
+        if not os.path.exists(y):
+            continue
+        if OZ.motor_surumu(y) != guncel:
+            continue                      # eski kod -> karsilastirilamaz
+        s = DA.olc(y)
+        if s and "_hata" not in s and s.get("test"):
+            olcum[ad] = s
+            if ad in DA.TEMEL_ADAYLARI and temel_ad is None:
+                temel_ad = ad
+
+    satirlar = []
+    ekle = satirlar.append
+    ekle("=" * 78)
+    ekle("  K A R A R   -  yalnizca GUNCEL kodla kosmus konfigurasyonlar")
+    ekle(f"  kod parmak izi: {guncel}")
+    ekle("=" * 78)
+    if not olcum:
+        ekle("  Guncel kodla kosmus konfigurasyon YOK.")
+        ekle("  Taramayi yeniden calistir (menude 1 veya A).")
+    elif temel_ad is None:
+        ekle("  TABAN kosusu yok -> karsilastirma yapilamaz.")
+        ekle("  Taramayi taban kosusuyla birlikte calistir.")
+    else:
+        t = olcum[temel_ad]
+        ekle(f"  TABAN  TRAIN MAR {t['train']['mar']:5.2f}   "
+             f"TEST MAR {t['test']['mar']:5.2f}   "
+             f"({t['train']['n'] + t['test']['n']} islem)")
+        ekle("-" * 78)
+        ekle(f"  {'ayar':<22s}{'TR MAR':>8s}{'TE MAR':>8s}"
+             f"{'dTR':>7s}{'dTE':>7s}   hukum")
+        ekle("-" * 78)
+        sirali = sorted(
+            ((a, v) for a, v in olcum.items() if a != temel_ad),
+            key=lambda kv: -(kv[1]["test"]["mar"]))
+        gecen = []
+        for ad, v in sirali:
+            dtr = v["train"]["mar"] - t["train"]["mar"]
+            dte = v["test"]["mar"] - t["test"]["mar"]
+            if dtr > 0 and dte > 0:
+                h = "GECTI"
+                gecen.append((ad, dtr, dte, v))
+            elif dtr > 0 or dte > 0:
+                h = "tek yari"
+            else:
+                h = "kaldi"
+            ekle(f"  {DA.ETIKET.get(ad, ad):<22s}{v['train']['mar']:>8.2f}"
+                 f"{v['test']['mar']:>8.2f}{dtr:>+7.2f}{dte:>+7.2f}   {h}")
+        ekle("-" * 78)
+        if gecen:
+            ekle("  IKI YARIDA DA temelden iyi olanlar:")
+            for ad, dtr, dte, v in sorted(gecen, key=lambda x: -x[3]["test"]["mar"]):
+                ekle(f"    {DA.ETIKET.get(ad, ad):<22s}"
+                     f"TEST maxDD %{v['test']['maxdd']*100:.1f}  "
+                     f"TEST yillik %{v['test']['yillik']*100:.0f}")
+        else:
+            ekle("  Hicbiri iki yarida da gecemedi.")
+    ekle("=" * 78)
+
+    metin = "\n".join(satirlar)
+    print("\n" + metin)
+    yol = os.path.join(KOK, "KARAR.txt")
+    with open(yol, "w", encoding="utf-8") as f:
+        f.write(metin + "\n")
+    print(f"\n  -> {yol}  (bu dosyayi kopyalayip gonderebilirsin)")
 
 
 if __name__ == "__main__":

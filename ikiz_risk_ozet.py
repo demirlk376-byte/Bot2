@@ -72,6 +72,22 @@ def _stop_mesafesi(d):
     return (d.entry_price - taban).abs()
 
 
+def _kod_parmak_izi():
+    """Su an calisan kodun parmak izi -- ikiz/kos.py ile AYNI yontem."""
+    import hashlib
+    oz = hashlib.sha256()
+    for d in ("ikiz/besleme.py", "ikiz/kos.py", "ikiz/saat.py", "main.py",
+              "execution.py", "exchange.py", "indicators.py", "data.py",
+              "portfolio.py", "config.py", "strategies/donchian.py",
+              "strategies/mean_reversion.py", "strategies/squeeze.py"):
+        try:
+            with open(os.path.join(KOK, d), "rb") as f:
+                oz.update(f.read())
+        except OSError:
+            oz.update(b"?")
+    return oz.hexdigest()[:12]
+
+
 def motor_surumu(yol):
     """Kosunun kod surumu. None = surum yazilmadan once kosmus (ESKI)."""
     try:
@@ -196,15 +212,20 @@ def main():
     surumler = {}
     for s in sonuc:
         surumler.setdefault(s.get("motor"), []).append(s)
-    guncel = max(surumler, key=lambda k: len(surumler[k])) if surumler else None
+    # ⚠ "Guncel" cogunluk DEGIL, CALISAN KODUN kendisidir. Ilk surum en cok
+    # kosuya sahip damgayi guncel sayiyordu ve damgasiz (eski) 33 kosu
+    # cogunlukta oldugu icin onlari "guncel", yeni damgalilari "ESKI" ilan
+    # etti -- tam tersi. Parmak izini burada yeniden hesaplayip karsilastir.
+    guncel = _kod_parmak_izi()
     if len(surumler) > 1:
         print("\n  " + "!" * 96)
         print("  !! Klasorde BIRDEN COK MOTOR SURUMUNUN sonucu var.")
         print("  !! Farkli surumler KARSILASTIRILAMAZ (orn. gelecek sizintisi")
         print("  !! duzeltilince taban 1778/+0.1581 -> 1752/+0.1675 oldu).")
         for m, g in sorted(surumler.items(), key=lambda kv: -len(kv[1])):
-            etiket = (str(m) if m else "ESKI (surum damgasi yok)")
-            isaret = "  <- guncel" if m == guncel else "  <- ESKI, YOK SAY"
+            etiket = (str(m) if m else "damgasiz (damga eklenmeden once kosmus)")
+            isaret = ("  <- GUNCEL KOD" if m == guncel
+                      else "  <- eski kod, karsilastirma GECERSIZ")
             print(f"  !!   {etiket:<28s} {len(g):>2d} kosu{isaret}")
         print("  !! Eskileri silmek icin: ikiz_tani.py ile bak, sonra sil.")
         print("  " + "!" * 96)
