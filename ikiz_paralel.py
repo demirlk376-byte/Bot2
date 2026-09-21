@@ -22,6 +22,7 @@ Kullanım:
   py ikiz_paralel.py son           → secilen filtre x risk merdiveni, 9 surec
   py ikiz_paralel.py maliyet       → kayma/funding/maker + duyarlilik, 11 surec
   py ikiz_paralel.py sinir         → maker ALT/UST SINIR, 7 surec
+  py ikiz_paralel.py fmal          → FILTRELER x gercek maliyet, 11 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -313,7 +314,40 @@ SINIR_TARAMA = [
                        DONCHIAN_MAKER_ENTRY="true")),
 ]
 
-ETIKET_ADI = {"m_mk100": "maker UST SINIR", "f_m_mk100": "filtre+maker UST SINIR",
+# ⚠ FILTRELERI GERCEK MALIYETLE YENIDEN SOR.
+# Butun filtreleri MALIYETSIZ tabana karsi test edip eledik. Ama bugun
+# olculdu: filtrenin katkisi maliyetsiz dunyada aylik ~1 puan, GERCEK
+# maliyetle +4.15 puan. Cunku her islem 15.85bp giris kaymasi odüyor ve
+# filtre 403 islemi hic acmiyor.
+# Dolayisiyla SIRALAMA yanlis olabilir: daha SERT kesen filtreler
+# maliyetsizde "fazla agresif" gorunup elendi, maliyetle kazanabilirler.
+#   hacim 2.0x        islem 1752 -> 1218
+#   teyit1+hacim2.0   1752 -> 1125   (maliyetsizde TEST -0.46 ile KALDI)
+#   tampon 0.5        1752 -> 1403   (maliyetsizde "uydurma" dendi)
+#   ADX>=20           1752 -> 1551
+# Yeni indikator icat etmiyoruz; elimizdekileri DOGRU soruyla soruyoruz.
+FILTRE_MALIYET_TARAMA = [
+    ("taban",    {}),                                     # maliyetsiz capa
+    ("m",        dict(MALIYET)),                          # maliyet var, filtre yok
+    ("f_m",      dict(MALIYET, **FILTRE)),                # su anki sampiyon
+    ("h20_m",    dict(MALIYET, DONCHIAN_VOL_MULT="2.0")),
+    ("h25_m",    dict(MALIYET, DONCHIAN_VOL_MULT="2.5")),
+    ("t1h20_m",  dict(MALIYET, DONCHIAN_CONFIRM_BARS="1",
+                      DONCHIAN_VOL_MULT="2.0")),
+    ("t2h15_m",  dict(MALIYET, DONCHIAN_CONFIRM_BARS="2",
+                      DONCHIAN_VOL_MULT="1.5")),
+    ("tampon_m", dict(MALIYET, DONCHIAN_BUFFER_ATR="0.5")),
+    ("adx20_m",  dict(MALIYET, DONCHIAN_ADX_MIN="20")),
+    ("t1obv_m",  dict(MALIYET, DONCHIAN_CONFIRM_BARS="1", DONCHIAN_OBV="true")),
+    ("hepsi_m",  dict(MALIYET, DONCHIAN_CONFIRM_BARS="1", DONCHIAN_VOL_MULT="1.5",
+                      DONCHIAN_OBV="true")),
+]
+
+ETIKET_ADI = {"h20_m": "hacim2.0+mal", "h25_m": "hacim2.5+mal",
+              "t1h20_m": "teyit1+h2.0+mal", "t2h15_m": "teyit2+h1.5+mal",
+              "tampon_m": "tampon0.5+mal", "adx20_m": "ADX20+mal",
+              "t1obv_m": "teyit1+OBV+mal", "hepsi_m": "teyit1+h1.5+OBV+mal",
+              "m_mk100": "maker UST SINIR", "f_m_mk100": "filtre+maker UST SINIR",
               "f_m_mk27": "filtre+maker %27", "f_m_mk15": "filtre+maker %15",
               "m_mk27": "maker %27 (filtresiz)",
               "m": "OLCULEN maliyet", "m_mk": "olculen + maker",
@@ -479,11 +513,12 @@ def main():
                   "eniyi": EN_IYI_TARAMA,
                   "son": SON_TARAMA,
                   "maliyet": MALIYET_TARAMA,
-                  "sinir": SINIR_TARAMA}[hangi]
+                  "sinir": SINIR_TARAMA,
+                  "fmal": FILTRE_MALIYET_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
-              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet, sinir)")
+              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet, sinir, fmal)")
         return
 
     print(f"\n{'='*84}")

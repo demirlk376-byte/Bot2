@@ -145,8 +145,11 @@ def _karar_dosyasi():
         # "aylik kar ne oldu" sorusu cevaplanamiyordu -- MAR bir ORAN, tek
         # basina para rakamina cevrilemez. Islem sayisi da var: bir ayarin
         # islem KACIRIP kacirmadigi oradan gorulur.
-        ekle(f"  {'ayar':<22s}{'islem':>7s}{'TE yil%':>9s}{'TE DD%':>8s}"
-             f"{'TE MAR':>8s}{'dTE':>7s}   hukum")
+        # ⚠ TRAIN sutunu GERI KONDU. Cikarmistim ve "filtre IKI YARIDA DA
+        # kazaniyor mu" sorusu tablodan cevaplanamaz olmustu -- karar kuralimiz
+        # tam olarak o.
+        ekle(f"  {'ayar':<20s}{'islem':>6s}{'TE yil%':>9s}{'TE DD%':>7s}"
+             f"{'TR MAR':>8s}{'TE MAR':>8s}{'dTR':>7s}{'dTE':>7s}  hukum")
         ekle("-" * 78)
         sirali = sorted(
             ((a, v) for a, v in olcum.items() if a != temel_ad),
@@ -163,9 +166,10 @@ def _karar_dosyasi():
             else:
                 h = "kaldi"
             n_top = v["train"]["n"] + v["test"]["n"]
-            ekle(f"  {DA.ETIKET.get(ad, ad):<22s}{n_top:>7d}"
-                 f"{v['test']['yillik']*100:>9.1f}{v['test']['maxdd']*100:>8.1f}"
-                 f"{v['test']['mar']:>8.2f}{dte:>+7.2f}   {h}")
+            ekle(f"  {DA.ETIKET.get(ad, ad):<20s}{n_top:>6d}"
+                 f"{v['test']['yillik']*100:>9.1f}{v['test']['maxdd']*100:>7.1f}"
+                 f"{v['train']['mar']:>8.2f}{v['test']['mar']:>8.2f}"
+                 f"{dtr:>+7.2f}{dte:>+7.2f}  {h}")
         ekle("-" * 78)
         if gecen:
             ekle("  IKI YARIDA DA temelden iyi olanlar:")
