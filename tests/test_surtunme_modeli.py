@@ -108,17 +108,19 @@ def test_funding_YONE_DUYARLI_ve_GERCEK_oranlardan(borsa, monkeypatch):
         asyncio.run(b._close_paper_position(pos, pos.entry_price, "tp_hit"))
         return b._balance - bak0 - pos.margin_used, pos.entry_price * 10.0
 
-    (uzun_a, notional), _ = kosu("buy", True), None
+    # ⚠ HER YONUN NOTIONAL'I FARKLI: giris kaymasi long'u 100.05'ten,
+    # short'u 99.95'ten dolduruyor. Tek notional'i ikisine birden uygulamak
+    # testi yanlis dusuruyordu.
+    uzun_a, n_uzun = kosu("buy", True)
     uzun_k, _ = kosu("buy", False)
-    kisa_a, _ = kosu("sell", True)
+    kisa_a, n_kisa = kosu("sell", True)
     kisa_k, _ = kosu("sell", False)
 
     uzun, kisa = uzun_a - uzun_k, kisa_a - kisa_k
     assert uzun < 0, "long pozitif oranda ODEMELI"
     assert kisa > 0, "short pozitif oranda ALMALI"
-    beklenen = 3 * 0.0010 * notional            # 3 aralik x 10bp x notional
-    assert abs(uzun) == pytest.approx(beklenen, rel=1e-6)
-    assert kisa == pytest.approx(beklenen, rel=1e-6)
+    assert abs(uzun) == pytest.approx(3 * 0.0010 * n_uzun, rel=1e-6)
+    assert kisa == pytest.approx(3 * 0.0010 * n_kisa, rel=1e-6)
 
 
 def test_funding_verisi_yoksa_UYDURMAZ(borsa, monkeypatch):
