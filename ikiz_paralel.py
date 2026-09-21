@@ -262,13 +262,33 @@ MALIYET_TARAMA = [
                       PAPER_SLIP_CIKIS_BP="0.24", PAPER_FUNDING="true")),
     ("f_m_yuk",  dict(FILTRE, PAPER_SLIP_GIRIS_BP="23.37",
                       PAPER_SLIP_CIKIS_BP="0.24", PAPER_FUNDING="true")),
-    # maker dolum orani da olculmus degil (n=11) -> kotumser ucu
+    # ⚠ MAKER DOLUM ORANI OLCULDU (2026-09-21, canli loglar, 60 gun):
+    #   "Maker limit filled"      12
+    #   "falling back to market"  32   -> dolum orani %27, %66 DEGIL
+    #   "PARTIAL fill"             0   -> modellenmeyen tehlikeli yol hic olmamis
+    #   "cancel UNCONFIRMED"       0   -> ayni
+    # %66'yi dolayli bir ucret analizinden (n=11) almistim; dogrudan sayim
+    # cok daha iyi kanit ve cok daha DUSUK. Ustelik bu rakam BB kolundan:
+    # BB geri donus stratejisi, fiyat limite DOGRU geliyor -> dolmasi kolay.
+    # Donchian KIRILIM: fiyat limitten UZAKLASIYOR -> daha da dusuk olabilir.
+    # O yuzden %27 ve %15 (donchian icin kotumser) birlikte kosuluyor.
     ("f_m_mk50", dict(FILTRE, PAPER_SLIP_GIRIS_BP="15.85",
                       PAPER_SLIP_CIKIS_BP="0.24", PAPER_FUNDING="true",
                       PAPER_MAKER_DOLUM="0.50", DONCHIAN_MAKER_ENTRY="true")),
+    ("f_m_mk27", dict(FILTRE, PAPER_SLIP_GIRIS_BP="15.85",
+                      PAPER_SLIP_CIKIS_BP="0.24", PAPER_FUNDING="true",
+                      PAPER_MAKER_DOLUM="0.27", DONCHIAN_MAKER_ENTRY="true")),
+    ("f_m_mk15", dict(FILTRE, PAPER_SLIP_GIRIS_BP="15.85",
+                      PAPER_SLIP_CIKIS_BP="0.24", PAPER_FUNDING="true",
+                      PAPER_MAKER_DOLUM="0.15", DONCHIAN_MAKER_ENTRY="true")),
+    ("m_mk27",   {"PAPER_SLIP_GIRIS_BP": "15.85", "PAPER_SLIP_CIKIS_BP": "0.24",
+                  "PAPER_FUNDING": "true", "PAPER_MAKER_DOLUM": "0.27",
+                  "DONCHIAN_MAKER_ENTRY": "true"}),
 ]
 
-ETIKET_ADI = {"m": "OLCULEN maliyet", "m_mk": "olculen + maker",
+ETIKET_ADI = {"f_m_mk27": "filtre+maker %27", "f_m_mk15": "filtre+maker %15",
+              "m_mk27": "maker %27 (filtresiz)",
+              "m": "OLCULEN maliyet", "m_mk": "olculen + maker",
               "f_m": "filtre + olculen", "f_m_mk": "filtre + olculen + maker",
               "f_m_dus": "filtre kayma 8.3", "f_m_yuk": "filtre kayma 23.4",
               "f_m_mk50": "filtre+maker %50 dolum",

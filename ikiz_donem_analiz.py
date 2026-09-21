@@ -30,11 +30,14 @@ BOLME = pd.Timestamp("2025-01-01", tz="UTC")
 # Hukumler sizintili rakama gore verilince hepsi yanlis cikti. "taban" kosusu
 # her taramada var ve DEGISIKLIK ICERMEZ -- dogru referans odur.
 TEMEL_ADAYLARI = ("taban", "risk28")
-SIRA = ["taban", 'm', 'm_mk', 'f_m', 'f_m_mk', 'f_m_dus', 'f_m_yuk', 'f_m_mk50', "f_dusuk", "f_yuksek", 'mg', 'mc', 'mgc', 'mgcf', 'mgcf_mk', 'f_taban', 'f_mgcf', 'f_mgcf_mk', 'f', 'f24', 'f20', 'f17', 'f14', 'r24', 'r20', 'r17', 't1', 'h20', 'h15', 't1h20', 't1h15', 't1obv', 't1h20k', 't1h20r20', "adx20", "adx25", 'teyit1', 'teyit2', 'retest2', 'retest4', 'hacim15', 'hacim20', 'obv', 'hacim_obv', 'be_don', 'be_all', 'be15', 'tr30', 'tr20', 'tr15', 'tr20g', 'be_tr', "risk10", "risk14", "risk17", "risk20", "risk28", "risk35", "risk40",
+SIRA = ["taban", 'f_m_mk27', 'f_m_mk15', 'm_mk27', 'm', 'm_mk', 'f_m', 'f_m_mk', 'f_m_dus', 'f_m_yuk', 'f_m_mk50', "f_dusuk", "f_yuksek", 'mg', 'mc', 'mgc', 'mgcf', 'mgcf_mk', 'f_taban', 'f_mgcf', 'f_mgcf_mk', 'f', 'f24', 'f20', 'f17', 'f14', 'r24', 'r20', 'r17', 't1', 'h20', 'h15', 't1h20', 't1h15', 't1obv', 't1h20k', 't1h20r20', "adx20", "adx25", 'teyit1', 'teyit2', 'retest2', 'retest4', 'hacim15', 'hacim20', 'obv', 'hacim_obv', 'be_don', 'be_all', 'be15', 'tr30', 'tr20', 'tr15', 'tr20g', 'be_tr', "risk10", "risk14", "risk17", "risk20", "risk28", "risk35", "risk40",
         "korel1", "kor17", "kor20", "kor24", "kor28",
         "adx32", "hold24", "guven",
         "trail10", "trail15", "be05", "bt", "rr15", "buf05", "adxr25", "cl1"]
 ETIKET = {"taban": "TABAN canli",
+          "f_m_mk27": "filtre+maker %27",
+          "f_m_mk15": "filtre+maker %15",
+          "m_mk27": "maker %27 (filtresiz)",
           "m": "OLCULEN maliyet",
           "m_mk": "olculen + maker",
           "f_m": "filtre + olculen",
