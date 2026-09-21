@@ -133,12 +133,20 @@ def _karar_dosyasi():
             ekle("  Asagidaki dTR/dTE sutunlari TABAN'a goredir; TABAN maliyetsizse")
             ekle("  maliyetli kosular dogal olarak dusuk cikar -- HUKUM YANILTICIDIR.")
             ekle("  Ayni gruptakileri birbiriyle karsilastir.")
-        ekle(f"  TABAN  TRAIN MAR {t['train']['mar']:5.2f}   "
-             f"TEST MAR {t['test']['mar']:5.2f}   "
-             f"({t['train']['n'] + t['test']['n']} islem)")
+        ekle(f"  TABAN  {t['train']['n'] + t['test']['n']:>5d} islem   "
+             f"TEST yillik %{t['test']['yillik']*100:.1f}   "
+             f"maxDD %{t['test']['maxdd']*100:.1f}   "
+             f"MAR {t['test']['mar']:.2f}  (TRAIN MAR {t['train']['mar']:.2f})")
+        ekle(f"  TEST yarisi = 2025-01 -> 2026-07; 'yillik' o donemin yillik "
+             f"hizi.")
+        ekle(f"  aylik karsiligi = (1+yillik)^(1/12)-1")
         ekle("-" * 78)
-        ekle(f"  {'ayar':<22s}{'TR MAR':>8s}{'TE MAR':>8s}"
-             f"{'dTR':>7s}{'dTE':>7s}   hukum")
+        # ⚠ YILLIK ve maxDD de basilir. Onceki surum yalniz MAR veriyordu ve
+        # "aylik kar ne oldu" sorusu cevaplanamiyordu -- MAR bir ORAN, tek
+        # basina para rakamina cevrilemez. Islem sayisi da var: bir ayarin
+        # islem KACIRIP kacirmadigi oradan gorulur.
+        ekle(f"  {'ayar':<22s}{'islem':>7s}{'TE yil%':>9s}{'TE DD%':>8s}"
+             f"{'TE MAR':>8s}{'dTE':>7s}   hukum")
         ekle("-" * 78)
         sirali = sorted(
             ((a, v) for a, v in olcum.items() if a != temel_ad),
@@ -154,15 +162,19 @@ def _karar_dosyasi():
                 h = "tek yari"
             else:
                 h = "kaldi"
-            ekle(f"  {DA.ETIKET.get(ad, ad):<22s}{v['train']['mar']:>8.2f}"
-                 f"{v['test']['mar']:>8.2f}{dtr:>+7.2f}{dte:>+7.2f}   {h}")
+            n_top = v["train"]["n"] + v["test"]["n"]
+            ekle(f"  {DA.ETIKET.get(ad, ad):<22s}{n_top:>7d}"
+                 f"{v['test']['yillik']*100:>9.1f}{v['test']['maxdd']*100:>8.1f}"
+                 f"{v['test']['mar']:>8.2f}{dte:>+7.2f}   {h}")
         ekle("-" * 78)
         if gecen:
             ekle("  IKI YARIDA DA temelden iyi olanlar:")
             for ad, dtr, dte, v in sorted(gecen, key=lambda x: -x[3]["test"]["mar"]):
+                _ay = (1 + v["test"]["yillik"]) ** (1 / 12) - 1
                 ekle(f"    {DA.ETIKET.get(ad, ad):<22s}"
-                     f"TEST maxDD %{v['test']['maxdd']*100:.1f}  "
-                     f"TEST yillik %{v['test']['yillik']*100:.0f}")
+                     f"aylik %{_ay*100:5.1f}   "
+                     f"TEST yillik %{v['test']['yillik']*100:.0f}   "
+                     f"maxDD %{v['test']['maxdd']*100:.1f}")
         else:
             ekle("  Hicbiri iki yarida da gecemedi.")
     ekle("=" * 78)
