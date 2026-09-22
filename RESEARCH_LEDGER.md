@@ -226,6 +226,45 @@ protokolü §9) ve "15M market structure" filtresi. Sadakat için değil.
 gelecek görünmez (4 nedensellik testi bekçi), stop/hedef mumun HIGH/LOW'uyla
 sınanır (`main.py:205`). Kalan belirsizlik ölçüldü ve ihmal edilebilir.
 
+
+## 2026-09-22 — Test protokolü v1.0'ın YENİ filtreleri: 8/8 REDDEDİLDİ · FİLTRE EKSENİ KAPANDI
+
+Belgedeki gerçekten yeni üç eksen (1.5 mum kalitesi, 1.9 chase, 1.10 ATR
+genişlemesi) canlı ayara karşı test edildi. Taban = `hacim2.5 + %3.5 + TRX yok`
+(952 işlem · TR MAR 6.47 · TE MAR 4.22 · yıllık %175.0 · maxDD %41.5).
+
+| ayar | işlem | dTR | dTE |
+|---|---|---|---|
+| gövde 0.40 | 909 | −2.13 | ±0.00 |
+| kapanış konumu 0.70 | 795 | −3.32 | −0.54 |
+| ATR genişleme 1.1 | 838 | +0.64 | −0.93 |
+| mum kalite sıkı (0.55/0.70/0.25) | 738 | −3.43 | −1.45 |
+| chase 1.0 ATR | 782 | −4.32 | −2.08 |
+| chase 0.5 ATR | 671 | −4.85 | −2.17 |
+| ATR genişleme 1.3 | 686 | −3.02 | −2.35 |
+
+**8/8 kaldı. Ve desen tek yönlü:** her filtre işlem sayısını düşürüyor
+(952 → 671–909) ve **her biri sonucu kötüleştiriyor**. Rastgele bir dağılım
+bunu vermez.
+
+**Yorum: optimumu geçtik.** Hacim 2.5x zaten kötü işlemleri aldı; bundan
+sonraki her filtre **iyi** işlemleri kesiyor. Kesme miktarı ile zarar
+neredeyse monoton: en çok kesen (chase 0.5, 671 işlem) en çok kaybettiren.
+
+**Not:** chase, denenip elenen ATR tamponunun tersiydi (tampon "en az şu
+kadar aşsın", chase "en fazla şu kadar uzaklaşsın"). **İkisi de kaldı** —
+yani kırılımın seviyeye uzaklığı, hiçbir yönde bilgi taşımıyor.
+
+### FİLTRE EKSENİ KAPANDI
+
+Toplamda ~60 ayar tarandı. Geçen: **hacim teyidi 2.5x**, **risk %3.5**,
+**TRX çıkarılması**. Elenen: ADX (×4), ATR tamponu, retest (×2), çoklu mum
+teyidi (×2), OBV, squeeze hacmi, squeeze maker, mum kalitesi (×3), chase (×2),
+ATR genişlemesi (×2), çıkış yönetiminin tamamı (×8), coin genişletme (×7).
+
+Bu eksene yeni fikir eklemeyeceğiz. Kalan iş: **MFE/MAE ile stop tasarımı**
+(15m veri gerekiyor) ve **canlıda 3 ay ölçüm**.
+
 ## 🔒 MÜHÜRLÜ (denendi, geçemedi)
 
 **2026-09-20/21 · İKİZ, 1752 işlem, TRAIN 2023-04→2024-12 / TEST 2025-01→2026-07**
