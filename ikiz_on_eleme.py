@@ -276,6 +276,16 @@ def kos_yapi(sembol: str, dolum_payi_atr: float = 0.0,
             tpv = (h[j] >= tp) if K.yon > 0 else (l[j] <= tp)
             if j == gi and not K.limit_mi:
                 continue                        # giris bari: piyasa girisinde atla
+            if j == gi:
+                # ⚠ MUM ICI SIRA BILINMIYOR (2026-09-22'de yakalandi).
+                # Dolum barinda hem limit seviyesi hem TP arali̇kta olabilir;
+                # hangisinin ONCE geldigini mum verisi SOYLEMEZ. Once "doldu
+                # sonra TP" varsaymistim -- bu kazanci UYDURUYOR ve dar stopta
+                # felaket: duz 1.5 ATR kolunda TP tam close[m]'e dusuyordu ve
+                # olcum PF 2.34 / R +0.62 gibi imkansiz bir sayi verdi.
+                # Muhafazakar kural: dolum barinda YALNIZCA SL sayilir, TP
+                # bir sonraki bara ertelenir.
+                tpv = False
             if slv and tpv:
                 ikili = True
             if slv:
