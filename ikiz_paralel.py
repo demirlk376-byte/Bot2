@@ -23,6 +23,7 @@ Kullanım:
   py ikiz_paralel.py maliyet       → kayma/funding/maker + duyarlilik, 11 surec
   py ikiz_paralel.py sinir         → maker ALT/UST SINIR, 7 surec
   py ikiz_paralel.py fmal          → FILTRELER x gercek maliyet, 11 surec
+  py ikiz_paralel.py sonrisk       → SON KOSU: iki aday x risk, 8 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -343,7 +344,32 @@ FILTRE_MALIYET_TARAMA = [
                       DONCHIAN_OBV="true")),
 ]
 
-ETIKET_ADI = {"h20_m": "hacim2.0+mal", "h25_m": "hacim2.5+mal",
+# ⚠ SON KOSU. Filtreler gercek maliyetle yeniden sorulunca ALTI ayar kendi
+# grubunda iki yarida da gecti. Iki aday one cikti:
+#   hacim 2.5x         1013 islem · aylik %7.59 · maxDD %39 · TE MAR 3.64
+#   teyit1+hacim1.5    1349 islem · aylik %9.68 · maxDD %59 · TE MAR 3.44
+# hacim2.5'in dususu tabandan (%62) COK dusuk -> KULLANILMAMIS RISK ALANI var.
+# Ayni MAR'la riski buyutmek getiriyi buyutur. Bunu TAHMIN ETMEK yerine
+# olcuyoruz; rakibi de ayni merdivende kosuyor ki kiyas adil olsun.
+# ON KAYIT: kazanan, kendi grubunun tabanina gore IKI yarida da iyi olan ve
+# TEST MAR'i en yuksek olandir. maxDD %62'yi (bugunku taban) asan aday
+# DISLANIR -- bugunkunden daha kotu bir dususe razi degiliz.
+SON_RISK_TARAMA = [
+    ("m",        dict(MALIYET)),                                   # grup tabani
+    ("h25",      dict(MALIYET, DONCHIAN_VOL_MULT="2.5")),          # %2.8 risk
+    ("h25r35",   dict(MALIYET, DONCHIAN_VOL_MULT="2.5", RISK_SCALE="1.75")),
+    ("h25r42",   dict(MALIYET, DONCHIAN_VOL_MULT="2.5", RISK_SCALE="2.10")),
+    ("h25r50",   dict(MALIYET, DONCHIAN_VOL_MULT="2.5", RISK_SCALE="2.50")),
+    ("f25",      dict(MALIYET, **FILTRE)),                         # rakip, %2.8
+    ("f25r35",   dict(MALIYET, **FILTRE, RISK_SCALE="1.75")),
+    ("f25r42",   dict(MALIYET, **FILTRE, RISK_SCALE="2.10")),
+]
+
+ETIKET_ADI = {"h25": "hacim2.5 %2.8", "h25r35": "hacim2.5 %3.5",
+              "h25r42": "hacim2.5 %4.2", "h25r50": "hacim2.5 %5.0",
+              "f25": "teyit1+h1.5 %2.8", "f25r35": "teyit1+h1.5 %3.5",
+              "f25r42": "teyit1+h1.5 %4.2",
+              "h20_m": "hacim2.0+mal", "h25_m": "hacim2.5+mal",
               "t1h20_m": "teyit1+h2.0+mal", "t2h15_m": "teyit2+h1.5+mal",
               "tampon_m": "tampon0.5+mal", "adx20_m": "ADX20+mal",
               "t1obv_m": "teyit1+OBV+mal", "hepsi_m": "teyit1+h1.5+OBV+mal",
@@ -514,11 +540,12 @@ def main():
                   "son": SON_TARAMA,
                   "maliyet": MALIYET_TARAMA,
                   "sinir": SINIR_TARAMA,
-                  "fmal": FILTRE_MALIYET_TARAMA}[hangi]
+                  "fmal": FILTRE_MALIYET_TARAMA,
+                  "sonrisk": SON_RISK_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
-              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet, sinir, fmal)")
+              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet, sinir, fmal, sonrisk)")
         return
 
     print(f"\n{'='*84}")
