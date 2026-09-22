@@ -142,7 +142,8 @@ def kurulumlari_bul(
         return _ref_or_kurulumlari(
             high, low, close, atr, k=k, mss_bar=mss_bar, bekle_bar=bekle_bar,
             rr=rr, sl_tampon=sl_tampon, bas=bas, seviye_atr=sahte_seviye_atr,
-            sabit_sl_atr=sabit_sl_atr)
+            sabit_sl_atr=sabit_sl_atr, ref_kapali=not mss_sart,
+            piyasa=not fvg_sart)
 
     for s in range(max(bas, k + 3), n - 1):
         for yon in (1, -1):
@@ -445,7 +446,8 @@ class YapiStrategy:
 
 
 def _ref_or_kurulumlari(high, low, close, atr, *, k, mss_bar, bekle_bar,
-                        rr, sl_tampon, bas, seviye_atr, sabit_sl_atr):
+                        rr, sl_tampon, bas, seviye_atr, sabit_sl_atr,
+                        ref_kapali=False, piyasa=False):
     """Coklu taramanin ifade ettigi kuralin TEK KOSUL halindeki yazimi.
 
     m barinda long kurulumu:
@@ -469,15 +471,18 @@ def _ref_or_kurulumlari(high, low, close, atr, *, k, mss_bar, bekle_bar,
             if not refler:
                 continue
             esik = min(refler) if yon > 0 else max(refler)
-            if not ((close[m] > esik) if yon > 0 else (close[m] < esik)):
-                continue
+            # ⚠ NULL KOLU: referans kosulunu KALDIR, geri kalan ayni kalsin.
+            if not ref_kapali:
+                if not ((close[m] > esik) if yon > 0 else (close[m] < esik)):
+                    continue
             if not atr[m] > 0:
                 continue
-            giris = float(close[m]) - yon * seviye_atr * atr[m]
+            # ⚠ PIYASA KOLU: limit geri cekilmesi yerine kapanista gir.
+            giris = float(close[m]) - (0.0 if piyasa else yon * seviye_atr * atr[m])
             sl = float(close[m]) - yon * (sabit_sl_atr or 2.0) * atr[m]
             risk = (giris - sl) if yon > 0 else (sl - giris)
             if not risk > 0:
                 continue
             cikti.append(Kurulum(yon, giris, sl, giris + yon * rr * risk,
-                                 True, m, m, -2, min(m + bekle_bar, n - 1)))
+                                 not piyasa, m, m, -2, min(m + bekle_bar, n - 1)))
     return cikti
