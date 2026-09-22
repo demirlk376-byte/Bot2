@@ -227,17 +227,20 @@ def kos_yapi(sembol: str, dolum_payi_atr: float = 0.0,
         if K.mss_bar <= mesgul_bitis:          # sembol basina TEK pozisyon
             continue
         if yon_aynala:
-            # ⚠ YON KONTROLU. GIRIS FIYATI AYNI KALIR; yalnizca yon ve onunla
-            # birlikte SL/TP aynalanir. Risk buyuklugu birebir korunur, yani
-            # payda artefakti imkansiz. Kurulum YON bilgisi tasimiyorsa bu kol
-            # da ayni edge'i vermeli -- verirse "edge" yonden degil, limit
-            # girisin geometrisinden geliyordur.
+            # ⚠ YON KONTROLU -- SEVIYE DE AYNALANIR.
+            # Ilk surumde giris fiyatini SABIT tutup yalnizca yonu cevirmistim.
+            # GECERSIZDI: long icin fiyatin ALTINDA duran bir limit, short'a
+            # cevrilince aninda dolan bir emre donusuyordu; islem sayisi
+            # 11.057'den 24.332'ye ciktı ve R=-0.68 gibi anlamsiz bir sayi
+            # uretti. Dogrusu: seviyeyi MSS kapanisina gore YANSIT, boylece
+            # emir yine fiyatin karsi tarafinda dinlenen bir limit olur.
             import dataclasses
             _risk = abs(K.giris - K.sl)
             _y = -K.yon
-            K = dataclasses.replace(K, yon=_y,
-                                    sl=K.giris - _y * _risk,
-                                    tp=K.giris + _y * 2.0 * _risk)
+            _giris = 2.0 * c[K.mss_bar] - K.giris      # kapanisa gore yansima
+            K = dataclasses.replace(K, yon=_y, giris=_giris,
+                                    sl=_giris - _y * _risk,
+                                    tp=_giris + _y * 2.0 * _risk)
 
         # --- dolum
         if K.limit_mi:
