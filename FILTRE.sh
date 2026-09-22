@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 # ============================================================================
-#  FILTRE.sh — Donchian sahte-kirilim filtresini TEK KOMUTLA ac/kapat.
+#  FILTRE.sh — KAZANAN AYARI (hacim2.5 + %3.5 risk) TEK KOMUTLA ac/kapat.
 #
-#  Filtre iki kapidan olusur:
-#    DONCHIAN_CONFIRM_BARS=1  kirilimdan sonraki bar seviyenin USTUNDE kapanmali
-#    DONCHIAN_VOL_MULT=1.5    kirilim hacmi onceki 20 barin ortalamasinin 1.5 kati
+#  Ayar:
+#    DONCHIAN_VOL_MULT=2.5    kirilim hacmi onceki 20 barin ortalamasinin 2.5 kati
+#    RISK_SCALE=1.75          islem basina risk %2.8 -> %3.5
 #
-#  IKIZ olcumu (1752 islem, TRAIN 2023-04..2024-12 / TEST 2025-01..2026-07):
-#    donchian islem 1173 -> 764, ort R +0.150 -> +0.197
-#    TEST MAR 3.31 -> 5.63, TEST maxDD %56.8 -> %55.6
+#  ⚠ RISK DE DEGISIYOR, sadece filtre degil. Sebebi: hacim2.5 dususu %62'den
+#  %39'a indiriyor ve bu KULLANILMAMIS RISK ALANI demek. Riski %3.5'e cikarmak
+#  IKI YARIDA DA iyilestirdi (dTR +1.02 / dTE +2.43). Ayni sey rakip ayarda
+#  (teyit1+h1.5) TRAIN'i BOZDU (dTR -0.59) -- yani bu, hacim2.5'e ozgu.
+#
+#  IKIZ olcumu (OLCULEN maliyetle: giris 15.85bp, cikis 0.24bp, funding):
+#    islem      1752 -> 1013   (gunde 1.46 -> ~0.85)
+#    aylik      %5.53 -> %8.51
+#    TEST maxDD %61.8 -> %42.8
+#    TEST MAR   1.47 -> 3.89
+#  Kendi maliyet grubunun tabanina gore IKI YARIDA DA gecti.
 #
 #  Kullanim (VPS'te, /opt/bot2 icinde):
 #    bash FILTRE.sh durum     -> su an acik mi, hangi degerlerle
@@ -23,8 +31,8 @@ set -uo pipefail
 KOK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_DOSYA="$KOK/.env"
 SERVIS="btc-bot"
-ANAHTARLAR=("DONCHIAN_CONFIRM_BARS" "DONCHIAN_VOL_MULT")
-ACIK_DEGER=("1" "1.5")
+ANAHTARLAR=("DONCHIAN_VOL_MULT" "RISK_SCALE")
+ACIK_DEGER=("2.5" "1.75")
 
 renk() { printf '%s\n' "$*"; }
 hata() { printf '  !! %s\n' "$*" >&2; }
@@ -44,11 +52,10 @@ durum_yaz() {
 from config import load_config
 c = load_config()
 s, r = c.strategy, c.risk
-print(f"    DONCHIAN_CONFIRM_BARS = {s.donchian_confirm_bars}")
-print(f"    DONCHIAN_VOL_MULT     = {s.donchian_vol_mult}")
-print(f"    islem basina risk     = %{r.max_risk_per_trade*100:.2f}")
-acik = s.donchian_confirm_bars > 0 and s.donchian_vol_mult > 0
-print(f"    FILTRE: {'ACIK' if acik else 'KAPALI'}")
+print(f"    DONCHIAN_VOL_MULT  = {s.donchian_vol_mult}")
+print(f"    islem basina risk  = %{r.max_risk_per_trade*100:.2f}")
+acik = s.donchian_vol_mult >= 2.5
+print(f"    AYAR: {'ACIK (hacim2.5 + %3.5 risk)' if acik else 'KAPALI'}")
 PYEOF
   )
 }
@@ -102,7 +109,7 @@ case "${1:-durum}" in
     renk "=== FILTRE DURUMU ==="
     renk "  .env satirlari:"
     if [ -f "$ENV_DOSYA" ]; then
-      grep -E "^[[:space:]]*(DONCHIAN_CONFIRM_BARS|DONCHIAN_VOL_MULT)=" "$ENV_DOSYA" \
+      grep -E "^[[:space:]]*(DONCHIAN_VOL_MULT|RISK_SCALE)=" "$ENV_DOSYA" \
         2>/dev/null || renk "    (satir yok -> filtre KAPALI)"
     else
       renk "    (.env dosyasi yok)"
@@ -117,15 +124,17 @@ case "${1:-durum}" in
     durum_yaz
     yeniden_baslat "$y"
     renk ""
-    renk "  Filtre acildi. Ilk Donchian sinyalinde logda [teyit1b] etiketi gorunmeli:"
-    renk "    journalctl -u $SERVIS -f | grep -i donchian"
+    renk "  Ayar acildi. Beklenen degisim (3 ay sonra sinanacak):"
+    renk "    - donchian islem hizi ~%42 DUSER (gunde 1.46 -> ~0.85)"
+    renk "    - risk %2.8 -> %3.5, yani pozisyonlar ~%25 BUYUR"
+    renk "  Izle:  journalctl -u $SERVIS -f | grep -iE 'donchian|hacim zayif'"
     ;;
   kapat)
     renk "=== FILTRE KAPATILIYOR ==="
     y="$(env_yaz kapat | tail -1)"
     durum_yaz
     yeniden_baslat "$y"
-    renk "  Filtre kapatildi (bugunku davranisa donuldu)."
+    renk "  Ayar kapatildi (bugunku davranisa donuldu)."
     ;;
   *)
     hata "bilinmeyen komut: $1"

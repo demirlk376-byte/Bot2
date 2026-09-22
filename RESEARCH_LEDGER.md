@@ -96,6 +96,43 @@ Hatanın büyüklüğü (İKİZ, TEST yarısı MAR):
 - max_hold/manual/external çıkışlarının kayması: referans seviye yok, ölçülemedi
   (39/140 çıkış). SL de stop-market olduğu için 0.24bp makul vekil.
 
+
+## 2026-09-22 — KARAR: `DONCHIAN_VOL_MULT=2.5` + `RISK_SCALE=1.75` (%3.5)
+
+Ölçülen maliyetle (giriş 15.85bp · çıkış 0.24bp · funding gerçek oranlardan),
+kendi maliyet grubunun tabanına göre:
+
+| | işlem | aylık | TEST maxDD | TEST MAR | dTR | dTE |
+|---|---|---|---|---|---|---|
+| taban (filtresiz %2.8) | 1752 | %5.53 | %61.8 | 1.47 | — | — |
+| **hacim2.5 %3.5** | **1013** | **%8.51** | **%42.8** | **3.89** | **+1.02** | **+2.43** |
+| hacim2.5 %2.8 | 1013 | %7.59 | %38.7 | 3.64 | +1.04 | +2.17 |
+| teyit1+h1.5 %2.8 | 1349 | %9.68 | %59.0 | 3.44 | +0.27 | +1.97 |
+| teyit1+h1.5 %3.5 | 1348 | %10.35 | %67.9 | 3.33 | **−0.59** | +1.86 |
+
+**Kural sonuçlar görülmeden yazıldı:** kendi grubunun tabanına göre iki yarıda
+da iyi olan, TEST MAR'ı en yüksek olan kazanır; TEST maxDD %62'yi aşan
+diskalifiye. Kazanan `hacim2.5 %3.5`.
+
+**Doğrulanan hipotez:** hacim2.5'in düşük düşüşü (%38.7) kullanılmamış risk
+alanıdır. Riski %3.5'e çıkarmak **iki yarıda da** iyileştirdi. Aynı hamle
+rakip ayarda TRAIN'i **bozdu** (−0.59) — yani etki hacim2.5'e özgü, genel bir
+"risk artır" kuralı değil.
+
+**Neden bu, maliyetsiz taramadaki şampiyondan farklı:** maliyetsiz dünyada
+filtrenin katkısı aylık ~1 puandı, gerçek maliyetle **+4.15 puan**. Her işlem
+15.85bp giriş kayması ödüyor; sert filtre 739 işlemi hiç açmıyor. Bütün
+filtreleri maliyetsiz tabana karşı elemiştik — sıralama yanlıştı.
+
+**ÖN KAYITLI CANLI BEKLENTİ (3 ay):**
+- toplam işlem hızı günde 1.46 → **~0.85** (%42 düşüş)
+- pozisyon boyutu ~%25 büyür (risk %2.8 → %3.5)
+- tutmazsa `bash FILTRE.sh kapat`
+
+**Uyarılar:** giriş kayması %95 [8.34, 23.37] (n=54) — nokta tahmin değil.
+~30 ayar tarandı, çoklu karşılaştırma nedeniyle canlıda ortalamaya dönüş
+beklenir. Risk %3.5'e çıktığı için hata payı da büyüyor.
+
 ## 🔒 MÜHÜRLÜ (denendi, geçemedi)
 
 **2026-09-20/21 · İKİZ, 1752 işlem, TRAIN 2023-04→2024-12 / TEST 2025-01→2026-07**
