@@ -349,7 +349,9 @@ def kos_kol(sembol: str, dolum_payi_atr: float = 0.05, yon_aynala: bool = False,
                     (d.low - d.close.shift(1)).abs()], axis=1).max(axis=1)
     atr = tr.ewm(alpha=1 / 14, adjust=False).mean()
     h, l, c = d.high.values, d.low.values, d.close.values
-    s = YapiStrategy(**kw)
+    # ⚠ dolum_payi_atr KOLA gecirilir. Once burada duruyor ama hicbir yere
+    # gecmiyordu -- 0.00/0.10/0.20 BIREBIR ayni sonucu veriyordu (olu parametre).
+    s = YapiStrategy(dolum_payi_atr=dolum_payi_atr, **kw)
     out, mesgul = [], -1
     for i in range(300, len(d)):
         sig = s.analyze(d.iloc[max(0, i - pencere + 1): i + 1], float(atr.iloc[i]))

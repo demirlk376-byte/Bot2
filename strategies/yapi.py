@@ -317,6 +317,8 @@ class YapiStrategy:
         sl_atr: float = 2.0,      # stop kapanistan kac ATR geride
         sl_tampon: float = VARSAYILAN_SL_TAMPON,
         mss_olay: bool = False,   # True -> OLAY semantigi (olculdu: 3 kat zayif)
+        tazele: bool = True,      # False -> emri BIR KEZ koy ve BIRAK
+        dolum_payi_atr: float = 0.0,  # dolum icin seviyeyi GECME sarti
     ):
         self._k = int(k)
         self._seviye_atr = float(seviye_atr)
@@ -326,6 +328,8 @@ class YapiStrategy:
         self._sl_atr = float(sl_atr)
         self._sl_tampon = float(sl_tampon)
         self._mss_olay = bool(mss_olay)
+        self._tazele = bool(tazele)
+        self._dolum_payi = float(dolum_payi_atr)
         self._bekleyen: list[dict] = []  # MSS oldu, dolum bekleniyor
         self._last_ts = None
 
@@ -384,7 +388,9 @@ class YapiStrategy:
         for b in self._bekleyen:
             if b["yas"] < 1:
                 continue
-            degdi = (l[-1] <= b["giris"]) if b["yon"] > 0 else (h[-1] >= b["giris"])
+            pay = self._dolum_payi * atr_val
+            esik_d = b["giris"] - pay if b["yon"] > 0 else b["giris"] + pay
+            degdi = (l[-1] <= esik_d) if b["yon"] > 0 else (h[-1] >= esik_d)
             if degdi:
                 secilen = b
                 break
@@ -426,7 +432,17 @@ class YapiStrategy:
             risk = (giris - sl) if yon > 0 else (sl - giris)
             if not risk > 0:
                 continue
-            self._bekleyen = [b for b in self._bekleyen if b["yon"] != yon]
+            # ⚠ TAZELE vs BIRAK. Offline tarayici her uygun barda AYRI bir
+            # emir birakiyordu ve hepsi ayni anda canliydi; ilk dokunulan
+            # doluyordu. Kol ise her bar emri TAZELIYORDU -- fiyat duserken
+            # teklif de asagi cekiliyor, ilk dipte dolunmuyor, sonra cokuse
+            # giriliyor. Ayni kural DEGIL: tazeleyen surum olculdu, R=-0.0113.
+            # tazele=False "emri bir kez koy ve birak" demek; bu, tek pozisyon
+            # slotuyla CANLIDA uygulanabilir olan davranistir.
+            if self._tazele:
+                self._bekleyen = [b for b in self._bekleyen if b["yon"] != yon]
+            elif any(b["yon"] == yon for b in self._bekleyen):
+                continue
             self._bekleyen.append({"yon": yon, "giris": giris, "sl": sl,
                                    "tp": giris + yon * self._rr * risk, "yas": 0})
 
