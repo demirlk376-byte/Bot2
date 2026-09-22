@@ -640,7 +640,22 @@ def make_on_candle_close(ctx: "SymbolContext"):
                             # limit+no-fallback path adversely selected: runaway
                             # (strongest) releases never retraced and were skipped,
                             # fading ones filled. Same treatment as Donchian.
-                            force_market=True,
+                            #
+                            # ⚠ SQUEEZE_MAKER_ENTRY=true bunu YEDEKLI olarak geri
+                            # açar. Yukarıdaki felaketin sebebi limit olması DEĞİL,
+                            # YEDEKSİZ olmasıydı: dolmayan emir atlanıyordu, o da
+                            # en güçlü çıkışları eliyordu. anchor_is_level=False
+                            # ile execution 45sn sonra PİYASA yedeğine düşer
+                            # (execution.py:636) → hiçbir çıkış atlanmaz, yalnız
+                            # ödenen fiyat değişir. Donchian'da aynı koruma ölçüldü.
+                            #
+                            # NEDEN DENEMEYE DEĞER: coin_maliyet.py (2026-09-22)
+                            # squeeze coinlerinin stoplarının DAR olduğunu gösterdi
+                            # (%0.86–2.40) ve aynı 15.85bp kayma orada kenarın
+                            # %35–90'ını yiyor; donchian'da %12–25. Maker'ın değeri
+                            # bu kolda çok daha büyük olabilir.
+                            force_market=not config.exchange.squeeze_maker_entry,
+                            anchor_is_level=False,
                         )
                         result = await executor.execute_signal(sq_combined, atr_val)
                         if result.success and result.position:

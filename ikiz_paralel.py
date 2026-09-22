@@ -26,6 +26,7 @@ Kullanım:
   py ikiz_paralel.py sonrisk       → SON KOSU: iki aday x risk, 8 surec
   py ikiz_paralel.py coin          → COIN GENISLETME, 8 surec (~65 dk!)
   py ikiz_paralel.py sonfiltre     → hacim esigi ucu + SQUEEZE hacmi, 8 surec
+  py ikiz_paralel.py sqmaker       → SQUEEZE maker + pahali coin, 8 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -420,7 +421,40 @@ SON_FILTRE_TARAMA = [
     ("s20",      dict(MALIYET, RISK_SCALE="1.75", SQUEEZE_VOL_MULT="2.0")),  # yalniz squeeze
 ]
 
-ETIKET_ADI = {"d25": "TABAN don2.5", "d30": "don3.0", "d35": "don3.5",
+# ⚠ SQUEEZE MAKER + PAHALI COIN. coin_maliyet.py (2026-09-22) iki sey gosterdi:
+#   1. Brut karin %24.1'i giris kaymasina gidiyor ($424 / $1755).
+#   2. Yuk DAR STOPLU kollarda yogunlasiyor: squeeze coinlerinde kenarin
+#      %35-90'i kaymaya gidiyor (stop %0.86-2.40), donchian'da %12-25.
+# Maker girisini yalnizca DONCHIAN'da denedik -- yani yukun EN AZ oldugu
+# kolda. Squeeze'de hic denemedik.
+# Ayrica TRX/squeeze kenarinin %89.6'sini kaymaya veriyor ve NET ZARAR
+# ediyor (-$20); yuruyen-ileri testi bu karari ILERIYE TASIDI.
+# ⚠ IKIZ 45sn yedegin SURUKLENME maliyetini modelleyemez (mum ici veri yok),
+# o yuzden maker faydasi burada bir miktar ABARTILI olacak. Donchian'da o
+# suruklenme 0.12bp/dk olculmustu (ihmal edilebilir); squeeze'de olculmedi.
+SQZ_TARAMA = [
+    ("z_taban",  dict(MALIYET, **KAZANAN)),                        # TABAN
+    ("z_sqmk",   dict(MALIYET, **KAZANAN, SQUEEZE_MAKER_ENTRY="true",
+                      PAPER_MAKER_DOLUM="0.27")),                  # olculen dolum
+    ("z_sqmk100",dict(MALIYET, **KAZANAN, SQUEEZE_MAKER_ENTRY="true",
+                      PAPER_MAKER_DOLUM="1.0")),                   # UST SINIR
+    ("z_notrx",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
+    ("z_sqmk_notrx", dict(MALIYET, **KAZANAN, SQUEEZE_MAKER_ENTRY="true",
+                      PAPER_MAKER_DOLUM="0.27", SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
+    ("z_ikimk",  dict(MALIYET, **KAZANAN, SQUEEZE_MAKER_ENTRY="true",
+                      DONCHIAN_MAKER_ENTRY="true", PAPER_MAKER_DOLUM="0.27")),
+    ("z_sqmk_s20", dict(MALIYET, **KAZANAN, SQUEEZE_MAKER_ENTRY="true",
+                      PAPER_MAKER_DOLUM="0.27", SQUEEZE_VOL_MULT="2.0")),
+    ("z_hepsi",  dict(MALIYET, **KAZANAN, SQUEEZE_MAKER_ENTRY="true",
+                      DONCHIAN_MAKER_ENTRY="true", PAPER_MAKER_DOLUM="0.27",
+                      SQUEEZE_SYMBOLS="XRP,DOGE,XLM", SQUEEZE_VOL_MULT="2.0")),
+]
+
+ETIKET_ADI = {"z_taban": "TABAN", "z_sqmk": "squeeze maker %27",
+              "z_sqmk100": "squeeze maker UST", "z_notrx": "TRX cikarildi",
+              "z_sqmk_notrx": "sq maker + TRX yok", "z_ikimk": "iki kol da maker",
+              "z_sqmk_s20": "sq maker + hacim2.0", "z_hepsi": "hepsi birden",
+              "d25": "TABAN don2.5", "d30": "don3.0", "d35": "don3.5",
               "d25s15": "don2.5+sq1.5", "d25s20": "don2.5+sq2.0",
               "d25s25": "don2.5+sq2.5", "d30s20": "don3.0+sq2.0",
               "s20": "yalniz sq2.0",
@@ -616,11 +650,12 @@ def main():
                   "fmal": FILTRE_MALIYET_TARAMA,
                   "sonrisk": SON_RISK_TARAMA,
                   "coin": COIN_TARAMA,
-                  "sonfiltre": SON_FILTRE_TARAMA}[hangi]
+                  "sonfiltre": SON_FILTRE_TARAMA,
+                  "sqmaker": SQZ_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
-              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet, sinir, fmal, sonrisk, coin, sonfiltre)")
+              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet, sinir, fmal, sonrisk, coin, sonfiltre, sqmaker)")
         return
 
     print(f"\n{'='*84}")

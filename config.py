@@ -81,6 +81,7 @@ class ExchangeConfig:
     # Bu yüzden AÇMAK bir DENEY: squeeze taker kalır ve aynı dönemde KONTROL
     # GRUBU olur. 4-6 hafta sonra kayma_denetim.py iki kolu karşılaştırır.
     donchian_maker_entry: bool = False
+    squeeze_maker_entry: bool = False
     # Live mid-life stop moves (BE/trailing) require MEXC's plan-order PLACE
     # endpoint to work reliably. It has a history of silent rejects, so this
     # ships OFF: run check_mexc_stopmove.py on the VPS first; only set
@@ -415,6 +416,7 @@ def load_config() -> AppConfig:
         symbols=symbols,
         maker_entry=_getbool("MAKER_ENTRY", True),
         donchian_maker_entry=_getbool("DONCHIAN_MAKER_ENTRY", False),
+        squeeze_maker_entry=_getbool("SQUEEZE_MAKER_ENTRY", False),
         stop_move_enabled=_getbool("STOP_MOVE_ENABLED", False),
     )
 

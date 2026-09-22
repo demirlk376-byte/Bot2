@@ -30,11 +30,19 @@ BOLME = pd.Timestamp("2025-01-01", tz="UTC")
 # Hukumler sizintili rakama gore verilince hepsi yanlis cikti. "taban" kosusu
 # her taramada var ve DEGISIKLIK ICERMEZ -- dogru referans odur.
 TEMEL_ADAYLARI = ("taban", "risk28")
-SIRA = ["taban", 'd25', 'd30', 'd35', 'd25s15', 'd25s20', 'd25s25', 'd30s20', 's20', 'c12', 'c19', 'c31', 'c31p10', 'c31p14', 'c31p10k1', 'c31p10r28', 'c19p10', 'h25', 'h25r35', 'h25r42', 'h25r50', 'f25', 'f25r35', 'f25r42', 'h20_m', 'h25_m', 't1h20_m', 't2h15_m', 'tampon_m', 'adx20_m', 't1obv_m', 'hepsi_m', "m_mk100", "f_m_mk100", 'f_m_mk27', 'f_m_mk15', 'm_mk27', 'm', 'm_mk', 'f_m', 'f_m_mk', 'f_m_dus', 'f_m_yuk', 'f_m_mk50', "f_dusuk", "f_yuksek", 'mg', 'mc', 'mgc', 'mgcf', 'mgcf_mk', 'f_taban', 'f_mgcf', 'f_mgcf_mk', 'f', 'f24', 'f20', 'f17', 'f14', 'r24', 'r20', 'r17', 't1', 'h20', 'h15', 't1h20', 't1h15', 't1obv', 't1h20k', 't1h20r20', "adx20", "adx25", 'teyit1', 'teyit2', 'retest2', 'retest4', 'hacim15', 'hacim20', 'obv', 'hacim_obv', 'be_don', 'be_all', 'be15', 'tr30', 'tr20', 'tr15', 'tr20g', 'be_tr', "risk10", "risk14", "risk17", "risk20", "risk28", "risk35", "risk40",
+SIRA = ["taban", 'z_taban', 'z_sqmk', 'z_sqmk100', 'z_notrx', 'z_sqmk_notrx', 'z_ikimk', 'z_sqmk_s20', 'z_hepsi', 'd25', 'd30', 'd35', 'd25s15', 'd25s20', 'd25s25', 'd30s20', 's20', 'c12', 'c19', 'c31', 'c31p10', 'c31p14', 'c31p10k1', 'c31p10r28', 'c19p10', 'h25', 'h25r35', 'h25r42', 'h25r50', 'f25', 'f25r35', 'f25r42', 'h20_m', 'h25_m', 't1h20_m', 't2h15_m', 'tampon_m', 'adx20_m', 't1obv_m', 'hepsi_m', "m_mk100", "f_m_mk100", 'f_m_mk27', 'f_m_mk15', 'm_mk27', 'm', 'm_mk', 'f_m', 'f_m_mk', 'f_m_dus', 'f_m_yuk', 'f_m_mk50', "f_dusuk", "f_yuksek", 'mg', 'mc', 'mgc', 'mgcf', 'mgcf_mk', 'f_taban', 'f_mgcf', 'f_mgcf_mk', 'f', 'f24', 'f20', 'f17', 'f14', 'r24', 'r20', 'r17', 't1', 'h20', 'h15', 't1h20', 't1h15', 't1obv', 't1h20k', 't1h20r20', "adx20", "adx25", 'teyit1', 'teyit2', 'retest2', 'retest4', 'hacim15', 'hacim20', 'obv', 'hacim_obv', 'be_don', 'be_all', 'be15', 'tr30', 'tr20', 'tr15', 'tr20g', 'be_tr', "risk10", "risk14", "risk17", "risk20", "risk28", "risk35", "risk40",
         "korel1", "kor17", "kor20", "kor24", "kor28",
         "adx32", "hold24", "guven",
         "trail10", "trail15", "be05", "bt", "rr15", "buf05", "adxr25", "cl1"]
 ETIKET = {"taban": "TABAN canli",
+          "z_taban": "TABAN",
+          "z_sqmk": "squeeze maker %27",
+          "z_sqmk100": "squeeze maker UST",
+          "z_notrx": "TRX cikarildi",
+          "z_sqmk_notrx": "sq maker + TRX yok",
+          "z_ikimk": "iki kol da maker",
+          "z_sqmk_s20": "sq maker + hacim2.0",
+          "z_hepsi": "hepsi birden",
           "d25": "TABAN don2.5",
           "d30": "don3.0",
           "d35": "don3.5",
