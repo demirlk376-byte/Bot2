@@ -103,85 +103,76 @@ def _karar_dosyasi():
 
     satirlar = []
     ekle = satirlar.append
-    ekle("=" * 78)
+    ekle("=" * 92)
     ekle("  K A R A R   -  yalnizca GUNCEL kodla kosmus konfigurasyonlar")
-    ekle(f"  motor: {guncel or '(damgasiz)'}   "
-         f"(en son kosan kosunun motoru referans alindi)")
-    ekle("=" * 78)
+    ekle(f"  motor: {guncel or '(damgasiz)'}   (en son kosan kosunun motoru)")
+    ekle("=" * 92)
+
     if not olcum:
-        ekle("  Guncel kodla kosmus konfigurasyon YOK.")
-        ekle("  Taramayi yeniden calistir (menude 1 veya A).")
-    elif temel_ad is None:
-        ekle("  TABAN kosusu yok -> karsilastirma yapilamaz.")
-        ekle("  Taramayi taban kosusuyla birlikte calistir.")
+        ekle("  Guncel kodla kosmus konfigurasyon YOK. Taramayi calistir.")
     else:
-        t = olcum[temel_ad]
-        # ⚠ MALIYET GRUPLARI. Maliyetsiz bir tabana gore maliyetli her kosu
-        # "kotu" cikar; 2026-09-21'de bu yuzden "hicbiri gecemedi" yazdi oysa
-        # maker girisi ayni maliyet altinda DORT karsilastirmanin dordunde de
-        # kazaniyordu. Ayni maliyet damgasini tasiyanlar kendi iclerinde
-        # kiyaslanir; grubun tabani o gruptaki en az ayar degistiren kosudur.
+        # ⚠ HER MALIYET GRUBU KENDI ICINDE. Ucuncu kez isirdi: arac maliyetli
+        # kosulari MALIYETSIZ tabana gore kiyasliyor, hepsi "kaldi" cikiyordu.
+        # Oysa ayni maliyet altinda ALTI ayar iki yarida da kazaniyordu.
+        # Artik her grubun KENDI tabani var: o gruptaki EN COK ISLEM yapan
+        # kosu (= en az filtreleyen), yani "hicbir sey degistirmemis" hali.
         gruplar = {}
         for _ad, _v in olcum.items():
-            gruplar.setdefault(_v.get("maliyet", ""), []).append(_ad)
-        if len(gruplar) > 1:
+            gruplar.setdefault(_v.get("maliyet", ""), []).append((_ad, _v))
+
+        tum_gecen = []
+        for gi, (mal, uyeler) in enumerate(
+                sorted(gruplar.items(), key=lambda kv: -len(kv[1])), 1):
+            if len(uyeler) < 2:
+                continue
+            taban_ad, tv = max(uyeler,
+                               key=lambda kv: kv[1]["train"]["n"] + kv[1]["test"]["n"])
+            etiket = mal if mal else "(maliyetsiz / damgasiz)"
             ekle("")
-            ekle("  ⚠ FARKLI MALIYET AYARLARI VAR — gruplar ayri kiyaslanmali:")
-            for _m, _lar in gruplar.items():
-                _et = _m if _m else "(damgasiz / maliyetsiz)"
-                ekle(f"    {len(_lar):>2d} kosu · {_et[:70]}")
-            ekle("  Asagidaki dTR/dTE sutunlari TABAN'a goredir; TABAN maliyetsizse")
-            ekle("  maliyetli kosular dogal olarak dusuk cikar -- HUKUM YANILTICIDIR.")
-            ekle("  Ayni gruptakileri birbiriyle karsilastir.")
-        ekle(f"  TABAN  {t['train']['n'] + t['test']['n']:>5d} islem   "
-             f"TEST yillik %{t['test']['yillik']*100:.1f}   "
-             f"maxDD %{t['test']['maxdd']*100:.1f}   "
-             f"MAR {t['test']['mar']:.2f}  (TRAIN MAR {t['train']['mar']:.2f})")
-        ekle(f"  TEST yarisi = 2025-01 -> 2026-07; 'yillik' o donemin yillik "
-             f"hizi.")
-        ekle(f"  aylik karsiligi = (1+yillik)^(1/12)-1")
-        ekle("-" * 78)
-        # ⚠ YILLIK ve maxDD de basilir. Onceki surum yalniz MAR veriyordu ve
-        # "aylik kar ne oldu" sorusu cevaplanamiyordu -- MAR bir ORAN, tek
-        # basina para rakamina cevrilemez. Islem sayisi da var: bir ayarin
-        # islem KACIRIP kacirmadigi oradan gorulur.
-        # ⚠ TRAIN sutunu GERI KONDU. Cikarmistim ve "filtre IKI YARIDA DA
-        # kazaniyor mu" sorusu tablodan cevaplanamaz olmustu -- karar kuralimiz
-        # tam olarak o.
-        ekle(f"  {'ayar':<20s}{'islem':>6s}{'TE yil%':>9s}{'TE DD%':>7s}"
-             f"{'TR MAR':>8s}{'TE MAR':>8s}{'dTR':>7s}{'dTE':>7s}  hukum")
-        ekle("-" * 78)
-        sirali = sorted(
-            ((a, v) for a, v in olcum.items() if a != temel_ad),
-            key=lambda kv: -(kv[1]["test"]["mar"]))
-        gecen = []
-        for ad, v in sirali:
-            dtr = v["train"]["mar"] - t["train"]["mar"]
-            dte = v["test"]["mar"] - t["test"]["mar"]
-            if dtr > 0 and dte > 0:
-                h = "GECTI"
-                gecen.append((ad, dtr, dte, v))
-            elif dtr > 0 or dte > 0:
-                h = "tek yari"
-            else:
-                h = "kaldi"
-            n_top = v["train"]["n"] + v["test"]["n"]
-            ekle(f"  {DA.ETIKET.get(ad, ad):<20s}{n_top:>6d}"
-                 f"{v['test']['yillik']*100:>9.1f}{v['test']['maxdd']*100:>7.1f}"
-                 f"{v['train']['mar']:>8.2f}{v['test']['mar']:>8.2f}"
-                 f"{dtr:>+7.2f}{dte:>+7.2f}  {h}")
-        ekle("-" * 78)
-        if gecen:
-            ekle("  IKI YARIDA DA temelden iyi olanlar:")
-            for ad, dtr, dte, v in sorted(gecen, key=lambda x: -x[3]["test"]["mar"]):
+            ekle(f"  GRUP {gi}: {etiket[:84]}")
+            ekle(f"  taban = {DA.ETIKET.get(taban_ad, taban_ad)}  "
+                 f"({tv['train']['n']+tv['test']['n']} islem · "
+                 f"TR MAR {tv['train']['mar']:.2f} · TE MAR {tv['test']['mar']:.2f} · "
+                 f"TE yillik %{tv['test']['yillik']*100:.1f} · "
+                 f"TE maxDD %{tv['test']['maxdd']*100:.1f})")
+            ekle("  " + "-" * 88)
+            ekle(f"  {'ayar':<22s}{'islem':>6s}{'TE yil%':>9s}{'TE DD%':>7s}"
+                 f"{'aylik%':>8s}{'TR MAR':>8s}{'TE MAR':>8s}{'dTR':>7s}{'dTE':>7s}  hukum")
+            ekle("  " + "-" * 88)
+            for ad, v in sorted(uyeler, key=lambda kv: -kv[1]["test"]["mar"]):
+                dtr = v["train"]["mar"] - tv["train"]["mar"]
+                dte = v["test"]["mar"] - tv["test"]["mar"]
+                if ad == taban_ad:
+                    h = "<- TABAN"
+                elif dtr > 0 and dte > 0:
+                    h = "GECTI"
+                    tum_gecen.append((ad, v, dtr, dte))
+                elif dtr > 0 or dte > 0:
+                    h = "tek yari"
+                else:
+                    h = "kaldi"
                 _ay = (1 + v["test"]["yillik"]) ** (1 / 12) - 1
-                ekle(f"    {DA.ETIKET.get(ad, ad):<22s}"
-                     f"aylik %{_ay*100:5.1f}   "
-                     f"TEST yillik %{v['test']['yillik']*100:.0f}   "
-                     f"maxDD %{v['test']['maxdd']*100:.1f}")
+                ekle(f"  {DA.ETIKET.get(ad, ad):<22s}"
+                     f"{v['train']['n']+v['test']['n']:>6d}"
+                     f"{v['test']['yillik']*100:>9.1f}{v['test']['maxdd']*100:>7.1f}"
+                     f"{_ay*100:>8.2f}{v['train']['mar']:>8.2f}{v['test']['mar']:>8.2f}"
+                     f"{dtr:>+7.2f}{dte:>+7.2f}  {h}")
+
+        ekle("")
+        ekle("=" * 92)
+        if tum_gecen:
+            ekle("  KENDI GRUBUNDA IKI YARIDA DA GECENLER (en iyi TEST MAR once):")
+            for ad, v, dtr, dte in sorted(tum_gecen, key=lambda x: -x[1]["test"]["mar"]):
+                _ay = (1 + v["test"]["yillik"]) ** (1 / 12) - 1
+                ekle(f"    {DA.ETIKET.get(ad, ad):<22s} aylik %{_ay*100:5.2f}   "
+                     f"TE MAR {v['test']['mar']:.2f}   "
+                     f"maxDD %{v['test']['maxdd']*100:.1f}   "
+                     f"dTR {dtr:+.2f} / dTE {dte:+.2f}")
         else:
-            ekle("  Hicbiri iki yarida da gecemedi.")
-    ekle("=" * 78)
+            ekle("  Hicbir grupta iki yarida da gecen ayar yok.")
+        ekle("  Not: TRAIN 2023-04..2024-12 | TEST 2025-01..2026-07")
+        ekle("  Karar kurali: kendi maliyet grubunun tabanina gore IKI yarida da iyi.")
+    ekle("=" * 92)
 
     metin = "\n".join(satirlar)
     print("\n" + metin)
