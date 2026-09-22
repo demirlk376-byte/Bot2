@@ -102,6 +102,8 @@ def kurulumlari_bul(
     *,
     k: int = VARSAYILAN_K,
     supurme_sart: bool = True,
+    mss_sart: bool = True,     # False -> YAPI KIRILIMI ARANMAZ (null kolu)
+    null_gecikme: int = 4,     # null kolunda s'den kac bar sonra girilir
     fvg_sart: bool = True,
     displacement_atr: float = 0.0,
     fvg_derinlik: float = 0.0,
@@ -156,14 +158,27 @@ def kurulumlari_bul(
             if ref < 0:
                 continue
             ref_seviye = float(high[ref]) if yon > 0 else float(low[ref])
-            m = -1
-            for t in range(s + 1, min(s + 1 + mss_bar, n)):
-                if (yon > 0 and close[t] > ref_seviye) or \
-                   (yon < 0 and close[t] < ref_seviye):
-                    m = t
-                    break
-            if m < 0:
-                continue
+            if mss_sart:
+                m = -1
+                for t in range(s + 1, min(s + 1 + mss_bar, n)):
+                    if (yon > 0 and close[t] > ref_seviye) or \
+                       (yon < 0 and close[t] < ref_seviye):
+                        m = t
+                        break
+                if m < 0:
+                    continue
+            else:
+                # ⚠ NULL KOLU -- GEOMETRISI ESLESTIRILMIS.
+                # Ilk surumde m = s yazmistim: giris bari supurme barinin
+                # KENDISI oluyordu, yani giris yapisal SL'e cok yakin dusuyor,
+                # risk paydasi sifira gidiyor ve R patliyordu (olculdu: PF 0.15,
+                # R = -3.47 +- 6.66 -- bu bir olcum degil, payda artefaktidir).
+                # Dogrusu: MSS'in ZAMANLAMASINI koru, BILGISINI kaldir. Kurulum
+                # yine s'den `null_gecikme` bar sonra kurulur ama hicbir yapi
+                # sarti aranmaz.
+                m = s + null_gecikme
+                if m >= n:
+                    continue
 
             # --- 3) DISPLACEMENT (istege bagli): MSS bari guclu olmali
             if displacement_atr > 0:

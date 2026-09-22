@@ -202,7 +202,8 @@ def kos_squeeze(sembol: str, **kw):
 YAPI_MAX_BAR = 48         # MAX_HOLD_CANDLES = 48 x 1h
 
 
-def kos_yapi(sembol: str, dolum_payi_atr: float = 0.0, **kw):
+def kos_yapi(sembol: str, dolum_payi_atr: float = 0.0,
+              yon_aynala: bool = False, **kw):
     """⚠ LIMIT GIRISTE KAYMA YOK. Bu varsayim degil, bu depoda CANLIDA
     olculdu: limitle giren kollar (fvg/orb/sr) 0.0bp, piyasa emriyle giren
     donchian +13.4bp. Zincirin en guclu argumani bu -- o yuzden dolum
@@ -225,6 +226,18 @@ def kos_yapi(sembol: str, dolum_payi_atr: float = 0.0, **kw):
         gorulen.add((K.mss_bar, K.yon))
         if K.mss_bar <= mesgul_bitis:          # sembol basina TEK pozisyon
             continue
+        if yon_aynala:
+            # ⚠ YON KONTROLU. GIRIS FIYATI AYNI KALIR; yalnizca yon ve onunla
+            # birlikte SL/TP aynalanir. Risk buyuklugu birebir korunur, yani
+            # payda artefakti imkansiz. Kurulum YON bilgisi tasimiyorsa bu kol
+            # da ayni edge'i vermeli -- verirse "edge" yonden degil, limit
+            # girisin geometrisinden geliyordur.
+            import dataclasses
+            _risk = abs(K.giris - K.sl)
+            _y = -K.yon
+            K = dataclasses.replace(K, yon=_y,
+                                    sl=K.giris - _y * _risk,
+                                    tp=K.giris + _y * 2.0 * _risk)
 
         # --- dolum
         if K.limit_mi:
@@ -280,9 +293,21 @@ def kos_yapi(sembol: str, dolum_payi_atr: float = 0.0, **kw):
         out.append({"r": r - maliyet_bp / 1e4 * giris / risk, "sebep": sb,
                     "yon": K.yon, "bar": j - gi, "ikili": ikili,
                     "limit": K.limit_mi, "stop_pct": 100 * risk / giris,
-                    "maliyet_r": maliyet_bp / 1e4 * giris / risk})
+                    "maliyet_r": maliyet_bp / 1e4 * giris / risk,
+                    "ts": d.index[gi]})
         mesgul_bitis = j
     return out
 
 
 VARS_RR = 2.0
+
+
+# TRAIN/TEST bolmesi -- bu deponun KARAR KURALI: bir fikir ancak IKI yarida da
+# iyiyse kabul edilir. Tek yarida parlayan sey gecmise uydurulmustur.
+BOLME = pd.Timestamp("2025-01-01", tz="UTC")
+
+
+def yarilar(islemler):
+    tr = [t for t in islemler if t["ts"] < BOLME]
+    te = [t for t in islemler if t["ts"] >= BOLME]
+    return tr, te
