@@ -63,7 +63,16 @@ class SqueezeStrategy:
         sl_atr: float = 2.0,
         rr: float = 2.5,
         mtf_filter: bool = True,
+        vol_mult: float = 0.0,
+        vol_lookback: int = 20,
     ):
+        # ⚠ HACIM KAPISI (varsayilan 0 = KAPALI, davranis aynen eski).
+        # Bu kol hacme HIC bakmiyordu. Donchian'da olculdu: dusuk hacimli
+        # kirilim sahte cikma egiliminde ve hacim esigi TEST MAR'i 1.47'den
+        # 3.64'e cikardi. Squeeze de bir KIRILIM kolu (sikismadan cikis),
+        # ayni mantik gecerli olmali -- ama SINANMADI, o yuzden kapali geliyor.
+        self._vol_mult = float(vol_mult)
+        self._vol_lookback = max(2, int(vol_lookback))
         self._kc_period = kc_period
         self._kc_mult = kc_mult
         self._bb_period = bb_period
@@ -149,6 +158,25 @@ class SqueezeStrategy:
                     f"MTF filter: 1h={'+' if direction_1h==1 else '-'} "
                     f"4h={'+' if dir_4h==1 else '-'} (conflict)"
                 )
+
+        # ⚠ HACIM TEYIDI. Sikismadan cikis barinin hacmi, ONDAN ONCEKI
+        # `vol_lookback` barin ortalamasinin `vol_mult` katindan buyuk olmali.
+        # Kimse almazken olusan cikis, coğunlukla gurultudur.
+        if self._vol_mult > 0:
+            if "volume" not in df.columns:
+                return SqueezeSignal(0, 0.0, "hacim verisi yok")
+            v = df["volume"].to_numpy(dtype="float64")
+            bas = -(self._vol_lookback + 1)
+            if -bas > len(v):
+                return SqueezeSignal(0, 0.0, "hacim gecmisi yetersiz")
+            ort = float(np.mean(v[bas:-1]))
+            if not np.isfinite(ort) or ort <= 0:
+                return SqueezeSignal(0, 0.0, "hacim ortalamasi sifir")
+            oran = float(v[-1]) / ort
+            if oran < self._vol_mult:
+                return SqueezeSignal(
+                    0, 0.0,
+                    f"hacim zayif ({oran:.2f}x < {self._vol_mult:.2f}x)")
 
         entry = float(close.iloc[-1])
         sl    = entry - direction_1h * self._sl_atr * atr_val

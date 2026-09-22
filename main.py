@@ -1972,6 +1972,8 @@ async def main() -> None:
                     sl_atr=config.strategy.squeeze_sl_atr,
                     rr=config.strategy.squeeze_rr,
                     mtf_filter=config.strategy.squeeze_mtf,
+                    vol_mult=config.strategy.squeeze_vol_mult,
+                    vol_lookback=config.strategy.squeeze_vol_lookback,
                 )
                 if config.strategy.squeeze_enabled
                 and (

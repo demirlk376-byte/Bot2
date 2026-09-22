@@ -25,6 +25,7 @@ Kullanım:
   py ikiz_paralel.py fmal          → FILTRELER x gercek maliyet, 11 surec
   py ikiz_paralel.py sonrisk       → SON KOSU: iki aday x risk, 8 surec
   py ikiz_paralel.py coin          → COIN GENISLETME, 8 surec (~65 dk!)
+  py ikiz_paralel.py sonfiltre     → hacim esigi ucu + SQUEEZE hacmi, 8 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -402,7 +403,28 @@ COIN_TARAMA = [
                        MAX_POSITIONS="10")),
 ]
 
-ETIKET_ADI = {"c12": "12 coin (taban)", "c19": "19 coin", "c31": "31 coin",
+# ⚠ IKI ACIK NOKTA. (1) Hacim esiginde SINIRDAYIZ: 1.5/2.0/2.5 denendi, en
+# iyisi 2.5 -- yani test edilen araligin UCUNDA. Risk ekseninde uyardigim
+# hatanin aynisi: MAR kenarda hala yukseliyorsa optimum DISARIDADIR.
+# (2) Filtreyi yalniz DONCHIAN'a uyguladik. Squeeze 424 islem, ort R +0.20 --
+# donchian'dan IYI kenar ve hacme HIC bakmiyordu. O kapi da eklendi.
+SON_FILTRE_TARAMA = [
+    ("d25",      dict(MALIYET, **KAZANAN)),                        # TABAN: bugunku kazanan
+    ("d30",      dict(MALIYET, RISK_SCALE="1.75", DONCHIAN_VOL_MULT="3.0")),
+    ("d35",      dict(MALIYET, RISK_SCALE="1.75", DONCHIAN_VOL_MULT="3.5")),
+    ("d25s15",   dict(MALIYET, **KAZANAN, SQUEEZE_VOL_MULT="1.5")),
+    ("d25s20",   dict(MALIYET, **KAZANAN, SQUEEZE_VOL_MULT="2.0")),
+    ("d25s25",   dict(MALIYET, **KAZANAN, SQUEEZE_VOL_MULT="2.5")),
+    ("d30s20",   dict(MALIYET, RISK_SCALE="1.75", DONCHIAN_VOL_MULT="3.0",
+                      SQUEEZE_VOL_MULT="2.0")),
+    ("s20",      dict(MALIYET, RISK_SCALE="1.75", SQUEEZE_VOL_MULT="2.0")),  # yalniz squeeze
+]
+
+ETIKET_ADI = {"d25": "TABAN don2.5", "d30": "don3.0", "d35": "don3.5",
+              "d25s15": "don2.5+sq1.5", "d25s20": "don2.5+sq2.0",
+              "d25s25": "don2.5+sq2.5", "d30s20": "don3.0+sq2.0",
+              "s20": "yalniz sq2.0",
+              "c12": "12 coin (taban)", "c19": "19 coin", "c31": "31 coin",
               "c31p10": "31 coin · 10 koltuk", "c31p14": "31 coin · 14 koltuk",
               "c31p10k1": "31c · 10k · korel1", "c31p10r28": "31c · 10k · %2.8",
               "c19p10": "19 coin · 10 koltuk",
@@ -593,11 +615,12 @@ def main():
                   "sinir": SINIR_TARAMA,
                   "fmal": FILTRE_MALIYET_TARAMA,
                   "sonrisk": SON_RISK_TARAMA,
-                  "coin": COIN_TARAMA}[hangi]
+                  "coin": COIN_TARAMA,
+                  "sonfiltre": SON_FILTRE_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
-              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet, sinir, fmal, sonrisk, coin)")
+              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet, sinir, fmal, sonrisk, coin, sonfiltre)")
         return
 
     print(f"\n{'='*84}")
