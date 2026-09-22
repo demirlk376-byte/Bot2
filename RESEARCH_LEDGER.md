@@ -199,6 +199,33 @@ kazanç yok.
 işlem 1013 → 705 ve TE MAR **1.80**'e çöktü. Donchian'da işe yarayan mekanizma
 bu kolda yaramıyor. Kod kalıyor (varsayılan kapalı), eksen kapandı.
 
+
+## 2026-09-22 — İKİZ mum-içi belirsizliği ÖLÇÜLDÜ: 1752 işlemde 1 (%0.06)
+
+**Endişe:** bir 1h mumun içinde hem stop hem hedefe dokunulursa hangisinin
+önce geldiğini bilemiyoruz; üretim kodu STOP'u kazandırıyor (temkinli),
+canlıda ise borsa gerçek zaman sırasına bakar.
+
+**Ölçüm** (`ikiz_duzeltilmis.db`, 1752 kapanmış işlem, her işlemin tutuş
+süresindeki tüm 1h mumlar tarandı):
+
+| | |
+|---|---|
+| kapanmış işlem | 1752 |
+| **aynı mumda hem SL hem TP** | **1 (%0.06)** |
+
+**Sonuç: bu açık pratikte yok.** Sebebi geometrik — stop 2×ATR, hedef 4×ATR
+(RR 2.0) karşı yönde; tek bir 1h mumun ikisini birden kapsaması ~6×ATR
+genişlik ister.
+
+**Bunun üzerine 15 dakikalık veri çekmeyi önermiştim — GEREKÇESİ ÇÜRÜDÜ.**
+15m verinin hâlâ değeri var ama başka şeyler için: MFE/MAE analizi (test
+protokolü §9) ve "15M market structure" filtresi. Sadakat için değil.
+
+**Kayıt:** İKİZ mum okuma tarafında gerçeğe sadıktır. Mumlar sırayla gelir,
+gelecek görünmez (4 nedensellik testi bekçi), stop/hedef mumun HIGH/LOW'uyla
+sınanır (`main.py:205`). Kalan belirsizlik ölçüldü ve ihmal edilebilir.
+
 ## 🔒 MÜHÜRLÜ (denendi, geçemedi)
 
 **2026-09-20/21 · İKİZ, 1752 işlem, TRAIN 2023-04→2024-12 / TEST 2025-01→2026-07**

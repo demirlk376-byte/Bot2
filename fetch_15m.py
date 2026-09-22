@@ -3,15 +3,12 @@ fetch_15m.py — VPS'te çalıştır: 12 canlı coin için 15 DAKİKALIK mum ge�
 çeker, data/'ya kaydeder. (fetch_funding.py ile aynı iş akışı: konteyner
 MEXC'e erişemiyor, VPS erişiyor; CSV'ler commit'lenip çevrimdışı kullanılıyor.)
 
-NEDEN GEREKLİ — İKİZ'in bilinen iki sınırını kapatır:
+⚠ ÖNCE "aynı mumda hem stop hem hedef" belirsizliğini kapatmak için gerekli
+demiştim; ÖLÇÜLDÜ ve GEREKÇE ÇÜRÜDÜ: 1752 işlemde o durum yalnızca 1 kez
+oluşuyor (%0.06). İKİZ mum okuma tarafında zaten sadık. Geriye tek gerçek
+gerekçe kaldı:
 
-1. AYNI MUMDA HEM STOP HEM HEDEF. Şu an 1h çözünürlükte hangisinin önce
-   geldiğini bilemiyoruz ve üretim kodu STOP'u kazandırıyor (temkinli).
-   15m ile vakaların çoğu çözülür -> backtest gerçeğe yaklaşır.
-   ⚠ Bu düzeltme sonuçları YUKARI da AŞAĞI da taşıyabilir; şu anki hal
-   temkinli olduğu için muhtemelen yukarı.
-
-2. MFE/MAE (test protokolü §9). "Kaybeden işlemlerin kaçı önce +1R gördü?"
+1. MFE/MAE (test protokolü §9). "Kaybeden işlemlerin kaçı önce +1R gördü?"
    sorusu 1h barlarla kaba, 15m ile anlamlı cevaplanır. Stop/BE/TP tasarımı
    bu analize dayanır.
 
