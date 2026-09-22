@@ -6023,3 +6023,64 @@ Geçmişte iyi olan coin gelecekte iyi olmuyor; rastgeleden bile hafif kötü.
 **METODOLOJİK NOT:** Bu, İKİZ'le alınan ilk hüküm ve fikri DOĞRU şekilde öldürdü.
 Tüm veriye bakıp "BNB kötü, kapat" deseydik kullanıcıya zarar ettirecektik.
 TRAIN/TEST ayrımı olmasa bu tuzağa düşülürdü.
+
+---
+
+## 2026-09-22 · GİRİŞ MODU: kırılımın BAŞARISIZLIĞINI trade etmek — REDDEDİLDİ
+
+Kullanıcının gözlemi: ham karnede SL oranı **%51.4**. "Kırılımların yarısından
+fazlası başarısızsa, o havuz ters yönde bilgi taşıyor olabilir mi? Filtre
+eklemeye devam etmek yerine edge'i yeniden kurmak daha doğru olur."
+
+Doğru teşhis: o güne kadar denenen ~60 ayarın hepsi **filtreydi** (girişi
+elemek). Bu ikisi **girişi değiştiriyor** — farklı bir eksen.
+
+### Yeni ayarlar
+`DONCHIAN_MOD = kirilim | basarisiz | supurme` · `DONCHIAN_TERS_TREND`
+- `basarisiz`: önceki bar kanal dışına KAPANDI, şu anki bar geri döndü → TERS gir
+- `supurme` : şu anki barın FİTİLİ dışarı taştı ama KAPANIŞ içeride → TERS gir
+
+Varsayılan `kirilim` → canlı davranış birebir aynı (test ile kanıtlı).
+Yazım hatası **ValueError** verir; sessizce tabana düşseydi taramada
+"fark yok" diye YANLIŞ rapor verirdik.
+
+### YENİ ARAÇ: `ikiz_on_eleme.py`
+Sinyal seviyesinde, 4h ileri yürüyüş, ölçülen 15.85bp kayma, aynı SL/TP
+mekaniği. **Karar aracı DEĞİL** — sermaye, pozisyon kısıtı, soğuma, diğer
+kollar yok. İşi: İKİZ'de 50 dk harcamaya değmeyen fikri saniyede elemek.
+
+**KALİBRASYON** (İKİZ'in zaten bildiği iki karar sorularak):
+| ayar | İKİZ hükmü | ön eleme | uyum |
+|---|---|---|---|
+| hacim 2.5x | GEÇTİ | +0.0999 > taban +0.0738 | ✓ |
+| chase 1.0 ATR | KALDI | +0.0640 < taban +0.0738 | ✓ |
+
+### ÖLÇÜM (8 coin, 2023-04 → 2026-07)
+| mod | n | WR | PF | R/işlem (%95 GA) | TP% | SL% |
+|---|---|---|---|---|---|---|
+| **kirilim (bugünkü)** | 1249 | 42.4 | **1.13** | **+0.0738** | 30.9 | 52.4 |
+| basarisiz · trend | 147 | 43.5 | 1.01 | +0.0050 ±0.1931 | 23.1 | 51.0 |
+| basarisiz · gevşek | 781 | 38.9 | 0.86 | −0.0797 ±0.0832 | 21.0 | 56.1 |
+| supurme · trend | 385 | 40.0 | 0.91 | −0.0486 ±0.1182 | 21.6 | 52.5 |
+| **supurme · gevşek** | **1789** | 36.7 | **0.79** | **−0.1251 ±0.0547** | 21.0 | 57.9 |
+| supurme · YÖN ÇEVRİLMİŞ | 1575 | 38.7 | 1.06 | +0.0338 ±0.0650 | 27.6 | 54.5 |
+
+### HÜKÜM — eksen KAPANDI
+En çok işlem üreten satırın güven aralığı **sıfırı içermiyor**: bu "ölçemedik"
+değil, "ölçtük ve kaybettiriyor". Mekanizma: kırılım fade edilince
+TP %30.9 → %21.0 düşüyor, SL %52.4 → %57.9 çıkıyor — fiyat kırılım yönünde
+gitmeye devam ediyor.
+
+Yönü çevirip aynı barı kırılım yönünde almak da tabanın altında (+0.0338 vs
++0.0738, GA sıfırı içeriyor). Yani **süpürme/başarısızlık barı, hangi yönden
+bakılırsa bakılsın, temiz kırılım kapanışından daha kötü bir giriş.**
+Kırılım kapanışı bilgiyi TAŞIYAN olay; başarısızlık havuzu ters yönde bilgi
+TAŞIMIYOR.
+
+Tampon ve chase'te de aynı simetri çıkmıştı (ikisi birbirinin tersi, ikisi de
+başarısız). Üçüncü kez: bu değişken hiçbir yönde bilgi taşımıyor.
+
+### ÖN KAYIT — İKİZ teyidi (koşuyor)
+`IKIZ.bat → G`. Beklenti: dört ters satır da İKİZ'de tabanın altında kalacak.
+İKİZ ön elemeyle ÇELİŞİRSE bu "kabul" değildir; iki araçtan birinde hata var
+demektir, önce o araştırılır.
