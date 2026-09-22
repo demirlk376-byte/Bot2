@@ -2029,6 +2029,8 @@ async def main() -> None:
                     fitil_oran=config.strategy.donchian_fitil_oran,
                     chase_atr=config.strategy.donchian_chase_atr,
                     atr_genisleme=config.strategy.donchian_atr_genisleme,
+                    mod=config.strategy.donchian_mod,
+                    ters_trend=config.strategy.donchian_ters_trend,
                 )
                 if config.strategy.donchian_enabled
                 and (

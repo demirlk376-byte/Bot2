@@ -73,6 +73,19 @@ DEFAULT_KAPANIS_KONUM = 0.0 # 1.5 kapanis mumun neresinde (long icin ust)
 DEFAULT_FITIL_ORAN = 1.0    # 1.5 ters fitil/aralik en fazla
 DEFAULT_CHASE_ATR = 0.0     # 1.9 seviyeden UZAKLIK en fazla kac ATR (0=kapali)
 DEFAULT_ATR_GENISLEME = 0.0 # 1.10 ATR(simdi)/ATR(20 ort) en az
+# ⚠ GIRIS MODU — kirilimi degil KIRILIMIN BASARISIZLIGINI trade etmek.
+# Gerekce: ham karne SL oraninin %51.4 oldugunu gosterdi, yani kirilimlarin
+# YARIDAN FAZLASI basarisiz. O havuz ters yonde bilgi tasiyor mu?
+#   "kirilim"  : bugunku davranis -- kanal disina KAPANIS -> o yone gir
+#   "basarisiz": onceki bar disina kapandi, SU ANKI bar iceri dondu -> TERS gir
+#   "supurme"  : su anki barin FITILI disari tasti ama KAPANIS iceride -> TERS gir
+#                (likidite supurme + reclaim; fitil seviyeyi deliyor, kapanis
+#                 geri aliyor)
+DEFAULT_MOD = "kirilim"
+MODLAR = ("kirilim", "basarisiz", "supurme")
+# Ters modlarda EMA200 trend filtresi YENI yone uygulanir. Kapatmak icin
+# ters_trend=False: "basarisiz kirilim trendin tersine de olsa gir" demek.
+DEFAULT_TERS_TREND = True
 # Max hold in PRIMARY-tf (1h) candles: 30 x 4h bars = 120h (5 days).
 MAX_HOLD_1H_CANDLES = 120
 
@@ -111,6 +124,8 @@ class DonchianStrategy:
         fitil_oran: float = DEFAULT_FITIL_ORAN,
         chase_atr: float = DEFAULT_CHASE_ATR,
         atr_genisleme: float = DEFAULT_ATR_GENISLEME,
+        mod: str = DEFAULT_MOD,
+        ters_trend: bool = DEFAULT_TERS_TREND,
     ):
         self._channel = channel
         self._rr = rr
@@ -128,12 +143,20 @@ class DonchianStrategy:
         self._fitil_oran = float(fitil_oran)
         self._chase_atr = float(chase_atr)
         self._atr_genisleme = float(atr_genisleme)
+        self._mod = str(mod).strip().lower() or "kirilim"
+        if self._mod not in MODLAR:
+            # .env'de yazim hatasi SESSIZCE bugunku davranisa dusmemeli;
+            # dusseydi taramada "fark yok" diye YANLIS rapor verirdik.
+            raise ValueError(
+                f"bilinmeyen DONCHIAN_MOD={mod!r} -- gecerli: {sorted(MODLAR)}")
+        self._ters_trend = bool(ters_trend)
 
     def _min_bars(self) -> int:
         # Need the channel lookback plus enough history for EMA200 to settle.
         # Teyit/retest filtreleri kirilim barini GERIYE kaydirdigi icin o kadar
         # ek bar, hacim filtresi de kendi geriye bakisi kadar bar ister.
-        gecikme = max(self._confirm_bars, self._retest_bars)
+        gecikme = max(self._confirm_bars, self._retest_bars,
+                      1 if self._mod == "basarisiz" else 0)
         gerek = self._channel + 2 + gecikme
         if self._vol_mult > 0:
             gerek = max(gerek, self._channel + 2 + gecikme + self._vol_lookback)
@@ -169,6 +192,10 @@ class DonchianStrategy:
         #     otesinde kapanmis olmali.
         # Her iki halde de kanal, kirilim barindan ONCEKI barlardan kuruluyor;
         # kirilim bari da sonrasi da kanala DAHIL DEGIL -> gelecege bakis yok.
+        if self._mod in ("basarisiz", "supurme"):
+            return self._ters_mod(df, high, low, close, c, ema_now, buf,
+                                  sl_dist, atr_val)
+
         if self._retest_bars > 0:
             adaylar = range(1, self._retest_bars + 1)
         else:
@@ -256,6 +283,63 @@ class DonchianStrategy:
             )
 
         return DonchianSignal(0, 0.0, son_sebep)
+
+    def _ters_mod(self, df, high, low, close, c, ema_now, buf, sl_dist, atr_val):
+        """Kirilimin BASARISIZLIGINI trade et.
+
+        basarisiz: onceki bar kanal disina KAPANDI, su anki bar geri DONDU
+        supurme  : su anki barin FITILI disari tasti ama KAPANIS iceride
+
+        Iki halde de yon TERSTIR: yukari kirilim basarisizsa SHORT.
+        SL/TP yine ATR capali (sistemin geri kalaniyla ayni) -- boylece R
+        karsilastirilabilir kalir ve yeni bir degisken girmez."""
+        if self._mod == "basarisiz":
+            # kanal, basarisiz kirilim barindan ONCEKI barlardan kurulur
+            ch, cl = self._kanal(high, low, 1)
+            if ch is None or ch <= cl:
+                return DonchianSignal(0, 0.0, "degenerate channel")
+            onceki = float(close[-2])
+            if onceki > ch + buf and c <= ch:
+                yon, seviye = -1, ch          # yukari kirilim COKTU -> SHORT
+            elif onceki < cl - buf and c >= cl:
+                yon, seviye = 1, cl           # asagi kirilim COKTU -> LONG
+            else:
+                return DonchianSignal(0, 0.0, "kirilim basarisizligi yok")
+            etiket = "basarisiz"
+        else:
+            ch, cl = self._kanal(high, low, 0)
+            if ch is None or ch <= cl:
+                return DonchianSignal(0, 0.0, "degenerate channel")
+            if float(high[-1]) > ch + buf and c <= ch:
+                yon, seviye = -1, ch          # fitil ustu supurdu, kapanis geri
+            elif float(low[-1]) < cl - buf and c >= cl:
+                yon, seviye = 1, cl
+            else:
+                return DonchianSignal(0, 0.0, "supurme+reclaim yok")
+            etiket = "supurme"
+
+        if self._ters_trend:
+            if (yon == 1 and not c > ema_now) or (yon == -1 and not c < ema_now):
+                return DonchianSignal(0, 0.0, "EMA200 trend hizasi yok")
+
+        for f in (lambda: self._hacim_tamam(df, 0),
+                  lambda: self._obv_tamam(df, 0, yon),
+                  lambda: self._adx_tamam(df, 0),
+                  lambda: self._atr_genisleme_tamam(df, 0, atr_val)):
+            tamam, neden = f()
+            if not tamam:
+                return DonchianSignal(0, 0.0, neden)
+
+        sl = c - yon * sl_dist
+        tp = c + yon * self._rr * sl_dist
+        ad = "long" if yon == 1 else "short"
+        return DonchianSignal(
+            direction=yon, strength=0.80,
+            reason=(f"Donchian {ad} [{etiket}]: close {c:.0f} vs seviye "
+                    f"{seviye:.0f} (EMA200 {ema_now:.0f})"),
+            sl_price=sl, tp_price=tp, entry_price=c,
+            channel_high=ch, channel_low=cl,
+        )
 
     # -- sahte-kirilim filtrelerinin yardimcilari -------------------------
 

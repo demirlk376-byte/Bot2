@@ -28,6 +28,7 @@ Kullanım:
   py ikiz_paralel.py sonfiltre     → hacim esigi ucu + SQUEEZE hacmi, 8 surec
   py ikiz_paralel.py sqmaker       → SQUEEZE maker + pahali coin, 8 surec
   py ikiz_paralel.py protokol      → TEST PROTOKOLU: mum kalitesi/chase/ATR, 8 surec
+  py ikiz_paralel.py mod           → GIRIS MODU: basarisiz kirilim/supurme, 5 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -461,6 +462,35 @@ SQZ_TARAMA = [
 #   1.5  mum kalitesi  — govde/aralik, kapanis konumu, ters fitil
 #   1.9  chase        — ⚠ tamponun TERSI: "en fazla su kadar uzaklassin"
 #   1.10 ATR genislemesi
+# ⚠ GIRIS MODU TARAMASI — filtre EKLEMIYORUZ, GIRISI degistiriyoruz.
+# Gerekce: ham karne SL oranini %51.4 gosterdi; "kirilimlarin yarisindan
+# fazlasi basarisiz, o havuz ters yonde bilgi tasiyor mu?" sorusu.
+#
+# ON KAYIT (sonuclari gormeden yazildi, 2026-09-22):
+#   Sinyal seviyesindeki on eleme (ikiz_on_eleme.py, 8 coin, 3.3 yil) DORT
+#   ters satirin da tabanin ALTINDA oldugunu soyluyor; en cok islem ureten
+#   satir (supurme/gevsek, n=1789) R=-0.1251 %95 GA [-0.180,-0.070], yani
+#   sifiri ICERMEYEN negatif. On eleme, IKIZ'in bilinen iki kararini
+#   (hacim2.5 GECTI / chase1.0 KALDI) dogru bilerek kalibre edildi.
+#   BEKLENTI: dort satir da IKIZ'de de tabanin altinda kalacak.
+#   KARAR KURALI: bir mod yalnizca kendi maliyet grubunun tabanina gore
+#   TRAIN ve TEST yarilarinin IKISINDE de daha iyiyse kabul edilir.
+#   Eger IKIZ on elemeyle CELISIRSE bu "kabul" degil, iki aractan birinde
+#   hata var demektir -- once o arastirilir.
+MOD_TARAMA = [
+    ("m_taban",   dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
+    # fikir 1: kirilimin BASARISIZLIGI (onceki bar disari kapandi, su anki geri dondu)
+    ("m_bas",     dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                       DONCHIAN_MOD="basarisiz")),
+    ("m_bas_gv",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                       DONCHIAN_MOD="basarisiz", DONCHIAN_TERS_TREND="false")),
+    # fikir 2: likidite supurmesi + reclaim (fitil disari, kapanis iceri)
+    ("m_sup",     dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                       DONCHIAN_MOD="supurme")),
+    ("m_sup_gv",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                       DONCHIAN_MOD="supurme", DONCHIAN_TERS_TREND="false")),
+]
+
 PROTOKOL_TARAMA = [
     ("p_taban",   dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
     # 1.5 mum kalitesi — belgenin onerdigi esikler ve daha gevsegi
@@ -689,7 +719,8 @@ def main():
                   "coin": COIN_TARAMA,
                   "sonfiltre": SON_FILTRE_TARAMA,
                   "sqmaker": SQZ_TARAMA,
-                  "protokol": PROTOKOL_TARAMA}[hangi]
+                  "protokol": PROTOKOL_TARAMA,
+                  "mod": MOD_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
