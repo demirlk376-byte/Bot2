@@ -106,6 +106,7 @@ def kurulumlari_bul(
     mss_olay: bool = False,    # True -> MSS bir OLAY (yeni kirilim); False -> DURUM
     tek_kok: bool = False,     # True -> kok swing YALNIZCA onaylandigi barda aranir
     sabit_sl_atr: float = 0.0, # >0 -> YAPISAL SL YERINE duz ATR stop (KONTROL)
+    ref_or: bool = False,      # True -> TEK NET KURAL: son penceredeki referanslarin EN ZAYIFI
     null_gecikme: int = 4,     # null kolunda s'den kac bar sonra girilir
     fvg_sart: bool = True,
     displacement_atr: float = 0.0,
@@ -131,6 +132,18 @@ def kurulumlari_bul(
     # gecerli bir supurme bari olabilir. Once n-2 yazmistim; bu, seriyi
     # kesip 'gelecege bakis' testi yaparken son kurulumu KAYBEDIYORDU ve
     # testi sahte bir sizinti alarmi veriyordu.
+    if ref_or:
+        # ⚠ TEK NET KURAL olarak yazilmis hali. Coklu tarama, ayni MSS bari
+        # icin bircok (kok, referans) ikilisi deniyor ve "en az biri asildi"
+        # anlamina geliyordu -- yani penceredeki referanslarin EN ZAYIFI.
+        # Burada o kural DOGRUDAN ifade ediliyor: numaralandirma yok, tek
+        # kosul. Coklu taramanin +0.20'si GERCEK bir kuraldan geliyorsa bu kol
+        # da onu uretmeli; uretmiyorsa edge numaralandirma artefaktiydi.
+        return _ref_or_kurulumlari(
+            high, low, close, atr, k=k, mss_bar=mss_bar, bekle_bar=bekle_bar,
+            rr=rr, sl_tampon=sl_tampon, bas=bas, seviye_atr=sahte_seviye_atr,
+            sabit_sl_atr=sabit_sl_atr)
+
     for s in range(max(bas, k + 3), n - 1):
         for yon in (1, -1):
             # --- 1) SUPURME: son onayli swing'in fitille delinip geri alinmasi
@@ -429,3 +442,42 @@ class YapiStrategy:
                                    "tp": giris + yon * self._rr * risk, "yas": 0})
 
         return YapiSignal(reason=f"aday {len(self._adaylar)} / bekleyen {len(self._bekleyen)}")
+
+
+def _ref_or_kurulumlari(high, low, close, atr, *, k, mss_bar, bekle_bar,
+                        rr, sl_tampon, bas, seviye_atr, sabit_sl_atr):
+    """Coklu taramanin ifade ettigi kuralin TEK KOSUL halindeki yazimi.
+
+    m barinda long kurulumu:
+      son `mss_bar` bar icindeki HER s icin, s'de gecerli olan swing high
+      referansi toplanir (o s'de swing low da `mss_bar`'dan taze olmak sarti).
+      Kosul: close[m] bu referanslarin EN DUSUGUNUN uzerinde.
+    Short aynasi. SL duz ATR, TP sabit RR.
+    """
+    n = len(close)
+    son_sh, son_sl = onayli_swingler(high, low, k)
+    cikti: list[Kurulum] = []
+    for m in range(max(bas, k + 3) + 1, n):
+        for yon in (1, -1):
+            refler = []
+            for s in range(max(0, m - mss_bar), m):
+                kok = son_sl[s] if yon > 0 else son_sh[s]
+                ref = son_sh[s] if yon > 0 else son_sl[s]
+                if kok < 0 or ref < 0 or s - kok > mss_bar:
+                    continue
+                refler.append(float(high[ref]) if yon > 0 else float(low[ref]))
+            if not refler:
+                continue
+            esik = min(refler) if yon > 0 else max(refler)
+            if not ((close[m] > esik) if yon > 0 else (close[m] < esik)):
+                continue
+            if not atr[m] > 0:
+                continue
+            giris = float(close[m]) - yon * seviye_atr * atr[m]
+            sl = float(close[m]) - yon * (sabit_sl_atr or 2.0) * atr[m]
+            risk = (giris - sl) if yon > 0 else (sl - giris)
+            if not risk > 0:
+                continue
+            cikti.append(Kurulum(yon, giris, sl, giris + yon * rr * risk,
+                                 True, m, m, -2, min(m + bekle_bar, n - 1)))
+    return cikti
