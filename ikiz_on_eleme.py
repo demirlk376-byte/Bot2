@@ -324,3 +324,71 @@ def yarilar(islemler):
     tr = [t for t in islemler if t["ts"] < BOLME]
     te = [t for t in islemler if t["ts"] >= BOLME]
     return tr, te
+
+
+# ==========================================================================
+#  URETIM KOLU KOSUCUSU — ARTIK OLCUM SADECE BURADAN
+# ==========================================================================
+# ⚠ SURECI TERSINE CEVIRDIK (2026-09-22). Once offline tarayici yazip sonra
+# kol yazmak, bir gunde UC ARTEFAKT uretti:
+#   1) coklu-kok numaralandirmasi  2) mum ici TP sirasi  3) olay/durum karisikligi
+# Ucunun de ortak sebebi ayni: tarayici, CANLIDA KOSAMAYACAK seyleri "olcmeye"
+# izin veriyordu. Bundan sonra olcum YALNIZCA YapiStrategy uzerinden yapilir --
+# yani ancak gercekten kodlanabilen bir sey olculebilir. Offline tarayici
+# yalnizca referans olarak kalir.
+
+def kos_kol(sembol: str, dolum_payi_atr: float = 0.05, yon_aynala: bool = False,
+            pencere: int = 400, **kw):
+    """YapiStrategy'yi bar bar kosturur ve ayni muhafazakar muhasebeyi uygular."""
+    import dataclasses
+    from strategies.yapi import YapiStrategy
+    d = _birsaat(sembol)
+    if d is None or len(d) < 500:
+        return []
+    tr = pd.concat([d.high - d.low, (d.high - d.close.shift(1)).abs(),
+                    (d.low - d.close.shift(1)).abs()], axis=1).max(axis=1)
+    atr = tr.ewm(alpha=1 / 14, adjust=False).mean()
+    h, l, c = d.high.values, d.low.values, d.close.values
+    s = YapiStrategy(**kw)
+    out, mesgul = [], -1
+    for i in range(300, len(d)):
+        sig = s.analyze(d.iloc[max(0, i - pencere + 1): i + 1], float(atr.iloc[i]))
+        if not sig.direction or i <= mesgul:
+            continue
+        yon, giris, sl, tp = sig.direction, sig.entry_price, sig.sl_price, sig.tp_price
+        if yon_aynala:
+            # giris AYNI kalmaz: seviye de kapanisa gore yansitilir, yoksa
+            # emir aninda dolan bir marketable limit olur (olculdu, gecersizdi).
+            risk0 = abs(giris - sl)
+            yon = -yon
+            giris = 2.0 * float(c[i]) - giris
+            sl = giris - yon * risk0
+            tp = giris + yon * 2.0 * risk0
+        risk = abs(giris - sl)
+        if risk <= 0:
+            continue
+        r, sb, ikili = None, "", False
+        for j in range(i, min(i + 1 + YAPI_MAX_BAR, len(d))):
+            slv = (l[j] <= sl) if yon > 0 else (h[j] >= sl)
+            tpv = (h[j] >= tp) if yon > 0 else (l[j] <= tp)
+            if j == i:
+                tpv = False        # mum ici sira bilinmiyor -> TP ertelenir
+            if slv and tpv:
+                ikili = True
+            if slv:
+                r, sb = -1.0, "sl"
+                break
+            if tpv:
+                r, sb = abs(tp - giris) / risk, "tp"
+                break
+        else:
+            j = min(i + YAPI_MAX_BAR, len(d) - 1)
+            r = yon * (c[j] - giris) / risk
+            sb = "max_hold"
+        mal = (KOMISYON_MAKER_BP + KOMISYON_TAKER_BP +
+               (0.0 if sb == "tp" else CIKIS_KAYMA_BP)) / 1e4 * giris / risk
+        out.append({"r": r - mal, "sebep": sb, "yon": yon, "bar": j - i,
+                    "ikili": ikili, "limit": True, "ts": d.index[i],
+                    "stop_pct": 100 * risk / giris, "maliyet_r": mal})
+        mesgul = j
+    return out

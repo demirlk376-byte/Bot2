@@ -314,6 +314,7 @@ class YapiStrategy:
         mss_bar: int = VARSAYILAN_MSS_BAR,
         bekle_bar: int = VARSAYILAN_BEKLE_BAR,
         rr: float = VARSAYILAN_RR,
+        sl_atr: float = 2.0,      # stop kapanistan kac ATR geride
         sl_tampon: float = VARSAYILAN_SL_TAMPON,
         mss_olay: bool = False,   # True -> OLAY semantigi (olculdu: 3 kat zayif)
     ):
@@ -322,9 +323,9 @@ class YapiStrategy:
         self._mss_bar = int(mss_bar)
         self._bekle_bar = int(bekle_bar)
         self._rr = float(rr)
+        self._sl_atr = float(sl_atr)
         self._sl_tampon = float(sl_tampon)
         self._mss_olay = bool(mss_olay)
-        self._adaylar: dict[int, dict] = {}  # yon -> {ref, kok, yas}
         self._bekleyen: list[dict] = []  # MSS oldu, dolum bekleniyor
         self._last_ts = None
 
@@ -351,28 +352,29 @@ class YapiStrategy:
         # dolmus/bayatlamis olabilir; bilemedigimiz icin HEPSINI IPTAL et.
         if (self._last_ts is not None and len(df.index) >= 2
                 and df.index[-2] != self._last_ts):
-            self._adaylar.clear()
             self._bekleyen.clear()
         self._last_ts = last_ts
 
-        # ⚠ DURUM SEMANTIGI (parite hatasiyla, iki kez ogrenildi).
-        # MSS'i bir OLAY olarak kodlamistim: "yapi BU BARDA kirildi". On eleme
-        # ise DURUM olarak calisiyordu: "fiyat SU AN yapinin otesinde".
-        # 13 coinde olculdu (dolum payi 0.05 ATR):
-        #   DURUM  n=11050 PF 1.22 R=+0.1123  (TRAIN +0.0875 / TEST +0.1403)
-        #   OLAY   n= 9901 PF 1.07 R=+0.0391  (TRAIN +0.0331 / TEST +0.0459)
-        # Orneklem benzer -- guc sorunu degil, SEMANTIK farki. Kirilim aninda
-        # girmek zayif; yapinin OTESINDEYKEN geri cekilmeleri almak guclu.
-        # Bu, bu depoda tekrar eden bulguyla ayni yone bakiyor: "olayi bekle"
-        # varyantlarinin hepsi basarisiz oldu.
+        # ⚠ KURAL (uc artefakttan sonra ayakta kalan hali).
+        #   Kapanis, son `mss_bar` barda GECERLI OLAN swing tepelerinin EN
+        #   ZAYIFININ uzerindeyse -> kapanisin `seviye_atr` ATR altina LIMIT,
+        #   `sl_atr` ATR altina stop, sabit RR hedef. Short aynasi.
+        # Swing yapisi STOPU DEGIL yalnizca YONU belirliyor.
         #
-        # ASAMALAR:
-        #   aday    : onayli swing + O ANDAKI karsi swing referansi (yon basina 1)
-        #   bekleyen: fiyat referansin otesinde -> her bar TAZELENEN limit
-        for a in self._adaylar.values():
-            a["yas"] += 1
-        self._adaylar = {y: a for y, a in self._adaylar.items()
-                         if a["yas"] <= self._mss_bar * 2}
+        # NEDEN "EN ZAYIF" (tum referanslarin minimumu) ve NEDEN tek referans
+        # DEGIL: tek referansli surum (son onaylanan swing ciftinin tepesi)
+        # OLCULDU ve SIFIR verdi -- n=14205, R=-0.0025, 6/13 coin pozitif.
+        # Penceredeki tum referanslarin en zayifini kullanan surum n=24117,
+        # R=+0.2484, 13/13 coin ve dort yil pozitif. Fark buyuk ve tesadufi
+        # degil; kural "fiyat son 12 barin HERHANGI bir yapi tepesinin
+        # uzerinde" durumunu ariyor.
+        #
+        # ⚠ BILINEN ZAYIFLIK: yon yansitma kontrolu SIFIR DEGIL, +0.0665.
+        # Yani olculen +0.2484'un yaklasik dortte biri yonden degil
+        # GEOMETRIDEN geliyor ("1 ATR aşagiya limit", fiyatin aleyhe hareket
+        # ettigi barlari seciyor ve bu tek basina ortalamaya donus kari
+        # uretiyor). Yonsel bilesen +0.18 ve guclu, ama hikaye "yapi yonu
+        # biliyor" kadar temiz DEGIL. IKIZ karari bunu bilerek verilmeli.
         for b in self._bekleyen:
             b["yas"] += 1
         self._bekleyen = [b for b in self._bekleyen if b["yas"] <= self._bekle_bar]
@@ -397,44 +399,30 @@ class YapiStrategy:
                 sl_price=secilen["sl"], tp_price=secilen["tp"],
                 entry_price=secilen["giris"], bekleyen_yas=secilen["yas"])
 
-        # --- 2) YENI onayli swing -> o yonun adayini TAZELE.
-        # Referans, swing'in onaylandigi ANDAKI karsi swing'dir.
+        # --- 2) DURUM: penceredeki referanslarin EN ZAYIFI asildi mi?
         kuyruk = max(120, self._mss_bar * 6, self._k * 4 + 20)
         if len(c) > kuyruk:
             h_k, l_k, c_k = h[-kuyruk:], l[-kuyruk:], c[-kuyruk:]
         else:
             h_k, l_k, c_k = h, l, c
         son_sh, son_sl = onayli_swingler(h_k, l_k, self._k)
-        i = len(h_k) - 1
-        j = i - self._k
-        if j >= 0:
-            if son_sl[i] == j and son_sh[i] >= 0:
-                self._adaylar[1] = {"ref": float(h_k[son_sh[i]]),
-                                    "kok": float(l_k[j]), "yas": 0}
-            if son_sh[i] == j and son_sl[i] >= 0:
-                self._adaylar[-1] = {"ref": float(l_k[son_sl[i]]),
-                                     "kok": float(h_k[j]), "yas": 0}
-
-        # --- 3) DURUM: fiyat referansin otesinde mi? Oyleyse limiti TAZELE.
-        # Yon basina EN FAZLA BIR bekleyen emir tutulur. Long'da fiyat
-        # yukselirken en YENI seviye en YUKSEKTIR, yani zaten ilk dolacak
-        # olandir; fiyat duserse eski (daha yuksek) seviye bu bardan ONCE
-        # zaten dolmus olurdu (adim 1 once calisiyor). Bu yuzden tek emri
-        # tazelemek, offline tarayicinin "her bar yeni emir, ilk dolan kazanir"
-        # davranisiyla pratikte ayni -- ve CANLIDA uygulanabilir olan budur.
-        c_son = float(c_k[i])
-        for yon, a in self._adaylar.items():
-            if a["yas"] < 1:
+        m = len(c_k) - 1
+        c_son = float(c_k[m])
+        for yon in (1, -1):
+            refler = []
+            for sx in range(max(0, m - self._mss_bar), m):
+                kok = son_sl[sx] if yon > 0 else son_sh[sx]
+                ref = son_sh[sx] if yon > 0 else son_sl[sx]
+                if kok < 0 or ref < 0 or sx - kok > self._mss_bar:
+                    continue
+                refler.append(float(h_k[ref]) if yon > 0 else float(l_k[ref]))
+            if not refler:
                 continue
-            otede = (c_son > a["ref"]) if yon > 0 else (c_son < a["ref"])
-            if self._mss_olay:
-                onceki = (float(c_k[i - 1]) > a["ref"]) if yon > 0 else \
-                         (float(c_k[i - 1]) < a["ref"])
-                otede = otede and not onceki
-            if not otede:
+            esik = min(refler) if yon > 0 else max(refler)
+            if not ((c_son > esik) if yon > 0 else (c_son < esik)):
                 continue
-            sl = a["kok"] - yon * self._sl_tampon * atr_val
             giris = c_son - yon * self._seviye_atr * atr_val
+            sl = c_son - yon * self._sl_atr * atr_val
             risk = (giris - sl) if yon > 0 else (sl - giris)
             if not risk > 0:
                 continue
@@ -442,7 +430,7 @@ class YapiStrategy:
             self._bekleyen.append({"yon": yon, "giris": giris, "sl": sl,
                                    "tp": giris + yon * self._rr * risk, "yas": 0})
 
-        return YapiSignal(reason=f"aday {len(self._adaylar)} / bekleyen {len(self._bekleyen)}")
+        return YapiSignal(reason=f"bekleyen {len(self._bekleyen)}")
 
 
 def _ref_or_kurulumlari(high, low, close, atr, *, k, mss_bar, bekle_bar,

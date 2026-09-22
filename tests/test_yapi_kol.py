@@ -140,12 +140,23 @@ def test_RR_tam_2_0_ve_SL_dogru_tarafta():
 
 
 def test_seviye_ATR_mesafesi_girisi_UZAKLASTIRIR():
+    """Seviye kapanistan ne kadar uzaksa dolum o kadar zor. sl_atr'den KUCUK
+    kalmali (bkz. bir sonraki test)."""
     d, atr = _veri(2000)
-    yakin = _tara(YapiStrategy(seviye_atr=0.5), d, atr)
-    uzak = _tara(YapiStrategy(seviye_atr=2.0), d, atr)
+    yakin = _tara(YapiStrategy(seviye_atr=0.5, sl_atr=2.0), d, atr)
+    uzak = _tara(YapiStrategy(seviye_atr=1.5, sl_atr=2.0), d, atr)
     assert yakin and uzak
-    # uzak seviye daha az dolar
     assert len(uzak) <= len(yakin), f"uzak={len(uzak)} yakin={len(yakin)}"
+
+
+def test_seviye_STOPTAN_uzaksa_SINYAL_YOK():
+    """⚠ SINIR. Giris seviyesi stop'a esit/otesindeyse risk sifir veya negatif
+    olur. Kol bunu SESSIZCE gecmemeli -- gecseydi sonsuz R'li sahte islemler
+    uretirdi (bugun offline tarayicida tam bu yuzden PF 2.34 gibi imkansiz
+    sayilar gorduk)."""
+    d, atr = _veri(1500)
+    assert _tara(YapiStrategy(seviye_atr=2.0, sl_atr=2.0), d, atr) == []
+    assert _tara(YapiStrategy(seviye_atr=2.5, sl_atr=2.0), d, atr) == []
 
 
 def test_TAMPON_BOYUTU_sinyali_DEGISTIRMEZ():
