@@ -325,6 +325,8 @@ class StrategyConfig:
     donchian_mod: str = "kirilim"      # kirilim | basarisiz | supurme
     donchian_ters_trend: bool = True
     squeeze_vol_mult: float = 0.0      # squeeze cikis hacmi SMA'nin kac kati (0=kapali)
+    squeeze_mod: str = "orta"           # orta | aralik | takip
+    squeeze_takip_bar: int = 3          # takip modunda kac bar beklenir
     squeeze_vol_lookback: int = 20
     donchian_symbols: list[str] | None = ("BTC/USDT:USDT",)  # validated BTC-only
     donchian_mtf_enabled: bool = False   # günlük EMA20 trend hizası filtresi (backtest:
@@ -527,6 +529,8 @@ def load_config() -> AppConfig:
         donchian_mod=os.getenv("DONCHIAN_MOD", "kirilim"),
         donchian_ters_trend=_getbool("DONCHIAN_TERS_TREND", True),
         squeeze_vol_mult=_getfloat("SQUEEZE_VOL_MULT", 0.0),
+        squeeze_mod=os.getenv("SQUEEZE_MOD", "orta"),
+        squeeze_takip_bar=_getint("SQUEEZE_TAKIP_BAR", 3),
         squeeze_vol_lookback=_getint("SQUEEZE_VOL_LOOKBACK", 20),
         donchian_mtf_enabled=_getbool("DONCHIAN_MTF", False),
         donchian_symbols=donchian_symbols,

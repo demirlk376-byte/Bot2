@@ -37,6 +37,18 @@ import pandas as pd
 
 from indicators import atr as atr_fn, ema as ema_fn
 
+# ⚠ GIRIS MODU — kirilimin YONUNU VARSAYMAK yerine fiyatin DAVRANISINI beklemek.
+# Bugunku kural (mod="orta"): cikis barinin kapanisi EMA20'nin ustundeyse long.
+# Bu, yonu VARSAYMAKTIR: kapanis ortalamanin bir tik ustunde olsa da long der.
+#   "orta"   : bugunku davranis (KC orta cizgisi)
+#   "aralik" : cikis bari sikisma araliginin (coil high/low) DISINA kapanmali;
+#              icerideyse ISLEM YOK -- piyasa henuz yon soylemedi
+#   "takip"  : cikistan sonra en fazla `takip_bar` bar beklenir; aralik ILK
+#              hangi tarafa kirilirsa o yone girilir, kirilmazsa islem yok
+MODLAR = ("orta", "aralik", "takip")
+DEFAULT_MOD = "orta"
+DEFAULT_TAKIP_BAR = 3
+
 
 @dataclass
 class SqueezeSignal:
@@ -65,6 +77,8 @@ class SqueezeStrategy:
         mtf_filter: bool = True,
         vol_mult: float = 0.0,
         vol_lookback: int = 20,
+        mod: str = DEFAULT_MOD,
+        takip_bar: int = DEFAULT_TAKIP_BAR,
     ):
         # ⚠ HACIM KAPISI (varsayilan 0 = KAPALI, davranis aynen eski).
         # Bu kol hacme HIC bakmiyordu. Donchian'da olculdu: dusuk hacimli
@@ -81,9 +95,16 @@ class SqueezeStrategy:
         self._sl_atr = sl_atr
         self._rr = rr
         self._mtf = mtf_filter
+        self._mod = str(mod).strip().lower() or DEFAULT_MOD
+        if self._mod not in MODLAR:
+            # yazim hatasi SESSIZCE bugunku davranisa dusmemeli -- dusseydi
+            # taramada "fark yok" diye YANLIS rapor verirdik.
+            raise ValueError(f"bilinmeyen SQUEEZE_MOD={mod!r} -- gecerli: {list(MODLAR)}")
+        self._takip = max(0, int(takip_bar))
 
     def _min_bars(self) -> int:
-        return max(self._kc_period, self._bb_period) + self._min_sq + 5
+        ek = self._takip if self._mod == "takip" else 0
+        return max(self._kc_period, self._bb_period) + self._min_sq + 5 + ek
 
     def analyze(self, df: pd.DataFrame, atr_val: float) -> SqueezeSignal:
         """df: recent 1h OHLCV (DatetimeIndex, columns open/high/low/close).
@@ -112,25 +133,34 @@ class SqueezeStrategy:
         # Squeeze: BB inside KC
         in_sq = (bb_up < kc_up) & (bb_lo > kc_lo)
 
-        # Current bar = last bar; previous bar = second-to-last
-        is_sq_curr = bool(in_sq.iloc[-1])
-        is_sq_prev = bool(in_sq.iloc[-2]) if len(in_sq) >= 2 else False
+        sq_vals = in_sq.values
+        n = len(sq_vals)
+        i_now = n - 1
 
-        # Not a squeeze release
-        if is_sq_curr or not is_sq_prev:
+        # ⚠ CIKIS BARI NEREDE ARANIR.
+        #   orta/aralik -> cikis SU ANKI barda olmali (bugunku davranis)
+        #   takip       -> cikis en fazla `takip_bar` bar once olabilir; bu
+        #                  arada fiyatin aralikten cikmasini BEKLERIZ.
+        # Her halde yalnizca <= su anki bar okunur -> gelecege bakis yok.
+        azami = self._takip if self._mod == "takip" else 0
+        i_cikis = None
+        for k in range(0, azami + 1):
+            i = i_now - k
+            if i >= 1 and (not sq_vals[i]) and sq_vals[i - 1]:
+                i_cikis = i
+                break
+        if i_cikis is None:
             return SqueezeSignal(
                 0, 0.0,
-                f"no release (in_sq={is_sq_curr}, prev={is_sq_prev})"
-            )
+                f"no release (in_sq={bool(sq_vals[i_now])}, "
+                f"prev={bool(sq_vals[i_now - 1]) if n >= 2 else False})")
 
-        # Count consecutive squeeze bars ending at the previous bar
-        sq_vals = in_sq.values
+        # Count consecutive squeeze bars ending at the bar BEFORE the release
         count = 0
-        for j in range(len(sq_vals) - 2, -1, -1):
-            if sq_vals[j]:
-                count += 1
-            else:
-                break
+        j = i_cikis - 1
+        while j >= 0 and sq_vals[j]:
+            count += 1
+            j -= 1
 
         # Threshold = min_sq, NOT min_sq+1. Both the research and this loop count
         # the same quantity — consecutive squeeze bars ending at the bar BEFORE
@@ -146,8 +176,35 @@ class SqueezeStrategy:
                 f"squeeze too short ({count} < {self._min_sq} bars)"
             )
 
-        # Direction: 1h close vs KC midline
-        direction_1h = 1 if float(close.iloc[-1]) > float(kc_mid.iloc[-1]) else -1
+        if self._mod == "orta":
+            # bugunku kural: yon VARSAYILIR -- kapanis KC orta cizgisinin ustunde mi
+            direction_1h = 1 if float(close.iloc[-1]) > float(kc_mid.iloc[-1]) else -1
+        else:
+            # ⚠ FIKIR 3: yonu varsayma, fiyatin DAVRANISINI bekle. Sikisma
+            # araliginin (coil high/low) hangi tarafina KAPANDIYSA o yon.
+            # Iceride kapanmissa piyasa henuz bir sey soylememistir -> islem yok.
+            if any(sq_vals[i_cikis + 1:i_now + 1]):
+                return SqueezeSignal(0, 0.0, "sikismaya geri donuldu")
+            h_np = high.to_numpy(dtype="float64")
+            l_np = low.to_numpy(dtype="float64")
+            c_np = close.to_numpy(dtype="float64")
+            coil_h = float(np.max(h_np[i_cikis - count:i_cikis]))
+            coil_l = float(np.min(l_np[i_cikis - count:i_cikis]))
+            if not (coil_h > coil_l):
+                return SqueezeSignal(0, 0.0, "coil araligi bozuk")
+            # ILK kirilimda girilir: arada kirilmissa o firsat gecmistir
+            for i in range(i_cikis, i_now):
+                if c_np[i] > coil_h or c_np[i] < coil_l:
+                    return SqueezeSignal(0, 0.0, "aralik daha once kirilmisti")
+            c_now = float(c_np[i_now])
+            if c_now > coil_h:
+                direction_1h = 1
+            elif c_now < coil_l:
+                direction_1h = -1
+            else:
+                return SqueezeSignal(
+                    0, 0.0,
+                    f"sikisma araligi kirilmadi ({coil_l:.6g}..{coil_h:.6g})")
 
         # MTF filter: resample 1h to 4h, compare close vs KC midline on 4h
         if self._mtf:

@@ -29,6 +29,7 @@ Kullanım:
   py ikiz_paralel.py sqmaker       → SQUEEZE maker + pahali coin, 8 surec
   py ikiz_paralel.py protokol      → TEST PROTOKOLU: mum kalitesi/chase/ATR, 8 surec
   py ikiz_paralel.py mod           → GIRIS MODU: basarisiz kirilim/supurme, 5 surec
+  py ikiz_paralel.py sqmod         → SQUEEZE GIRIS MODU: aralik/takip, 5 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -477,6 +478,25 @@ SQZ_TARAMA = [
 #   TRAIN ve TEST yarilarinin IKISINDE de daha iyiyse kabul edilir.
 #   Eger IKIZ on elemeyle CELISIRSE bu "kabul" degil, iki aractan birinde
 #   hata var demektir -- once o arastirilir.
+# ⚠ SQUEEZE GIRIS MODU TARAMASI (kullanicinin 3. fikri).
+# Bugunku kural: sikisma bitince kapanis KC orta cizgisinin ustundeyse LONG.
+# Bu yonu VARSAYMAKTIR. OLCULDU (BTC 1h, 12000 bar): bugunku girislerin
+# %58'i (204'un 118'i) fiyat sikisma araliginin HALA ICINDEYKEN aciliyor;
+# ayrica 33 firsat araligi birkac bar SONRA kiriyor ve bugun tamamen kaciriliyor.
+#   aralik : kapanis coil aralinin DISINDA olmali, yoksa islem yok
+#   takip N: cikistan sonra en fazla N bar beklenir, ILK kirilan yone girilir
+SQMOD_TARAMA = [
+    ("q_taban",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
+    ("q_aralik", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                      SQUEEZE_MOD="aralik")),
+    ("q_tk2",    dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                      SQUEEZE_MOD="takip", SQUEEZE_TAKIP_BAR="2")),
+    ("q_tk3",    dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                      SQUEEZE_MOD="takip", SQUEEZE_TAKIP_BAR="3")),
+    ("q_tk6",    dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                      SQUEEZE_MOD="takip", SQUEEZE_TAKIP_BAR="6")),
+]
+
 MOD_TARAMA = [
     ("m_taban",   dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
     # fikir 1: kirilimin BASARISIZLIGI (onceki bar disari kapandi, su anki geri dondu)
@@ -720,7 +740,8 @@ def main():
                   "sonfiltre": SON_FILTRE_TARAMA,
                   "sqmaker": SQZ_TARAMA,
                   "protokol": PROTOKOL_TARAMA,
-                  "mod": MOD_TARAMA}[hangi]
+                  "mod": MOD_TARAMA,
+                  "sqmod": SQMOD_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "

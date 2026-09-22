@@ -124,3 +124,65 @@ if __name__ == "__main__":
         ad = f"{mod} ters_trend={'acik' if tt else 'kapali'}"
         print(ozet(ad + ("  <- BUGUNKU" if mod == "kirilim" else ""), hepsi))
     print()
+
+
+# ==========================================================================
+#  SQUEEZE giris modu on elemesi (1h)
+# ==========================================================================
+SQ_MAX_BAR = 48           # MAX_HOLD_CANDLES = 48 x 1h
+
+
+def _birsaat(sembol: str):
+    yol = os.path.join("data", f"{sembol}_fut_1h.csv")
+    if not os.path.exists(yol):
+        return None
+    d = pd.read_csv(yol)
+    d.index = pd.to_datetime(d["ts"], utc=True)
+    return d[["open", "high", "low", "close", "volume"]].astype("float64")
+
+
+def kos_squeeze(sembol: str, **kw):
+    from strategies.squeeze import SqueezeStrategy
+    d = _birsaat(sembol)
+    if d is None or len(d) < 400:
+        return []
+    tr = pd.concat([d.high - d.low, (d.high - d.close.shift(1)).abs(),
+                    (d.low - d.close.shift(1)).abs()], axis=1).max(axis=1)
+    atr = tr.ewm(alpha=1 / 14, adjust=False).mean()
+    s = SqueezeStrategy(**kw)
+    h, l = d.high.values, d.low.values
+    pencere = 400
+    out, i = pencere, pencere
+    out = []
+    while i < len(d) - 1:
+        sig = s.analyze(d.iloc[i - pencere + 1: i + 1], float(atr.iloc[i]))
+        if not sig.direction:
+            i += 1
+            continue
+        yon = sig.direction
+        giris = sig.entry_price * (1 + yon * KAYMA_BP / 1e4)
+        sl, tp = sig.sl_price, sig.tp_price
+        risk = abs(giris - sl)
+        if risk <= 0:
+            i += 1
+            continue
+        r, sb, ikili = None, "", False
+        for j in range(i + 1, min(i + 1 + SQ_MAX_BAR, len(d))):
+            slv = (l[j] <= sl) if yon > 0 else (h[j] >= sl)
+            tpv = (h[j] >= tp) if yon > 0 else (l[j] <= tp)
+            if slv and tpv:
+                ikili = True
+            if slv:
+                r, sb = -1.0, "sl"
+                break
+            if tpv:
+                r, sb = abs(tp - giris) / risk, "tp"
+                break
+        else:
+            j = min(i + SQ_MAX_BAR, len(d) - 1)
+            r = yon * (d.close.values[j] - giris) / risk
+            sb = "max_hold"
+        out.append({"r": r - KOMISYON_BP / 1e4 * giris / risk, "sebep": sb,
+                    "yon": yon, "bar": j - i, "ikili": ikili})
+        i = j + 1
+    return out
