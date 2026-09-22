@@ -56,6 +56,10 @@ class CombinedSignal:
     # would sit/retrace and defeat the breakout). Price is already at the level, so
     # the taker fill is ~level with only a few ticks of slippage.
     force_market: bool = False
+    # ⚠ maker_entry KURESEL bir anahtar; onu acmak BB/mean_rev gibi baska
+    # kollarin davranisini da degistirir. Bu bayrak yalnizca BU sinyal icin
+    # maker limit yolunu acar -- varsayilan False, yani mevcut davranis AYNI.
+    maker_zorla: bool = False
     # SL/TP nereye ÇAPALI? True = yapı/seviye (ORB, Asia BO, FVG): piyasa yedeği
     # seviyeden uzağa dolar ve R/R'yi <1'e çökertir → yedek YOK, dolmazsa atla.
     # False = ATR ile GİRİŞ FİYATINA çapalı (donchian, squeeze, BB/MR): yedek

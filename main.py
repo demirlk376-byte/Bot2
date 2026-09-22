@@ -16,6 +16,7 @@ from funding import FundingMonitor
 from orderflow import OrderFlowMonitor
 from whale_flow import WhaleFlowMonitor
 from strategies.squeeze import SqueezeStrategy, SqueezeSignal
+from strategies.yapi import YapiStrategy
 from strategies.whale import WhaleStrategy
 from indicators import atr, adx as _adx_indicator
 from monitor import Dashboard
@@ -146,6 +147,7 @@ class SymbolContext:
     squeeze_strategy: "SqueezeStrategy" = None
     whale_strategy: "WhaleStrategy" = None
     donchian_strategy: DonchianStrategy = None
+    yapi_strategy: "YapiStrategy" = None
     # Live ORB stop-entry: armed once per day after the 14:00 UTC range candle,
     # consumed by the tick-watcher. None = not armed.
     orb_armed: "OrbArmed | None" = None
@@ -171,6 +173,7 @@ def active_sleeves_for(ctx: "SymbolContext", cfg) -> list[str]:
     if ctx.ifvg_strategy is not None: sleeves.append("IFVG")
     if ctx.squeeze_strategy is not None: sleeves.append("Squeeze")
     if ctx.donchian_strategy is not None: sleeves.append("Donch")
+    if ctx.yapi_strategy is not None: sleeves.append("Yapi")
     if ctx.whale_strategy is not None:
         whale_mode = getattr(cfg.strategy, "whale_mode", "monitor")
         sleeves.append("Whale" + ("" if whale_mode == "trade" else "(mon)"))
@@ -685,6 +688,65 @@ def make_on_candle_close(ctx: "SymbolContext"):
                     web_dashboard.add_signal(ctx.symbol, "Squeeze", 0, f"block:rejim={regime}")
             except Exception as _se:
                 logger.error("[%s] Squeeze sleeve error: %s", ctx.symbol, _se)
+
+            try:
+                # ── YAPI — swing -> MSS -> seviyeye geri cekilmede LIMIT giris ──
+                # Bagimsiz slot (symbol:yapi). Rejim kapisi YOK: kolun kendi
+                # yapi sarti (MSS) zaten bir rejim filtresidir.
+                #
+                # ⚠ EMIR TIPI BU KOLUN EDGE'IDIR, detay degil. Olculdu:
+                #   ayni kurulum PIYASA emriyle  R=-0.0366 (iki yarida da negatif)
+                #   ayni kurulum LIMIT retest ile R=+0.1123 (iki yarida da pozitif)
+                # Bu yuzden:
+                #   force_market=False   -> limit yolu
+                #   anchor_is_level=True -> PIYASA YEDEGI YOK (execution.py:640).
+                #     Dolmayan emir ATLANIR; atlanan islemler zaten olcumun
+                #     icindedir. Yedek acilirsa kol -0.037'ye doner.
+                #   maker_zorla=True     -> kuresel maker_entry'yi ACMADAN bu
+                #     sinyal icin maker yolunu acar; diger kollar etkilenmez.
+                if ctx.yapi_strategy is not None:
+                    y_sig = ctx.yapi_strategy.analyze(df, atr_val)
+                    if y_sig.direction != 0:
+                        y_combined = CombinedSignal(
+                            direction=y_sig.direction,
+                            confidence=y_sig.strength,
+                            trend_score=0.0,
+                            mean_rev_score=0.0,
+                            breakout_score=y_sig.direction * y_sig.strength,
+                            dominant_strategy="yapi",
+                            reasons=[y_sig.reason],
+                            entry_price=y_sig.entry_price,
+                            sl_price=y_sig.sl_price,
+                            tp_price=y_sig.tp_price,
+                            symbol=ctx.symbol,
+                            position_slot=f"{ctx.symbol}:yapi",
+                            force_market=False,
+                            anchor_is_level=True,
+                            maker_zorla=True,
+                        )
+                        result = await executor.execute_signal(y_combined, atr_val)
+                        if result.success and result.position:
+                            logger.info(
+                                "YAPI trade opened: %s %s entry=%.6g sl=%.6g tp=%.6g (%s)",
+                                result.position.side.upper(), ctx.symbol,
+                                result.position.entry_price,
+                                result.position.sl_price,
+                                result.position.tp_price, y_sig.reason,
+                            )
+                            web_dashboard.add_signal(ctx.symbol, "Yapi", y_sig.direction,
+                                                     y_sig.reason, "exec")
+                            if telegram:
+                                await telegram.send_trade_opened(result.trade_setup, y_combined)
+                            if ntfy:
+                                await ntfy.send_trade_opened(result.trade_setup, y_combined)
+                        elif result.error:
+                            logger.warning("[%s] Yapi skipped: %s", ctx.symbol, result.error)
+                            web_dashboard.add_signal(ctx.symbol, "Yapi", y_sig.direction,
+                                                     y_sig.reason, f"block:{result.error}")
+                    else:
+                        logger.debug("[%s] yapi: %s", ctx.symbol, y_sig.reason)
+            except Exception as _se:
+                logger.error("[%s] Yapi sleeve error: %s", ctx.symbol, _se)
 
             try:
                 # ── Donchian — 4h channel swing breakout (HTF, 1-5 day holds) ─────
@@ -1978,6 +2040,21 @@ async def main() -> None:
                     config.strategy.sr_breakout_symbols is None
                     or sym in config.strategy.sr_breakout_symbols
                 )
+                else None
+            ),
+            yapi_strategy=(
+                YapiStrategy(
+                    k=config.strategy.yapi_k,
+                    seviye_atr=config.strategy.yapi_seviye_atr,
+                    mss_bar=config.strategy.yapi_mss_bar,
+                    bekle_bar=config.strategy.yapi_bekle_bar,
+                    rr=config.strategy.yapi_rr,
+                    sl_tampon=config.strategy.yapi_sl_tampon,
+                )
+                if config.strategy.yapi_enabled
+                and (not config.strategy.yapi_symbols
+                     or sym in [x.strip() for x in config.strategy.yapi_symbols.split(",")]
+                     or sym.split("/")[0] in [x.strip() for x in config.strategy.yapi_symbols.split(",")])
                 else None
             ),
             squeeze_strategy=(

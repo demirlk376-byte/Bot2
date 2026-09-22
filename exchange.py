@@ -279,7 +279,7 @@ class PaperExchange:
 
     async def place_limit_order(
         self, symbol: str, side: str, amount: float, limit_price: float, params: dict,
-        fallback_market: bool = True,
+        timeout: float = 45.0, poll: float = 3.0, fallback_market: bool = True,
     ) -> OrderResult:
         """Maker entry: fill at the limit price with no slippage and the maker
         fee (0% on MEXC futures). In paper mode we assume the resting limit at
@@ -292,7 +292,14 @@ class PaperExchange:
         1.0 = bugunku davranis (her zaman dolar).
 
         Dolup dolmadigi RASTGELE DEGIL, deterministik secilir: ayni kosu ayni
-        sonucu vermeli, yoksa iki kosuyu karsilastiramayiz."""
+        sonucu vermeli, yoksa iki kosuyu karsilastiramayiz.
+
+        ⚠ IMZA DUZELTILDI (2026-09-22). `timeout`/`poll` parametreleri EKSIKTI
+        ama execution.py:637 onlari GECIYOR -> kagit modda limit yolu
+        TypeError ile patlardi. Bugune dek gorulmedi cunku bu kollarda
+        maker_entry kapaliydi; yapi kolu o yolu kullaniyor. Kagit borsasinda
+        zaman asiminin bir anlami yok (beklenecek gercek bir emir defteri
+        yok), imza uyumu icin kabul edilip YOK SAYILIYOR."""
         if self.MAKER_DOLUM_P < 1.0:
             import hashlib
             _im = f"{symbol}|{side}|{limit_price:.10g}|{amount:.10g}|{self.__dict__.get('_dolum_sayac', 0)}"

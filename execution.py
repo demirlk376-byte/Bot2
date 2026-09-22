@@ -600,7 +600,8 @@ class ExecutionEngine:
         # instead of 0.01% taker. Over a year this is worth several % of return
         # (see research_maximize.py). Falls back to market if unfilled.
         use_maker = (
-            getattr(self._config.exchange, "maker_entry", False)
+            (getattr(self._config.exchange, "maker_entry", False)
+             or getattr(signal, "maker_zorla", False))
             and hasattr(self._exchange, "place_limit_order")
             # ORB stop-entry fires AT the level — take it immediately with a market
             # order; a maker limit would wait for a retrace and miss the breakout.

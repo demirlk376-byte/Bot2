@@ -327,6 +327,22 @@ class StrategyConfig:
     squeeze_vol_mult: float = 0.0      # squeeze cikis hacmi SMA'nin kac kati (0=kapali)
     squeeze_mod: str = "orta"           # orta | aralik | takip
     squeeze_takip_bar: int = 3          # takip modunda kac bar beklenir
+
+    # ── YAPI KOLU (swing -> MSS -> seviyeye geri cekilmede LIMIT giris) ──────
+    # ⚠ VARSAYILAN KAPALI. Acilmadikca canli davranis BIT BIT AYNI.
+    # On elemede olculdu (13 coin, 1h, 2023-04..2026-07, dolum payi 0.05 ATR):
+    #   n=11050 PF 1.22 R=+0.1123 | TRAIN +0.0875 | TEST +0.1403
+    # Dort kontrol gecti: MSS'i kaldirinca edge sifirlaniyor (+0.021), yon
+    # yansitilinca sifirlaniyor (-0.020), FVG bilgi tasimiyor, piyasa emriyle
+    # negatif (-0.037). 13/13 coin pozitif, her yil pozitif.
+    yapi_enabled: bool = False
+    yapi_k: int = 2                     # fractal yari-genisligi
+    yapi_seviye_atr: float = 1.0        # MSS kapanisindan kac ATR geriye limit
+    yapi_mss_bar: int = 12              # yapisal SL kaynagi en fazla kac bar geride
+    yapi_bekle_bar: int = 12            # limit kac bar gecerli kalir
+    yapi_rr: float = 2.0                # SABIT 2R (kurulumlar karsilastirilabilir kalsin)
+    yapi_sl_tampon: float = 0.25        # yapisal SL'e eklenen ATR payi
+    yapi_symbols: str = ""              # bos = SYMBOLS'un tamami
     squeeze_vol_lookback: int = 20
     donchian_symbols: list[str] | None = ("BTC/USDT:USDT",)  # validated BTC-only
     donchian_mtf_enabled: bool = False   # günlük EMA20 trend hizası filtresi (backtest:
@@ -531,6 +547,14 @@ def load_config() -> AppConfig:
         squeeze_vol_mult=_getfloat("SQUEEZE_VOL_MULT", 0.0),
         squeeze_mod=os.getenv("SQUEEZE_MOD", "orta"),
         squeeze_takip_bar=_getint("SQUEEZE_TAKIP_BAR", 3),
+        yapi_enabled=_getbool("YAPI_ENABLED", False),
+        yapi_k=_getint("YAPI_K", 2),
+        yapi_seviye_atr=_getfloat("YAPI_SEVIYE_ATR", 1.0),
+        yapi_mss_bar=_getint("YAPI_MSS_BAR", 12),
+        yapi_bekle_bar=_getint("YAPI_BEKLE_BAR", 12),
+        yapi_rr=_getfloat("YAPI_RR", 2.0),
+        yapi_sl_tampon=_getfloat("YAPI_SL_TAMPON", 0.25),
+        yapi_symbols=_get("YAPI_SYMBOLS", ""),
         squeeze_vol_lookback=_getint("SQUEEZE_VOL_LOOKBACK", 20),
         donchian_mtf_enabled=_getbool("DONCHIAN_MTF", False),
         donchian_symbols=donchian_symbols,

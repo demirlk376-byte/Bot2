@@ -226,3 +226,163 @@ def kurulumlari_bul(
                                  limit_mi, s, m, fvg_bar,
                                  min(m + bekle_bar, n - 1)))
     return cikti
+
+
+# ==========================================================================
+#  URETIM KOLU — main.py'nin cagirdigi, BAR BAR calisan surum
+# ==========================================================================
+
+@dataclass
+class YapiSignal:
+    direction: int = 0
+    strength: float = 0.0
+    reason: str = ""
+    sl_price: float = 0.0
+    tp_price: float = 0.0
+    entry_price: float = 0.0
+    bekleyen_yas: int = 0
+
+
+class YapiStrategy:
+    """swing -> MSS -> seviyeye geri cekilmede LIMIT giris.
+
+    ⚠ NEDEN BEKLEME MANTIGI BURADA, BORSADA DEGIL.
+    PaperExchange.place_limit_order duran bir emri MODELLEMIYOR: cagrildigi
+    anda limit fiyatindan DOLDURUYOR. Kolu dogrudan ona baglasaydik IKIZ her
+    emri piyasadan ~1 ATR iyi fiyattan, HER ZAMAN, ANINDA doldururdu ve
+    uydurma bir edge uretirdi. Bunun yerine kurulum burada BEKLETILIYOR ve
+    sinyal ancak fiyat seviyeye GERCEKTEN dokundugu mumda uretiliyor --
+    on elemede olculen modelin (ikiz_on_eleme.kos_yapi) birebir aynisi.
+
+    ⚠ CANLI ile IKIZ arasindaki BILINEN FARK: canlida emir MSS aninda konup
+    saatlerce durabilir; burada ise dokunus mumunun KAPANISINDA sinyal uretilip
+    seviyeye limit konuyor (execution.py 600sn pencere, piyasa yedegi YOK).
+    Bu fark IKIZ'i degil CANLIYI dezavantajli yapar (dokunusu kacirabiliriz),
+    yani hukum guvenli tarafta kalir. Emrin saatlerce durmasi execution/exchange
+    tarafinda bekleyen-emir modeli ister; o ayri bir istir.
+
+    Durum: sembol basina ornek. main.py her coin icin ayri ornek tutar.
+    """
+
+    def __init__(
+        self,
+        k: int = VARSAYILAN_K,
+        seviye_atr: float = 1.0,
+        mss_bar: int = VARSAYILAN_MSS_BAR,
+        bekle_bar: int = VARSAYILAN_BEKLE_BAR,
+        rr: float = VARSAYILAN_RR,
+        sl_tampon: float = VARSAYILAN_SL_TAMPON,
+    ):
+        self._k = int(k)
+        self._seviye_atr = float(seviye_atr)
+        self._mss_bar = int(mss_bar)
+        self._bekle_bar = int(bekle_bar)
+        self._rr = float(rr)
+        self._sl_tampon = float(sl_tampon)
+        self._adaylar: list[dict] = []   # swing onaylandi, MSS bekleniyor
+        self._bekleyen: list[dict] = []  # MSS oldu, dolum bekleniyor
+        self._last_ts = None
+
+    def _min_bars(self) -> int:
+        return self._k * 2 + self._mss_bar + 10
+
+    def analyze(self, df, atr_val: float) -> YapiSignal:
+        if df is None or len(df) < self._min_bars():
+            return YapiSignal(reason=f"insufficient data ({0 if df is None else len(df)})")
+        if atr_val is None or atr_val <= 0:
+            return YapiSignal(reason="ATR yok")
+
+        last_ts = df.index[-1]
+        h = df["high"].to_numpy(dtype="float64")
+        l = df["low"].to_numpy(dtype="float64")
+        c = df["close"].to_numpy(dtype="float64")
+
+        if self._last_ts == last_ts:
+            return YapiSignal(reason="ayni bar")
+
+        # ⚠ KESINTI/BACKFILL KORUMASI (fvg.py'deki ayni hata). Besleme bir
+        # kopukluktan sonra TUM kacan mumlari doldurur ama kapanis geri
+        # cagrisini yalnizca EN YENISI icin tetikler. Bekleyen emirler o arada
+        # dolmus/bayatlamis olabilir; bilemedigimiz icin HEPSINI IPTAL et.
+        if (self._last_ts is not None and len(df.index) >= 2
+                and df.index[-2] != self._last_ts):
+            self._adaylar.clear()
+            self._bekleyen.clear()
+        self._last_ts = last_ts
+
+        # ⚠ IKI ASAMALI DURUM (parite hatasiyla ogrenildi, 2026-09-22).
+        # Ilk surum MSS referansini O ANKI en yeni karsi swing'den aliyordu.
+        # On eleme ise referansi SWING'IN OLUSTUGU ANDAKI karsi swing'e
+        # sabitliyor -- yani "alt olusmadan ONCE var olan lower high kirildi"
+        # anlamina gelen klasik MSS. Fark kucuk gorunuyor ama olculdu:
+        #   ilk surum  R=+0.0320 (TRAIN +0.0082 = SIFIR)
+        #   on eleme   R=+0.1440 (TRAIN +0.1206)
+        # Toparlanma sirasinda olusan daha yeni/zayif bir tepeyi kirmak, edge
+        # tasimayan bir olay. Simdi ASAMALAR ayri:
+        #   aday    : swing onaylandi, MSS BEKLENIYOR      (omur: mss_bar)
+        #   bekleyen: MSS oldu, DOLUM bekleniyor           (omur: bekle_bar)
+        for a in self._adaylar:
+            a["yas"] += 1
+        self._adaylar = [a for a in self._adaylar if a["yas"] <= self._mss_bar]
+        for b in self._bekleyen:
+            b["yas"] += 1
+        self._bekleyen = [b for b in self._bekleyen if b["yas"] <= self._bekle_bar]
+
+        # --- 1) ONCE dolum: bu barda kurulan emir AYNI barda dolamaz.
+        secilen = None
+        for b in self._bekleyen:
+            degdi = (l[-1] <= b["giris"]) if b["yon"] > 0 else (h[-1] >= b["giris"])
+            if degdi:
+                secilen = b
+                break
+        if secilen is not None:
+            self._bekleyen.remove(secilen)
+            yon = secilen["yon"]
+            ad = "long" if yon > 0 else "short"
+            return YapiSignal(
+                direction=yon, strength=0.75,
+                reason=(f"yapi {ad}: MSS {secilen['yas']} bar once, seviye "
+                        f"{secilen['giris']:.6g} (SL {secilen['sl']:.6g})"),
+                sl_price=secilen["sl"], tp_price=secilen["tp"],
+                entry_price=secilen["giris"], bekleyen_yas=secilen["yas"])
+
+        # --- 2) MSS: bekleyen adaylardan biri bu barda KAPANISLA kirildi mi?
+        # Yalniz yas>=1 olan adaylar, yani ONCEKI barlarda kaydedilmis olanlar.
+        c_son = float(c[-1])
+        for a in list(self._adaylar):
+            if a["yas"] < 1:
+                continue
+            kirildi = (c_son > a["ref"]) if a["yon"] > 0 else (c_son < a["ref"])
+            if not kirildi:
+                continue
+            self._adaylar.remove(a)
+            yon = a["yon"]
+            sl = a["kok"] - yon * self._sl_tampon * atr_val
+            giris = c_son - yon * self._seviye_atr * atr_val
+            risk = (giris - sl) if yon > 0 else (sl - giris)
+            if not risk > 0:
+                continue
+            self._bekleyen.append({"yon": yon, "giris": giris, "sl": sl,
+                                   "tp": giris + yon * self._rr * risk, "yas": 0})
+            break
+
+        # --- 3) YENI onayli swing -> yeni aday. Referans, swing'in onaylandigi
+        # ANDAKI karsi swing'dir ve bir daha degismez.
+        kuyruk = max(120, self._mss_bar * 6, self._k * 4 + 20)
+        if len(c) > kuyruk:
+            h_k, l_k = h[-kuyruk:], l[-kuyruk:]
+        else:
+            h_k, l_k = h, l
+        son_sh, son_sl = onayli_swingler(h_k, l_k, self._k)
+        i = len(h_k) - 1
+        j = i - self._k                       # bu barda onaylanan swing adayi
+        if j >= 0:
+            # long adayi: TABAN onaylandi, referans o andaki son swing HIGH
+            if son_sl[i] == j and son_sh[i] >= 0:
+                self._adaylar.append({"yon": 1, "ref": float(h_k[son_sh[i]]),
+                                      "kok": float(l_k[j]), "yas": 0})
+            if son_sh[i] == j and son_sl[i] >= 0:
+                self._adaylar.append({"yon": -1, "ref": float(l_k[son_sl[i]]),
+                                      "kok": float(h_k[j]), "yas": 0})
+
+        return YapiSignal(reason=f"aday {len(self._adaylar)} / bekleyen {len(self._bekleyen)}")
