@@ -456,6 +456,9 @@ ETIKET_ADI = {"c12": "12 coin (taban)", "c19": "19 coin", "c31": "31 coin",
               "risk35": "%3.5", "risk40": "%4.0"}
 
 
+_TABAN_AD = [None]   # main() taramayi secince doldurulur
+
+
 def kos(ad_ve_env):
     ad, ek = ad_ve_env
     env = dict(os.environ)
@@ -476,6 +479,13 @@ def kos(ad_ve_env):
     # ⚠ Bu kosunun DEGISTIRDIGI anahtarlari bildir ki kosu onlari da yazsin;
     # yoksa ayar dogrulamasi taranan alani goremez (bkz. ikiz/kos.py).
     env["IKIZ_IZLE"] = ",".join(sorted(ek.keys()))
+    # ⚠ TABAN ACIKCA ISARETLENIR. Rapor eskiden grup tabanini "en cok islem
+    # yapan kosu" diye seciyordu; coin taramasinda bu "31 coin 14 koltuk"a
+    # denk geldi (2185 islem) ve para KAYBEDEN bir kosu taban olunca her sey
+    # "GECTI" gorundu. Taban, taramanin ILK girdisidir -- yani degisiklik
+    # icermeyen/en az degisiklik iceren hali.
+    if ad == _TABAN_AD[0]:
+        env["IKIZ_TABAN"] = "1"
     env["REPLAY_DB"] = os.path.join(KOK, f"ikiz_{ad}.db")
     env["IKIZ_ETIKET"] = ad
     gunluk = os.path.join(KOK, f"ikiz_{ad}.log")
@@ -605,6 +615,7 @@ def main():
         print(f"    {ETIKET_ADI.get(ad, ad):<14s} {ek}")
     print(f"{'='*84}\n  başladı. Her 2 dk'da bir durum satırı gelecek.\n  Canlı takip: ikiz_<ad>.log dosyalarını Not Defteri ile aç.\n", flush=True)
 
+    _TABAN_AD[0] = tarama[0][0]
     t0 = time.time()
     bitti = threading.Event()
     threading.Thread(target=_nabiz, args=(tarama, bitti), daemon=True).start()

@@ -97,6 +97,7 @@ def _karar_dosyasi():
         s = DA.olc(y)
         if s and "_hata" not in s and s.get("test"):
             s["maliyet"] = OZ.maliyet_ayari(y)
+            s["taban_mi"] = OZ._meta(y, "taban") == "1"
             olcum[ad] = s
             if ad in DA.TEMEL_ADAYLARI and temel_ad is None:
                 temel_ad = ad
@@ -125,11 +126,21 @@ def _karar_dosyasi():
                 sorted(gruplar.items(), key=lambda kv: -len(kv[1])), 1):
             if len(uyeler) < 2:
                 continue
-            taban_ad, tv = max(uyeler,
-                               key=lambda kv: kv[1]["train"]["n"] + kv[1]["test"]["n"])
+            # ⚠ ISARETLI taban varsa O kullanilir. "En cok islem yapan" kurali
+            # coin taramasinda para KAYBEDEN bir kosuyu taban yapti ve her sey
+            # "GECTI" gorundu. Isaret yoksa eski kurala dusulur ama UYARILIR.
+            _isaretli = [kv for kv in uyeler if kv[1].get("taban_mi")]
+            if _isaretli:
+                taban_ad, tv = _isaretli[0]
+            else:
+                taban_ad, tv = max(
+                    uyeler, key=lambda kv: kv[1]["train"]["n"] + kv[1]["test"]["n"])
             etiket = mal if mal else "(maliyetsiz / damgasiz)"
             ekle("")
             ekle(f"  GRUP {gi}: {etiket[:84]}")
+            if not _isaretli:
+                ekle("  ⚠ isaretli taban yok -> 'en cok islem' kuralina dusuldu;"
+                     " hukumler yaniltici olabilir.")
             ekle(f"  taban = {DA.ETIKET.get(taban_ad, taban_ad)}  "
                  f"({tv['train']['n']+tv['test']['n']} islem · "
                  f"TR MAR {tv['train']['mar']:.2f} · TE MAR {tv['test']['mar']:.2f} · "

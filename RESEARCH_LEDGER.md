@@ -133,6 +133,41 @@ filtreleri maliyetsiz tabana karşı elemiştik — sıralama yanlıştı.
 ~30 ayar tarandı, çoklu karşılaştırma nedeniyle canlıda ortalamaya dönüş
 beklenir. Risk %3.5'e çıktığı için hata payı da büyüyor.
 
+
+## 2026-09-22 — COIN GENİŞLETME REDDEDİLDİ (eksen kapandı)
+
+Bot 12 coinde işlem yapıyor; 31 coinin tam kapsamlı verisi var. Hipotezim:
+*"filtre kenarı büyütmeye çalışıyor ve tespit eşiğine takılıyor; coin eklemek
+kenarı değiştirmiyor, aynı kenarı daha sık uyguluyor — orada eşik yok."*
+
+**Hipotez çürüdü. Ölçüm (kazanan ayar + ölçülen maliyet, TEST yarısı):**
+
+| | işlem | TEST yıllık | TEST maxDD | TE MAR |
+|---|---|---|---|---|
+| **12 coin** | 1013 | **+%166.5** | %42.8 | **3.89** |
+| 19 coin | 1430 | **−%29.8** | %72.5 | −0.41 |
+| 19 coin · 10 koltuk | 1460 | −%40.0 | %76.4 | −0.52 |
+| 31 coin | 1959 | **−%41.6** | %88.1 | −0.47 |
+| 31 coin · 10 koltuk | 2129 | −%70.0 | %89.3 | −0.78 |
+| 31 coin · 14 koltuk | 2185 | −%73.3 | %89.4 | −0.82 |
+| 31 coin · 10 koltuk · korel1 | 2098 | −%66.9 | %88.9 | −0.75 |
+| 31 coin · 10 koltuk · risk %2.8 | 2137 | −%51.9 | %82.7 | −0.63 |
+
+**İki ayrı mekanizma, ikisi de öldürücü:**
+1. **Eklenen coinlerde kenar yok.** İşlem 1013→1959 (×1.9) ama getiri
+   +%166'dan −%42'ye düşüyor. Yeni işlemler ortalamada zarar ediyor.
+2. **Yoğunlaşma.** maxDD %42.8 → %88-89. Kripto tek blok hareket ediyor;
+   10-14 eşzamanlı pozisyon düşüşte katlanarak vuruyor. `korel 1` kurtarmıyor
+   (−%66.9), risk düşürmek kurtarmıyor (−%51.9).
+
+**Sonuç:** mevcut 12 coinlik evren keyfi değil. Genişletme ekseni **kapandı** —
+ne coin *seçimi* (2026-07, Spearman −0.098) ne coin *ekleme* işe yarıyor.
+
+**Yan bulgu — araç hatası:** rapor grup tabanını "en çok işlem yapan koşu"
+diye seçiyordu; burada bu, para kaybeden `31 coin 14 koltuk`a denk geldi ve
+**her şey "GEÇTİ" göründü**. Taban artık taramanın ilk girdisiyle açıkça
+işaretleniyor (`meta.taban`).
+
 ## 🔒 MÜHÜRLÜ (denendi, geçemedi)
 
 **2026-09-20/21 · İKİZ, 1752 işlem, TRAIN 2023-04→2024-12 / TEST 2025-01→2026-07**

@@ -480,6 +480,8 @@ async def sur(M, saat, feed, bitis=None, ilerleme_her=2000):
             "PAPER_SLIP_GIRIS_BP", "PAPER_SLIP_CIKIS_BP",
             "PAPER_MAKER_DOLUM", "PAPER_FUNDING", "DONCHIAN_MAKER_ENTRY"))
         await M.db.set_meta("maliyet_ayari", _mal)
+        if os.environ.get("IKIZ_TABAN") == "1":
+            await M.db.set_meta("taban", "1")
     except Exception as _e:
         print(f"  ⚠ motor surumu yazilamadi: {type(_e).__name__}: {_e}")
 
