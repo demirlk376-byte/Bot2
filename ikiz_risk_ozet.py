@@ -19,6 +19,16 @@ import pandas as pd, numpy as np
 KOK = os.path.dirname(os.path.abspath(__file__))
 BAL0 = 10_000.0
 ETIKET = {"taban": "TABAN canli",
+          "m_taban": "TABAN (canli ayar)",
+          "m_bas": "basarisiz kirilim",
+          "m_bas_gv": "basarisiz (trendsiz)",
+          "m_sup": "likidite supurmesi",
+          "m_sup_gv": "supurme (trendsiz)",
+          "q_taban": "TABAN (canli ayar)",
+          "q_aralik": "squeeze aralik",
+          "q_tk2": "squeeze takip 2",
+          "q_tk3": "squeeze takip 3",
+          "q_tk6": "squeeze takip 6",
           "p_taban": "TABAN (canli ayar)",
           "p_mk55": "mum kalite siki",
           "p_mk40": "govde 0.40",
@@ -255,6 +265,19 @@ def olc(d):
     }
 
 
+def _tarama_kosusu_mu(yol) -> bool:
+    """Gercek bir IKIZ kosusu mu? Olcut: kos.py yalnizca tamamlanan kosularda
+    meta'ya `motor_surum` yaziyor. Boylece elle olusmus/yarim veritabanlari
+    (ornegin 8 islemlik ikiz_trades.db) tabloya sizmaz."""
+    try:
+        with sqlite3.connect(f"file:{yol}?mode=ro", uri=True) as c:
+            satir = c.execute(
+                "select value from meta where key='motor_surum'").fetchone()
+        return bool(satir and satir[0])
+    except Exception:
+        return False
+
+
 def main():
     # ⚠ kalibi DARALT. "ikiz_*.db" klasordeki ALAKASIZ veritabanlarini da
     # yutuyordu: 8 islemlik bir dosya tabloya "trades" diye girdi ve MAR 35.55
@@ -265,7 +288,11 @@ def main():
         yollar, atlanan = [], []
         for y in sorted(glob.glob(os.path.join(KOK, "ikiz_*.db"))):
             ad = os.path.splitext(os.path.basename(y))[0].replace("ikiz_", "")
-            (yollar if ad in ETIKET else atlanan).append(y)
+            # ⚠ ETIKET'e BAGLI KALMA. Kalibi sadece isme dayandirmak, her YENI
+            # taramada sonuclarin sessizce kaybolmasi demekti (2026-09-22:
+            # 5 kosu tamamlandi, rapor "kosu yok" dedi cunku isimler listede
+            # degildi). Gercek olcut: kos.py'nin meta'ya yazdigi motor damgasi.
+            (yollar if (ad in ETIKET or _tarama_kosusu_mu(y)) else atlanan).append(y)
         if atlanan:
             print("  (tarama kosusu olmayan dosyalar atlandi: "
                   + ", ".join(os.path.basename(a) for a in atlanan) + ")")

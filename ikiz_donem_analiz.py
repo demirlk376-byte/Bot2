@@ -35,6 +35,16 @@ SIRA = ["taban", 'p_taban', 'p_mk55', 'p_mk40', 'p_mk_kon', 'p_ch10', 'p_ch05', 
         "adx32", "hold24", "guven",
         "trail10", "trail15", "be05", "bt", "rr15", "buf05", "adxr25", "cl1"]
 ETIKET = {"taban": "TABAN canli",
+          "m_taban": "TABAN (canli ayar)",
+          "m_bas": "basarisiz kirilim",
+          "m_bas_gv": "basarisiz (trendsiz)",
+          "m_sup": "likidite supurmesi",
+          "m_sup_gv": "supurme (trendsiz)",
+          "q_taban": "TABAN (canli ayar)",
+          "q_aralik": "squeeze aralik",
+          "q_tk2": "squeeze takip 2",
+          "q_tk3": "squeeze takip 3",
+          "q_tk6": "squeeze takip 6",
           "p_taban": "TABAN (canli ayar)",
           "p_mk55": "mum kalite siki",
           "p_mk40": "govde 0.40",
@@ -204,13 +214,47 @@ def olc(yol):
             "test_hata": te.get("_hata") if "_hata" in te else None}
 
 
+def _meta(yol) -> dict:
+    """Kosunun meta satirlari. Bos sozluk = okunamadi/kosu degil."""
+    try:
+        with sqlite3.connect(f"file:{yol}?mode=ro", uri=True) as c:
+            return dict(c.execute("select key, value from meta").fetchall())
+    except Exception:
+        return {}
+
+
+def _kosular() -> list[str]:
+    """⚠ SIRA LISTESINE BAGLI KALMA. Kalibi elle tutulan bir isim listesine
+    dayandirmak, her YENI taramada sonuclarin sessizce kaybolmasi demekti
+    (2026-09-22: 5 kosu tamamlandi, rapor "kosu yok" dedi cunku isimler
+    listede yoktu). Gercek olcut: kos.py'nin meta'ya yazdigi motor damgasi.
+    SIRA yalnizca GORUNTULEME sirasi icin kullanilir."""
+    bulunan = []
+    for y in sorted(glob.glob(os.path.join(KOK, "ikiz_*.db"))):
+        ad = os.path.splitext(os.path.basename(y))[0].replace("ikiz_", "")
+        if _meta(y).get("motor_surum"):
+            bulunan.append(ad)
+    sirali = [a for a in SIRA if a in bulunan]
+    return sirali + [a for a in bulunan if a not in sirali]
+
+
+def _taban_sec(adlar) -> str | None:
+    """Tabani ISIMDEN degil, kosunun KENDI damgasindan sec. ikiz_paralel.py
+    taramanin ilk girdisine IKIZ_TABAN=1 veriyor ve kos.py bunu meta'ya
+    yaziyor. En YENI motorla kosmus tabani tercih et."""
+    adaylar = [a for a in adlar
+               if _meta(os.path.join(KOK, f"ikiz_{a}.db")).get("taban") == "1"]
+    if adaylar:
+        # birden cok taban varsa (eski taramalar), dosyasi en yeni olan
+        return max(adaylar, key=lambda a: os.path.getmtime(
+            os.path.join(KOK, f"ikiz_{a}.db")))
+    return next((a for a in TEMEL_ADAYLARI if a in adlar), None)
+
+
 def main():
     sonuc, sorunlu = {}, []
-    for ad in SIRA:
+    for ad in _kosular():
         y = os.path.join(KOK, f"ikiz_{ad}.db")
-        if not os.path.exists(y):
-            sorunlu.append(f"ikiz_{ad}.db  -> DOSYA YOK")
-            continue
         s = olc(y)
         if "_hata" in s:
             sorunlu.append(f"ikiz_{ad}.db  -> {s['_hata']}")
@@ -221,13 +265,14 @@ def main():
         for x in sorunlu:
             print(f"    {x}")
 
-    TEMEL_AD = next((a for a in TEMEL_ADAYLARI if a in sonuc), None)
+    TEMEL_AD = _taban_sec(sonuc)
     if TEMEL_AD is None:
-        print("temel kosu yok (ikiz_taban.db veya ikiz_risk28.db gerekli).")
+        print("temel kosu yok: hicbir kosuda IKIZ_TABAN damgasi yok ve "
+              "ikiz_taban.db / ikiz_risk28.db de bulunamadi.")
         return
-    if TEMEL_AD != "taban":
-        print("\n  ⚠ 'taban' kosusu yok; hukumler ESKI bir referansa gore "
-              "veriliyor.\n    Dogru karsilastirma icin taramayi taban "
+    if _meta(os.path.join(KOK, f"ikiz_{TEMEL_AD}.db")).get("taban") != "1":
+        print("\n  ⚠ damgali taban kosusu yok; hukumler ESKI bir referansa "
+              "gore veriliyor.\n    Dogru karsilastirma icin taramayi taban "
               "kosusuyla birlikte calistir.")
 
     print(f"\n{'='*102}")
@@ -238,7 +283,7 @@ def main():
     bas += f"{'n':>6s}{'TR yillik%':>12s}{'TR maxDD%':>11s}{'TR MAR':>8s}"
     bas += f"   |{'n':>6s}{'TE yillik%':>12s}{'TE maxDD%':>11s}{'TE MAR':>8s}"
     print(bas); print("-" * 102)
-    for ad in SIRA:
+    for ad in _kosular():
         if ad not in sonuc:
             continue
         tr, te = sonuc[ad]["train"], sonuc[ad]["test"]
@@ -252,7 +297,7 @@ def main():
     print("-" * 102)
 
     t = sonuc[TEMEL_AD]
-    print(f"\n  TEMEL = {ETIKET[TEMEL_AD]}   "
+    print(f"\n  TEMEL = {ETIKET.get(TEMEL_AD, TEMEL_AD)}   "
           f"TRAIN MAR {t['train']['mar']:.2f}  "
           f"TEST MAR {t['test']['mar']:.2f}" if t["test"] else "")
     print("\n  HUKUMLER (temele gore, IKI yarida da iyilesme sarti):")
