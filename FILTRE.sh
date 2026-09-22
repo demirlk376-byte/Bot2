@@ -5,6 +5,7 @@
 #  Ayar:
 #    DONCHIAN_VOL_MULT=2.5    kirilim hacmi onceki 20 barin ortalamasinin 2.5 kati
 #    RISK_SCALE=1.75          islem basina risk %2.8 -> %3.5
+#    SQUEEZE_SYMBOLS=XRP,DOGE,XLM   TRX cikarildi
 #
 #  ⚠ RISK DE DEGISIYOR, sadece filtre degil. Sebebi: hacim2.5 dususu %62'den
 #  %39'a indiriyor ve bu KULLANILMAMIS RISK ALANI demek. Riski %3.5'e cikarmak
@@ -17,6 +18,15 @@
 #    TEST maxDD %61.8 -> %42.8
 #    TEST MAR   1.47 -> 3.89
 #  Kendi maliyet grubunun tabanina gore IKI YARIDA DA gecti.
+#
+#  ⚠ TRX CIKARILDI (2026-09-22). coin_maliyet.py TRX/squeeze'in kenarinin
+#  %89.6'sini giris kaymasina verdigini ve NET ZARAR ettigini gosterdi
+#  (stop %0.86 -- dar stop, ayni 15.85bp kayma cok daha buyuk R maliyeti).
+#  Yuruyen-ileri testi karari ileriye tasidi, sonra IKIZ bagimsiz dogruladi:
+#    islem 1013 -> 952 · aylik %8.51 -> %8.80 · maxDD %42.8 -> %41.5
+#    TE MAR 3.89 -> 4.22 (dTR +0.56 / dTE +0.32, IKI YARIDA DA)
+#  Bu PERFORMANSA gore coin secmek DEGIL: karar maliyetin edge'e oranindan
+#  geliyor ve stop genisligi coinin yapisal ozelligi.
 #
 #  Kullanim (VPS'te, /opt/bot2 icinde):
 #    bash FILTRE.sh durum     -> su an acik mi, hangi degerlerle
@@ -31,8 +41,8 @@ set -uo pipefail
 KOK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_DOSYA="$KOK/.env"
 SERVIS="btc-bot"
-ANAHTARLAR=("DONCHIAN_VOL_MULT" "RISK_SCALE")
-ACIK_DEGER=("2.5" "1.75")
+ANAHTARLAR=("DONCHIAN_VOL_MULT" "RISK_SCALE" "SQUEEZE_SYMBOLS")
+ACIK_DEGER=("2.5" "1.75" "XRP,DOGE,XLM")
 
 renk() { printf '%s\n' "$*"; }
 hata() { printf '  !! %s\n' "$*" >&2; }
@@ -54,6 +64,8 @@ c = load_config()
 s, r = c.strategy, c.risk
 print(f"    DONCHIAN_VOL_MULT  = {s.donchian_vol_mult}")
 print(f"    islem basina risk  = %{r.max_risk_per_trade*100:.2f}")
+import os as _o
+print(f"    SQUEEZE_SYMBOLS    = {_o.getenv('SQUEEZE_SYMBOLS', '(varsayilan)')}")
 acik = s.donchian_vol_mult >= 2.5
 print(f"    AYAR: {'ACIK (hacim2.5 + %3.5 risk)' if acik else 'KAPALI'}")
 PYEOF
@@ -109,7 +121,7 @@ case "${1:-durum}" in
     renk "=== FILTRE DURUMU ==="
     renk "  .env satirlari:"
     if [ -f "$ENV_DOSYA" ]; then
-      grep -E "^[[:space:]]*(DONCHIAN_VOL_MULT|RISK_SCALE)=" "$ENV_DOSYA" \
+      grep -E "^[[:space:]]*(DONCHIAN_VOL_MULT|RISK_SCALE|SQUEEZE_SYMBOLS)=" "$ENV_DOSYA" \
         2>/dev/null || renk "    (satir yok -> filtre KAPALI)"
     else
       renk "    (.env dosyasi yok)"
@@ -127,6 +139,7 @@ case "${1:-durum}" in
     renk "  Ayar acildi. Beklenen degisim (3 ay sonra sinanacak):"
     renk "    - donchian islem hizi ~%42 DUSER (gunde 1.46 -> ~0.85)"
     renk "    - risk %2.8 -> %3.5, yani pozisyonlar ~%25 BUYUR"
+    renk "    - TRX artik squeeze ile ISLEM GORMEYECEK"
     renk "  Izle:  journalctl -u $SERVIS -f | grep -iE 'donchian|hacim zayif'"
     ;;
   kapat)

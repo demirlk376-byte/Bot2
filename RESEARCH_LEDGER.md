@@ -168,6 +168,37 @@ diye seçiyordu; burada bu, para kaybeden `31 coin 14 koltuk`a denk geldi ve
 **her şey "GEÇTİ" göründü**. Taban artık taramanın ilk girdisiyle açıkça
 işaretleniyor (`meta.taban`).
 
+
+## 2026-09-22 — TRX/squeeze ÇIKARILDI · squeeze maker ve squeeze hacmi REDDEDİLDİ
+
+**Neden bakıldı:** `coin_maliyet.py` brüt kârın **%24.1'inin** giriş kaymasına
+gittiğini gösterdi ($424 / $1755, 3.24 yıl) ve yükün **dar stoplu** kollarda
+toplandığını: squeeze coinlerinde kenarın %35–90'ı (stop %0.86–2.40),
+donchian'da %12–25 (stop %3.1–6.5).
+
+**GEÇTİ — TRX/squeeze çıkarıldı.** İki bağımsız koşuda, iki yarıda da:
+
+| | işlem | aylık | TEST maxDD | TE MAR | dTR | dTE |
+|---|---|---|---|---|---|---|
+| taban (hacim2.5 %3.5) | 1013 | %8.51 | %42.8 | 3.89 | — | — |
+| **TRX yok** | **952** | **%8.80** | **%41.5** | **4.22** | **+0.56** | **+0.32** |
+| sq maker + TRX yok | 952 | %8.54 | %41.9 | 3.99 | +0.17 | +0.24 |
+
+Önceden tahmin edilmişti: `coin_maliyet.py` TRX'i "kenarın %89.6'sı kaymaya
+gidiyor, net zarar" diye işaretledi ve yürüyen-ileri testinde karar ileriye
+taşındı. İKİZ bağımsız doğruladı. ⚠ Bu **performansa göre coin seçimi değil**
+— karar maliyetin edge'e oranından geliyor, stop genişliği ise coinin yapısal
+(oynaklık) özelliği.
+
+**KALDI — squeeze maker girişi.** Aynı filtre/maliyet, tek fark maker:
+TE MAR 3.89 → **3.75**, yıllık %166.5 → %160.3. Beklentim tersiydi (yükün en
+çok olduğu kol), sonuç takip etmedi. Fark küçük, muhtemelen gürültü — ama
+kazanç yok.
+
+**KALDI — squeeze hacim kapısı** (`SQUEEZE_VOL_MULT`, yeni eklendi). 2.0'da
+işlem 1013 → 705 ve TE MAR **1.80**'e çöktü. Donchian'da işe yarayan mekanizma
+bu kolda yaramıyor. Kod kalıyor (varsayılan kapalı), eksen kapandı.
+
 ## 🔒 MÜHÜRLÜ (denendi, geçemedi)
 
 **2026-09-20/21 · İKİZ, 1752 işlem, TRAIN 2023-04→2024-12 / TEST 2025-01→2026-07**
