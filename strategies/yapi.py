@@ -104,6 +104,8 @@ def kurulumlari_bul(
     supurme_sart: bool = True,
     mss_sart: bool = True,     # False -> YAPI KIRILIMI ARANMAZ (null kolu)
     mss_olay: bool = False,    # True -> MSS bir OLAY (yeni kirilim); False -> DURUM
+    tek_kok: bool = False,     # True -> kok swing YALNIZCA onaylandigi barda aranir
+    sabit_sl_atr: float = 0.0, # >0 -> YAPISAL SL YERINE duz ATR stop (KONTROL)
     null_gecikme: int = 4,     # null kolunda s'den kac bar sonra girilir
     fvg_sart: bool = True,
     displacement_atr: float = 0.0,
@@ -151,6 +153,14 @@ def kurulumlari_bul(
                 # ayni MSS'i defalarca almamak icin yalnizca swing'in kendisi
                 # taze oldugunda basla.
                 if j != (son_sl[s] if yon > 0 else son_sh[s]) or s - j > mss_bar:
+                    continue
+                # ⚠ tek_kok: YALNIZCA swing'in ONAYLANDIGI barda basla.
+                # Varsayilan (False) her s barini deniyor; ayni MSS icin bircok
+                # (kok, referans) ikilisi uretiliyor ve dedupe sonrasi EN ESKI
+                # kok kaliyor -> daha GENIS stop. Bu bir tercih degil, tarama
+                # sirasinin YAN URUNU. Uretim kolu en YENI koku kullaniyor ve
+                # edge 3 kat dusuk cikti. Bu bayrak farki TEK MOTORDA olcer.
+                if tek_kok and s != j + k:
                     continue
 
             # --- 2) MSS: supurmeden SONRA, karsi taraftaki son onayli swing'in
@@ -200,6 +210,15 @@ def kurulumlari_bul(
             # --- 4) YAPISAL SL: supurulen swing'in otesi
             pay = sl_tampon * (atr[m] if atr[m] > 0 else 0.0)
             sl = seviye - pay if yon > 0 else seviye + pay
+            if sabit_sl_atr > 0:
+                # ⚠ KONTROL KOLU. "Yapisal" SL'in yerine AYNI mekanikte duz bir
+                # ATR stop. Depo bunu daha once olctu (sl_placement_test):
+                # duz genis ATR PF 1.43 > swing stop PF 1.31 -> "likidite
+                # cercevesi ekstra edge KATMIYOR, sadece stop-genisligi etkisi".
+                # Bu bayrak o hukmun BURADA da gecerli olup olmadigini olcer.
+                if not atr[m] > 0:
+                    continue
+                sl = close[m] - yon * sabit_sl_atr * atr[m]
 
             # --- 5) GIRIS
             if sahte_seviye_atr > 0:
