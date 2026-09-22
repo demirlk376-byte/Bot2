@@ -24,6 +24,7 @@ Kullanım:
   py ikiz_paralel.py sinir         → maker ALT/UST SINIR, 7 surec
   py ikiz_paralel.py fmal          → FILTRELER x gercek maliyet, 11 surec
   py ikiz_paralel.py sonrisk       → SON KOSU: iki aday x risk, 8 surec
+  py ikiz_paralel.py coin          → COIN GENISLETME, 8 surec (~65 dk!)
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -365,7 +366,47 @@ SON_RISK_TARAMA = [
     ("f25r42",   dict(MALIYET, **FILTRE, RISK_SCALE="2.10")),
 ]
 
-ETIKET_ADI = {"h25": "hacim2.5 %2.8", "h25r35": "hacim2.5 %3.5",
+# ⚠ COIN GENISLETME. Bot 12 coinde islem yapiyor, elimizde TAM KAPSAMLI
+# 31 coinin verisi var. Bu eksen filtrelerden YAPISAL OLARAK farkli:
+# filtre kenari BUYUTMEYE calisiyordu ve tespit esigine takildi; coin eklemek
+# kenari hic degistirmiyor, AYNI KENARI DAHA SIK uyguluyor. Bilesik buyumede
+# islem sikligi dogrudan carpan.
+# ⚠ SECIM YAPMIYORUZ, HEPSINI EKLIYORUZ. 2026-07'de coin SECIMI reddedilmisti
+# (TRAIN-TEST Spearman -0.098; iyi coinler taasinmiyor). Performansa gore
+# secmek uydurmadir; veri neyi veriyorsa hepsini almak degildir.
+# ⚠ MAX_POSITIONS de taraniyor: daha cok coin = daha cok sinyal, ama 7 koltuk
+# darbogaz olabilir. Koltuk artirmak es zamanli korele riski de buyutur, o
+# yuzden korel=1 ve dusuk risk varyantlari da var.
+# ⚠ KOSU SURESI ~2.6 KAT (12 -> 31 coin), yani ~65 dk.
+KAZANAN = {"DONCHIAN_VOL_MULT": "2.5", "RISK_SCALE": "1.75"}
+_S12 = "SOL,ETH,ADA,NEAR,BCH,ICP,BNB,XRP,DOGE,TRX,XLM,LTC"
+_D7  = "SOL,ETH,ADA,NEAR,BCH,ICP,BNB"
+_S19 = "SOL,ETH,ADA,NEAR,BCH,ICP,BNB,XRP,DOGE,TRX,XLM,LTC,AAVE,ALGO,APT,ATOM,AVAX,BTC,COTI"
+_D14 = "SOL,ETH,ADA,NEAR,BCH,ICP,BNB,AAVE,ALGO,APT,ATOM,AVAX,BTC,COTI"
+_S31 = "SOL,ETH,ADA,NEAR,BCH,ICP,BNB,XRP,DOGE,TRX,XLM,LTC,AAVE,ALGO,APT,ATOM,AVAX,BTC,COTI,DOT,ETC,FILECOIN,HBAR,INJ,LDO,LINK,SHIB,UNI,VET,XMR,ZEC"
+_D26 = "SOL,ETH,ADA,NEAR,BCH,ICP,BNB,AAVE,ALGO,APT,ATOM,AVAX,BTC,COTI,DOT,ETC,FILECOIN,HBAR,INJ,LDO,LINK,SHIB,UNI,VET,XMR,ZEC"
+
+COIN_TARAMA = [
+    ("c12",       dict(MALIYET, **KAZANAN)),                       # taban: 12 coin
+    ("c19",       dict(MALIYET, **KAZANAN, SYMBOLS=_S19, DONCHIAN_SYMBOLS=_D14)),
+    ("c31",       dict(MALIYET, **KAZANAN, SYMBOLS=_S31, DONCHIAN_SYMBOLS=_D26)),
+    ("c31p10",    dict(MALIYET, **KAZANAN, SYMBOLS=_S31, DONCHIAN_SYMBOLS=_D26,
+                       MAX_POSITIONS="10")),
+    ("c31p14",    dict(MALIYET, **KAZANAN, SYMBOLS=_S31, DONCHIAN_SYMBOLS=_D26,
+                       MAX_POSITIONS="14")),
+    ("c31p10k1",  dict(MALIYET, **KAZANAN, SYMBOLS=_S31, DONCHIAN_SYMBOLS=_D26,
+                       MAX_POSITIONS="10", MAX_CORRELATED_DIRECTION="1")),
+    ("c31p10r28", dict(MALIYET, DONCHIAN_VOL_MULT="2.5", SYMBOLS=_S31,
+                       DONCHIAN_SYMBOLS=_D26, MAX_POSITIONS="10")),   # risk %2.8
+    ("c19p10",    dict(MALIYET, **KAZANAN, SYMBOLS=_S19, DONCHIAN_SYMBOLS=_D14,
+                       MAX_POSITIONS="10")),
+]
+
+ETIKET_ADI = {"c12": "12 coin (taban)", "c19": "19 coin", "c31": "31 coin",
+              "c31p10": "31 coin · 10 koltuk", "c31p14": "31 coin · 14 koltuk",
+              "c31p10k1": "31c · 10k · korel1", "c31p10r28": "31c · 10k · %2.8",
+              "c19p10": "19 coin · 10 koltuk",
+              "h25": "hacim2.5 %2.8", "h25r35": "hacim2.5 %3.5",
               "h25r42": "hacim2.5 %4.2", "h25r50": "hacim2.5 %5.0",
               "f25": "teyit1+h1.5 %2.8", "f25r35": "teyit1+h1.5 %3.5",
               "f25r42": "teyit1+h1.5 %4.2",
@@ -541,11 +582,12 @@ def main():
                   "maliyet": MALIYET_TARAMA,
                   "sinir": SINIR_TARAMA,
                   "fmal": FILTRE_MALIYET_TARAMA,
-                  "sonrisk": SON_RISK_TARAMA}[hangi]
+                  "sonrisk": SON_RISK_TARAMA,
+                  "coin": COIN_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
-              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet, sinir, fmal, sonrisk)")
+              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet, sinir, fmal, sonrisk, coin)")
         return
 
     print(f"\n{'='*84}")
