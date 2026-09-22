@@ -27,6 +27,7 @@ Kullanım:
   py ikiz_paralel.py coin          → COIN GENISLETME, 8 surec (~65 dk!)
   py ikiz_paralel.py sonfiltre     → hacim esigi ucu + SQUEEZE hacmi, 8 surec
   py ikiz_paralel.py sqmaker       → SQUEEZE maker + pahali coin, 8 surec
+  py ikiz_paralel.py protokol      → TEST PROTOKOLU: mum kalitesi/chase/ATR, 8 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -450,7 +451,43 @@ SQZ_TARAMA = [
                       SQUEEZE_SYMBOLS="XRP,DOGE,XLM", SQUEEZE_VOL_MULT="2.0")),
 ]
 
-ETIKET_ADI = {"z_taban": "TABAN", "z_sqmk": "squeeze maker %27",
+# ⚠ TEST PROTOKOLU v1.0 — YALNIZ GERCEKTEN YENI OLANLAR.
+# Belgedeki DC-1..16 / BB-1..14 matrisini KORU KORUNE kosmuyoruz: ~30 sistem
+# taramak, bu veride (1000 islem, sigma 1.4) tesadufen bir "kazanan" cikmasini
+# neredeyse garanti eder. Belgenin kendi 13. bolumu de bunu uyariyor.
+# Zaten denenip elenenler: ADX (1.3), ATR tamponu (1.4), retest (1.7), coklu
+# mum teyidi (1.8), BB hacmi (2.5). Kazanan: hacim teyidi (1.6).
+# YENI OLANLAR:
+#   1.5  mum kalitesi  — govde/aralik, kapanis konumu, ters fitil
+#   1.9  chase        — ⚠ tamponun TERSI: "en fazla su kadar uzaklassin"
+#   1.10 ATR genislemesi
+PROTOKOL_TARAMA = [
+    ("p_taban",   dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
+    # 1.5 mum kalitesi — belgenin onerdigi esikler ve daha gevsegi
+    ("p_mk55",    dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                       DONCHIAN_GOVDE_ORAN="0.55", DONCHIAN_KAPANIS_KONUM="0.70",
+                       DONCHIAN_FITIL_ORAN="0.25")),
+    ("p_mk40",    dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                       DONCHIAN_GOVDE_ORAN="0.40")),
+    ("p_mk_kon",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                       DONCHIAN_KAPANIS_KONUM="0.70")),
+    # 1.9 chase
+    ("p_ch10",    dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                       DONCHIAN_CHASE_ATR="1.0")),
+    ("p_ch05",    dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                       DONCHIAN_CHASE_ATR="0.5")),
+    # 1.10 ATR genislemesi
+    ("p_atr11",   dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                       DONCHIAN_ATR_GENISLEME="1.1")),
+    ("p_atr13",   dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                       DONCHIAN_ATR_GENISLEME="1.3")),
+]
+
+ETIKET_ADI = {"p_taban": "TABAN (canli ayar)", "p_mk55": "mum kalite siki",
+              "p_mk40": "govde 0.40", "p_mk_kon": "kapanis konumu 0.70",
+              "p_ch10": "chase 1.0 ATR", "p_ch05": "chase 0.5 ATR",
+              "p_atr11": "ATR genisleme 1.1", "p_atr13": "ATR genisleme 1.3",
+              "z_taban": "TABAN", "z_sqmk": "squeeze maker %27",
               "z_sqmk100": "squeeze maker UST", "z_notrx": "TRX cikarildi",
               "z_sqmk_notrx": "sq maker + TRX yok", "z_ikimk": "iki kol da maker",
               "z_sqmk_s20": "sq maker + hacim2.0", "z_hepsi": "hepsi birden",
@@ -651,11 +688,12 @@ def main():
                   "sonrisk": SON_RISK_TARAMA,
                   "coin": COIN_TARAMA,
                   "sonfiltre": SON_FILTRE_TARAMA,
-                  "sqmaker": SQZ_TARAMA}[hangi]
+                  "sqmaker": SQZ_TARAMA,
+                  "protokol": PROTOKOL_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
-              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet, sinir, fmal, sonrisk, coin, sonfiltre, sqmaker)")
+              f"birlesik, geriverme, cikis, donchian, eniyi, son, maliyet, sinir, fmal, sonrisk, coin, sonfiltre, sqmaker, protokol)")
         return
 
     print(f"\n{'='*84}")

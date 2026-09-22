@@ -317,6 +317,11 @@ class StrategyConfig:
     donchian_vol_lookback: int = 20    # hacim ortalamasinin geriye bakisi
     donchian_obv: bool = False         # OBV de yeni uc yapmali mi
     donchian_adx_min: float = 0.0      # kirilimda 4h ADX en az kac olsun (0=kapali)
+    donchian_govde_oran: float = 0.0
+    donchian_kapanis_konum: float = 0.0
+    donchian_fitil_oran: float = 1.0
+    donchian_chase_atr: float = 0.0
+    donchian_atr_genisleme: float = 0.0
     squeeze_vol_mult: float = 0.0      # squeeze cikis hacmi SMA'nin kac kati (0=kapali)
     squeeze_vol_lookback: int = 20
     donchian_symbols: list[str] | None = ("BTC/USDT:USDT",)  # validated BTC-only
@@ -512,6 +517,11 @@ def load_config() -> AppConfig:
         donchian_vol_lookback=_getint("DONCHIAN_VOL_LOOKBACK", 20),
         donchian_obv=_getbool("DONCHIAN_OBV", False),
         donchian_adx_min=_getfloat("DONCHIAN_ADX_MIN", 0.0),
+        donchian_govde_oran=_getfloat("DONCHIAN_GOVDE_ORAN", 0.0),
+        donchian_kapanis_konum=_getfloat("DONCHIAN_KAPANIS_KONUM", 0.0),
+        donchian_fitil_oran=_getfloat("DONCHIAN_FITIL_ORAN", 1.0),
+        donchian_chase_atr=_getfloat("DONCHIAN_CHASE_ATR", 0.0),
+        donchian_atr_genisleme=_getfloat("DONCHIAN_ATR_GENISLEME", 0.0),
         squeeze_vol_mult=_getfloat("SQUEEZE_VOL_MULT", 0.0),
         squeeze_vol_lookback=_getint("SQUEEZE_VOL_LOOKBACK", 20),
         donchian_mtf_enabled=_getbool("DONCHIAN_MTF", False),

@@ -2024,6 +2024,11 @@ async def main() -> None:
                     vol_lookback=config.strategy.donchian_vol_lookback,
                     obv_confirm=config.strategy.donchian_obv,
                     adx_min=config.strategy.donchian_adx_min,
+                    govde_oran=config.strategy.donchian_govde_oran,
+                    kapanis_konum=config.strategy.donchian_kapanis_konum,
+                    fitil_oran=config.strategy.donchian_fitil_oran,
+                    chase_atr=config.strategy.donchian_chase_atr,
+                    atr_genisleme=config.strategy.donchian_atr_genisleme,
                 )
                 if config.strategy.donchian_enabled
                 and (

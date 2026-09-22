@@ -215,3 +215,58 @@ def test_adx_filtresi_sinyalleri_AZALTIR():
             f += 1
     assert f <= t, f"ADX filtresi sinyal ARTIRMIS: {f} > {t}"
     assert t > 0, "karsilastirma icin sinyal yok"
+
+
+# ── Test protokolu v1.0'dan gelen uc yeni kapi ────────────────────────────
+
+def test_YENI_KAPILAR_varsayilanda_KAPALI():
+    """⚠ Uc yeni kapi (mum kalitesi / chase / ATR genislemesi) varsayilanda
+    davranisi DEGISTIRMEMELI."""
+    d4 = _veri()
+    a = DonchianStrategy()
+    b = DonchianStrategy(govde_oran=0.0, kapanis_konum=0.0, fitil_oran=1.0,
+                         chase_atr=0.0, atr_genisleme=0.0)
+    for alt, atr_val in _pencereler(d4, adim=3):
+        assert a.analyze(alt, atr_val).direction == b.analyze(alt, atr_val).direction
+
+
+def test_mum_kalitesi_govde_ve_kapanis():
+    """Kirilim mumu: govde zayifsa veya kapanis ucta degilse ELENMELI."""
+    # kirilim bari: acilis 100, kapanis 106, dusuk 99.5, yuksek 112
+    # govde/aralik = 6/12.5 = 0.48 ; kapanis konumu = 6.5/12.5 = 0.52
+    d = _sentetik(107.0).copy()
+    d.iloc[-2, d.columns.get_loc("open")] = 100.0
+    d.iloc[-2, d.columns.get_loc("high")] = 112.0
+    d.iloc[-2, d.columns.get_loc("low")] = 99.5
+    taban = DonchianStrategy(channel=40, ema_trend=200)
+    assert taban.analyze(d.iloc[:-1], 1.0).direction == 1, "taban girmeliydi"
+    sıkı = DonchianStrategy(channel=40, ema_trend=200, govde_oran=0.55)
+    assert sıkı.analyze(d.iloc[:-1], 1.0).direction == 0, "zayif govde elenmeliydi"
+    gevsek = DonchianStrategy(channel=40, ema_trend=200, govde_oran=0.40)
+    assert gevsek.analyze(d.iloc[:-1], 1.0).direction == 1, "0.48 > 0.40 gecmeliydi"
+
+
+def test_chase_TAMPONUN_TERSI():
+    """⚠ Chase, denenip elenen ATR TAMPONUNUN TERSI: tampon 'en az su kadar
+    assin', chase 'en fazla su kadar uzaklassin'. Ayni seviyede biri gecirip
+    digeri elemeli."""
+    d = _sentetik(107.0).iloc[:-1]          # kirilim bari son bar, kanal 100
+    # kapanis 106, kanal tepesi ~100 -> uzaklik ~6 ATR (atr=1.0)
+    gecen = DonchianStrategy(channel=40, ema_trend=200, chase_atr=10.0)
+    elenen = DonchianStrategy(channel=40, ema_trend=200, chase_atr=2.0)
+    assert gecen.analyze(d, 1.0).direction == 1, "10 ATR tolerans gecmeliydi"
+    assert elenen.analyze(d, 1.0).direction == 0, "2 ATR tolerans elemeliydi"
+
+
+def test_atr_genislemesi_imkansiz_esikte_eler():
+    d4 = _veri()
+    s = DonchianStrategy(atr_genisleme=99.0)
+    for alt, atr_val in _pencereler(d4, adim=5):
+        assert s.analyze(alt, atr_val).direction == 0
+
+
+def test_atr_genislemesi_sifirda_hicbir_sey_elemez():
+    d4 = _veri()
+    a, b = DonchianStrategy(), DonchianStrategy(atr_genisleme=0.0)
+    for alt, atr_val in _pencereler(d4, adim=5):
+        assert a.analyze(alt, atr_val).direction == b.analyze(alt, atr_val).direction

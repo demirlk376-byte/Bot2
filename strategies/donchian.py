@@ -66,6 +66,13 @@ DEFAULT_OBV_CONFIRM = False # OBV de yeni uc yapmali mi
 # gerekcesi main.py:678'de yazili: "NOT regime-gated - its own EMA200 trend
 # filter is the regime filter". Gerekce makul ama SINANMAMIS. 0 = kapali.
 DEFAULT_ADX_MIN = 0.0
+# ⚠ TEST PROTOKOLU v1.0'DAN GELEN UC YENI KAPI — hepsi VARSAYILAN KAPALI.
+# Bunlar denenmemis eksenler; ADX/tampon/retest zaten denenip elendi.
+DEFAULT_GOVDE_ORAN = 0.0    # 1.5 mum kalitesi: govde/aralik en az
+DEFAULT_KAPANIS_KONUM = 0.0 # 1.5 kapanis mumun neresinde (long icin ust)
+DEFAULT_FITIL_ORAN = 1.0    # 1.5 ters fitil/aralik en fazla
+DEFAULT_CHASE_ATR = 0.0     # 1.9 seviyeden UZAKLIK en fazla kac ATR (0=kapali)
+DEFAULT_ATR_GENISLEME = 0.0 # 1.10 ATR(simdi)/ATR(20 ort) en az
 # Max hold in PRIMARY-tf (1h) candles: 30 x 4h bars = 120h (5 days).
 MAX_HOLD_1H_CANDLES = 120
 
@@ -99,6 +106,11 @@ class DonchianStrategy:
         vol_lookback: int = DEFAULT_VOL_LOOKBACK,
         obv_confirm: bool = DEFAULT_OBV_CONFIRM,
         adx_min: float = DEFAULT_ADX_MIN,
+        govde_oran: float = DEFAULT_GOVDE_ORAN,
+        kapanis_konum: float = DEFAULT_KAPANIS_KONUM,
+        fitil_oran: float = DEFAULT_FITIL_ORAN,
+        chase_atr: float = DEFAULT_CHASE_ATR,
+        atr_genisleme: float = DEFAULT_ATR_GENISLEME,
     ):
         self._channel = channel
         self._rr = rr
@@ -111,6 +123,11 @@ class DonchianStrategy:
         self._vol_lookback = max(2, int(vol_lookback))
         self._obv_confirm = bool(obv_confirm)
         self._adx_min = float(adx_min)
+        self._govde_oran = float(govde_oran)
+        self._kapanis_konum = float(kapanis_konum)
+        self._fitil_oran = float(fitil_oran)
+        self._chase_atr = float(chase_atr)
+        self._atr_genisleme = float(atr_genisleme)
 
     def _min_bars(self) -> int:
         # Need the channel lookback plus enough history for EMA200 to settle.
@@ -213,6 +230,18 @@ class DonchianStrategy:
             if not tamam:
                 son_sebep = neden
                 continue
+            tamam, neden = self._mum_kalitesi(df, k, yon)
+            if not tamam:
+                son_sebep = neden
+                continue
+            tamam, neden = self._chase_tamam(c, seviye, atr_val)
+            if not tamam:
+                son_sebep = neden
+                continue
+            tamam, neden = self._atr_genisleme_tamam(df, k, atr_val)
+            if not tamam:
+                son_sebep = neden
+                continue
 
             sl = c - yon * sl_dist
             tp = c + yon * self._rr * sl_dist
@@ -275,6 +304,61 @@ class DonchianStrategy:
             return False, "ADX hazir degil"
         if v < self._adx_min:
             return False, f"ADX zayif ({v:.1f} < {self._adx_min:.1f})"
+        return True, ""
+
+    def _mum_kalitesi(self, df, k, yon):
+        """1.5 — kirilim mumunun SEKLI. Fitille kirip kapanista geri donen mum
+        klasik sahte kirilimdir; govdesi guclu ve kapanisi ucta olan mum
+        gercek katilimi gosterir.
+          govde/aralik      >= govde_oran
+          kapanis konumu    long icin >= kapanis_konum (ustte), short icin <=
+          ters fitil/aralik <= fitil_oran"""
+        if (self._govde_oran <= 0 and self._kapanis_konum <= 0
+                and self._fitil_oran >= 1.0):
+            return True, ""
+        i = -(k + 1)
+        o = float(df["open"].iloc[i]); c = float(df["close"].iloc[i])
+        h = float(df["high"].iloc[i]); l = float(df["low"].iloc[i])
+        aralik = h - l
+        if aralik <= 0:
+            return False, "mum araligi sifir"
+        if abs(c - o) / aralik < self._govde_oran:
+            return False, f"govde zayif ({abs(c-o)/aralik:.2f})"
+        konum = (c - l) / aralik if yon == 1 else (h - c) / aralik
+        if konum < self._kapanis_konum:
+            return False, f"kapanis ucta degil ({konum:.2f})"
+        ters = (h - max(o, c)) if yon == 1 else (min(o, c) - l)
+        if ters / aralik > self._fitil_oran:
+            return False, f"ters fitil buyuk ({ters/aralik:.2f})"
+        return True, ""
+
+    def _chase_tamam(self, c, seviye, atr_val):
+        """1.9 — seviyeden COK uzakta girme. ⚠ Bu, denenip elenen ATR
+        TAMPONUNUN TERSI: tampon 'en az su kadar assin' diyordu, bu 'en fazla
+        su kadar uzaklassin' diyor. Fiyat cok kacmissa R/R bozulur."""
+        if self._chase_atr <= 0 or atr_val <= 0:
+            return True, ""
+        uzaklik = abs(c - seviye) / atr_val
+        if uzaklik > self._chase_atr:
+            return False, f"cok uzak ({uzaklik:.2f} ATR > {self._chase_atr:.2f})"
+        return True, ""
+
+    def _atr_genisleme_tamam(self, df, k, atr_val):
+        """1.10 — sikismadan genislemeye gecis. Kirilim ANINDAKI ATR, son 20
+        barin ATR ortalamasinin en az `atr_genisleme` kati olmali."""
+        if self._atr_genisleme <= 0:
+            return True, ""
+        a = atr_fn(df["high"], df["low"], df["close"]).to_numpy(dtype="float64")
+        son = -(k + 1)
+        bas = son - 20
+        if -bas > len(a):
+            return False, "ATR gecmisi yetersiz"
+        ort = float(np.nanmean(a[bas:son]))
+        if not np.isfinite(ort) or ort <= 0:
+            return False, "ATR ortalamasi sifir"
+        oran = float(a[son]) / ort
+        if oran < self._atr_genisleme:
+            return False, f"ATR genislemedi ({oran:.2f}x)"
         return True, ""
 
     def _obv_tamam(self, df, k, yon):
