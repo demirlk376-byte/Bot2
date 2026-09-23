@@ -3,6 +3,21 @@ setlocal
 cd /d "%~dp0"
 title IKIZ
 
+REM ============================================================
+REM  KENDINI GUNCELLE. Kullanici yeni menu tusuna basip "gecersiz
+REM  secim" aldi: dosya eskiydi. Cift tiklamayla acildiginda kimse
+REM  git pull yapmiyordu. Artik ilk acilista guncelleyip KENDINI
+REM  YENIDEN BASLATIR (calisan .bat dosyasi degisirse cmd sasirir,
+REM  o yuzden yeni surum ayri bir pencerede baslatilir).
+REM ============================================================
+if /i not "%~1"=="guncel" (
+  echo.
+  echo   Kod guncelleniyor, bekle...
+  call :guncelle
+  start "IKIZ" "%~f0" guncel
+  exit /b
+)
+
 :menu
 cls
 echo ==========================================================
@@ -79,8 +94,7 @@ goto menu
 :calistir
 echo.
 echo   [1/3] Kod guncelleniyor...
-git pull
-if errorlevel 1 echo   UYARI: git pull basarisiz, mevcut kodla devam.
+call :guncelle
 echo   [2/3] Paketler kontrol ediliyor...
 py -m pip install -q -r requirements.txt
 echo   [3/3] Kosu: %ARGS%
@@ -97,3 +111,15 @@ goto menu
 
 :son
 endlocal
+
+goto :eof
+
+:guncelle
+git pull
+if not errorlevel 1 goto :eof
+echo   git pull reddedildi ^(yerel degisiklik^). Zorla senkronlaniyor...
+REM .env ve *.db .gitignore'da -- ayarlar ve Ikiz sonuclari ETKILENMEZ.
+for /f "tokens=*" %%b in ('git rev-parse --abbrev-ref HEAD') do set "DAL=%%b"
+git fetch origin %DAL%
+git reset --hard origin/%DAL%
+goto :eof
