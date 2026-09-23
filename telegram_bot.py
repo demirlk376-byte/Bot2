@@ -20,6 +20,64 @@ def _fmt_price(v: float) -> str:
     return f"${v:,.6f}"
 
 
+def _durum_metni(*, canli: bool, equity: float, sermaye: float, upnl: float,
+                 n_acik: int, durduruldu: bool, gun_tabani: float,
+                 gun_limiti: float, temiz) -> str:
+    """/status ekranini uretir. SAF fonksiyon -- test edilebilsin diye ayrildi.
+
+    ⚠ YUZDE ONCE. Kullanici acikca "bana yuzdeliklerle konus" dedi; dolar
+    parantez icinde kaliyor. Ama dolar rakami KESIN, yuzde YAKLASIK: paydasi
+    cipa equity'si, arada sermaye eklendiyse getiriyi bir miktar yuksek
+    gosterir. Bu yuzden alttaki not KALIYOR -- yuzdeyi one cikarmak o uyariyi
+    daha da gerekli yapar, gereksiz degil.
+
+    ⚠ GUN SINIRI satiri YENI. Bot -%35'te tum pozisyonlari kapatip gunu
+    durduruyor (execution.enforce_daily_loss) ama ekranda o esige NE KADAR
+    kaldigi HIC yazmiyordu. Risk ekraninin en cok ise yarayan satiri bu.
+    """
+    kar_p = temiz["pct"] if temiz else (
+        (equity - sermaye) / sermaye * 100 if sermaye > 0 else 0.0)
+    kar_d = temiz["kar"] if temiz else (equity - sermaye)
+
+    sat = [f"<b>DURUM · {'CANLI' if canli else 'PAPER'}</b>", ""]
+    sat.append(f"<b>Kâr  %{kar_p:+.1f}</b>  <code>${kar_d:+,.2f}</code>")
+
+    if gun_tabani > 0:
+        gun_p = (equity - gun_tabani) / gun_tabani * 100
+        sat.append(f"Bugün  <code>%{gun_p:+.1f}</code>  "
+                   f"<code>${equity - gun_tabani:+,.2f}</code>")
+    else:
+        sat.append("Bugün  <code>—</code>  <i>(gün tabanı yok)</i>")
+
+    if n_acik:
+        acik_p = (upnl / equity * 100) if equity > 0 else 0.0
+        sat.append(f"Açık {n_acik}  <code>%{acik_p:+.1f}</code>  "
+                   f"<code>${upnl:+,.2f}</code>")
+    else:
+        sat.append("Açık <code>0</code>")
+
+    sat.append("")
+    sat.append(f"Equity <code>${equity:,.2f}</code> · "
+               f"sermaye <code>${sermaye:,.2f}</code>")
+
+    if gun_tabani > 0:
+        kayip = (gun_tabani - equity) / gun_tabani          # + ise zararda
+        kalan = (gun_limiti - kayip) * 100
+        # Gunluk butcenin YARISI tukendiginde uyar. %25 kala uyarmak cok
+        # gec: -%35 esiginde bot TUM pozisyonlari kapatiyor, yani uyari
+        # hareket alani birakacak kadar erken gelmeli.
+        isaret = "⚠️ " if kalan < gun_limiti * 100 * 0.5 else ""
+        sat.append(f"{isaret}Gün sınırı %-{gun_limiti*100:.0f} · "
+                   f"kalan <code>%{kalan:.1f}</code>")
+
+    sat.append(f"Durum <b>{'DURDURULDU' if durduruldu else 'AKTİF'}</b>")
+    if temiz:
+        sat.append("")
+        sat.append(f"<i>temiz dönem {temiz['cut']} sonrası · yüzde çıpa "
+                   f"equity'sine göre (dolar kesin)</i>")
+    return "\n".join(sat)
+
+
 class TelegramNotifier:
     """Telegram bildirimleri + telefondan interaktif kontrol.
 
@@ -388,45 +446,32 @@ class TelegramNotifier:
         try:
             equity, upnl = await self._equity_and_upnl()
             invested = await self._invested()
-            true_pnl = equity - invested
-            ret = (true_pnl / invested * 100) if invested > 0 else 0.0
             n_open = self._portfolio.get_open_position_count()
             halted = self._executor.is_halted()
             paper = self._app_config.exchange.paper_mode
-            # TEMİZ DÖNEM çıpası varsa kâr ONDAN gösterilir; öncesi hiç yokmuş
-            # gibi davranılır (kullanıcı isteği). Çıpa yoksa her-zamanın rakamı.
             _t = await self._temiz(equity, invested)
-            kar_satiri = (
-                f"<b>Kâr: <code>${_t['kar']:+.2f}</code> ({_t['pct']:+.1f}%)</b>\n"
-                # ⚠ Yüzdenin paydası ÇIPA EQUITY'si. Arada sermaye eklendiyse
-                # bu getiriyi bir miktar YÜKSEK gösterir (para geç geldiği için
-                # tüm dönem çalışmadı). Dolar rakamı KESİN, yüzde yaklaşık —
-                # etiket bunu açıkça söylüyor ki okuyan yanılmasın.
-                f"<i>temiz dönem: {_t['cut']} sonrası · % çıpa equity'sine göre</i>\n"
-                if _t else
-                f"Gerçek kâr: <code>${true_pnl:+.2f}</code> ({ret:+.1f}%)\n")
-            text = (
-                f"<b>Durum</b> ({'PAPER' if paper else 'CANLI'})\n"
-                f"Equity: <code>${equity:,.2f}</code>\n"
-                # "Gerçek kâr" tek başına yanıltıcıydı: kaydedilmemiş bir para
-                # yatırma doğrudan kâra yazılıyor ve fark GÖRÜNMÜYORDU. Yatırılan
-                # sermaye de basılırsa hata anında gözle yakalanır.
-                f"Yatırılan sermaye: <code>${invested:,.2f}</code>\n"
-                + kar_satiri +
-                f"Açık pozisyon: <code>{n_open}</code>\n"
-                f"Gerçekleşmemiş PnL: <code>${upnl:+.2f}</code>\n"
-                f"Trade durumu: <code>{'DURDURULDU' if halted else 'AKTİF'}</code>"
-                # ⚠ TEŞHİS NOTU BURADAN KALDIRILDI. Defterin iç toplamının şişkin
-                # olması yukarıdaki rakamları ETKİLEMİYOR (kâr borsadan geliyor),
-                # dolayısıyla günlük ekranda yeri yok — kullanıcı "boş yapmasın,
-                # tertemiz istediğimi versin" dedi ve haklı. Tam teşhis /tani'de.
-                # Burada YALNIZ yukarıdaki rakamı YANLIŞ yapabilecek durum kalır:
-                # sermaye eksik kayıtlıysa "Gerçek kâr" gerçekten şişer.
-                + await self._sermaye_uyarisi(equity, invested, upnl)
-            )
+
+            # GUNLUK: halt mantigiyla AYNI tabani kullan, yoksa ekrandaki
+            # "kalan marj" ile gercek durdurma esigi ayrisir.
+            taban = 0.0
+            try:
+                taban = float(self._executor.get_daily_starting_balance() or 0.0)
+                akis = getattr(self._executor, "_deposit_flow_since_baseline", None)
+                if taban > 0 and akis is not None:
+                    taban += float(await akis())
+            except Exception:
+                taban = 0.0
+
+            text = _durum_metni(
+                canli=not paper, equity=equity, sermaye=invested, upnl=upnl,
+                n_acik=n_open, durduruldu=halted, gun_tabani=taban,
+                gun_limiti=float(self._app_config.risk.daily_max_loss),
+                temiz=_t,
+            ) + await self._sermaye_uyarisi(equity, invested, upnl)
+            await self._reply(update, text)
         except Exception as e:
-            text = f"status hatası: {e}"
-        await self._reply(update, text)
+            logger.error("status komutu hatasi: %s", e)
+            await self._reply(update, f"status hatası: {e}")
 
     async def _cmd_tani(self, update, context) -> None:
         """Teşhis — /status'tan çıkarılan iç tutarlılık kontrolü burada durur.
