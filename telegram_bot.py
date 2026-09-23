@@ -22,33 +22,33 @@ def _fmt_price(v: float) -> str:
 
 def _durum_metni(*, canli: bool, equity: float, sermaye: float, upnl: float,
                  n_acik: int, durduruldu: bool, gun_tabani: float,
-                 gun_limiti: float, temiz) -> str:
-    """/status ekranini uretir. SAF fonksiyon -- test edilebilsin diye ayrildi.
+                 gun_limiti: float, temiz=None) -> str:
+    """/status ekrani. SAF fonksiyon -- test edilebilsin diye ayrildi.
 
-    ⚠ YUZDE ONCE. Kullanici acikca "bana yuzdeliklerle konus" dedi; dolar
-    parantez icinde kaliyor. Ama dolar rakami KESIN, yuzde YAKLASIK: paydasi
-    cipa equity'si, arada sermaye eklendiyse getiriyi bir miktar yuksek
-    gosterir. Bu yuzden alttaki not KALIYOR -- yuzdeyi one cikarmak o uyariyi
-    daha da gerekli yapar, gereksiz degil.
+    ⚠ PARA BLOGU KENDI ICINDE TUTAR: yatirilan + kâr = equity. Baska hicbir
+    kalem yok. Onceki surumde kâr ÇIPADAN (2026-07-17) olculuyordu; "yatirilan
+    280.38 + kâr 117.21 = 397.59" equity 373.17'yi TUTMUYORDU ve kullanici
+    hakli olarak rakamdan suphelendi. Cipayi ekranda gostererek denklemi
+    kapatmayi denedim, kullanici "eklenen meklenen ekleme" dedi -- haklı, o
+    satir ekrani karmasiklastiriyordu. Cozum: TEK ve TUTARLI tanim.
+        kâr = equity − yatirilan toplam sermaye
+    Yuzde payda = yatirilan sermaye. Cipa mantigi /rapor'da duruyor.
 
-    ⚠ GUN SINIRI satiri YENI. Bot -%35'te tum pozisyonlari kapatip gunu
-    durduruyor (execution.enforce_daily_loss) ama ekranda o esige NE KADAR
-    kaldigi HIC yazmiyordu. Risk ekraninin en cok ise yarayan satiri bu.
+    ⚠ YUZDE ONDE: kullanicinin kalici istegi ("bana yuzdeliklerle konus").
     """
-    kar_p = temiz["pct"] if temiz else (
-        (equity - sermaye) / sermaye * 100 if sermaye > 0 else 0.0)
-    kar_d = temiz["kar"] if temiz else (equity - sermaye)
+    kar = equity - sermaye
+    kar_p = (kar / sermaye * 100) if sermaye > 0 else 0.0
 
     sat = [f"<b>DURUM · {'CANLI' if canli else 'PAPER'}</b>", ""]
-    sat.append(f"<b>Kâr  %{kar_p:+.1f}</b>  <code>${kar_d:+,.2f}</code>")
+    sat.append(f"Yatırılan  <code>${sermaye:,.2f}</code>")
+    sat.append(f"Equity     <code>${equity:,.2f}</code>")
+    sat.append(f"<b>Kâr  %{kar_p:+.1f}  <code>${kar:+,.2f}</code></b>")
+    sat.append("")
 
     if gun_tabani > 0:
         gun_p = (equity - gun_tabani) / gun_tabani * 100
         sat.append(f"Bugün  <code>%{gun_p:+.1f}</code>  "
                    f"<code>${equity - gun_tabani:+,.2f}</code>")
-    else:
-        sat.append("Bugün  <code>—</code>  <i>(gün tabanı yok)</i>")
-
     if n_acik:
         acik_p = (upnl / equity * 100) if equity > 0 else 0.0
         sat.append(f"Açık {n_acik}  <code>%{acik_p:+.1f}</code>  "
@@ -56,39 +56,17 @@ def _durum_metni(*, canli: bool, equity: float, sermaye: float, upnl: float,
     else:
         sat.append("Açık <code>0</code>")
 
-    sat.append("")
-    # ⚠ DENKLEMI KAPAT. Kullanici hakli olarak "sermayeyle kâr tutmuyo" dedi:
-    # ekranda sermaye $280.38 ve kâr $117.21 yan yanaydi, toplami $397.59
-    # ediyordu ama equity $373.17'ydi. Rakam BOZUK DEGILDI -- kâr ÇIPADAN
-    # itibaren olculuyor ve cipa ekranda YOKTU, yani aritmetigi gozle
-    # dogrulamak IMKANSIZDI. Artik satir kendi kendini kapatiyor:
-    #   equity = cipa_equity + cipadan beri EKLENEN sermaye + kâr
-    if temiz and temiz.get("c_eq", 0) > 0:
-        eklenen = sermaye - temiz.get("c_sm", sermaye)
-        sat.append(f"Equity <code>${equity:,.2f}</code>  =  çıpa "
-                   f"<code>${temiz['c_eq']:,.2f}</code> + eklenen "
-                   f"<code>${eklenen:+,.2f}</code> + kâr "
-                   f"<code>${temiz['kar']:+,.2f}</code>")
-        sat.append(f"Yatırılan sermaye <code>${sermaye:,.2f}</code>")
-    else:
-        sat.append(f"Equity <code>${equity:,.2f}</code> · "
-                   f"sermaye <code>${sermaye:,.2f}</code>")
-
     if gun_tabani > 0:
-        kayip = (gun_tabani - equity) / gun_tabani          # + ise zararda
+        # ⚠ Bot -%35'te TUM pozisyonlari kapatip gunu durduruyor
+        # (execution.enforce_daily_loss). O esige ne kadar kaldigi ekranda
+        # HIC yazmiyordu; risk ekraninin en cok ise yarayan satiri bu.
+        kayip = (gun_tabani - equity) / gun_tabani
         kalan = (gun_limiti - kayip) * 100
-        # Gunluk butcenin YARISI tukendiginde uyar. %25 kala uyarmak cok
-        # gec: -%35 esiginde bot TUM pozisyonlari kapatiyor, yani uyari
-        # hareket alani birakacak kadar erken gelmeli.
         isaret = "⚠️ " if kalan < gun_limiti * 100 * 0.5 else ""
         sat.append(f"{isaret}Gün sınırı %-{gun_limiti*100:.0f} · "
                    f"kalan <code>%{kalan:.1f}</code>")
 
     sat.append(f"Durum <b>{'DURDURULDU' if durduruldu else 'AKTİF'}</b>")
-    if temiz:
-        sat.append("")
-        sat.append(f"<i>temiz dönem {temiz['cut']} sonrası · yüzde çıpa "
-                   f"equity'sine göre (dolar kesin)</i>")
     return "\n".join(sat)
 
 
