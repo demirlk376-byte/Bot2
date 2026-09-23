@@ -57,8 +57,22 @@ def _durum_metni(*, canli: bool, equity: float, sermaye: float, upnl: float,
         sat.append("Açık <code>0</code>")
 
     sat.append("")
-    sat.append(f"Equity <code>${equity:,.2f}</code> · "
-               f"sermaye <code>${sermaye:,.2f}</code>")
+    # ⚠ DENKLEMI KAPAT. Kullanici hakli olarak "sermayeyle kâr tutmuyo" dedi:
+    # ekranda sermaye $280.38 ve kâr $117.21 yan yanaydi, toplami $397.59
+    # ediyordu ama equity $373.17'ydi. Rakam BOZUK DEGILDI -- kâr ÇIPADAN
+    # itibaren olculuyor ve cipa ekranda YOKTU, yani aritmetigi gozle
+    # dogrulamak IMKANSIZDI. Artik satir kendi kendini kapatiyor:
+    #   equity = cipa_equity + cipadan beri EKLENEN sermaye + kâr
+    if temiz and temiz.get("c_eq", 0) > 0:
+        eklenen = sermaye - temiz.get("c_sm", sermaye)
+        sat.append(f"Equity <code>${equity:,.2f}</code>  =  çıpa "
+                   f"<code>${temiz['c_eq']:,.2f}</code> + eklenen "
+                   f"<code>${eklenen:+,.2f}</code> + kâr "
+                   f"<code>${temiz['kar']:+,.2f}</code>")
+        sat.append(f"Yatırılan sermaye <code>${sermaye:,.2f}</code>")
+    else:
+        sat.append(f"Equity <code>${equity:,.2f}</code> · "
+                   f"sermaye <code>${sermaye:,.2f}</code>")
 
     if gun_tabani > 0:
         kayip = (gun_tabani - equity) / gun_tabani          # + ise zararda
@@ -249,7 +263,10 @@ class TelegramNotifier:
         if not cut or c_eq <= 0 or c_sm <= 0:
             return None
         kar = equity - c_eq - (sermaye - c_sm)
-        return {"cut": str(cut), "kar": kar,
+        # c_eq / c_sm ekranda da GOSTERILIYOR: onlar olmadan "sermaye + kâr"
+        # equity'yi tutmuyor gibi gorunuyor ve kullanici hakli olarak
+        # rakamdan suphe ediyor.
+        return {"cut": str(cut), "kar": kar, "c_eq": c_eq, "c_sm": c_sm,
                 "pct": kar / c_eq * 100 if c_eq > 0 else 0.0}
 
     async def _sermaye_uyarisi(self, equity: float, invested: float,

@@ -287,7 +287,15 @@ def main():
         if ad not in sonuc:
             continue
         tr, te = sonuc[ad]["train"], sonuc[ad]["test"]
-        s = f"{ETIKET.get(ad, ad):<13s}"
+        # ⚠ BILESIK PATLAMASI KORUMASI (2026-09-23'te yakalandi).
+        # Cok islem acan kollar sabit-kesir boyutlandirmayla equity'yi
+        # super-ustel buyutuyor; yillik getiri ve MAR anlamsizlasiyor
+        # (orn. a_orb: islem basi -0.21R KAYBEDIYOR ama son bakiye 2e53 $).
+        # Daha kotusu ORTA vaka: a_ifvg MAR'da tabani GECTI ama kendi kolu
+        # islem basi -0.86R idi -- siralama sansi daha kotu bir kitabi daha
+        # yuksek bakiyeyle bitirdi. MAR tek basina KARAR ARACI DEGIL.
+        supheli = (tr["yillik"] > 50 or (te and te["yillik"] > 50))
+        s = f"{('⚠ ' if supheli else '') + ETIKET.get(ad, ad):<13s}"
         s += f"{tr['n']:>6d}{tr['yillik']*100:>12.1f}{tr['maxdd']*100:>11.1f}{tr['mar']:>8.2f}"
         if te:
             s += f"   |{te['n']:>6d}{te['yillik']*100:>12.1f}{te['maxdd']*100:>11.1f}{te['mar']:>8.2f}"
@@ -295,6 +303,10 @@ def main():
             s += "   |   (TEST verisi yetersiz)"
         print(s)
     print("-" * 102)
+    if any((sonuc[a]["train"]["yillik"] > 50) or
+           (sonuc[a]["test"] and sonuc[a]["test"]["yillik"] > 50)
+           for a in sonuc):
+        print("  ⚠ isaretli satirlarda yillik getiri >%5000: bilesik\n    patlamasi. MAR ve getiri ANLAMSIZ; o kollari islem basi R ile\n    degerlendir (ikiz_ham_rapor.py).")
 
     t = sonuc[TEMEL_AD]
     print(f"\n  TEMEL = {ETIKET.get(TEMEL_AD, TEMEL_AD)}   "
