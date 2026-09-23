@@ -1,6 +1,0 @@
-============================================================================================
-  K A R A R   -  yalnizca GUNCEL kodla kosmus konfigurasyonlar
-  motor: (damgasiz)   (en son kosan kosunun motoru)
-============================================================================================
-  Guncel kodla kosmus konfigurasyon YOK. Taramayi calistir.
-============================================================================================

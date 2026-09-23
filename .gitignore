@@ -26,3 +26,11 @@ data/*_bnc_*.csv
 # SQLite WAL yan dosyalari (kosu sirasinda olusur, surume girmez)
 *.db-wal
 *.db-shm
+
+# ⚠ URETILEN RAPOR -- IZLENMEZ.
+# KARAR.txt'yi ikiz_rapor.py yaziyor ve o HER taramadan sonra otomatik
+# kosuyor. Dosya git takibindeyken her kosu onu degistiriyor, git bunu
+# "yerel degisiklik" sayip bir SONRAKI `git pull`'u REDDEDIYORDU.
+# Kullanicinin makinesi bu yuzden 36 commit geride kaldi ve yeni menu
+# tuslari hic gelmedi; saatlerce bat dosyalarinda hata arandi.
+KARAR.txt
