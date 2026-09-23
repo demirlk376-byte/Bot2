@@ -19,6 +19,16 @@ import pandas as pd, numpy as np
 KOK = os.path.dirname(os.path.abspath(__file__))
 BAL0 = 10_000.0
 ETIKET = {"taban": "TABAN canli",
+          "p_st07": "portfoy stop %7",
+          "p_st12": "portfoy stop %12",
+          "p_st18": "portfoy stop %18",
+          "p_st12s": "%12 + 24sa soguma",
+          "p_st12y": "%12 + ayni-yon 5",
+          "k_taban": "TABAN (canli ayar)",
+          "k_ayni5": "ayni yon en fazla 5",
+          "k_ayni4": "ayni yon en fazla 4",
+          "k_ayni3": "ayni yon en fazla 3",
+          "k_korel3": "ayni yon 5 + korel 3",
           "m_taban": "TABAN (canli ayar)",
           "m_bas": "basarisiz kirilim",
           "m_bas_gv": "basarisiz (trendsiz)",

@@ -77,8 +77,14 @@ def _karar_dosyasi():
 
     # ⚠ Referans = EN SON kosan kosunun motoru (calisan kodun parmak izi
     # DEGIL: koda her dokunusta butun kosular gecersiz sayilirdi).
+    # ⚠ SIRA LISTESINE BAGLI KALMA -- AYNI HATA UCUNCU YERDE.
+    # ikiz_risk_ozet ve ikiz_donem_analiz'de duzeltmistim, BURAYI atlamistim.
+    # Elle tutulan bir isim listesini gezmek, her YENI taramanin sonuclarinin
+    # SESSIZCE kaybolmasi demek: kullanici 50 dakika kostu, KARAR.txt bos
+    # geldi ("hicbir grupta gecen ayar yok") -- oysa kosular basariliydi.
+    # Gercek olcut: kos.py'nin meta'ya yazdigi motor damgasi (DA._kosular).
     mevcut = []
-    for ad in DA.SIRA:
+    for ad in DA._kosular():
         y = os.path.join(KOK, f"ikiz_{ad}.db")
         if os.path.exists(y):
             try:
