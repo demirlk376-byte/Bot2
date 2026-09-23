@@ -6084,3 +6084,73 @@ başarısız). Üçüncü kez: bu değişken hiçbir yönde bilgi taşımıyor.
 `IKIZ.bat → G`. Beklenti: dört ters satır da İKİZ'de tabanın altında kalacak.
 İKİZ ön elemeyle ÇELİŞİRSE bu "kabul" değildir; iki araçtan birinde hata var
 demektir, önce o araştırılır.
+
+---
+
+## 2026-09-22/23 · ALTI EDGE AİLESİ (kullanıcının SMC/ICT listesi) — HEPSİ REDDEDİLDİ
+
+Kullanıcı altı aile önerdi (Sweep+MSS, FVG/Displacement, ORB, VWAP MR, BOS+pullback,
+Sweep+FVG), standart SL/TP ile ve "5M execution + 15M structure" mimarisinde.
+
+### 5M/15M SORUSU — ZATEN CEVAPLANMIŞTI
+`DURUM.md`: tam o mimaride (5m taban/15m setup/1h rejim), Binance 13 coin ×
+306.719 bar × 1065 gün, ön-kayıtlı parametrelerle:
+| strateji | n | **brüt edge** | maliyet/R | stop% |
+|---|---|---|---|---|
+| Sweep+Reclaim | 24.307 | −0.0103 | 0.318 | %0.81 |
+| VWAP Reversion | 29.991 | −0.0105 | 0.381 | %0.64 |
+| BB/Keltner | 9.824 | −0.0026 | 0.518 | %0.56 |
+Üçünün de **maliyet öncesi** edge'i sıfır. Motor kör değil (`edge_oracle` kâhin
+kolu +1.3447R/WR %100, kör kontrol −0.7761R). Maliyet duvarı: o ölçekte yapısal
+stoplar %0.56–0.81, 20.3bp gidiş-dönüş bunun 0.32–0.52 R'si.
+Ayrıca bu konteynerden hem MEXC hem `data.binance.vision` **kurumsal politikayla
+engelli** (403 CONNECT) — 5m veri ancak VPS'ten gelebilir.
+
+### ALTI AİLENİN HÜKMÜ
+- **ORB/seans**: seans ekseni ölçülmüş, etki yok ("sadece Asya" −$772 **ve**
+  "Asya hariç" −$201). ORB canlıda n=21'de −0.3829R.
+- **VWAP MR**: üç bileşen ayrı ayrı sıfır/negatif. Defterin kuralı zaten
+  reddediyor: *"kanıtlanmamış üç şeyi birleştirmek dördüncü bir kanıtlanmamış
+  şey üretir."*
+- **BOS+ilk pullback**: tek yeni parça "seviyeden limit dolum" ve üst sınırı
+  0.032R = 0.99 SE; görünürlük eşiği 2.21 SE. Bu örneklemde **ölçülemez**.
+- **FVG**: aynı zincirde FVG yerine düz 1.17 ATR mesafesi koyunca sonuç **daha
+  iyi** (PF 1.22 vs 1.13), her dolum varsayımında. FVG bilgi taşımıyor.
+- **Süpürme şartı**: kurulumu **kötüleştiriyor** (A4 < A2).
+- **Displacement kapısı**: etkisiz (n 9589→2469, R değişmiyor).
+
+### SON ADAY VE ÇÖKÜŞÜ
+Ayakta kalan tek şey: *"fiyat, son 12 barda geçerli swing tepelerinin en
+zayıfının üstündeyken kapanışın 1 ATR altına limit, 2 ATR altına stop, 2R"*.
+Offline tarayıcıda n=24117, PF 1.42, R **+0.2484** (TRAIN +0.2522/TEST +0.2443),
+13/13 coin ve 4 yıl pozitif, dört kontrol de geçti.
+**Üretim koluna yazılınca hepsi kayboldu:**
+| varyant | n | PF | R |
+|---|---|---|---|
+| emri tazele | 25451 | 0.91 | −0.0637 |
+| emri bir kez koy ve bırak | 18255 | 0.89 | −0.0747 |
+| bırak + sıkı dolum | 17906 | 0.83 | −0.1225 |
+| bırak + 24 bar bekle | 15771 | 0.87 | −0.0901 |
+
+### ⚠ METODOLOJİK DERS (bu girdinin asıl değeri)
+**Üst üste binen kurulumları sayıp "ilk dolanı" alan bir backtest, canlı sistem
+o emirlerin hepsini aynı anda tutamıyorsa STRATEJİ DEĞİLDİR.**
+Offline tarayıcı her uygun barda ayrı bir emir bırakıyordu, hepsi aynı anda
+canlıydı ve ilk dokunulan doluyordu — yani *"herhangi bir derinlikteki ilk dipten
+al"*. Tek pozisyon slotlu bir bot bunu yapamaz: ya teklifi tazelersin (fiyatı
+kovalarsın) ya bırakırsın (bayatlar). İkisi de ölçüldü, ikisi de negatif.
+
+Bir günde **dört ölçüm artefaktı** üretildi ve dördü de İKİZ'e bağlanmadan
+yakalandı: (1) çoklu-kök numaralandırması, (2) mum içi TP sırası — dolum
+barında hem seviye hem TP aralıktaydı ve sıra bilinmiyordu, düzeltilmeden önce
+düz 1.5 ATR kolunda PF 2.34/R +0.62 gibi imkânsız sayılar üretiyordu,
+(3) MSS'in olay/durum karışıklığı, (4) yön kontrolünde girişi sabit tutup yönü
+çevirmek (limit anında dolan marketable emre dönüşüyordu, n 11.057→24.332).
+
+**SÜREÇ DEĞİŞTİ:** ölçüm artık YALNIZCA üretim kolundan yapılır
+(`ikiz_on_eleme.kos_kol` → `YapiStrategy`). Kural: *canlıda koşamayan şey
+ölçülemez.* Offline tarayıcı yalnızca referans.
+
+### HÜKÜM
+Bu motorda, bu maliyet yapısında, bu altı ailede **edge yok**. Eksen kapandı.
+`YAPI_ENABLED` varsayılan **false** kalır; kod ölçümüyle birlikte saklanır.
