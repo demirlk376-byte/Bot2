@@ -7,6 +7,8 @@ title IKIZ
 cls
 echo ==========================================================
 echo    I K I Z  -  canli botun gecmis veri uzerindeki ikizi
+for /f "tokens=*" %%v in ('git log -1 --format^="%%h %%ad" --date^=short 2^>nul') do set "SURUM=%%v"
+echo    surum: %SURUM%
 echo ==========================================================
 echo.
 echo   TARAMALAR  (her biri ~25 dk, bitince RAPOR kendi gelir)
