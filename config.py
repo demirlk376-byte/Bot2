@@ -338,6 +338,8 @@ class StrategyConfig:
     yapi_enabled: bool = False
     yapi_k: int = 2                     # fractal yari-genisligi
     yapi_seviye_atr: float = 1.0        # MSS kapanisindan kac ATR geriye limit
+    yapi_sl_atr: float = 2.0            # stop kapanistan kac ATR geride
+    yapi_tazele: bool = True            # emri her bar tazele / False = bir kez koy
     yapi_mss_bar: int = 12              # yapisal SL kaynagi en fazla kac bar geride
     yapi_bekle_bar: int = 12            # limit kac bar gecerli kalir
     yapi_rr: float = 2.0                # SABIT 2R (kurulumlar karsilastirilabilir kalsin)
@@ -550,6 +552,8 @@ def load_config() -> AppConfig:
         yapi_enabled=_getbool("YAPI_ENABLED", False),
         yapi_k=_getint("YAPI_K", 2),
         yapi_seviye_atr=_getfloat("YAPI_SEVIYE_ATR", 1.0),
+        yapi_sl_atr=_getfloat("YAPI_SL_ATR", 2.0),
+        yapi_tazele=_getbool("YAPI_TAZELE", True),
         yapi_mss_bar=_getint("YAPI_MSS_BAR", 12),
         yapi_bekle_bar=_getint("YAPI_BEKLE_BAR", 12),
         yapi_rr=_getfloat("YAPI_RR", 2.0),

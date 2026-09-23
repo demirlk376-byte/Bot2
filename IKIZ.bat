@@ -23,7 +23,7 @@ echo     Q   SQUEEZE MAKER - kaymanin en cok yedigi kol
 echo     P   TEST PROTOKOLU - mum kalitesi / chase / ATR genislemesi
 echo     G   GIRIS MODU - basarisiz kirilim / likidite supurmesi
 echo     H   SQUEEZE GIRIS MODU - sikisma araligi kirildi mi
-echo     Y   YAPI KOLU - swing kirilimi + limitle geri cekilme  (YENI)
+echo     Y   AILELER TEK TEK - yapi / fvg / ifvg / orb / sr / asia  (YENI)
 echo     2   Cikis yonetimi (basabas / ATR takibi)
 echo     3   Risk seviyesi - ust aralik  (%%2.0 - %%4.0)
 echo     4   Risk seviyesi - alt aralik  (%%1.0 - %%2.0)
@@ -53,7 +53,7 @@ if /i "%sec%"=="Q" set "ARGS=ikiz_paralel.py sqmaker" & goto calistir
 if /i "%sec%"=="P" set "ARGS=ikiz_paralel.py protokol" & goto calistir
 if /i "%sec%"=="G" set "ARGS=ikiz_paralel.py mod" & goto calistir
 if /i "%sec%"=="H" set "ARGS=ikiz_paralel.py sqmod" & goto calistir
-if /i "%sec%"=="Y" set "ARGS=ikiz_paralel.py yapi" & goto calistir
+if /i "%sec%"=="Y" set "ARGS=ikiz_paralel.py aile" & goto calistir
 if "%sec%"=="2" set "ARGS=ikiz_paralel.py cikis"    & goto calistir
 if "%sec%"=="3" set "ARGS=ikiz_paralel.py risk"     & goto calistir
 if "%sec%"=="4" set "ARGS=ikiz_paralel.py dusuk"    & goto calistir

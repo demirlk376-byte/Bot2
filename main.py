@@ -2046,6 +2046,8 @@ async def main() -> None:
                 YapiStrategy(
                     k=config.strategy.yapi_k,
                     seviye_atr=config.strategy.yapi_seviye_atr,
+                    sl_atr=config.strategy.yapi_sl_atr,
+                    tazele=config.strategy.yapi_tazele,
                     mss_bar=config.strategy.yapi_mss_bar,
                     bekle_bar=config.strategy.yapi_bekle_bar,
                     rr=config.strategy.yapi_rr,

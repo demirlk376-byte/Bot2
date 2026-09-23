@@ -30,7 +30,7 @@ Kullanım:
   py ikiz_paralel.py protokol      → TEST PROTOKOLU: mum kalitesi/chase/ATR, 8 surec
   py ikiz_paralel.py mod           → GIRIS MODU: basarisiz kirilim/supurme, 5 surec
   py ikiz_paralel.py sqmod         → SQUEEZE GIRIS MODU: aralik/takip, 5 surec
-  py ikiz_paralel.py yapi          → YAPI KOLU: swing->MSS->limit retest, 5 surec
+  py ikiz_paralel.py aile          → AILELER TEK TEK: yapi/fvg/ifvg/orb/sr/asia, 7 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -486,33 +486,31 @@ SQZ_TARAMA = [
 # ayrica 33 firsat araligi birkac bar SONRA kiriyor ve bugun tamamen kaciriliyor.
 #   aralik : kapanis coil aralinin DISINDA olmali, yoksa islem yok
 #   takip N: cikistan sonra en fazla N bar beklenir, ILK kirilan yone girilir
-# ⚠ YAPI KOLU TARAMASI. Filtre degil, YENI BIR EDGE KAYNAGI.
-# On eleme (13 coin, 1h, dolum payi 0.05 ATR, 2023-04..2026-07):
-#   n=11050  PF 1.22  R=+0.1123 | TRAIN +0.0875 | TEST +0.1403
-#   4 kontrol gecti: MSS'siz +0.021 (sifir), yon yansitilmis -0.020 (sifir),
-#   FVG bilgi tasimiyor, PIYASA emriyle -0.037. 13/13 coin ve her yil pozitif.
+# ⚠ AILE TARAMASI — kullanicinin onerdigi her aile, GERCEK MOTORA EKLENMIS
+# olarak, IKIZ'de TEK TEK. Kollarin cogu zaten kodda var, yalnizca kapaliydi;
+# yeni kod yazilmadi, env ile aciliyorlar. Tek yeni kol "yapi".
 #
-# ON KAYIT (sonuclari gormeden, 2026-09-22):
-#   BEKLENTI: on eleme sermaye/kisit/diger kollar ICERMIYOR ve ~9 islem/gun
-#   uretiyor (canli 1.46). Sembol basina TEK NET POZISYON kurali bu kolun
-#   islemlerinin buyuk kismini yiyecek; IKIZ'deki katki on elemeden ONEMLI
-#   OLCUDE DUSUK cikacak. Tahminim: y_acik, tabanin TE MAR'ini gecer ama
-#   on elemenin vaat ettigi kadar degil.
-#   KARAR KURALI: kendi maliyet grubunun tabanina gore TRAIN ve TEST
-#   yarilarinin IKISINDE de daha iyi olmadikca kabul YOK.
-#   y_tek kolu "bu tek basina bir bot olabilir mi" sorusunu olcer; taban
-#   karsilastirmasi icin DEGIL, ayri bir bilgi icindir.
-YAPI_TARAMA = [
-    ("y_taban",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
-    ("y_acik",   dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
-                      YAPI_ENABLED="true")),
-    ("y_sev075", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
-                      YAPI_ENABLED="true", YAPI_SEVIYE_ATR="0.75")),
-    ("y_sev150", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
-                      YAPI_ENABLED="true", YAPI_SEVIYE_ATR="1.5")),
-    # yalniz yapi kolu: diger kollar kapali -> "tek basina bot olur mu"
-    ("y_tek",    dict(MALIYET, **KAZANAN, YAPI_ENABLED="true",
-                      DONCHIAN_ENABLED="false", SQUEEZE_ENABLED="false")),
+# NEDEN BOYLE: on eleme araclarim bir gunde DORT artefakt uretti (coklu-kok
+# numaralandirmasi, mum ici TP sirasi, olay/durum karisikligi, yon kontrolu).
+# IKIZ main.py'nin KENDISINI kosturur -> canlida kosamayan sey olculemez.
+# Karar buradan cikar; on eleme sayilari referans bile degildir.
+#
+# KARAR KURALI: bir kol ancak kendi maliyet grubunun tabanina gore TRAIN ve
+# TEST yarilarinin IKISINDE de daha iyiyse kabul edilir.
+AILE_TARAMA = [
+    ("a_taban", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
+    ("a_yapi",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     YAPI_ENABLED="true")),
+    ("a_fvg",   dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     FVG_ENABLED="true")),
+    ("a_ifvg",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     IFVG_ENABLED="true")),
+    ("a_orb",   dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     ORB_ENABLED="true")),
+    ("a_sr",    dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     SR_BREAKOUT_ENABLED="true")),
+    ("a_asia",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     ASIA_BO_ENABLED="true")),
 ]
 
 SQMOD_TARAMA = [
@@ -772,7 +770,7 @@ def main():
                   "protokol": PROTOKOL_TARAMA,
                   "mod": MOD_TARAMA,
                   "sqmod": SQMOD_TARAMA,
-                  "yapi": YAPI_TARAMA}[hangi]
+                  "aile": AILE_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
