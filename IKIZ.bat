@@ -68,7 +68,9 @@ if "%sec%"=="8" set "ARGS=ikiz_duman.py"            & goto calistir
 if "%sec%"=="9" set "ARGS=ikiz_tam.py"              & goto calistir
 if "%sec%"=="0" goto son
 echo.
-echo   Gecersiz secim.
+echo   Gecersiz secim: [%sec%]
+echo   Tus listede yoksa once GUNCELLE:  git pull
+echo   Menusuz calistirmak icin:  py ikiz_paralel.py ^<ad^>
 timeout /t 2 >nul
 goto menu
 
