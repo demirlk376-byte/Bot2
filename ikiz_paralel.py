@@ -32,6 +32,7 @@ Kullanım:
   py ikiz_paralel.py sqmod         → SQUEEZE GIRIS MODU: aralik/takip, 5 surec
   py ikiz_paralel.py aile          → AILELER TEK TEK: yapi/fvg/ifvg/orb/sr/asia, 7 surec
   py ikiz_paralel.py yon           → AYNI-YON KISITI: 3/4/5 es zamanli, 5 surec
+  py ikiz_paralel.py portfoy       → PORTFOY STOPU: %7/%12/%18 + soguma, 6 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -504,6 +505,31 @@ SQZ_TARAMA = [
 # -0.1718R, kazanma %28.1 (taban %44). Iki yarida da negatif.
 # ⚠ "Pozisyon sayisini genel olarak kis" DEGIL -- o TERS teper: 4+ islemin
 # birlikte kapandigi gunler islem basi EN KARLI gunler (+$1.941).
+# ⚠ PORTFOY STOPU TARAMASI. Kullanicinin istegi: elindeki pozisyonlari da koru.
+# Su an her pozisyonun kendi stopu var ama TOPLAMA ust sinir YOK; 5 long
+# acikken hepsi vurulursa ~%17.5 gider (risk 3.5% x 5). Tek koruma gunluk
+# -%35 ve o cok gec.
+# Esikler risk buyuklugune gore secildi: %3.5 = BIR pozisyonun stopu.
+#   %7  ~ 2 pozisyonluk    %12 ~ 3.5 pozisyonluk    %18 ~ 5 pozisyonluk
+# ON KAYIT: cok DAR esik (7) toparlayacak pozisyonlari kesip zarar ettirir;
+# cok GENIS (18) zaten gec kalir. Beklentim orta bandin (10-14) en iyi
+# olmasi. Karar kurali degismedi: iki yarida da tabandan iyi olmali.
+PORTFOY_TARAMA = [
+    ("p_taban", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
+    ("p_st07",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     PORTFOY_STOP="0.07")),
+    ("p_st12",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     PORTFOY_STOP="0.12")),
+    ("p_st18",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     PORTFOY_STOP="0.18")),
+    # soguma: kapatip hemen geri girmek korumayi anlamsiz kilar mi?
+    ("p_st12s", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     PORTFOY_STOP="0.12", PORTFOY_SOGUMA_SAAT="24")),
+    # ayni-yon kisiti ile BIRLIKTE
+    ("p_st12y", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     PORTFOY_STOP="0.12", MAX_SAME_DIRECTION="5")),
+]
+
 YON_TARAMA = [
     ("k_taban", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
     ("k_ayni5", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
@@ -791,7 +817,8 @@ def main():
                   "mod": MOD_TARAMA,
                   "sqmod": SQMOD_TARAMA,
                   "aile": AILE_TARAMA,
-                  "yon": YON_TARAMA}[hangi]
+                  "yon": YON_TARAMA,
+                  "portfoy": PORTFOY_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "

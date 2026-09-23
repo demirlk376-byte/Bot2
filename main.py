@@ -207,6 +207,17 @@ def make_on_candle_close(ctx: "SymbolContext"):
             if config.exchange.paper_mode and isinstance(exchange, PaperExchange):
                 await exchange.check_sl_tp(candle.high, candle.low, ctx.symbol)
 
+            # ⚠ PORTFOY STOPU — SL/TP dolumlarindan SONRA, kalan acik
+            # pozisyonlarin TOPLAM zarari uzerinden. Her pozisyonun kendi
+            # stopu var ama toplama ust sinir yok; 5 long acikken hepsi
+            # vurulursa ~%17.5 gider ve tek koruma gunluk -%35 (cok gec).
+            # Varsayilan KAPALI (portfoy_stop=0) -> bugunku davranis aynen.
+            try:
+                if getattr(config.risk, "portfoy_stop", 0.0) > 0:
+                    await executor.portfoy_stop_kontrol()
+            except Exception as _pe:
+                logger.error("portfoy stop kontrolu hatasi: %s", _pe)
+
             # Force-close this coin's positions held beyond max_hold_candles
             await _enforce_max_hold(ctx.symbol, current_price)
 

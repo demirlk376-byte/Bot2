@@ -54,6 +54,8 @@ class ExecutionEngine:
         self._config = config
         self._trading_halted = asyncio.Event()
         self._daily_starting_balance: float = 0.0
+        # Portfoy stopu tetiklendiginde soguma bitis zamani (epoch sn).
+        self._portfoy_soguma_bitis: float = 0.0
         self._on_close_callbacks: list[Callable] = []
         self._alert_cb: Optional[Callable] = None
         self._executing: set[str] = set()  # symbols with in-flight execute_signal
@@ -223,6 +225,56 @@ class ExecutionEngine:
     def reset_daily(self) -> None:
         self._trading_halted.clear()
         self._halt_reason = None
+
+    async def portfoy_stop_kontrol(self) -> bool:
+        """Acik pozisyonlarin TOPLAM gerceklesmemis zarari equity'nin
+        `portfoy_stop`'unu gecerse hepsini kapat. Doner: tetiklendi mi.
+
+        NEDEN: her pozisyonun kendi stopu var ama TOPLAMA ust sinir yok.
+        5 long acikken hepsi vurulursa ~%17.5 gider; tek koruma gunluk -%35
+        ve o cok gec. Kullanicinin gozlemi: "yukseliste kazaniyor ama sondaki
+        dususte 5-6 islem birden stop olunca hepsi batip gidiyor."
+
+        ⚠ OKUNAMAYAN EQUITY'DE ASLA TETIKLENMEZ -- enforce_daily_loss ile ayni
+        kural. Bosa okuma yuzunden tum kitabi kapatmak, korumanin kendisinden
+        daha pahaliya mal olur.
+        """
+        esik = float(getattr(self._risk_cfg_kaynak(), "portfoy_stop", 0.0) or 0.0)
+        if esik <= 0:
+            return False
+        acik = list(self._portfolio.get_open_positions())
+        if not acik:
+            return False
+        upnl = self._portfolio.get_total_unrealized_pnl()
+        if upnl >= 0:
+            return False
+        equity = await self.current_equity()
+        if equity is None or equity <= 0:
+            return False                      # OKUNAMADI != tetikle
+        oran = -upnl / equity
+        if oran < esik:
+            return False
+        logger.critical(
+            "PORTFOY STOPU: acik zarar %.2f = equity'nin %%%.1f'i (esik %%%.1f) "
+            "-- %d pozisyon kapatiliyor",
+            upnl, oran * 100, esik * 100, len(acik),
+        )
+        await self.emergency_close_all("portfoy_stop")
+        saat = int(getattr(self._risk_cfg_kaynak(), "portfoy_soguma_saat", 0) or 0)
+        if saat > 0:
+            import time as _t
+            self._portfoy_soguma_bitis = _t.time() + saat * 3600
+        await self._alert(
+            f"PORTFOY STOPU — acik zarar equity'nin %{oran*100:.1f}'ine ulasti "
+            f"(esik %{esik*100:.1f}). {len(acik)} pozisyon kapatildi."
+            + (f" {saat} saat yeni pozisyon yok." if saat > 0 else ""),
+            "ERROR",
+        )
+        return True
+
+    def _risk_cfg_kaynak(self):
+        """portfoy_stop ayarlari risk config'inde durur."""
+        return self._risk._cfg if hasattr(self._risk, "_cfg") else self._config.risk
 
     async def enforce_daily_loss(self) -> None:
         """Periodic daily-loss check (audit finding: the limit only ran on NEW
@@ -394,6 +446,17 @@ class ExecutionEngine:
                                 error=f"Correlation cap: {same_dir}/{max_corr} {side} already open in correlated group",
                             )
                         break
+
+            # ⚠ PORTFOY STOPU SOGUMASI. Stop tetiklendikten hemen sonra
+            # yeniden girmek korumayi anlamsiz kilar.
+            if self._portfoy_soguma_bitis > 0:
+                import time as _t
+                if _t.time() < self._portfoy_soguma_bitis:
+                    kalan = (self._portfoy_soguma_bitis - _t.time()) / 3600.0
+                    return ExecutionResult(
+                        False,
+                        error=f"Portfoy stopu sogumasi: {kalan:.1f} saat kaldi")
+                self._portfoy_soguma_bitis = 0.0
 
             # ⚠ KITAP GENELI AYNI-YON KISITI. Yukaridaki kisit yalnizca korele
             # gruba bakiyor; kitap genelinde ayni yonde 7 pozisyona kadar

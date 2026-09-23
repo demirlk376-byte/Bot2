@@ -198,6 +198,18 @@ class RiskConfig:
     # karli gunler. Yalnizca AYNI YONDEKI 6. ve sonrasi eleniyor.
     max_same_direction: int = 0
 
+    # ⚠ PORTFOY STOPU (0 = KAPALI, bugunku davranis).
+    # Her pozisyonun kendi stopu var ama TOPLAMA bir ust sinir YOK: 5 long
+    # acikken hepsi vurulursa toplam kayip ~5 x %3.5 = %17.5. Tek koruma
+    # gunluk -%35 ve o COK GEC devreye giriyor.
+    # Kural: acik pozisyonlarin toplam gerceklesmemis zarari equity'nin
+    # %portfoy_stop'unu gecerse HEPSI kapatilir.
+    # BEDELI: toparlayacak pozisyonlar da kesilir. Olculecek takas bu.
+    # Soguma: kapattiktan hemen sonra yeniden girmek korumayi anlamsiz kilar;
+    # `portfoy_soguma_saat` boyunca yeni pozisyon acilmaz (0 = soguma yok).
+    portfoy_stop: float = 0.0
+    portfoy_soguma_saat: int = 0
+
 
 @dataclass
 class StrategyConfig:
@@ -509,6 +521,8 @@ def load_config() -> AppConfig:
         orb_weekend_mult=_getfloat("ORB_WEEKEND_MULT", 1.5),
         max_correlated_direction=_getint("MAX_CORRELATED_DIRECTION", 2),
         max_same_direction=_getint("MAX_SAME_DIRECTION", 0),
+        portfoy_stop=_getfloat("PORTFOY_STOP", 0.0),
+        portfoy_soguma_saat=_getint("PORTFOY_SOGUMA_SAAT", 0),
     )
 
     strategy = StrategyConfig(
