@@ -4,16 +4,19 @@ cd /d "%~dp0"
 title IKIZ
 
 REM ============================================================
-REM  KENDINI GUNCELLE. Kullanici yeni menu tusuna basip "gecersiz
-REM  secim" aldi: dosya eskiydi. Cift tiklamayla acildiginda kimse
-REM  git pull yapmiyordu. Artik ilk acilista guncelleyip KENDINI
-REM  YENIDEN BASLATIR (calisan .bat dosyasi degisirse cmd sasirir,
-REM  o yuzden yeni surum ayri bir pencerede baslatilir).
+REM  KENDINI GUNCELLE. Cift tiklamayla acilinca kimse git pull
+REM  yapmiyordu; yeni menu tuslari gelmiyor, "gecersiz secim"
+REM  cikiyordu. Calisan bir .bat guncellenirse cmd sasirdigi icin
+REM  yeni surum AYRI PENCEREDE baslatilir; "guncel" argumani
+REM  ikinci turu isaretler, sonsuz donguye girmez.
 REM ============================================================
 if /i not "%~1"=="guncel" (
   echo.
   echo   Kod guncelleniyor, bekle...
-  call :guncelle
+  git pull
+  if errorlevel 1 call :zorla
+  echo   Menu yeni pencerede aciliyor...
+  timeout /t 2 >nul
   start "IKIZ" "%~f0" guncel
   exit /b
 )
@@ -22,8 +25,6 @@ if /i not "%~1"=="guncel" (
 cls
 echo ==========================================================
 echo    I K I Z  -  canli botun gecmis veri uzerindeki ikizi
-for /f "tokens=*" %%v in ('git log -1 --format^="%%h %%ad" --date^=short 2^>nul') do set "SURUM=%%v"
-echo    surum: %SURUM%
 echo ==========================================================
 echo.
 echo   TARAMALAR  (her biri ~25 dk, bitince RAPOR kendi gelir)
@@ -94,7 +95,8 @@ goto menu
 :calistir
 echo.
 echo   [1/3] Kod guncelleniyor...
-call :guncelle
+git pull
+if errorlevel 1 call :zorla
 echo   [2/3] Paketler kontrol ediliyor...
 py -m pip install -q -r requirements.txt
 echo   [3/3] Kosu: %ARGS%
@@ -114,9 +116,7 @@ endlocal
 
 goto :eof
 
-:guncelle
-git pull
-if not errorlevel 1 goto :eof
+:zorla
 echo   git pull reddedildi ^(yerel degisiklik^). Zorla senkronlaniyor...
 REM .env ve *.db .gitignore'da -- ayarlar ve Ikiz sonuclari ETKILENMEZ.
 for /f "tokens=*" %%b in ('git rev-parse --abbrev-ref HEAD') do set "DAL=%%b"
