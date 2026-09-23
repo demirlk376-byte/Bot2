@@ -177,6 +177,27 @@ class RiskConfig:
     # 0 = disabled. 2 = at most 2 same-direction positions from the group at once.
     max_correlated_direction: int = 2
 
+    # ⚠ KITAP GENELI AYNI-YON KISITI (0 = KAPALI, bugunku davranis).
+    # Yukaridaki kisit yalnizca KORELE GRUBA (BTC/ETH/SOL) bakiyor; kitap
+    # genelinde ayni yonde 7 pozisyona kadar cikiliyor. OLCULDU (1752 islem,
+    # giris aninda BILINEBILIR degisken, R cinsinden):
+    #   ayni yonde acik  n     ortR     kazanma
+    #   0                517  +0.0913    %41.8
+    #   1                385  +0.2998    %47.8
+    #   2                301  +0.2780    %45.5
+    #   3                249  +0.1638    %42.6
+    #   4                179  +0.1514    %43.6
+    #   5+               121  -0.1718    %28.1   <- kazanma COKUYOR
+    # "5 acikken 6.yi acma": 121 islem elenir, islem basi R +0.1675 -> +0.1926.
+    # %95 GA sifiri iceriyor AMA iki yarida da negatif (TRAIN -0.1228 /
+    # TEST -0.2286, o yarilarin tabani +0.1836 / +0.1484).
+    # Kullanicinin gozleminden cikti: "yukseliste kazaniyor ama sondaki
+    # dususte 5-6 islem birden stop olunca hepsi batip gidiyor".
+    # ⚠ DIKKAT: "pozisyon sayisini genel olarak kis" DEGIL. O olculdu ve
+    # TERS teperdi -- 4+ islemin birlikte kapandigi gunler islem basi en
+    # karli gunler. Yalnizca AYNI YONDEKI 6. ve sonrasi eleniyor.
+    max_same_direction: int = 0
+
 
 @dataclass
 class StrategyConfig:
@@ -487,6 +508,7 @@ def load_config() -> AppConfig:
         bb_weekday_enabled=_getbool("BB_WEEKDAY_ENABLED", True),
         orb_weekend_mult=_getfloat("ORB_WEEKEND_MULT", 1.5),
         max_correlated_direction=_getint("MAX_CORRELATED_DIRECTION", 2),
+        max_same_direction=_getint("MAX_SAME_DIRECTION", 0),
     )
 
     strategy = StrategyConfig(

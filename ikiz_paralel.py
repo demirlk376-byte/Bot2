@@ -31,6 +31,7 @@ Kullanım:
   py ikiz_paralel.py mod           → GIRIS MODU: basarisiz kirilim/supurme, 5 surec
   py ikiz_paralel.py sqmod         → SQUEEZE GIRIS MODU: aralik/takip, 5 surec
   py ikiz_paralel.py aile          → AILELER TEK TEK: yapi/fvg/ifvg/orb/sr/asia, 7 surec
+  py ikiz_paralel.py yon           → AYNI-YON KISITI: 3/4/5 es zamanli, 5 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -497,6 +498,25 @@ SQZ_TARAMA = [
 #
 # KARAR KURALI: bir kol ancak kendi maliyet grubunun tabanina gore TRAIN ve
 # TEST yarilarinin IKISINDE de daha iyiyse kabul edilir.
+# ⚠ AYNI-YON KISITI TARAMASI. Kullanicinin gozlemi: "yukseliste kazaniyor ama
+# sondaki dususte 5-6 islem birden stop olunca hepsi batip gidiyor."
+# Olculdu (1752 islem): ayni yonde 5 acikken acilan 6. pozisyon islem basi
+# -0.1718R, kazanma %28.1 (taban %44). Iki yarida da negatif.
+# ⚠ "Pozisyon sayisini genel olarak kis" DEGIL -- o TERS teper: 4+ islemin
+# birlikte kapandigi gunler islem basi EN KARLI gunler (+$1.941).
+YON_TARAMA = [
+    ("k_taban", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
+    ("k_ayni5", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     MAX_SAME_DIRECTION="5")),
+    ("k_ayni4", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     MAX_SAME_DIRECTION="4")),
+    ("k_ayni3", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     MAX_SAME_DIRECTION="3")),
+    # korele grup kisitini da gevsetip/sikip yan etkiyi gor
+    ("k_korel3", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                      MAX_SAME_DIRECTION="5", MAX_CORRELATED_DIRECTION="3")),
+]
+
 AILE_TARAMA = [
     ("a_taban", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
     ("a_yapi",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
@@ -770,7 +790,8 @@ def main():
                   "protokol": PROTOKOL_TARAMA,
                   "mod": MOD_TARAMA,
                   "sqmod": SQMOD_TARAMA,
-                  "aile": AILE_TARAMA}[hangi]
+                  "aile": AILE_TARAMA,
+                  "yon": YON_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "

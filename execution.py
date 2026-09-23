@@ -395,6 +395,26 @@ class ExecutionEngine:
                             )
                         break
 
+            # ⚠ KITAP GENELI AYNI-YON KISITI. Yukaridaki kisit yalnizca korele
+            # gruba bakiyor; kitap genelinde ayni yonde 7 pozisyona kadar
+            # cikiliyordu. Olculdu: ayni yonde 5 acikken acilan 6. pozisyonda
+            # kazanma orani %44'ten %28'e dusuyor ve ortalama R negatif
+            # (-0.1718; TRAIN -0.1228 / TEST -0.2286, ikisi de kendi yarisinin
+            # tabaninin ALTINDA). Varsayilan 0 = KAPALI.
+            max_ayni = getattr(self._config.risk, "max_same_direction", 0)
+            if max_ayni > 0 and signal.direction != 0:
+                ayni = sum(1 for p in self._portfolio.get_open_positions()
+                           if p.direction == signal.direction)
+                ayni += sum(1 for d in self._inflight_direction.values()
+                            if d == signal.direction)
+                if ayni >= max_ayni:
+                    side = "long" if signal.direction == 1 else "short"
+                    return ExecutionResult(
+                        False,
+                        error=(f"Ayni-yon kisiti: kitapta zaten {ayni}/{max_ayni} "
+                               f"{side} acik"),
+                    )
+
             # Slot key: each strategy sleeve has its own slot so BB, ORB, and Asia BO
             # can run in parallel without blocking one another. S/R breakout shares the
             # BB slot (both are 48h swing trades — only one at a time makes sense).
