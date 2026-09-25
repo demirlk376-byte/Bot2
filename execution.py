@@ -934,7 +934,9 @@ class ExecutionEngine:
             # Donchian is a 4h swing: 30×4h bars = 120h, stored in 1h-candle units
             # (the max-hold enforcer counts in primary-tf = 1h candles).
             elif signal.dominant_strategy == "donchian":
-                scores["max_hold"] = 120
+                # DONCHIAN_MAX_HOLD (varsayilan 120 = bugunku davranis) -- IKIZ taramasi icin
+                import os as _os
+                scores["max_hold"] = int(_os.getenv("DONCHIAN_MAX_HOLD", "120"))
 
             position = self._portfolio.create_position(
                 symbol=setup.symbol,

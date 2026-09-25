@@ -528,6 +528,17 @@ SQZ_TARAMA = [
 # kari VE marjin duvarini AYNI ANDA olcer; kosu sonunda red sayisi basilir.
 # Kaldirac DOKUNULMADI: donchian stoplari %3.4-4.6, 20x'te tasfiye ~%5'te --
 # stoptan ONCE gelebilir.
+# MAX_HOLD TARAMASI: max_hold cikislari en iyi kategori (+0.38R, WR %70) ama
+# sure hic taranmadi. Donchian 120 saat, diger kollar 48 saat (bugunku).
+TUTUS_TARAMA = [
+    ("h_taban", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
+    ("h_d180",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM", DONCHIAN_MAX_HOLD="180")),
+    ("h_d240",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM", DONCHIAN_MAX_HOLD="240")),
+    ("h_d80",   dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM", DONCHIAN_MAX_HOLD="80")),
+    ("h_1s72",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM", MAX_HOLD_CANDLES="72")),
+    ("h_1s96",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM", MAX_HOLD_CANDLES="96")),
+]
+
 CAP_TARAMA = [
     ("c_taban", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
     ("c_cap20", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
@@ -851,7 +862,8 @@ def main():
                   "aile": AILE_TARAMA,
                   "yon": YON_TARAMA,
                   "portfoy": PORTFOY_TARAMA,
-                  "cap": CAP_TARAMA}[hangi]
+                  "cap": CAP_TARAMA,
+                  "tutus": TUTUS_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
