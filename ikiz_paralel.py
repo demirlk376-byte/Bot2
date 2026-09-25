@@ -530,6 +530,20 @@ SQZ_TARAMA = [
 # stoptan ONCE gelebilir.
 # MAX_HOLD TARAMASI: max_hold cikislari en iyi kategori (+0.38R, WR %70) ama
 # sure hic taranmadi. Donchian 120 saat, diger kollar 48 saat (bugunku).
+# COIN GENISLETME -- DOGRU HALIYLE. Eski "coin" taramasi squeeze'i 31 coinin
+# HEPSINDE acik birakmisti; squeeze ise yalniz XRP/DOGE/XLM'de pozitif (diger
+# coinlerde negatif, sonradan olculdu). Yani 12->31'in olumu squeeze yuzunden
+# olabilir. Burada squeeze 3 coinde KALIR, yalniz donchian yayilir.
+COIN2_TARAMA = [
+    ("n_taban", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
+    ("n_c19",   dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     SYMBOLS=_S19, DONCHIAN_SYMBOLS=_D14)),
+    ("n_c31",   dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     SYMBOLS=_S31, DONCHIAN_SYMBOLS=_D26)),
+    ("n_c31p10",dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     SYMBOLS=_S31, DONCHIAN_SYMBOLS=_D26, MAX_POSITIONS="10")),
+]
+
 TUTUS_TARAMA = [
     ("h_taban", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
     ("h_d180",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM", DONCHIAN_MAX_HOLD="180")),
@@ -863,7 +877,8 @@ def main():
                   "yon": YON_TARAMA,
                   "portfoy": PORTFOY_TARAMA,
                   "cap": CAP_TARAMA,
-                  "tutus": TUTUS_TARAMA}[hangi]
+                  "tutus": TUTUS_TARAMA,
+                  "coin2": COIN2_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "
