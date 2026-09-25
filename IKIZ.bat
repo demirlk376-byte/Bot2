@@ -43,7 +43,8 @@ echo     G   GIRIS MODU - basarisiz kirilim / likidite supurmesi
 echo     H   SQUEEZE GIRIS MODU - sikisma araligi kirildi mi
 echo     Y   AILELER TEK TEK - yapi / fvg / ifvg / orb / sr / asia
 echo     N   AYNI-YON KISITI - kar geri vermeyi engelle
-echo     O   PORTFOY STOPU - acik zarar toplamina ust sinir  (YENI)
+echo     O   PORTFOY STOPU - acik zarar toplamina ust sinir
+echo     B   CAP TAVANI - en iyi islemlere kirpilan boyut  (YENI)
 echo     2   Cikis yonetimi (basabas / ATR takibi)
 echo     3   Risk seviyesi - ust aralik  (%%2.0 - %%4.0)
 echo     4   Risk seviyesi - alt aralik  (%%1.0 - %%2.0)
@@ -76,6 +77,7 @@ if /i "%sec%"=="H" set "ARGS=ikiz_paralel.py sqmod" & goto calistir
 if /i "%sec%"=="Y" set "ARGS=ikiz_paralel.py aile" & goto calistir
 if /i "%sec%"=="N" set "ARGS=ikiz_paralel.py yon" & goto calistir
 if /i "%sec%"=="O" set "ARGS=ikiz_paralel.py portfoy" & goto calistir
+if /i "%sec%"=="B" set "ARGS=ikiz_paralel.py cap" & goto calistir
 if "%sec%"=="2" set "ARGS=ikiz_paralel.py cikis"    & goto calistir
 if "%sec%"=="3" set "ARGS=ikiz_paralel.py risk"     & goto calistir
 if "%sec%"=="4" set "ARGS=ikiz_paralel.py dusuk"    & goto calistir

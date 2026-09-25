@@ -33,6 +33,7 @@ Kullanım:
   py ikiz_paralel.py aile          → AILELER TEK TEK: yapi/fvg/ifvg/orb/sr/asia, 7 surec
   py ikiz_paralel.py yon           → AYNI-YON KISITI: 3/4/5 es zamanli, 5 surec
   py ikiz_paralel.py portfoy       → PORTFOY STOPU: %7/%12/%18 + soguma, 6 surec
+  py ikiz_paralel.py cap           → CAP (kirpma tavani) 1.5/2.0/2.5/3.0 + MARJIN REDDI, 4 surec
   py ikiz_paralel.py risk 6        → aynısı, en fazla 6 paralel süreç
 
 Koşu sırasında her 2 dakikada bir durum satırı basılır. Ayrıca her koşu
@@ -514,6 +515,29 @@ SQZ_TARAMA = [
 # ON KAYIT: cok DAR esik (7) toparlayacak pozisyonlari kesip zarar ettirir;
 # cok GENIS (18) zaten gec kalir. Beklentim orta bandin (10-14) en iyi
 # olmasi. Karar kurali degismedi: iki yarida da tabandan iyi olmali.
+# ⭐ CAP TARAMASI (2026-09-25 teshis workflow'undan cikan TEK somut kaldirac).
+# POSITION_CAP_FRACTION=1.5 bir risk kontrolu DEGIL, bir KIRPMA: dar stoplu
+# islemler hedef %3.5 riski ALAMIYOR. Teshis: canli kitabin %38'i (squeeze'in
+# %67'si, mean_rev'in %57'si) bu tavana carpiyor; portfoy fiilen %3.06 risk
+# aliyor. Defter (RESEARCH_LEDGER.md:3564-3610, 2026-08-10): kirpilan islemler
+# ortR +0.3888 vs kirpilmayan +0.2026; doz-yanit MONOTON, 4 yilin 4'u ve en
+# kotu ay iyilesiyordu. 1.5'te KESILMESININ sebebi "marjin olum testi"ydi
+# ($190 equity'de CAP 2.0 -> tepe marjin %97, 3.0 -> %107).
+# ⚠ IKIZ MARJINI MODELLIYOR: execution.py:661 gereken marjin serbest bakiyenin
+# %95'ini gecerse islemi "Insufficient free margin" ile REDDEDER. Yani bu tarama
+# kari VE marjin duvarini AYNI ANDA olcer; kosu sonunda red sayisi basilir.
+# Kaldirac DOKUNULMADI: donchian stoplari %3.4-4.6, 20x'te tasfiye ~%5'te --
+# stoptan ONCE gelebilir.
+CAP_TARAMA = [
+    ("c_taban", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
+    ("c_cap20", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     POSITION_CAP_FRACTION="2.0")),
+    ("c_cap25", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     POSITION_CAP_FRACTION="2.5")),
+    ("c_cap30", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
+                     POSITION_CAP_FRACTION="3.0")),
+]
+
 PORTFOY_TARAMA = [
     ("p_taban", dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM")),
     ("p_st07",  dict(MALIYET, **KAZANAN, SQUEEZE_SYMBOLS="XRP,DOGE,XLM",
@@ -719,6 +743,14 @@ def kos(ad_ve_env):
     satirlar = _satirlar(gunluk)
     n = 30 if p.returncode == 0 else 40
     cikti = "\n".join(satirlar[-n:])
+    # ⚠ MARJIN DUVARI GORUNUR OLSUN. execution.py:661 yetersiz serbest marjinde
+    # islemi REDDEDIYOR; bu red sayisi CAP gibi boyut ayarlarinin canlida
+    # UYGULANABILIR olup olmadiginin dogrudan olcusu. Sayilmazsa kar artisi
+    # "fantezi" mi gercek mi ayirt edilemez (defter 2026-08-10 bu yuzden
+    # CAP'i 1.5'te kesmisti).
+    red = sum(1 for x in satirlar if "Insufficient free margin" in x
+              or "Yetersiz bakiye" in x)
+    cikti += f"\n  MARJIN REDDI: {red} islem"
     return ad, ek, sure, cikti, p.returncode
 
 
@@ -818,7 +850,8 @@ def main():
                   "sqmod": SQMOD_TARAMA,
                   "aile": AILE_TARAMA,
                   "yon": YON_TARAMA,
-                  "portfoy": PORTFOY_TARAMA}[hangi]
+                  "portfoy": PORTFOY_TARAMA,
+                  "cap": CAP_TARAMA}[hangi]
     except KeyError:
         print(f"bilinmeyen tarama: {hangi}  "
               f"(secenekler: risk, dusuk, filtre, hepsi, "

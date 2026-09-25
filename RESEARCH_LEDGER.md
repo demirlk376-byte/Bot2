@@ -6154,3 +6154,69 @@ düz 1.5 ATR kolunda PF 2.34/R +0.62 gibi imkânsız sayılar üretiyordu,
 ### HÜKÜM
 Bu motorda, bu maliyet yapısında, bu altı ailede **edge yok**. Eksen kapandı.
 `YAPI_ENABLED` varsayılan **false** kalır; kod ölçümüyle birlikte saklanır.
+
+---
+
+## 2026-09-25 · KÖK TEŞHİS: "bu botu ne sınırlıyor" — altı açı, dördü tamamlandı
+
+Kullanıcı: "fikir üretmekten öldüm bittim, bu botu nasıl uçururuz, sorun ne."
+Altı bağımsız teşhis koşuldu; **dördü tamamlandı, ikisi (çıkışlar, hiç denenmemiş
+eksenler) ve çürütme/sentez turları haftalık kullanım limitine takıldı** — kısmi.
+
+### 1) "EDGE ÇÜRÜYOR" — ÖLÇÜLEMİYOR, piyasa KÖTÜLEŞMEDİ İYİLEŞTİ
+- Yıllık R 0.2096/0.1713/0.1563/0.1228 → düz çizgi ki-kare **p=0.910**. Permütasyon
+  (20.000 çekiliş): gözlenen düşüş **%47.3 olasılıkla şansla** çıkıyor.
+- Sabit geometri barometresi (n=57.312): piyasa 2026'da 2023'ten **daha cömert**.
+  Plasebo R +0.013 → +0.060, efficiency ratio monoton ARTIYOR.
+- Kitabın piyasa betası **~3.0** (t=+4.09), piyasa ay-ay **anti-persistent** (ACF −0.145).
+  Piyasa kontrol edilince zamana bağlı çürüme terimi **yok** (t=−1.24).
+- Örneklem içinde tam bir **ölüm-diriliş çevrimi** var: 250-işlem kayan R zirve +0.343
+  → dip **−0.002 (Mart 2025, bugünkü +0.027'den KÖTÜ)** → +0.288 (Aralık 2025).
+- Tek anlamlı sinyal: sinyal bilgisi (f12 edge) t=2.41 düştü — ama aynısı 2024H1'de
+  de oldu ve 2025'te **tamamen toparlandı**.
+- **HÜKÜM: "2 yılda ölür" yanlış.** Genliği trendin 3 katı olan bir salınımdan dört
+  takvim noktası seçmek. Maliyet de suçlu değil (brüt düşüş > net düşüş).
+
+### 2) SERMAYE ATIL DEĞİL — bağlayan TEK kısıt POSITION_CAP_FRACTION=1.5
+- MAX_POSITIONS=7 **hiç bağlamıyor** (0/840 red). Kaldıraç 10x hiç bağlamıyor.
+- CAP bağlıyor: canlı kitabın **%38'i** (squeeze'in %67'si, mean_rev'in %57'si)
+  hedef %3.5 riski alamıyor, portföy fiilen **%3.06**. Ve en dar stoplu = en yüksek
+  edge'li işlemleri kırpıyor.
+- Defter emsali (2026-08-10, yukarıda): kırpılanlar +0.3888R vs +0.2026R; doz-yanıt
+  monoton. 1.5'te **marjin ölüm testi** yüzünden kesilmişti.
+- ⚠ **İKİZ MARJİNİ MODELLİYOR** (execution.py:661, serbest bakiyenin %95'i aşılırsa
+  "Insufficient free margin" reddi). Yani "backtest marjini modellemiyor" itirazı
+  İKİZ için geçersiz — CAP taraması kârı ve marjin duvarını AYNI koşuda ölçer.
+- İki ajan tepe marjinde çelişti (%72.6 vs %98.6), muhtemelen filtreli/filtresiz
+  kitap farkı. **Çözümü İKİZ'e bırakıldı:** `ikiz_paralel.py cap` (IKIZ.bat → B),
+  koşu sonunda her konfigürasyonun marjin red sayısı basılıyor.
+- Kaldıraç **dokunulmadı**: donchian stopları %3.4–4.6, 20x'te tasfiye ~%5'te.
+
+### 3) KOL-SEMBOL KAPSAMASI — ölçüldü, ÖLÜ
+- Kollar coinlere bölüştürülmüş (donchian 7, squeeze 4, kesişim boş) ve çapraz
+  yayılma kural gereği HİÇ denenmemişti (coin_expand.py:6 "mevcut coinlere dokunulmaz").
+- Ölçüldü: donchian'ın yayılacağı 5 coinde kenar **+0.038R** (kendi 7 coininde
+  +0.2561R). Tam genişleme: toplam R +%6, işlem başı **−0.030R**, DOGE'de squeeze'i
+  bloklayıp +22.1R'yi +7.0R'ye düşürüyor. Kol-coin eşleşmesi ileriye taşınmıyor
+  (Spearman +0.161, p=0.62).
+
+### 4) HÜCRE BAZLI BOYUTLANDIRMA — ölçüldü, ÖLÜ (altıncı kez)
+- Kol×yön heterojenliği **I²=%0** (Q p=0.871). Uydurma tavanı bile 0.35 SE.
+  Seviye zaten tam-Kelly tepesinde (%3.5). Defterde beş kez ölçülüp ölmüş.
+
+### 5) SOĞUK ARİTMETİK — $400 → $10.000 (1 yıl)
+- 25 kat için gereken aylık getiri **%30.8** (bugün %8.8). Bu, maxDD'yi %100'ün
+  üstüne taşır. **1 yılda matematiksel olarak ulaşılamaz.**
+- Sermaye ekleme edge iyileştirmesinden BÜYÜK:
+  ```
+                                   1 yıl     2 yıl
+  bugün %8.8/ay, ekleme yok       $1.101    $3.028
+  bugün %8.8/ay + $160/ay         $4.285   $14.973
+  CAP 2.5 (%10.5/ay tahmini)+$160 $4.852   $19.604
+  ```
+  $160/ay eklemek 2 yılda $10.000'ı geçiriyor; CAP'in katkısı bunun üstüne.
+
+### AÇIK KALAN (limit yüzünden koşulamadı)
+- Çıkışlar: max_hold neden en iyi kategori (+0.3821R) — TP erken mi kesiyor?
+- Hiç denenmemiş eksenlerin taraması.
+- Çürütme turu: CAP bulgusu İKİZ'de doğrulanmadan canlıya ALINMAZ.
