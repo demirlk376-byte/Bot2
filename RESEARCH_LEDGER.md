@@ -6455,3 +6455,74 @@ kullaniyor -- o hep dogru simule edilmis.
 - erken_uyari kalibrasyonu canli-birebir ikizle yenilendi: birlesik alarm saglikliyken
   12 ayda %3.2 / 24 ayda %9.1; olu edge'i medyan 9. ayda yakaliyor. Bantlar degismedi.
 - ikiz_a_filtresiz/risk14/trxli, p_*, n_*, k20/k25 islem listeleri repoda.
+
+---
+
+## 2026-09-26 · STRATEJI NEDEN PARA KAZANIYOR + KOTU SERILER SANS MI (kanit arastirmasi)
+
+Kullanici: "once neden kazandigini ve kotu serilerin beklenen varyans icinde olup olmadigini
+arastir; kanitsiz filtre ekleme." Veri: canli-birebir ikiz (ikiz_k25_cap25, 936 islem,
+gercek maliyet). 5 bagimsiz analiz + her birine KENDI kodunu yazan cürütücü (10 ajan).
+Bar-bar yeniden simulasyon ikizi 936/936 islemde birebir uretti. Hicbir filtre onerilmedi.
+
+### 1) NEDEN KAZANIYOR -- kirilim sonrasi DEVAM (momentum), sinyalin YON bilgisi
+- Net +0.197R/islem [%95 +0.09, +0.30], hafta/ay/ceyrek kumelemesinde de p~2e-4. Brut
+  +0.258R; maliyet brutun %24'u (squeeze %42 -- dar stopta 15.85bp kayma).
+- Mekanizma: hedef stoptan once vuruluyor -- cozulen islemlerde %35 (donchian) / %34.5
+  (squeeze) vs yonsuz rastgele giris %28.6 (volatiliteye esli null %25.5). Fazladan TP:
+  donchian +32, squeeze +28, mean_rev +12 -- kârin tamami bu ~70 "fazla kazanan".
+  WR %42.9 vs basabas %35.8 (+7.1 puan).
+- Plasebo (ayni geometri, ayni maliyet): geometri+maliyet -0.053R (maliyetsiz ~0),
+  piyasa suruklenmesi +0.009R, sinyalin YON secimi +0.190R [+0.10, +0.27] (Bonferroni
+  sonrasi da anlamli). Kâr neredeyse tamamen sinyalden.
+- GECIKME edge'i oldurur: ayni yonde k saat gec giris -- donchian +1s +0.23, +4s +0.19,
+  +12s +0.13, +24s +0.07, +48s +0.02; squeeze +1s +0.07, +4s -0.03. (Sabirli maker
+  girislerin "kosucuyu kacirmasi" bununla tutarli.)
+- Bull-piyasa long'u DEGIL: yukselis aylarinda long payi %55, dususte %33; aylik beta
+  +0.28 [-0.35, +0.91] anlamsiz; iki yon de kârli. 48s sabit ufukta edge coin'e OZGU
+  devam (idiosenkratik +0.146R p=0.002; piyasa kismi +0.043 anlamsiz).
+- Genis: 11/11 coin, 3/3 kol, iki yon pozitif; coin farklari sans icinde (p 0.50/0.92).
+  ⚠ Secilmis evren -- ayni ayar 19/31 coinde kaybediyordu.
+- Kol duzeyi: donchian net +0.241 (CI sifiri dislar); mean_rev sinirda; squeeze net
+  +0.147 [-0.03, +0.32] -- brut edge'i donchian'la ayni, netini kayma yiyor.
+- Aylarin trendliligi/yonu/oynakligi iyi-kotu ayi AYIRMIYOR; gecikmeli olcu tahmin
+  etmiyor (r=-0.23 p=0.15). "Kotu donem onceden taninmaz" bulgusuyla ayni.
+
+### 2) KOTU SERILER -- SANS ICINDE; gecmis ortalamadan YUMUSAK gecmis
+Iki null: islem karistirma (A) ve ayni gun acilanlari birlikte tutan karistirma (B).
+- En uzun kayip serisi 13: P(>=13) = %23. maxDD %46: A medyan %54.6, B medyan %60.5
+  -> gerceklesen yol TIPIK karistirmadan hafif. **Ileride %55-60 dusus normal sayilmali.**
+- En kotu 20/50 islem penceresi p 0.90-0.99; cok olcekli tarama p 0.43/0.70; 13/40
+  negatif ay (A p=0.66, B p=0.79), aylar kumelenmiyor (lag-1 -0.11).
+- En kotu 10 islem nominal p=0.014 ama saglam degil (B 0.078, blok bootstrap 0.49).
+- Tek bagimlilik: AYNI GUN acilan islemler birlikte hareket ediyor (+0.38); farkli
+  gunler +0.01; haftalik R lag-1 -0.13 (hafif ortalamaya donus -> kayiptan sonra
+  durmak zarar).
+- 2026 dususleri: yalniz sonradan secilen sabit pencere olarak anlamli; taramada sans
+  icinde. AMA ikiz verisinin son 30 islemi (Haz-Tem 2026, ort -0.57R) degisim-noktasi
+  testinde sinirda (p 0.04-0.05 A, 0.11 B) -- 30 islemle gurultu/edge kaybi AYRILAMAZ;
+  veri dusus acikken bitiyor. Bu tam erken_uyari'nin izledigi sey; canli Agu-Eyl +0.295R.
+- TRAIN vs TEST farki -0.016R (p=0.43) AMA guc dusuk (ancak 0.27-0.32R'lik dusus
+  gorulur) ve TEST TEMIZ DEGIL: hacim filtresi, risk ve TRX karari ~30-60 ayar
+  icinden TEST'e bakilarak secildi. Secim ONCESI ayarin TEST edge'i +0.134
+  [-0.010, +0.271], anlamsiz. **Tek gercek orneklem-disi kanit canli islemler.**
+
+### 3) CANLIDAKI TEK FILTRE (hacim 2.5) -- islem-duzeyi KANIT YOK
+- Cikardigi 801 donchian islemi net KÂRLI: +0.135R (hafta-kumeli p=0.03). Cikarilan eksi
+  kalan: TRAIN -0.16/-0.20R (p 0.08-0.11, ipucu), TEST ~0 (p~0.5). Filtre donchian'in
+  toplam R'sini iki yarida da dusuruyor (TRAIN 113->67R, TEST 64->33R).
+- Portfoy duzeyinde gecmesi DUSUSU azaltmasindan: TEST'te ayni sayida RASTGELE islem
+  atmakla ayni (MAR P=0.46); TRAIN'de kazancin ~%83'u bosalan coin koltuguna giren yeni
+  islemlerden. Yani filtre bir SECICI degil, bir MARUZIYET AZALTICI olarak calisiyor.
+- Kaldirilirsa bugunku %3.5 risk / CAP 2.5 ile TEST dususu %71 (ablasyon) -- bu yuzden
+  KALDIRILMAZ; ama gerekcesi "kotu kirilimi eler" degil, "esanli donchian maruziyetini
+  keser". Ayni isi dogrudan yapan bir alternatif (or. donchian riskini dusurmek) ancak
+  IKIZ kaniti ve kullanici karariyla. Ikizde kayma sabit 15.85bp -- canlida hacimle
+  degisip degismedigi olculmedi.
+
+### Ikiz kayit notlari (P&L'i etkilemez)
+- Ikizin pnl_usdt'sinde funding YOK (fonlamasiz yeniden hesap 1e-14 tutuyor); tahmini
+  gercek funding -0.003R/islem, ihmal edilebilir.
+- SL/TP cikis damgalari dokunulan barin acilisi +2 saat (bir bar gec); zaman analizlerinde
+  xt-1s kullan.
+Scriptler: scratchpad/edge/ (kalici degil; bulgular burada).

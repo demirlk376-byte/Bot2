@@ -35,6 +35,11 @@ tek tek çıkarıldığında HER BİRİ iki yarıda da kötüleştiriyor → aya
 Canlı-birebir ikiz: TRAIN aylık %13.2 (DD %36.6) · TEST aylık %10.2 (DD %46.0).
 Portföy stopu (O) ve aynı yön kısıtı (N) doğru tabanda koşuldu: sağlam geçen yok, eksen kapalı.
 ⚠ `git pull` sonrası KARAR eski (RR 2.0) koşuları göstermez; yeni tarama tabanıyla başlar.
+
+**Neden kazanıyor / kötü seriler (2026-09-26, ledger):** edge kırılım SONRASI devam — sinyalin
+yön bilgisi +0.19R/işlem, geometri+maliyet −0.05R, piyasa ~0; 11/11 coin, iki yön pozitif.
+Kötü seriler ve düşüşler şans içinde; geçmiş yol ortalamadan YUMUŞAK → **ileride %55-60 düşüş
+normal**. Hacim filtresi işlem seçmiyor, maruziyeti azaltıyor (kaldırılmaz; gerekçesi bu).
 Bu satır bayatlarsa `ayar_dogrula.py` yakalar — ama ancak `deployed_backtest.py`
 içindeki `CANLI_*` sabitleri de güncellenirse. İkisi birlikte güncellenir.
 
