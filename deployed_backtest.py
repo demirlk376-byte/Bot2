@@ -45,8 +45,10 @@ CAP = 1.25
 
 # Canlının gerçekte koştuğu değerler — ayar_dogrula.py bunları okuyup .env ile
 # karşılaştırıyor. .env değişirse BURASI DA değişmeli, yoksa doğrulayıcı bayatlar.
-CANLI_CAP = 1.50
-CANLI_RISKF = 0.028          # MAX_RISK_PCT 0.02 × RISK_SCALE 1.4
+# 2026-09-26: VPS'te ayar_dogrula ile GÖRÜLDÜ — FILTRE.sh (09-22 kararı, RISK_SCALE 1.75)
+# + CAP 2.5 (İKİZ c_cap25 iki yarıda geçti, kullanıcı kararı).
+CANLI_CAP = 2.50
+CANLI_RISKF = 0.035          # MAX_RISK_PCT 0.02 × RISK_SCALE 1.75
 #
 # ⚠ 2026-09-09'DA DÜZELTİLDİ. Önce (1476.05/1420.66) × (0.028/0.0225) = 1.293
 # yazmıştım. YANLIŞ: iki etki ÇARPIMSAL DEĞİL. eff = min(RISKF, CAP×slp)
@@ -54,10 +56,15 @@ CANLI_RISKF = 0.028          # MAX_RISK_PCT 0.02 × RISK_SCALE 1.4
 # yok; iki katkıyı çarpmak o işlemleri iki kez sayıyor. Doğrusu tek seferde
 # (CAP=1.50, RISKF=0.028) ile ölçmek:
 #     çıpa   (1.25 · %2.25) → +$1420.66 · maxDD %24.43 · en kötü ay %−21.05
-#     CANLI  (1.50 · %2.80) → +$1755.21 · maxDD %27.98 · en kötü ay %−26.38
-CANLI_OLCEK = 1.2355         # 1755.21 / 1420.66 — ÖLÇÜLDÜ, türetilmedi
-CANLI_MAXDD = 27.98          # canlı ayarda doğrudan ölçüldü (çıkış sıralı)
-CANLI_KOTU_AY = -26.38
+#     CANLI  (1.50 · %2.80) → +$1755.21 · maxDD %27.98 · en kötü ay %−26.38  (09-09..09-25)
+#     CANLI  (2.50 · %3.50) → +$2323.41 · maxDD %32.72 · en kötü ay %−31.57  (09-26, aynı yöntem;
+#                              eski iki satır aynı betikte birebir yeniden üretildi)
+CANLI_OLCEK = 1.6354         # 2323.41 / 1420.66 — ÖLÇÜLDÜ, türetilmedi
+CANLI_MAXDD = 32.72          # canlı ayarda doğrudan ölçüldü (çıkış sıralı, SABİT taban)
+CANLI_KOTU_AY = -31.57
+# Çıpa hacim filtresini (DONCHIAN_VOL_MULT 2.5) MODELLEMİYOR, canlı kullanıyor. Bileşik ve
+# filtreli gerçekçi düşüş İKİZ'den: c_cap25 TEST maxDD %46.0 (KARAR 2026-09-26).
+CANLI_IKIZ_MAXDD = 46.0
 DONCH = ["SOL", "ETH", "ADA", "NEAR", "BCH", "ICP", "BNB"]
 SQZ = ["XRP", "DOGE", "TRX", "XLM"]
 CFG = {"donchian": ("4h", 259, 2.0, 2.5, 30), "squeeze": ("1h", 119, 2.0, 2.5, 48)}

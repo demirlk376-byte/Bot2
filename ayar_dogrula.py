@@ -69,10 +69,13 @@ CANLI_CAP = _ankor_sabit("CANLI_CAP")    # canlının GERÇEKTE koştuğu — .e
 CANLI_RISKF = _ankor_sabit("CANLI_RISKF")
 CANLI_OLCEK = _ankor_sabit("CANLI_OLCEK")
 CANLI_MAXDD = _ankor_sabit("CANLI_MAXDD")
+CANLI_IKIZ_MAXDD = _ankor_sabit("CANLI_IKIZ_MAXDD")
 
-# Risk oranının ankorun kaç katına kadar çıkmasına izin var. Aşılırsa ✗.
+# Canlının düşüşü çıpanınkinin kaç katına kadar çıkabilir. Aşılırsa ✗.
 # Gerekçe: ankorun ölçülen maxDD'si %24.43. 1.5 kat ≈ %37 maxDD; $306'lık
 # hesapta ~$113'lük tepe-dip. Bunun ötesi "normal dalgalanma" diye savunulamaz.
+# 2026-09-26'ya kadar NOMİNAL risk oranına uygulanıyordu; o oran CAP'in kırptığı
+# işlemlerde etkin riski abartır. Artık canlı ayarda ÖLÇÜLEN maxDD'ye uygulanıyor.
 ORAN_TAVAN = 1.5
 ANKOR_MAXDD = 24.43     # ölçüldü (çıkış sırasına göre equity eğrisi)
 
@@ -171,17 +174,19 @@ def main():
     print(f"\n  (b) ÇIPAYA KIYAS (tüm getiri tahminleri bu birimde)")
     if canli_risk:
         oran = canli_risk / ANKOR_RISKF
-        ok = oran <= ORAN_TAVAN
-        hepsi &= ok
         print(f"    risk/işlem   canlı %{canli_risk*100:.3f}  çıpa %{ANKOR_RISKF*100:.3f}"
-              f"   → {oran:.3f}x  {'✓' if ok else f'✗ TAVAN {ORAN_TAVAN}x AŞILDI'}")
+              f"   → {oran:.3f}x nominal (CAP kırptığı için etkin risk daha düşük)")
         print(f"    cap          canlı {canli_cap:.2f}      çıpa {ANKOR_CAP:.2f}")
         print(f"    ── ikisi birlikte, TEK SEFERDE ölçüldü: kâr ölçeği {CANLI_OLCEK:.4f}x ──")
-        # maxDD tabanı cap 1.50'de ÖLÇÜLEN değer (24.79), çıpanınki (24.43) değil —
-        # yoksa cap'in katkısı düşer ve drawdown OLDUĞUNDAN AZ görünür.
-        dd_bek = CANLI_MAXDD_BAZ * oran
-        print(f"    beklenen maxDD  ~%{dd_bek:.1f}   "
-              f"(cap1.50'de ölçülen %{CANLI_MAXDD_BAZ:.2f} × {oran:.2f})")
+        # 2026-09-09'da CANLI_MAXDD_BAZ → CANLI_MAXDD olarak yeniden adlandırılmış,
+        # bu satırlar eski adla kalmıştı: betik o günden beri burada NameError ile
+        # çöküyordu. Ölçülen değer ORANLA ÇARPILMAZ (o commit'in kendi kararı).
+        dd_tavan = ORAN_TAVAN * ANKOR_MAXDD
+        ok = CANLI_MAXDD <= dd_tavan
+        hepsi &= ok
+        print(f"    maxDD (sabit taban, ölçüldü) %{CANLI_MAXDD:.2f} vs tavan %{dd_tavan:.1f} "
+              f"({ORAN_TAVAN}× çıpa %{ANKOR_MAXDD})  {'✓' if ok else '✗ TAVAN AŞILDI'}")
+        print(f"    gerçekçi (BİLEŞİK, hacim filtresi dahil, İKİZ): maxDD ~%{CANLI_IKIZ_MAXDD:.0f}")
         print(f"    çıpanın aylık DOLAR rakamlarını {CANLI_OLCEK:.2f} ile ÇARP.")
         print(f"    (yüzde rakamları ölçekten BAĞIMSIZ değildir — onlar da çarpılır)")
 

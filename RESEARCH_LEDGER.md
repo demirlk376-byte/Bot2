@@ -6371,3 +6371,30 @@ maddesi buna gore duzeltildi.
 - PORTFOY_STOP (IKIZ.bat -> O) ve MAX_SAME_DIRECTION (-> N) taramalari 09-23'te
   kodlandi, sonucu HIC raporlanmadi. Bu girdinin 3. bulgusu ve 09-09 hukmu
   gecmeyeceklerini soyluyor; yine de on-kayitli, kosulup kapatilmali.
+
+---
+
+## 2026-09-26 · CANLI AYAR TEYIT EDILDI + ayar_dogrula 17 GUNDUR COKUYORDU
+
+VPS ekrani (kullanici): FILTRE.sh durum -> hacim 2.5 + RISK_SCALE 1.75 + squeeze XRP,DOGE,XLM
+ACIK, servis active; ayar_dogrula -> risk 0.0350, **CAP 2.5000**. Yani CAP 2.5 CANLIDA.
+- **Hata:** 6de620f (09-09) CANLI_MAXDD_BAZ -> CANLI_MAXDD yeniden adlandirdi, iki kullanim
+  eski adla kaldi -> betik (b) bolumunde NameError ile cokuyordu, SONUC satirina hic
+  ulasmiyordu. Duzeltildi + tests/test_tanimsiz_isim.py (dogrulama betiklerinde tanimsiz
+  global isim; eski kodda hatayi yakaladigi dogrulandi).
+- deployed_backtest CANLI_* guncellendi: CAP 2.50, risk 0.035. Ayni yontemle yeniden
+  olculdu (eski iki satir birebir uretildi): +$2323.41 · maxDD %32.72 · en kotu ay
+  %-31.57 · olcek 1.6354. Bilesik+filtreli gercekci maxDD: IKIZ c_cap25 TE %46.0.
+- 1.5x tavani artik NOMINAL risk oranina degil (1.556x, CAP kirptigi icin abartili)
+  gerekcesinin kendisine uygulaniyor: olculen maxDD %32.72 <= 1.5 x %24.43 = %36.6 -> gecti.
+- erken_uyari.py ilk canli kosu (112 aktif-kol islemi, 06-18 -> 09-23): NORMAL. Ort net R
+  +0.295 [%95 +0.027, +0.563] -- alt sinir ILK KEZ sifirin ustunde (defter PnL'i; defter
+  borsayi gecmiste $62.80 fazla yazmisti, kismen izlendi). CUSUM 6.4/35 (tepe 17.1).
+  Birim deger (bugunku %3.5/CAP 2.5 ile geriye uygulanmis) tepeden -%14.2, en buyuk
+  -%40.8: Agustos olayi bugunku boyutla ~-%41 olurdu. Kayma son 60 market girisinde
+  10.0bp [4.4, 15.5] -- modelin (15.85) altinda. Yabanci kol son 30 gunde 0 (tum gecmis 36,
+  07-16'da kapatilan orb/fvg).
+- IKIZ CANLI_ENV (ikiz/kos.py) hala CAP 1.5 / RISK 1.4 / TRX'li. DEGISTIRILMEDI: kos.py
+  motor damgasinda, degisirse KARAR'daki tum c_/h_ kosulari "eski motor" diye duser ve
+  bekleyen O/N taramalari c_taban'la kiyaslanamaz. O/N bitince VPS .env'inin gizli
+  olmayan satirlariyla guncellenmeli (yeni taban, yeni seri).

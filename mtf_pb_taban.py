@@ -59,4 +59,5 @@ if __name__ == "__main__":
     print(f"  TABAN {m['n']} işlem · ${m['kar']:+.2f} · maxDD %{m['dd']:.2f} · "
           f"en kötü ay %{m['kotu']:.2f} · WR %{m['wr']:.1f} · ortR {m['ortR']:+.4f}")
     print("  yıl-yıl:", {int(k): round(v, 1) for k, v in m["yil"].items()})
-    print(f"  ANKOR BEKLENTİ: 1579 / +1755.21 / 27.98 / -26.38")
+    print(f"  ANKOR BEKLENTİ: 1579 / +{1420.66 * A.CANLI_OLCEK:.2f} / "
+          f"{A.CANLI_MAXDD} / {A.CANLI_KOTU_AY}")

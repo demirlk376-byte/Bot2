@@ -1,8 +1,7 @@
 # Sistem Durumu
 
-*Son güncelleme: 2026-09-26 (izleme kuralı + kırmızı çizgi yeniden kalibre edildi). Bölüm 1'deki
-yapılandırma 2026-09-14 tarihli: 09-22 kararının (FILTRE.sh: hacim 2.5, risk %3.5, TRX çıkar) VPS'e
-uygulandığı teyitsiz → `bash FILTRE.sh durum`.*
+*Son güncelleme: 2026-09-26 — izleme kuralı + kırmızı çizgi yeniden kalibre edildi; bölüm 1'deki
+yapılandırma VPS'te `FILTRE.sh durum` + `ayar_dogrula.py` ile görüldü.*
 
 **Özet sayfası (telefondan okumak için):**
 https://claude.ai/code/artifact/2bde810a-b5ed-4adf-b01a-be868027eb34
@@ -15,15 +14,19 @@ değiştireceğiz" sorularının cevabı burada. Yeni bir şey yapmadan önce bu
 ## 1. Şu anki yapılandırma
 
 ```
-LEVERAGE=10                RISK_SCALE=1.4                 ← 2026-09-09'da 1.125'ten
-MAX_RISK_PCT=0.02          POSITION_CAP_FRACTION=1.5      ← 2026-08-12'de değişti
+LEVERAGE=10                RISK_SCALE=1.75                ← 09-22 kararı (FILTRE.sh), 1.4'ten
+MAX_RISK_PCT=0.02          POSITION_CAP_FRACTION=2.5      ← İKİZ c_cap25 geçti, kullanıcı kararı; 1.5'ten
 MAX_POSITIONS=7            CONSECUTIVE_LOSS_LIMIT=2
 COOLDOWN_MINUTES=240       DAILY_MAX_LOSS_PCT=0.35
 FIXED_MARGIN_USDT=0        MAKER_ENTRY=true
 MARGIN_MODE=isolated       DONCHIAN_MAKER_ENTRY=false     ← 2026-09-14 UYGULANDI (restart 14:26 UTC)
+DONCHIAN_VOL_MULT=2.5      SQUEEZE_SYMBOLS=XRP,DOGE,XLM   ← 09-22 kararı (FILTRE.sh); TRX çıktı
 ```
+(2026-09-26 VPS ekranı: `FILTRE.sh durum` → AYAR AÇIK, servis active; `ayar_dogrula` → risk
+0.0350, cap 2.5000.)
 
-Gerçekleşen risk/işlem = MAX_RISK_PCT × RISK_SCALE = **%2.80** (çıpa %2.25).
+Gerçekleşen risk/işlem = MAX_RISK_PCT × RISK_SCALE = **%3.50** (çıpa %2.25); CAP 2.5 dar
+stoplu işlemleri daha az kırpıyor. Beklenen bileşik maxDD (İKİZ, hacim filtresi dahil) **~%46**.
 Bu satır bayatlarsa `ayar_dogrula.py` yakalar — ama ancak `deployed_backtest.py`
 içindeki `CANLI_*` sabitleri de güncellenirse. İkisi birlikte güncellenir.
 
