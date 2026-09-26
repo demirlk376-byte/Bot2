@@ -63,7 +63,8 @@ CANLI_OLCEK = 1.6354         # 2323.41 / 1420.66 — ÖLÇÜLDÜ, türetilmedi
 CANLI_MAXDD = 32.72          # canlı ayarda doğrudan ölçüldü (çıkış sıralı, SABİT taban)
 CANLI_KOTU_AY = -31.57
 # Çıpa hacim filtresini (DONCHIAN_VOL_MULT 2.5) MODELLEMİYOR, canlı kullanıyor. Bileşik ve
-# filtreli gerçekçi düşüş İKİZ'den: c_cap25 TEST maxDD %46.0 (KARAR 2026-09-26).
+# filtreli gerçekçi düşüş İKİZ'den: canlı-birebir ikiz (DONCHIAN_RR 2.5 dahil, 2026-09-26)
+# TEST maxDD %46.0 — RR 2.0'lı eski c_cap25 ile aynı çıktı.
 CANLI_IKIZ_MAXDD = 46.0
 DONCH = ["SOL", "ETH", "ADA", "NEAR", "BCH", "ICP", "BNB"]
 SQZ = ["XRP", "DOGE", "TRX", "XLM"]

@@ -262,8 +262,10 @@ class ExecutionEngine:
         await self.emergency_close_all("portfoy_stop")
         saat = int(getattr(self._risk_cfg_kaynak(), "portfoy_soguma_saat", 0) or 0)
         if saat > 0:
-            import time as _t
-            self._portfoy_soguma_bitis = _t.time() + saat * 3600
+            # datetime.now: canlıda gerçek saat, İKİZ'de sanal saat. time.time() İKİZ'de
+            # duvar saatiydi — 24 saatlik soğuma 23 dakikalık replay'de HİÇ bitmiyordu
+            # (2026-09-26 p_st12s: 2023-06-10'dan sonra tek işlem yok).
+            self._portfoy_soguma_bitis = datetime.now(timezone.utc).timestamp() + saat * 3600
         await self._alert(
             f"PORTFOY STOPU — acik zarar equity'nin %{oran*100:.1f}'ine ulasti "
             f"(esik %{esik*100:.1f}). {len(acik)} pozisyon kapatildi."
@@ -450,9 +452,9 @@ class ExecutionEngine:
             # ⚠ PORTFOY STOPU SOGUMASI. Stop tetiklendikten hemen sonra
             # yeniden girmek korumayi anlamsiz kilar.
             if self._portfoy_soguma_bitis > 0:
-                import time as _t
-                if _t.time() < self._portfoy_soguma_bitis:
-                    kalan = (self._portfoy_soguma_bitis - _t.time()) / 3600.0
+                _simdi = datetime.now(timezone.utc).timestamp()
+                if _simdi < self._portfoy_soguma_bitis:
+                    kalan = (self._portfoy_soguma_bitis - _simdi) / 3600.0
                     return ExecutionResult(
                         False,
                         error=f"Portfoy stopu sogumasi: {kalan:.1f} saat kaldi")

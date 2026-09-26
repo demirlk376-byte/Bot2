@@ -124,6 +124,23 @@ def test_SOGUMA_damgasi_kuruluyor():
     assert x._portfoy_soguma_bitis > time.time() + 23 * 3600
 
 
+def test_SOGUMA_SANAL_SAATI_izler_duvar_saatini_degil(monkeypatch):
+    """İKİZ datetime'ı sanal saatle değiştiriyor. Soğuma time.time() kullanınca
+    24 saatlik soğuma 23 dakikalık replay'de hiç bitmedi (2026-09-26 p_st12s:
+    2023-06-10'dan sonra tek işlem yok). Damga, execution'ın gördüğü saatten gelmeli."""
+    from datetime import datetime as _gercek, timezone
+    import execution as ex
+    sanal = _gercek(2023, 6, 10, 12, 0, tzinfo=timezone.utc)
+    class _SanalDatetime(_gercek):
+        @classmethod
+        def now(cls, tz=None):
+            return sanal
+    monkeypatch.setattr(ex, "datetime", _SanalDatetime)
+    x = _Sahte([_Poz(-200)], equity=1000, esik=0.12, soguma=24)
+    assert _kos(x) is True
+    assert abs(x._portfoy_soguma_bitis - (sanal.timestamp() + 24 * 3600)) < 1
+
+
 def test_soguma_KAPALIYSA_damga_kurulmaz():
     x = _Sahte([_Poz(-200)], equity=1000, esik=0.12, soguma=0)
     assert _kos(x) is True

@@ -34,27 +34,37 @@ async def _kurulumda_dur(*a, **k):
     raise _Dur(BITTI)
 
 
-# CANLI .env (VPS /opt/bot2/.env, 2026-09-14 okundu) — yerelde .env YOK, o yüzden
-# canlı değerler BURADA açıkça veriliyor. Bir tanesi bile yanlışsa replay canlıyı
-# taklit etmez; bu blok `ayar_dogrula.py` ile karşılaştırılmalı.
+# CANLI .env (VPS /opt/bot2/.env, 2026-09-26 okundu, gizli olmayan tüm satırlar) — yerelde
+# .env YOK, o yüzden canlı değerler BURADA açıkça veriliyor. Bir tanesi bile yanlışsa
+# replay canlıyı taklit etmez; bu blok `ayar_dogrula.py` ile karşılaştırılmalı.
+# ⚠ 2026-09-26: DONCHIAN_RR EKSİKTİ. Canlı 2.5 (2026-07-21'den beri), ikiz kod
+# varsayılanı 2.0 ile koşuyordu — o güne dek TÜM İKİZ taramaları farklı bir donchian
+# hedefiyle ölçüldü (TP'ler 1.90R'de kapanıyordu). Doğru RR ile canlı: TR MAR 8.75→9.35,
+# TE MAR 4.49→4.80. Kodda varsayılanı olan ama canlıda FARKLI değer taşıyan her anahtar
+# burada olmalı; varsayılana güvenmek bu hatanın ta kendisi.
 CANLI_ENV = {
-    "SYMBOLS": "SOL,ETH,ADA,NEAR,BCH,ICP,BNB,XRP,DOGE,TRX,XLM,LTC",
+    "SYMBOLS": "SOL,ETH,ADA,NEAR,BCH,XRP,DOGE,TRX,XLM,LTC,ICP,BNB",   # canlı .env sırası
     "DONCHIAN_SYMBOLS": "SOL,ETH,ADA,NEAR,BCH,ICP,BNB",
     "BB_SYMBOLS": "LTC",
     # ⚠ 2026-09-15'te EKSİK oldukları ölçüldü: yokken kod varsayılanlarına
     # düşülüyordu (squeeze → BTC+SOL yani yalnız SOL, BB → hafta içi de açık).
     # Sonuç: squeeze 404 yerine 98, mean_rev 175 yerine 482 işlem.
-    "SQUEEZE_SYMBOLS": "XRP,DOGE,TRX,XLM",
+    "SQUEEZE_SYMBOLS": "XRP,DOGE,XLM",                 # 09-22 kararı (FILTRE.sh), TRX çıktı
     "BB_WEEKDAY_ENABLED": "false",
-    "MAX_POSITIONS": "7", "POSITION_CAP_FRACTION": "1.5",
-    "MAX_RISK_PCT": "0.02", "RISK_SCALE": "1.4",
+    "MAX_POSITIONS": "7", "POSITION_CAP_FRACTION": "2.5",   # 09-26, İKİZ c_cap25 geçti
+    "MAX_RISK_PCT": "0.02", "RISK_SCALE": "1.75",           # 09-22 kararı (FILTRE.sh)
     "DAILY_MAX_LOSS_PCT": "0.35", "LEVERAGE": "10",
-    "CONSECUTIVE_LOSS_LIMIT": "2", "COOLDOWN_MINUTES": "240",
+    "CONSECUTIVE_LOSS_LIMIT": "2", "COOLDOWN_MINUTES": "240",   # canlıda .env'de yok = kod varsayılanı
     "DONCHIAN_MTF": "true", "STOP_MOVE_ENABLED": "true",
     "MAKER_ENTRY": "true", "DONCHIAN_MAKER_ENTRY": "false",   # 2026-09-14 market girişe geçildi
+    "DONCHIAN_RR": "2.5", "DONCHIAN_VOL_MULT": "2.5",
+    "ATR_SL_MULT": "3.0", "RR_RATIO": "1.667", "MAX_HOLD_CANDLES": "48",
+    "VOL_FILTER_ENABLED": "true", "FUNDING_ENABLED": "false", "FIXED_MARGIN_USDT": "0",
     "ORB_ENABLED": "false", "FVG_ENABLED": "false",
     "SR_BREAKOUT_ENABLED": "false", "IFVG_ENABLED": "false",
     "ASIA_BO_ENABLED": "false", "WHALE_ENABLED": "false",
+    # ORDERFLOW canlıda açık ama mode=monitor: yalnız log, işlem kararına girmez; replay'de
+    # ağ erişimi kapalı olduğu için KAPALI bırakılıyor.
 }
 
 
