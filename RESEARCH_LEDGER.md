@@ -6398,3 +6398,60 @@ ACIK, servis active; ayar_dogrula -> risk 0.0350, **CAP 2.5000**. Yani CAP 2.5 C
   motor damgasinda, degisirse KARAR'daki tum c_/h_ kosulari "eski motor" diye duser ve
   bekleyen O/N taramalari c_taban'la kiyaslanamaz. O/N bitince VPS .env'inin gizli
   olmayan satirlariyla guncellenmeli (yeni taban, yeni seri).
+
+---
+
+## 2026-09-26 · IKIZ DONCHIAN_RR HATASI -> canli-birebir ikiz, ABLASYON, O/N KAPANDI
+
+Kosular bu oturumun bulut ortaminda (4 cekirdek, ~22 dk/kosu) yapildi. **Kopru:** PC'deki
+c_cap25 burada BIREBIR uretildi (951 islem · TE %206.6 · DD %46.0 · MAR 8.75/4.49) -> bu
+ortamdaki kosular PC'dekilerle ayni.
+
+### HATA: ikiz donchian'i 2.0R hedefle kosuyordu, canli 2.5R
+Canli .env'de DONCHIAN_RR=2.5 (2026-07-21'den beri); ikiz/kos.py CANLI_ENV'de yoktu ->
+kod varsayilani 2.0. Ikiz TP'leri medyan 1.90R'de kapaniyordu (dogru RR'de 2.38R).
+**09-26'ya kadarki TUM IKIZ hukumleri RR 2.0'la verildi.** CANLI_ENV, canli .env'in gizli
+olmayan tum satirlariyla esitlendi (31 anahtar). Yeni taban (hic override yok) canli-birebir
+kosuyla islem-islem AYNI (938 satir, ozet 8e3fa541ec60) -- sembol sirasi farki etkisiz.
+Motor damgasi degisti: KARAR eski (RR 2.0) kosulari "eski motor" diye gostermez.
+
+### CANLI AYAR, DOGRU RR'DE, TEK TEK CIKARILARAK (taban = canli: TR MAR 9.35 · TE 4.80)
+```
+cikarilan            islem  TE yil%  TE DD   TR MAR  TE MAR    dTR    dTE
+(canli)                936    220.8   46.0    9.35    4.80     --     --
+hacim filtresi        1612    124.4   70.7    8.00    1.76  -1.35  -3.04
+risk %3.5 -> %2.8      937    177.5   39.3    8.85    4.52  -0.50  -0.28
+TRX cikarma (TRX'li)   994    204.9   48.0    7.19    4.27  -2.17  -0.53
+CAP 2.5 -> 1.5         938    185.1   41.5    7.05    4.46  -2.31  -0.34
+RR 2.5 -> 2.0          951    206.6   46.0    8.75    4.49  -0.60  -0.31
+09-22 oncesi canli    1677    126.4   59.4    7.71    2.13  -1.64  -2.67
+```
+**Bes kararin BESI de iki yarida yerini hak ediyor.** (CAP 1.5 + paket vs eski canli
+karsilastirmasinda TRAIN -0.66 cikmisti; tek-tek cikarmada her parca iki yarida pozitif.)
+Canli-birebir ikiz: TRAIN aylik %13.2 (DD %36.6), TEST aylik %10.2 (DD %46.0).
+
+### O (PORTFOY STOPU) ve N (AYNI YON) -- canli tabanda, DOGRU RR'de
+```
+p_st07  -4.19/-1.18 kaldi     p_st12  -0.50/+0.17 tek    p_st18  -0.39/-0.14 kaldi
+p_st12s -1.12/+0.33 tek (saat hatasi duzeltilip yeniden)
+p_st10y +2.37/-0.22 tek       p_st12y +1.30/+0.02 GECTI   p_st15y +1.45/-0.30 tek
+n_ayni5 +1.87/-0.11 tek       n_ayni4 +2.01/-0.08 tek     n_ayni3 -1.48/+1.48 tek
+n_korel3 = n_ayni5 birebir (MAX_CORRELATED_DIRECTION yalniz BTC/ETH/SOL grubu -- etkisiz)
+```
+Aynı-yon kisiti TRAIN'e yariyor, TEST'e yaramiyor (3'te tersi) -- 09-09 hukmuyle ve kayip
+anatomisiyle ayni desen. Tek "gecen" hucre p_st12y'nin TEST farki +0.02 (%0.4) ve iki
+komsusu (%10, %15) TEST'te kaldi -> 15 varyantlik taramada tek sansli hucre. **IKI EKSEN
+DE KAPANDI.** Canliya bir sey alinmiyor.
+
+### HATA 2: portfoy stopu sogumasi ikizde hic bitmiyordu
+execution.py sogumayi `time.time()` ile damgaliyordu; ikiz datetime'i sanal saatle
+degistiriyor ama time.time() duvar saati -> 24 saatlik soguma 23 dakikalik replay'de
+bitmedi, p_st12s 2023-06-10'dan sonra tek islem acmadi. `datetime.now(timezone.utc)`'e
+gecildi (canlida ayni davranis; ozellik canlida KAPALI). Test: sanal saati izledigi,
+eski kodda KALDIGI dogrulandi. Kayip cooldown'u (COOLDOWN_MINUTES) zaten datetime.now
+kullaniyor -- o hep dogru simule edilmis.
+
+### Yan sonuclar
+- erken_uyari kalibrasyonu canli-birebir ikizle yenilendi: birlesik alarm saglikliyken
+  12 ayda %3.2 / 24 ayda %9.1; olu edge'i medyan 9. ayda yakaliyor. Bantlar degismedi.
+- ikiz_a_filtresiz/risk14/trxli, p_*, n_*, k20/k25 islem listeleri repoda.

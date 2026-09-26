@@ -27,6 +27,14 @@ DONCHIAN_VOL_MULT=2.5      SQUEEZE_SYMBOLS=XRP,DOGE,XLM   ← 09-22 kararı (FIL
 
 Gerçekleşen risk/işlem = MAX_RISK_PCT × RISK_SCALE = **%3.50** (çıpa %2.25); CAP 2.5 dar
 stoplu işlemleri daha az kırpıyor. Beklenen bileşik maxDD (İKİZ, hacim filtresi dahil) **~%46**.
+
+**2026-09-26 — İKİZ artık canlının BİREBİR kopyası.** `ikiz/kos.py` CANLI_ENV canlı .env'den
+alındı; önceden `DONCHIAN_RR` eksikti ve ikiz donchian'ı 2.0R hedefle koşuyordu (canlı 2.5R).
+Doğru ikizde bu ayarın beş kararı (RR 2.5, CAP 2.5, hacim filtresi, risk %3.5, TRX çıkarma)
+tek tek çıkarıldığında HER BİRİ iki yarıda da kötüleştiriyor → ayar doğrulandı.
+Canlı-birebir ikiz: TRAIN aylık %13.2 (DD %36.6) · TEST aylık %10.2 (DD %46.0).
+Portföy stopu (O) ve aynı yön kısıtı (N) doğru tabanda koşuldu: sağlam geçen yok, eksen kapalı.
+⚠ `git pull` sonrası KARAR eski (RR 2.0) koşuları göstermez; yeni tarama tabanıyla başlar.
 Bu satır bayatlarsa `ayar_dogrula.py` yakalar — ama ancak `deployed_backtest.py`
 içindeki `CANLI_*` sabitleri de güncellenirse. İkisi birlikte güncellenir.
 
