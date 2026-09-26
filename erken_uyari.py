@@ -14,9 +14,10 @@ NEDEN (2026-09-26 kayıp anatomisi, RESEARCH_LEDGER.md):
 
 ÜÇ ÖLÇÜ — hepsi yalnız KAPANMIŞ işlemlerden; katkı, çekim, restart etkilemez:
   1) R-CUSUM (edge ölümü): S = max(0, S + 0.09 − R), S > 35 → ALARM.
-     İKİZ ay-blok bootstrap (3000 yol, ~24 işlem/ay): sağlıklıyken 12 ayda %3, 24 ayda %11
-     yanlış alarm; edge sıfırsa medyan 10. ayda, −0.10R ise medyan 6. ayda yakalar.
-     Daha hızlısı yok: işlem başı R'nin std'si 1.4, edge 0.18 — gürültü fiziği bu.
+     CANLI-BİREBİR İKİZ (RR 2.5, CAP 2.5, risk %3.5; 936 işlem) ay-blok bootstrap, 3000 yol:
+     birleşik hüküm sağlıklıyken 12 ayda %3.2, 24 ayda %9.1 yanlış alarm; edge sıfırsa
+     medyan 9. ayda, −0.10R ise medyan 6. ayda yakalar. Tarihin kendisinde tepe 19.1.
+     Daha hızlısı yok: işlem başı R'nin std'si 1.4, edge 0.185 — gürültü fiziği bu.
   2) Katkıdan bağımsız birim değer: her işlem R × min(risk%, CAP × stop%) ile bileşiklenir
      (botun kendi boyutlama formülü). Tepeden düşüş İKİZ bantlarıyla kıyaslanır.
   3) Yürütme (hızlı katman, gürültüsü düşük): giriş kayması bp vs model 15.85bp,
@@ -42,6 +43,7 @@ KIRMIZI_CIZGI = 0.60    # birim değer tepeden −%60 (sağlıklıyken 24 ayda ~
 DD_BANTLARI = ((0.40, "olağan (tipik yıl)"),
                (0.48, "sık değil (5 yılda bir)"),
                (0.60, "nadir (20 yılda bir) — ama hâlâ normal aralıkta"))
+# ↑ canlı-birebir İKİZ 12 aylık bantları: tipik %38.6 · 5 yılda bir %46.4 · 20 yılda bir %55.0
 KAYMA_MODEL_BP = 15.85  # kayma_denetim.py, n=54
 STOPTAN_KOTU_R = -1.5   # İKİZ'de en kötü net R −1.31; daha kötüsü stop sorunu demek
 AKTIF_KOLLAR = ("donchian", "squeeze", "mean_rev")

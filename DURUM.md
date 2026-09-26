@@ -1944,18 +1944,22 @@ kaybettiren şeyin ta kendisi.
 
 **Tek komut:** `venv/bin/python erken_uyari.py` (aylık Telegram doğrulamasına da eklendi).
 
+Kalibrasyon: CANLI-BİREBİR İKİZ (RR 2.5, CAP 2.5, risk %3.5, hacim 2.5; 936 işlem), ay-blok
+bootstrap, 3000 yol.
+
 | ölçü | sağlıklı botta yanlış alarm (12 ay / 24 ay) | edge ölürse yakalama | ne yapmalı |
 |---|---|---|---|
-| **R-CUSUM > 35** (edge alarmı) | %3 / %10 | %94 (24 ayda), medyan **10. ay** | **DUR ve bak** |
-| **birim değer tepeden −%60** (katkıdan bağımsız) | %2 / %5 | %89, medyan 10. ay | **DUR ve bak** |
-| ikisinden biri (aracın hükmü) | %3.2 / %10.0 | %94, medyan 10. ay; −0.10R'de medyan 6. ay | |
+| **R-CUSUM > 35** (edge alarmı) | %2.6 / %8.1 | %94 (24 ayda), medyan **10. ay** | **DUR ve bak** |
+| **birim değer tepeden −%60** (katkıdan bağımsız) | %2.4 / %5.9 | %91, medyan 9. ay | **DUR ve bak** |
+| ikisinden biri (aracın hükmü) | %3.2 / %9.1 | %94, medyan 9. ay; −0.10R'de medyan 6. ay | |
 | yürütme uyarısı (kayma > model, stoptan kötü, yabancı kol) | — | günler/haftalar | kayma_denetim / kar_farki / ayar_dogrula |
-| 3 ay üst üste negatif | **%27 / %51** | — | **not et, bekle** (tek başına alarm DEĞİL) |
+| 3 ay üst üste negatif | **%24 / %43** | — | **not et, bekle** (tek başına alarm DEĞİL) |
 | canlı R'nin %95 alt sınırı < 0 | 3. ayda **%87** | — | **bilgi** — n~220'ye kadar sıfırı içermesi normal |
 
-NORMAL BANT (12 ay, İKİZ, bu risk): en kötü gün tipik −%11 (5 yılda bir −%17) ·
-en kötü ay tipik −%16 (5 yılda bir −%22) · tepeden düşüş tipik %39 (5 yılda bir
-%47, 20 yılda bir %57) · üst üste 10-14 kayıp · yılda 4-7 negatif ay.
+NORMAL BANT (12 ay, canlı-birebir İKİZ): en kötü gün tipik −%13 (5 yılda bir −%16) ·
+en kötü ay tipik −%16 (5 yılda bir −%21) · tepeden düşüş tipik %39 (5 yılda bir
+%46, 20 yılda bir %55) · üst üste 10-14 kayıp · yılda 4-7 negatif ay · yılı zararla
+bitirme (katkısız) %2.8.
 **Bunların hiçbiri alarm değildir.** Edge %75'e inerse bantlar ~5 puan derinleşir.
 
 Hız sınırı fiziksel: işlem başı R'nin std'si 1.4, edge 0.18. Ölü edge'i
