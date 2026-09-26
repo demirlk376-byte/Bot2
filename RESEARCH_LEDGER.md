@@ -6220,3 +6220,32 @@ eksenler) ve çürütme/sentez turları haftalık kullanım limitine takıldı**
 - Çıkışlar: max_hold neden en iyi kategori (+0.3821R) — TP erken mi kesiyor?
 - Hiç denenmemiş eksenlerin taraması.
 - Çürütme turu: CAP bulgusu İKİZ'de doğrulanmadan canlıya ALINMAZ.
+
+---
+
+## 2026-09-26 · IKIZ: CAP GECTI, COIN GENISLETME kesin OLDU
+
+### CAP (POSITION_CAP_FRACTION) -- TEMIZ kosu (ilk kosu bellek sikismasiyla bozuktu)
+```
+CAP   islem  aylik%  TE maxDD  TR MAR  TE MAR
+1.5    952    8.80    41.5      6.47    4.22   <- taban (determinizm: n_taban ile BIREBIR)
+2.0    952    9.33    45.0      7.41    4.26   gecti ama TEST +0.04
+2.5    951    9.79    46.0      8.75    4.49   GECTI (TRAIN +%35, TEST +%6), 1 marjin reddi
+3.0    949    9.47    46.7      8.55    4.19   TEST'te kaldi -- marjin duvari (3 red)
+```
+Takas: aylik +1 puan, maxDD +4.5 puan. Canliya alma KULLANICI KARARI.
+
+### COIN GENISLETME -- squeeze 3 coinde tutularak (eski testin karistiricisi)
+```
+12 coin  TE +%175.0  maxDD %41.5
+19 coin  TE -%26.9   maxDD %71.9
+31 coin  TE -%41.6   maxDD %88.2   (eski test -%41.6 / %88.1 -- BIREBIR)
+```
+Squeeze izolasyonu HICBIR SEY degistirmedi: olum donchian'in kendisinden
+(yeni coinlerde islem basi +0.04R vs kendi 7 coininde +0.26R). EKSEN KAPANDI.
+
+### ARAC DERSI
+Uc tarama ayni anda (14 kosu) -> RAM bitti; tutus taramasi coktu, CAP
+tabani SESSIZCE bozuldu (TRAIN MAR 7.53 vs dogrusu 6.47). Artik: logunda
+sleeve error/MemoryError olan kosu tablodan dislanir, ayni anda tek tarama
+kilidi var, .yedek kopyalar tabloya alinmaz.

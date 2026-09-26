@@ -242,6 +242,11 @@ def _kosular() -> list[str]:
     bulunan = []
     for y in sorted(glob.glob(os.path.join(KOK, "ikiz_*.db"))):
         ad = os.path.splitext(os.path.basename(y))[0].replace("ikiz_", "")
+        # .yedek = kos.py'nin yeniden kosudan ONCE aldigi eski kopya; o kosu
+        # artik gecersiz sayilir ve logu ustune yazildigi icin hata izi de
+        # kaybolmustur. Tabloya ALINMAZ.
+        if ad.endswith(".yedek"):
+            continue
         if _meta(y).get("motor_surum") and _hata_sayisi(ad) == 0:
             bulunan.append(ad)
     sirali = [a for a in SIRA if a in bulunan]
@@ -277,6 +282,8 @@ def _hatali_kosular() -> list[tuple[str, int]]:
     cikti = []
     for y in sorted(glob.glob(os.path.join(KOK, "ikiz_*.db"))):
         ad = os.path.splitext(os.path.basename(y))[0].replace("ikiz_", "")
+        if ad.endswith(".yedek"):
+            continue
         if _meta(y).get("motor_surum"):
             h = _hata_sayisi(ad)
             if h:
