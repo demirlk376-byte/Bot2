@@ -1,0 +1,187 @@
+reference: R on own-coin signed move/stop: slope 0.876 R2=0.856
+
+-- own-coin signed move split into market (beta*LOO index) and idiosyncratic parts --
+hourly beta to LOO index: {'SOL': np.float64(1.0), 'ETH': np.float64(0.75), 'ADA': np.float64(1.14), 'NEAR': np.float64(1.19), 'BCH': np.float64(0.82), 'ICP': np.float64(1.1), 'BNB': np.float64(0.59), 'XRP': np.float64(0.92), 'DOGE': np.float64(1.08), 'XLM': np.float64(0.94), 'LTC': np.float64(0.88)}
+ALL: sum own signed move (stop units) 239.6 = market 150.5 (63%) + idio 89.1 (37%) ; mean per trade mkt +0.161 idio +0.095
+     own_mkt mean +0.161 CI95 month-boot [+0.060,+0.264]
+     own_idio mean +0.095 CI95 month-boot [+0.023,+0.169]
+TRAIN: sum own signed move (stop units) 128.4 = market 107.1 (83%) + idio 21.3 (17%) ; mean per trade mkt +0.199 idio +0.040
+     own_mkt mean +0.199 CI95 month-boot [+0.077,+0.329]
+     own_idio mean +0.040 CI95 month-boot [-0.057,+0.141]
+TEST: sum own signed move (stop units) 111.2 = market 43.4 (39%) + idio 67.9 (61%) ; mean per trade mkt +0.109 idio +0.170
+     own_mkt mean +0.109 CI95 month-boot [-0.053,+0.268]
+     own_idio mean +0.170 CI95 month-boot [+0.077,+0.263]
+R ~ mkt part + idio part: const -0.0281 [-0.0589,+0.0028] p=0.0733 mkt +0.8697 [+0.8153,+0.9241] p=8.74e-30 idio +0.8899 [+0.8149,+0.9649] p=5.84e-25 R2=0.856
+  => R attributable: mkt 130.9, idio 79.3, const -26.3, total 183.9
+
+-- market timing: signed market move over FIXED horizons around entry (month-clustered t) --
+  LOO-idx h= -24h mean signed move +2.5107 [+2.0291,+2.9923] p=5.56e-13 %  (n=936)  TRAIN +2.263 TEST +2.845
+  LOO-idx h=  -4h mean signed move +1.5051 [+1.1549,+1.8552] p=1.15e-10 %  (n=936)  TRAIN +1.448 TEST +1.582
+  LOO-idx h=  +4h mean signed move -0.0670 [-0.1932,+0.0591] p=0.289 %  (n=936)  TRAIN -0.091 TEST -0.035
+  LOO-idx h= +12h mean signed move -0.0438 [-0.2354,+0.1477] p=0.646 %  (n=936)  TRAIN -0.118 TEST +0.057
+  LOO-idx h= +24h mean signed move -0.0427 [-0.3068,+0.2215] p=0.746 %  (n=936)  TRAIN +0.112 TEST -0.251
+  LOO-idx h= +48h mean signed move -0.0020 [-0.3748,+0.3707] p=0.991 %  (n=936)  TRAIN +0.183 TEST -0.252
+  LOO-idx h=+120h mean signed move +0.1079 [-0.6557,+0.8715] p=0.777 %  (n=936)  TRAIN +0.421 TEST -0.316
+  BTC     h= -24h mean signed move +1.5496 [+1.3208,+1.7784] p=1.73e-16 %  (n=936)  TRAIN +1.471 TEST +1.656
+  BTC     h=  -4h mean signed move +0.8417 [+0.6967,+0.9868] p=2.29e-14 %  (n=936)  TRAIN +0.810 TEST +0.885
+  BTC     h=  +4h mean signed move +0.0134 [-0.0546,+0.0814] p=0.693 %  (n=936)  TRAIN +0.013 TEST +0.014
+  BTC     h= +12h mean signed move +0.0085 [-0.1036,+0.1207] p=0.879 %  (n=936)  TRAIN +0.005 TEST +0.013
+  BTC     h= +24h mean signed move -0.0596 [-0.2552,+0.1360] p=0.542 %  (n=936)  TRAIN +0.020 TEST -0.167
+  BTC     h= +48h mean signed move +0.0594 [-0.2220,+0.3407] p=0.672 %  (n=936)  TRAIN +0.171 TEST -0.091
+  BTC     h=+120h mean signed move +0.0848 [-0.4519,+0.6216] p=0.751 %  (n=936)  TRAIN +0.129 TEST +0.025
+R ~ signed LOO move entry..entry+24h (stop units): alpha +0.1811 [+0.0848,+0.2773] p=0.000488 slope +0.5128 [+0.4123,+0.6132] p=1.03e-12 R2=0.216 mkt share 8%
+R ~ signed LOO move entry..entry+48h (stop units): alpha +0.1779 [+0.0898,+0.2660] p=0.000213 slope +0.3219 [+0.2491,+0.3947] p=5.51e-11 R2=0.201 mkt share 9%
+
+-- tailwind: static long-bias vs timing --
+index total log return over sample: 0.505; BTC 0.835
+mean signed index move per trade +0.355% (t=2.23 naive); static long-bias part -0.0066% ; timing part +0.361%
+null (random side, P(long)=0.452, same windows): mean tailwind +0.024%, observed +0.355%, p(one-sided)=0.0178
+LOO: observed +0.315%, null mean +0.024% p=0.0336
+share trades with market tailwind>0: 0.462 | among tp_hit 0.964 | among sl_hit 0.116
+
+R by quintile of signed market move (stop units):
+        n   x_lo   x_hi  meanR     WR
+tw_q                                 
+0     188 -4.271 -0.953 -0.999  0.016
+1     187 -0.949 -0.391 -0.886  0.059
+2     187 -0.386  0.358 -0.262  0.316
+3     187  0.358  1.372  1.158  0.797
+4     187  1.374  7.945  1.978  0.963
+trades with |signed index move| < 0.25 stop: n=122 meanR=-0.216 CI(month-boot)=[-0.383 -0.055]  WR=0.336
+equity-return space (idx): alpha +0.3399 [+0.1201,+0.5597] p=0.00333 %/trade, slope +0.7117 [+0.6030,+0.8204] p=5.16e-16, R2=0.470, sum r_eq=554.4%: mkt 236.3%, alpha 318.1%
+equity-return space (btc): alpha +0.3556 [+0.0714,+0.6397] p=0.0155 %/trade, slope +0.8570 [+0.7357,+0.9783] p=4.37e-17, R2=0.308, sum r_eq=554.4%: mkt 221.6%, alpha 332.8%
+
+By sleeve (index, stop units):
+donchian  n=412 meanR=+0.241 alpha +0.1185 [-0.0013,+0.2383] p=0.0524 slope +0.7786 [+0.7058,+0.8513] p=5.5e-23 R2=0.539 share mkt=51%  mean tw=+0.158
+mean_rev  n=156 meanR=+0.195 alpha +0.0854 [-0.0691,+0.2399] p=0.271 slope +0.6932 [+0.5967,+0.7897] p=2.53e-17 R2=0.559 share mkt=56%  mean tw=+0.159
+squeeze   n=368 meanR=+0.147 alpha -0.0118 [-0.1195,+0.0958] p=0.825 slope +0.7624 [+0.6698,+0.8550] p=2.52e-19 R2=0.599 share mkt=108%  mean tw=+0.208
+ndays {Period('2023-04', 'M'): 24, Period('2023-05', 'M'): 31} {Period('2026-06', 'M'): 30, Period('2026-07', 'M'): 19}
+
+months 40 2023-04 2026-07
+
+==== monthly book return vs index (beta and convexity) ====
+ret ~ idx: alpha +0.1464 [+0.0485,+0.2443] p=0.00439 beta +0.2631 [-0.3615,+0.8878] p=0.399 R2=0.028 n=40
+ret ~ idx + |idx|: const +0.1359(se 0.0666) beta +0.240(se 0.283, p=0.402) |idx| +0.076(se 0.397, p=0.849) R2=0.029
+corr(ret, idx) = [0.1675 0.3016]  corr(ret,|idx|)= [0.1006 0.5367]  corr(ret, btc)= [0.0742 0.649 ]
+spearman ret vs |idx| SignificanceResult(statistic=np.float64(0.08667917448405253), pvalue=np.float64(0.5948462958291352))
+
+==== (2) long vs short by index month sign (entry month) ====
+-- ALL
+  DOWN long  n= 141 meanR=-0.082 CI95(month-boot)=[-0.280,+0.105] WR=0.340 sumR=-11.6 mean signed idx move=-0.79%
+  DOWN short n= 287 meanR=+0.287 CI95(month-boot)=[+0.093,+0.491] WR=0.467 sumR=+82.4 mean signed idx move=+1.03%
+  UP   long  n= 282 meanR=+0.293 CI95(month-boot)=[+0.122,+0.451] WR=0.450 sumR=+82.7 mean signed idx move=+0.59%
+  UP   short n= 226 meanR=+0.135 CI95(month-boot)=[-0.039,+0.279] WR=0.412 sumR=+30.4 mean signed idx move=-0.08%
+  months {'DOWN': 18, 'UP': 22} long share of trades {'DOWN': 0.329, 'UP': 0.555}
+  R ~ long + up + long:up : long -0.3696 [-0.6493,-0.0900] p=0.0109 | up -0.1526 [-0.4204,+0.1151] p=0.256 | interaction +0.5281 [+0.1874,+0.8688] p=0.00326
+  aligned-with-month n=569 R=+0.290 vs against n=367 R=+0.051; diff +0.2389 [+0.0661,+0.4117] p=0.00797
+  overall long n=423 R=+0.168 short n=513 R=+0.220
+-- TRAIN
+  DOWN long  n=  68 meanR=-0.137 CI95(month-boot)=[-0.475,+0.215] WR=0.338 sumR=-9.3 mean signed idx move=-1.00%
+  DOWN short n= 138 meanR=+0.241 CI95(month-boot)=[-0.012,+0.537] WR=0.449 sumR=+33.2 mean signed idx move=+1.10%
+  UP   long  n= 181 meanR=+0.327 CI95(month-boot)=[+0.130,+0.514] WR=0.470 sumR=+59.2 mean signed idx move=+0.89%
+  UP   short n= 151 meanR=+0.174 CI95(month-boot)=[-0.031,+0.341] WR=0.411 sumR=+26.2 mean signed idx move=+0.14%
+  months {'DOWN': 8, 'UP': 13} long share of trades {'DOWN': 0.33, 'UP': 0.545}
+  R ~ long + up + long:up : long -0.3778 [-0.8981,+0.1424] p=0.145 | up -0.0671 [-0.4289,+0.2947] p=0.703 | interaction +0.5313 [-0.0628,+1.1254] p=0.0769
+  aligned-with-month n=319 R=+0.290 vs against n=219 R=+0.077; diff +0.2126 [-0.0585,+0.4837] p=0.118
+  overall long n=249 R=+0.200 short n=289 R=+0.206
+-- TEST
+  DOWN long  n=  73 meanR=-0.031 CI95(month-boot)=[-0.235,+0.149] WR=0.342 sumR=-2.3 mean signed idx move=-0.60%
+  DOWN short n= 149 meanR=+0.330 CI95(month-boot)=[+0.047,+0.573] WR=0.483 sumR=+49.2 mean signed idx move=+0.96%
+  UP   long  n= 101 meanR=+0.232 CI95(month-boot)=[-0.080,+0.470] WR=0.416 sumR=+23.5 mean signed idx move=+0.07%
+  UP   short n=  75 meanR=+0.056 CI95(month-boot)=[-0.243,+0.357] WR=0.413 sumR=+4.2 mean signed idx move=-0.52%
+  months {'DOWN': 11, 'UP': 9} long share of trades {'DOWN': 0.329, 'UP': 0.574}
+  R ~ long + up + long:up : long -0.3617 [-0.6418,-0.0816] p=0.0141 | up -0.2743 [-0.7217,+0.1732] p=0.215 | interaction +0.5379 [+0.2033,+0.8725] p=0.00326
+  aligned-with-month n=250 R=+0.291 vs against n=148 R=+0.013; diff +0.2778 [+0.0821,+0.4734] p=0.00783
+  overall long n=174 R=+0.122 short n=224 R=+0.238
+
+==== (3) regime: index efficiency ratio (daily, calendar month) terciles ====
+ER summary {'count': 40.0, 'mean': 0.19, 'std': 0.148, 'min': 0.015, '25%': 0.067, '50%': 0.164, '75%': 0.263, 'max': 0.634}
+-- ALL  (cutoffs full-sample ER [0.117 0.204])
+  CHOP  months=14 trades=285 meanR=+0.206 [+0.039,+0.373] WR=0.439 monthly ret mean=+12.1% median=+8.6% pos months=0.64 |idx| mean=4.2% vol=17.2%
+  MID   months=13 trades=301 meanR=+0.228 [+0.028,+0.420] WR=0.442 monthly ret mean=+16.8% median=+9.7% pos months=0.62 |idx| mean=11.7% vol=18.5%
+  TREND months=13 trades=350 meanR=+0.162 [+0.001,+0.321] WR=0.411 monthly ret mean=+16.3% median=+9.7% pos months=0.77 |idx| mean=27.6% vol=16.9%
+  same-month ER vs book ret: pearson r=+0.148 p=0.362; spearman rho=+0.021 p=0.897; KW p=0.936; n=40
+  trade-level R ~ same-month ER: slope +0.1026 [-0.6259,+0.8311] p=0.777
+-- TRAIN  (cutoffs full-sample ER [0.117 0.204])
+  CHOP  months= 5 trades=113 meanR=+0.288 [+0.034,+0.495] WR=0.478 monthly ret mean=+16.1% median=+28.7% pos months=0.80 |idx| mean=2.8% vol=14.7%
+  MID   months= 7 trades=161 meanR=+0.191 [-0.014,+0.431] WR=0.422 monthly ret mean=+11.4% median=+7.5% pos months=0.57 |idx| mean=11.2% vol=16.6%
+  TREND months= 9 trades=264 meanR=+0.175 [+0.007,+0.360] WR=0.417 monthly ret mean=+21.2% median=+12.4% pos months=0.78 |idx| mean=29.7% vol=16.8%
+  same-month ER vs book ret: pearson r=+0.216 p=0.346; spearman rho=-0.068 p=0.771; KW p=0.736; n=21
+  trade-level R ~ same-month ER: slope +0.0470 [-0.8671,+0.9611] p=0.916
+-- TEST  (cutoffs full-sample ER [0.117 0.204])
+  CHOP  months= 9 trades=172 meanR=+0.152 [-0.066,+0.406] WR=0.413 monthly ret mean=+9.9% median=+0.8% pos months=0.56 |idx| mean=4.9% vol=18.6%
+  MID   months= 6 trades=140 meanR=+0.270 [-0.102,+0.563] WR=0.464 monthly ret mean=+23.0% median=+18.8% pos months=0.67 |idx| mean=12.3% vol=20.6%
+  TREND months= 4 trades= 86 meanR=+0.122 [-0.371,+0.400] WR=0.395 monthly ret mean=+5.1% median=+6.3% pos months=0.75 |idx| mean=23.0% vol=17.1%
+  same-month ER vs book ret: pearson r=-0.015 p=0.952; spearman rho=+0.044 p=0.858; KW p=0.627; n=19
+  trade-level R ~ same-month ER: slope +0.2346 [-1.1361,+1.6053] p=0.724
+
+sleeve x tercile mean R (n):
+           mean               size           
+ter        CHOP    MID  TREND CHOP  MID TREND
+kol                                          
+donchian  0.156  0.187  0.350  120  132   160
+mean_rev  0.527  0.060 -0.013   53   53    50
+squeeze   0.108  0.351  0.010  112  116   140
+same-month cer vs ret spearman +0.108 p=0.506
+same-month vol vs ret spearman -0.079 p=0.626
+corr(ER, |idx|) 0.918 corr(ER, vol) 0.015
+
+==== lagged regime: previous month ER vs this month ====
+er_lag vs ret: pearson r=-0.225 p=0.168 | spearman -0.195 p=0.233 n=39
+er_lag vs meanR: pearson r=-0.239 p=0.142 | spearman -0.158 p=0.336 n=39
+cer_lag vs ret: pearson r=-0.268 p=0.0996 | spearman -0.309 p=0.0554 n=39
+cer_lag vs meanR: pearson r=-0.267 p=0.1 | spearman -0.237 p=0.146 n=39
+ACF(1) ER: [-0.062  0.709]  ACF(1) coinER: [-0.051  0.759]  ACF(1) book ret: [-0.112  0.495]
+  TRAIN: er_lag vs ret r=-0.225 p=0.341 n=20
+  TEST: er_lag vs ret r=-0.348 p=0.145 n=19
+          n    ret  meanR
+ter_lag                  
+CHOP     14  0.208  0.246
+MID      13  0.126  0.152
+TREND    12  0.133  0.109
+trade-level R ~ ER(30d before entry): slope -0.5426 [-1.2375,+0.1523] p=0.122 R2=0.0037; spearman +0.012 (naive p=0.717) n=936
+  TRAIN: slope -0.3573 [-1.1000,+0.3853] p=0.328
+  TEST: slope -1.3137 [-2.8164,+0.1889] p=0.083
+ex-post: R ~ |index move over trade| (%): slope +0.1255 [+0.0899,+0.1610] p=1.41e-08 R2=0.083
+           ret    idx    btc     er    ter  nR  meanR     WR  nlong  split
+xm                                                                        
+2023-04 -0.155  0.004  0.050  0.041   CHOP  13 -0.394  0.308      5  TRAIN
+2023-05  0.075 -0.078 -0.078  0.172    MID  21  0.195  0.381      6  TRAIN
+2023-06  0.306  0.050  0.115  0.066   CHOP  37  0.260  0.459     13  TRAIN
+2023-07 -0.080  0.082 -0.043  0.165    MID  25 -0.038  0.360     14  TRAIN
+2023-08  0.141 -0.205 -0.114  0.366  TREND  30  0.223  0.467      9  TRAIN
+2023-09  0.287  0.014  0.036  0.044   CHOP  26  0.557  0.538     10  TRAIN
+2023-10  0.182  0.150  0.247  0.300  TREND  33  0.127  0.455     17  TRAIN
+2023-11  0.278  0.141  0.086  0.207  TREND  27  0.336  0.407     17  TRAIN
+2023-12  1.332  0.340  0.115  0.502  TREND  39  0.694  0.538     26  TRAIN
+2024-01 -0.152 -0.102  0.008  0.127    MID  32 -0.062  0.344      8  TRAIN
+2024-02  0.097  0.243  0.363  0.513  TREND  26  0.133  0.385     16  TRAIN
+2024-03  0.124  0.395  0.148  0.316  TREND  25  0.071  0.360     15  TRAIN
+2024-04 -0.191 -0.292 -0.160  0.342  TREND  31 -0.141  0.323     11  TRAIN
+2024-05  0.213  0.092  0.109  0.164    MID  23  0.501  0.609     12  TRAIN
+2024-06 -0.091 -0.156 -0.071  0.251  TREND  31 -0.114  0.355     11  TRAIN
+2024-07  0.060  0.054  0.032  0.067   CHOP  21  0.190  0.381      8  TRAIN
+2024-08  0.707 -0.160 -0.096  0.204    MID  24  0.688  0.542      8  TRAIN
+2024-09  0.166  0.110  0.073  0.162    MID  15  0.305  0.400     12  TRAIN
+2024-10  0.306 -0.018  0.105  0.029   CHOP  16  0.596  0.688      6  TRAIN
+2024-11  0.037  0.748  0.314  0.634  TREND  22  0.081  0.409     16  TRAIN
+2024-12 -0.129 -0.160 -0.032  0.188    MID  22 -0.186  0.318      9  TRAIN
+2025-01 -0.017  0.101  0.089  0.117   CHOP  15  0.063  0.333      6   TEST
+2025-02  0.066 -0.325 -0.195  0.397  TREND  23  0.074  0.391      5   TEST
+2025-03  0.138 -0.118 -0.021  0.104   CHOP  24  0.279  0.417     11   TEST
+2025-04  0.112  0.041  0.133  0.049   CHOP  17  0.219  0.471      8   TEST
+2025-05 -0.048  0.073  0.106  0.096   CHOP  16 -0.020  0.375      9   TEST
+2025-06  0.175 -0.028  0.023  0.041   CHOP  19  0.220  0.421     11   TEST
+2025-07  0.303  0.243  0.080  0.323  TREND  28  0.489  0.500     18   TEST
+2025-08 -0.147  0.025 -0.063  0.027   CHOP  15 -0.265  0.400      8   TEST
+2025-09  0.878  0.014  0.045  0.024   CHOP  23  0.866  0.609     13   TEST
+2025-10  0.435 -0.135 -0.039  0.126    MID  27  0.447  0.519      8   TEST
+2025-11  0.097 -0.124 -0.183  0.146    MID  20  0.133  0.450      8   TEST
+2025-12 -0.105 -0.139 -0.039  0.185    MID  21 -0.127  0.333      6   TEST
+2026-01  0.709 -0.156 -0.116  0.193    MID  32  0.819  0.656      7   TEST
+2026-02 -0.034 -0.109 -0.152  0.118    MID  14 -0.544  0.143      4   TEST
+2026-03  0.008 -0.010  0.016  0.015   CHOP  20  0.015  0.400      9   TEST
+2026-04 -0.211  0.030  0.112  0.065   CHOP  23 -0.229  0.261     13   TEST
+2026-05  0.280  0.078 -0.030  0.163    MID  25  0.329  0.480     17   TEST
+2026-06  0.060 -0.281 -0.233  0.350  TREND  21  0.210  0.429      4   TEST
+2026-07 -0.223  0.071  0.095  0.210  TREND  14 -0.662  0.143      9   TEST

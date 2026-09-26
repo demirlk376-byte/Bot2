@@ -1,0 +1,46 @@
+ikiz_k25_cap25_islemler obs maxDD 0.460 w50 -9.13
+  within_sleeve_perm   maxDD med 0.546 P(null<=obs, i.e. milder)=0.131 | w50 med -15.17 P(null>=obs, milder)=0.049
+  sleeve_circ_shift    maxDD med 0.558 P(null<=obs, i.e. milder)=0.051 | w50 med -16.04 P(null>=obs, milder)=0.017
+  weekly sleeve R-sum correlations (n weeks=172):
+kol       donchian  mean_rev  squeeze
+kol                                  
+donchian     1.000     0.037   -0.037
+mean_rev     0.037     1.000    0.012
+squeeze     -0.037     0.012    1.000
+  monthly sleeve R-sum correlations (n=40):
+kol       donchian  mean_rev  squeeze
+kol                                  
+donchian     1.000    -0.034   -0.147
+mean_rev    -0.034     1.000   -0.148
+squeeze     -0.147    -0.148    1.000
+/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/edge/review/rv_smooth.py:45: Pandas4Warning: Starting with pandas version 4.0 all arguments of sum will be keyword-only.
+  tw = W.sum(1).values
+  weekly total R autocorr lag 1: -0.127 (n=172)
+  weekly total R autocorr lag 2: +0.049 (n=172)
+  weekly total R autocorr lag 4: +0.066 (n=172)
+  lag-1 R corr, consecutive pairs from different entry days: +0.009 (n=697); same entry day: +0.376 (n=238)
+  monthly meanR dispersion chi2=36.8 df=39 p=0.572
+  monthly equity-return lag-1 autocorr -0.112 (n=40), neg months 13
+ikiz_k25_eski_islemler obs maxDD 0.594 w50 -17.43
+  within_sleeve_perm   maxDD med 0.593 P(null<=obs, i.e. milder)=0.504 | w50 med -18.95 P(null>=obs, milder)=0.328
+  sleeve_circ_shift    maxDD med 0.605 P(null<=obs, i.e. milder)=0.405 | w50 med -23.01 P(null>=obs, milder)=0.022
+  weekly sleeve R-sum correlations (n weeks=172):
+kol       donchian  mean_rev  squeeze
+kol                                  
+donchian     1.000     0.061    0.023
+mean_rev     0.061     1.000    0.070
+squeeze      0.023     0.070    1.000
+  monthly sleeve R-sum correlations (n=40):
+kol       donchian  mean_rev  squeeze
+kol                                  
+donchian     1.000     0.064   -0.184
+mean_rev     0.064     1.000   -0.131
+squeeze     -0.184    -0.131    1.000
+/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/edge/review/rv_smooth.py:45: Pandas4Warning: Starting with pandas version 4.0 all arguments of sum will be keyword-only.
+  tw = W.sum(1).values
+  weekly total R autocorr lag 1: -0.197 (n=172)
+  weekly total R autocorr lag 2: +0.068 (n=172)
+  weekly total R autocorr lag 4: +0.011 (n=172)
+  lag-1 R corr, consecutive pairs from different entry days: +0.124 (n=1127); same entry day: +0.546 (n=549)
+  monthly meanR dispersion chi2=52.0 df=39 p=0.080
+  monthly equity-return lag-1 autocorr -0.386 (n=40), neg months 17

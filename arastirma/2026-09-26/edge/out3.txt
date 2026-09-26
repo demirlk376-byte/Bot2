@@ -1,0 +1,61 @@
+==== EXTRA A: where does the mean come from? fixed-horizon forward moves, stop units ====
+  h=+  4h signed own      move/stop mean +0.0352 [-0.0069,+0.0774] p=0.0991
+  h=+  4h signed beta*mkt move/stop mean +0.0125 [-0.0237,+0.0487] p=0.489
+  h=+  4h signed idio     move/stop mean +0.0227 [-0.0039,+0.0493] p=0.0922
+  h=+ 12h signed own      move/stop mean +0.0775 [+0.0082,+0.1469] p=0.0294
+  h=+ 12h signed beta*mkt move/stop mean +0.0279 [-0.0329,+0.0888] p=0.359
+  h=+ 12h signed idio     move/stop mean +0.0496 [+0.0056,+0.0936] p=0.028
+  h=+ 24h signed own      move/stop mean +0.0911 [-0.0001,+0.1824] p=0.0503
+  h=+ 24h signed beta*mkt move/stop mean +0.0180 [-0.0536,+0.0896] p=0.613
+  h=+ 24h signed idio     move/stop mean +0.0731 [+0.0157,+0.1305] p=0.0139
+  h=+ 48h signed own      move/stop mean +0.1887 [+0.0472,+0.3302] p=0.0103
+  h=+ 48h signed beta*mkt move/stop mean +0.0430 [-0.0718,+0.1578] p=0.453
+  h=+ 48h signed idio     move/stop mean +0.1457 [+0.0547,+0.2367] p=0.00245
+  pre-entry 24h: own +1.022 stop, of which beta*mkt +0.616 (60%) idio +0.406
+    donchian: pre-entry own +1.627, mkt +0.823
+    mean_rev: pre-entry own -0.716, mkt -0.460
+    squeeze: pre-entry own +1.082, mkt +0.842
+
+==== EXTRA B: is month-to-month variation more than trade-sampling noise? ====
+SD of monthly mean R: observed 0.344; iid-shuffle null median 0.315 [95%: 0.246,0.388] p(>=obs)=0.210
+entry-days 599, trades/day mean 1.56; days with >=2 trades 211
+ICC of R within entry-day: 0.194 (k0=1.56) -> design effect ~ 1.11
+multi-trade entry-days all same direction: 0.005 (n=211)
+
+==== EXTRA C: trade-horizon trendiness (variance ratio) instead of month ER ====
+  same-month vr_coin vs ret: spearman +0.106 p=0.515 n=40
+  same-month vr_coin vs meanR: spearman +0.046 p=0.78 n=40
+  same-month vr_coin vs WR: spearman +0.067 p=0.68 n=40
+         months     vr    ret  meanR     WR
+vr_coin                                    
+LOW          14  0.755  0.062  0.091  0.397
+MID          13  0.886  0.219  0.220  0.445
+HIGH         13  1.009  0.175  0.169  0.416
+  lagged vr_coin vs ret: spearman -0.059 p=0.723; ACF(1) of vr_coin r=+0.345 p=0.0317
+  same-month vr_idx vs ret: spearman -0.064 p=0.695 n=40
+  same-month vr_idx vs meanR: spearman -0.087 p=0.592 n=40
+  same-month vr_idx vs WR: spearman -0.062 p=0.703 n=40
+        months     vr    ret  meanR     WR
+vr_idx                                    
+LOW         14  0.694  0.195  0.226  0.433
+MID         13  0.867  0.073  0.068  0.405
+HIGH        13  1.073  0.178  0.177  0.418
+  lagged vr_idx vs ret: spearman +0.070 p=0.671; ACF(1) of vr_idx r=+0.279 p=0.0856
+
+==== EXTRA D: sleeve x ER interaction (trade-level, month-clustered) ====
+  donchian: R ~ month ER slope +0.9987 [-0.0971,+2.0945] p=0.0728 n=412
+  mean_rev: R ~ month ER slope -1.0998 [-2.9538,+0.7542] p=0.237 n=156
+  squeeze: R ~ month ER slope -0.4493 [-1.5355,+0.6369] p=0.408 n=368
+
+==== EXTRA E: bad months profile ====
+       months    ret  meanR     WR      nR    idx  absidx     er    vol     vr
+bad                                                                           
+False      27  0.280  0.335  0.473  24.593  0.040   0.161  0.210  0.172  0.868
+True       13 -0.122 -0.209  0.307  20.923 -0.044   0.104  0.149  0.180  0.906
+  bad vs good months idx: MWU p=0.312
+  bad vs good months er: MWU p=0.453
+  bad vs good months vol: MWU p=0.623
+  bad vs good months vr_coin: MWU p=0.525
+  bad vs good months nR: MWU p=0.0906
+  share of trades aligned with month sign vs month ret: spearman +0.025 p=0.88
+  month mean trade-life signed index move vs ret: spearman +0.791 p=1.27e-09

@@ -1,0 +1,14 @@
+missing bars per coin {'SOL': 0, 'ETH': 0, 'ADA': 12, 'NEAR': 12, 'BCH': 42, 'ICP': 42, 'BNB': 12, 'XRP': 0, 'DOGE': 0, 'XLM': 42, 'LTC': 12, 'BTC': 12}
+exit level at xt-0h: mean tailwind +0.355 [+0.008,+0.702] p=0.0455% | |x|<0.25: n=122 R -0.216 [-0.387,-0.044] p=0.0152 | alpha(pct) +0.123 [+0.057,+0.188] p=0.000535 R2 0.468 | quintiles [-1.0, -0.89, -0.26, 1.16, 1.98]
+    by exit reason median/mean move %: {'max_hold': {'median': 0.83, 'mean': 1.05}, 'sl_hit': {'median': -2.02, 'mean': -2.49}, 'tp_hit': {'median': 3.74, 'mean': 4.82}}
+exit level at xt-1h: mean tailwind +0.311 [-0.030,+0.652] p=0.0727% | |x|<0.25: n=119 R -0.035 [-0.268,+0.198] p=0.764 | alpha(pct) +0.130 [+0.063,+0.197] p=0.000351 R2 0.477 | quintiles [-0.98, -0.88, -0.32, 1.14, 2.04]
+    by exit reason median/mean move %: {'max_hold': {'median': 0.9, 'mean': 1.11}, 'sl_hit': {'median': -2.0, 'mean': -2.54}, 'tp_hit': {'median': 3.67, 'mean': 4.73}}
+exit level at xt-2h: mean tailwind +0.370 [+0.093,+0.648] p=0.0102% | |x|<0.25: n=207 R -0.163 [-0.365,+0.038] p=0.11 | alpha(pct) +0.106 [+0.027,+0.185] p=0.0101 R2 0.370 | quintiles [-0.89, -0.83, -0.2, 1.08, 1.82]
+    by exit reason median/mean move %: {'max_hold': {'median': 1.06, 'mean': 1.16}, 'sl_hit': {'median': -1.2, 'mean': -1.58}, 'tp_hit': {'median': 2.68, 'mean': 3.22}}
+0 {'max_hold': {'size': 42, 'mean': 0.228}, 'sl_hit': {'size': 66, 'mean': -1.05}, 'tp_hit': {'size': 14, 'mean': 2.386}}
+1 {'max_hold': {'size': 41, 'mean': 0.238}, 'sl_hit': {'size': 58, 'mean': -1.046}, 'tp_hit': {'size': 20, 'mean': 2.34}}
+R ~ fwd24 idx move/stop: slope 0.546 R2=0.240 share 9.95%
+mean R all +0.197 [+0.089,+0.304] p=0.000676
+ mean R TRAIN +0.203 [+0.068,+0.338] p=0.00513 538
+ mean R TEST +0.187 [-0.004,+0.378] p=0.0542 398
+placebo 936-trade mean tailwind: median +0.009% 95% [-0.255,+0.284]; observed C +0.311 p1=0.015 (iid null, anti-conservative)

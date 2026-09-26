@@ -1,0 +1,20 @@
+months=39
+  R         btc: rho=+0.16 p=0.325 | absbtc: rho=+0.04 p=0.789 | rv: rho=-0.16 p=0.316
+  donchian  btc: rho=+0.09 p=0.570 | absbtc: rho=+0.34 p=0.033 | rv: rho=+0.11 p=0.513
+  squeeze   btc: rho=+0.00 p=0.996 | absbtc: rho=-0.15 p=0.361 | rv: rho=-0.18 p=0.285
+  mean_rev  btc: rho=+0.22 p=0.177 | absbtc: rho=-0.08 p=0.643 | rv: rho=-0.14 p=0.397
+  per-trade donchian  spearman(R_net, side*BTC ret over hold) = +0.58 p=1.4e-38; frac of trades whose side agreed with BTC over hold 0.48
+  per-trade mean_rev  spearman(R_net, side*BTC ret over hold) = +0.60 p=8.7e-17; frac of trades whose side agreed with BTC over hold 0.55
+  per-trade squeeze   spearman(R_net, side*BTC ret over hold) = +0.50 p=6.4e-25; frac of trades whose side agreed with BTC over hold 0.45
+  per-trade ALL       spearman(R_net, side*BTC ret over hold) = +0.54 p=3.2e-73; frac of trades whose side agreed with BTC over hold 0.48
+        n  long_share  R_long  R_short  btc_logret
+year                                              
+2023  248       0.464   0.251    0.307       0.415
+2024  290       0.462   0.157    0.120       0.789
+2025  248       0.448   0.189    0.275      -0.074
+2026  150       0.420   0.003    0.181      -0.309
+year heterogeneity of mean R_net: perm p=0.563
+TEST-TRAIN mean R_net diff -0.016 95% [-0.226,+0.190]
+squeeze: short-long mean R diff +0.159 95% [-0.185,+0.522] (nL=147, nS=221)
+donchian: short-long mean R diff -0.028 95% [-0.379,+0.324] (nL=217, nS=195)
+mean_rev: short-long mean R diff +0.089 95% [-0.302,+0.475] (nL=59, nS=97)

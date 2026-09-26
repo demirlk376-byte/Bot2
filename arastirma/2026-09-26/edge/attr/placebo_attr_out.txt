@@ -1,0 +1,25 @@
+unmatched entry bars: 0 | max |entry-bar close / intended_entry - 1| bp: 0.0
+replay validation: exit-reason agreement 1.000, mean gross R replay +0.2578 vs twin +0.2582
+
+=== PLACEBO (gross R) ===
+donchian  n= 412 actual +0.283 | A same-side random-time +0.135 (book 95% +0.001..+0.271) | C random side+time +0.023 (95% -0.085..+0.147) | B flipped -0.142
+          excess act-A +0.149 [-0.023,+0.321] p=0.0457 (week-cluster boot) | act-flipped +0.426 [+0.151,+0.702] p=0.0013 | A-C (side/regime alignment) +0.112
+squeeze   n= 368 actual +0.253 | A same-side random-time +0.055 (book 95% -0.094..+0.194) | C random side+time +0.021 (95% -0.136..+0.163) | B flipped -0.138
+          excess act-A +0.198 [+0.021,+0.374] p=0.0140 (week-cluster boot) | act-flipped +0.392 [+0.109,+0.663] p=0.0022 | A-C (side/regime alignment) +0.035
+mean_rev  n= 156 actual +0.201 | A same-side random-time +0.029 (book 95% -0.110..+0.198) | C random side+time +0.001 (95% -0.192..+0.183) | B flipped -0.032
+          excess act-A +0.172 [-0.015,+0.365] p=0.0372 (week-cluster boot) | act-flipped +0.232 [-0.121,+0.586] p=0.1005 | A-C (side/regime alignment) +0.028
+ALL       n= 936 actual +0.258 | A same-side random-time +0.086 (book 95% +0.004..+0.176) | C random side+time +0.018 (95% -0.081..+0.104) | B flipped -0.122
+          excess act-A +0.172 [+0.072,+0.277] p=0.0003 (week-cluster boot) | act-flipped +0.380 [+0.217,+0.541] p=0.0000 | A-C (side/regime alignment) +0.068
+
+=== EXIT STRUCTURE: actual vs null C (bucket means are not 0 under the null) ===
+donchian  NULL-C: P(sl) 0.509 P(tp) 0.151 P(mh) 0.341 | TP share of SL/TP-resolved 0.229 | mean R|mh +0.454 | per-trade contrib SL/TP -0.132, MH +0.154, total +0.023
+donchian  ACTUAL: P(sl) 0.500 P(tp) 0.274 P(mh) 0.226 | TP share of SL/TP-resolved 0.354 | mean R|mh +0.433 | per-trade contrib SL/TP +0.186, MH +0.098, total +0.283
+squeeze   NULL-C: P(sl) 0.602 P(tp) 0.209 P(mh) 0.189 | TP share of SL/TP-resolved 0.258 | mean R|mh +0.528 | per-trade contrib SL/TP -0.079, MH +0.100, total +0.021
+squeeze   ACTUAL: P(sl) 0.546 P(tp) 0.288 P(mh) 0.166 | TP share of SL/TP-resolved 0.345 | mean R|mh +0.480 | per-trade contrib SL/TP +0.174, MH +0.080, total +0.253
+mean_rev  NULL-C: P(sl) 0.500 P(tp) 0.270 P(mh) 0.230 | TP share of SL/TP-resolved 0.351 | mean R|mh +0.219 | per-trade contrib SL/TP -0.050, MH +0.050, total +0.001
+mean_rev  ACTUAL: P(sl) 0.442 P(tp) 0.353 P(mh) 0.205 | TP share of SL/TP-resolved 0.444 | mean R|mh +0.269 | per-trade contrib SL/TP +0.145, MH +0.055, total +0.201
+
+=== SIGNED FORWARD DRIFT after entry (close-to-close, R units, no bracket); act ±1.96se / placebo A ===
+donchian  h1: +0.009±0.029/+0.002  h4: +0.047±0.054/+0.008  h12: +0.101±0.090/+0.026  h24: +0.102±0.111/+0.044  h48: +0.203±0.138/+0.087  h120: +0.426±0.262/+0.217
+squeeze   h1: +0.038±0.049/+0.003  h4: +0.053±0.083/+0.001  h12: +0.079±0.136/+0.002  h24: +0.080±0.191/+0.006  h48: +0.274±0.294/+0.013  h120: +0.163±0.537/+0.051
+mean_rev  h1: -0.021±0.048/+0.001  h4: -0.041±0.098/+0.003  h12: +0.003±0.142/-0.001  h24: +0.097±0.201/+0.028  h48: +0.002±0.354/+0.086  h120: +0.010±0.506/+0.100

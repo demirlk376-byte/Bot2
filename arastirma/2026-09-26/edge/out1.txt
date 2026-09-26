@@ -1,0 +1,63 @@
+trades 936 NaN tailwind 0 0
+
+==== (1) per-trade net R on signed market move over trade life ====
+ALL   tw_idx  n=936 G=40 alpha +0.1227 [+0.0569,+0.1885] p=0.000535  slope +0.2081 [+0.1753,+0.2409] p=1.43e-15 R2=0.468 | totR=183.9 = alpha*n 114.8 + slope*sum(x) 69.1 (38% mkt) mean x=+0.355
+ALL   twR_idx  n=936 G=40 alpha +0.0615 [-0.0030,+0.1261] p=0.0613  slope +0.7595 [+0.7093,+0.8097] p=7.09e-29 R2=0.565 | totR=183.9 = alpha*n 57.6 + slope*sum(x) 126.3 (69% mkt) mean x=+0.178
+ALL   tw_loo  n=936 G=40 alpha +0.1349 [+0.0631,+0.2067] p=0.000493  slope +0.1956 [+0.1652,+0.2259] p=8.51e-16 R2=0.419 | totR=183.9 = alpha*n 126.3 + slope*sum(x) 57.7 (31% mkt) mean x=+0.315
+ALL   twR_loo  n=936 G=40 alpha +0.0755 [+0.0055,+0.1454] p=0.0351  slope +0.7143 [+0.6670,+0.7616] p=7.5e-29 R2=0.515 | totR=183.9 = alpha*n 70.6 + slope*sum(x) 113.3 (62% mkt) mean x=+0.169
+ALL   tw_btc  n=936 G=40 alpha +0.1267 [+0.0417,+0.2118] p=0.00452  slope +0.2526 [+0.2167,+0.2884] p=4.9e-17 R2=0.311 | totR=183.9 = alpha*n 118.6 + slope*sum(x) 65.3 (36% mkt) mean x=+0.276
+ALL   twR_btc  n=936 G=40 alpha +0.1102 [+0.0273,+0.1932] p=0.0105  slope +0.8449 [+0.7469,+0.9428] p=5.11e-20 R2=0.370 | totR=183.9 = alpha*n 103.2 + slope*sum(x) 80.7 (44% mkt) mean x=+0.102
+TRAIN tw_idx  n=538 G=21 alpha +0.0907 [+0.0096,+0.1719] p=0.0303  slope +0.2287 [+0.1946,+0.2628] p=8.61e-12 R2=0.475 | totR=109.4 = alpha*n 48.8 + slope*sum(x) 60.5 (55% mkt) mean x=+0.492
+TRAIN twR_idx  n=538 G=21 alpha +0.0464 [-0.0429,+0.1356] p=0.291  slope +0.7369 [+0.6615,+0.8123] p=7.46e-15 R2=0.546 | totR=109.4 = alpha*n 24.9 + slope*sum(x) 84.4 (77% mkt) mean x=+0.213
+TRAIN tw_loo  n=538 G=21 alpha +0.1039 [+0.0118,+0.1960] p=0.029  slope +0.2149 [+0.1842,+0.2456] p=3.92e-12 R2=0.422 | totR=109.4 = alpha*n 55.9 + slope*sum(x) 53.5 (49% mkt) mean x=+0.462
+TRAIN twR_loo  n=538 G=21 alpha +0.0581 [-0.0384,+0.1546] p=0.223  slope +0.6918 [+0.6222,+0.7615] p=5.44e-15 R2=0.496 | totR=109.4 = alpha*n 31.3 + slope*sum(x) 78.1 (71% mkt) mean x=+0.210
+TRAIN tw_btc  n=538 G=21 alpha +0.1086 [-0.0106,+0.2277] p=0.0718  slope +0.2498 [+0.2025,+0.2972] p=6.12e-10 R2=0.294 | totR=109.4 = alpha*n 58.4 + slope*sum(x) 50.9 (47% mkt) mean x=+0.379
+TRAIN twR_btc  n=538 G=21 alpha +0.0991 [-0.0174,+0.2156] p=0.0912  slope +0.7480 [+0.6531,+0.8428] p=4.38e-13 R2=0.351 | totR=109.4 = alpha*n 53.3 + slope*sum(x) 56.0 (51% mkt) mean x=+0.139
+TEST  tw_idx  n=398 G=20 alpha +0.1554 [+0.0410,+0.2699] p=0.0104  slope +0.1888 [+0.1384,+0.2393] p=2.31e-07 R2=0.468 | totR=74.6 = alpha*n 61.9 + slope*sum(x) 12.7 (17% mkt) mean x=+0.169
+TEST  twR_idx  n=398 G=20 alpha +0.0841 [-0.0162,+0.1844] p=0.0954  slope +0.7935 [+0.7334,+0.8537] p=8.43e-17 R2=0.594 | totR=74.6 = alpha*n 33.5 + slope*sum(x) 41.1 (55% mkt) mean x=+0.130
+TEST  tw_loo  n=398 G=20 alpha +0.1668 [+0.0447,+0.2889] p=0.0101  slope +0.1779 [+0.1309,+0.2249] p=1.92e-07 R2=0.423 | totR=74.6 = alpha*n 66.4 + slope*sum(x) 8.2 (11% mkt) mean x=+0.116
+TEST  twR_loo  n=398 G=20 alpha +0.1013 [-0.0069,+0.2095] p=0.0648  slope +0.7486 [+0.6889,+0.8083] p=2.18e-16 R2=0.543 | totR=74.6 = alpha*n 40.3 + slope*sum(x) 34.3 (46% mkt) mean x=+0.115
+TEST  tw_btc  n=398 G=20 alpha +0.1521 [+0.0230,+0.2812] p=0.0233  slope +0.2566 [+0.1950,+0.3182] p=4.53e-08 R2=0.334 | totR=74.6 = alpha*n 60.5 + slope*sum(x) 14.0 (19% mkt) mean x=+0.137
+TEST  twR_btc  n=398 G=20 alpha +0.1316 [+0.0060,+0.2571] p=0.0409  slope +1.0759 [+0.9489,+1.2028] p=2.79e-13 R2=0.424 | totR=74.6 = alpha*n 52.4 + slope*sum(x) 22.2 (30% mkt) mean x=+0.052
+reference: R on own-coin signed move/stop: slope 0.876 R2=0.856
+
+-- tailwind: static long-bias vs timing --
+index total log return over sample: 0.505; BTC 0.835
+mean signed index move per trade +0.355% (t=2.23 naive); static long-bias part -0.0066% ; timing part +0.361%
+null (random side, P(long)=0.452, same windows): mean tailwind +0.022%, observed +0.355%, p(one-sided)=0.0194
+LOO: observed +0.315%, null mean +0.023% p=0.0326
+share trades with market tailwind>0: 0.462 | among tp_hit 0.964 | among sl_hit 0.116
+
+R by quintile of signed market move (stop units):
+        n   x_lo   x_hi  meanR     WR
+tw_q                                 
+0     188 -4.271 -0.953 -0.999  0.016
+1     187 -0.949 -0.391 -0.886  0.059
+2     187 -0.386  0.358 -0.262  0.316
+3     187  0.358  1.372  1.158  0.797
+4     187  1.374  7.945  1.978  0.963
+trades with |signed index move| < 0.25 stop: n=122 meanR=-0.216 CI(month-boot)=[-0.386 -0.048]  WR=0.336
+equity-return space (idx): alpha +0.3399 [+0.1201,+0.5597] p=0.00333 %/trade, slope +0.7117 [+0.6030,+0.8204] p=5.16e-16, R2=0.470, sum r_eq=554.4%: mkt 236.3%, alpha 318.1%
+equity-return space (btc): alpha +0.3556 [+0.0714,+0.6397] p=0.0155 %/trade, slope +0.8570 [+0.7357,+0.9783] p=4.37e-17, R2=0.308, sum r_eq=554.4%: mkt 221.6%, alpha 332.8%
+
+By sleeve (index, stop units):
+donchian  n=412 meanR=+0.241 alpha +0.1185 [-0.0013,+0.2383] p=0.0524 slope +0.7786 [+0.7058,+0.8513] p=5.5e-23 R2=0.539 share mkt=51%  mean tw=+0.158
+mean_rev  n=156 meanR=+0.195 alpha +0.0854 [-0.0691,+0.2399] p=0.271 slope +0.6932 [+0.5967,+0.7897] p=2.53e-17 R2=0.559 share mkt=56%  mean tw=+0.159
+squeeze   n=368 meanR=+0.147 alpha -0.0118 [-0.1195,+0.0958] p=0.825 slope +0.7624 [+0.6698,+0.8550] p=2.52e-19 R2=0.599 share mkt=108%  mean tw=+0.208
+
+months 40 2023-04 2026-07
+
+==== monthly book return vs index (beta and convexity) ====
+ret ~ idx: alpha +nan [+nan,+nan] p=nan beta +nan [+nan,+nan] p=nan R2=nan n=40
+ ** On entry to DLASCL parameter number  4 had an illegal value
+ ** On entry to DLASCL parameter number  4 had an illegal value
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/edge/market_edge.py", line 203, in <module>
+    b3 = np.linalg.lstsq(np.column_stack([np.ones(len(M)), X]), y.values, rcond=None)[0]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/numpy/linalg/_linalg.py", line 2540, in lstsq
+    x, resids, rank, s = _umath_linalg.lstsq(a, b, rcond,
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/numpy/linalg/_linalg.py", line 156, in _raise_linalgerror_lstsq
+    raise LinAlgError("SVD did not converge in Linear Least Squares")
+numpy.linalg.LinAlgError: SVD did not converge in Linear Least Squares

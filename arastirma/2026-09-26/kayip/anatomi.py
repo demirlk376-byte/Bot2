@@ -1,0 +1,28 @@
+import numpy as np, pandas as pd
+pd.set_option("display.width", 200)
+d = pd.read_pickle("islemler.pkl")
+def ozet(g):
+    return pd.Series({"n": len(g), "WR%": (g.R > 0).mean()*100, "ortR": g.R.mean(),
+                      "top_ret%": g.ret.sum()*100, "kayip_ret%": g.ret[g.ret < 0].sum()*100})
+print("=== GENEL ===")
+print(d.groupby("yari").apply(ozet).round(3).to_string())
+print("\n=== KOL x YON (TR | TE) ===")
+print(d.groupby(["kol", "side", "yari"]).apply(ozet).round(3).unstack("yari").to_string())
+print("\n=== CIKIS NEDENI ===")
+print(d.groupby(["exit_reason", "yari"]).apply(ozet).round(3).unstack("yari").to_string())
+print("\n=== COIN (ortR TR/TE, n) ===")
+t = d.groupby(["coin", "yari"]).R.agg(["mean", "size"]).unstack("yari").round(3)
+print(t.sort_values(("mean", "TE")).to_string())
+print("\n=== MALIYET ===")
+print(f"  giris kaymasi ort {d.kayma_R.mean():.4f}R  | ucret+funding {d.ucret_fund_R.mean():.4f}R | net ortR {d.R.mean():.4f}")
+print(f"  kaymasiz ortR ~ {d.R_kaymasiz.mean():.4f}  -> kayma edge'in %{d.kayma_R.mean()/(d.R.mean()+d.kayma_R.mean()+d.ucret_fund_R.mean())*100:.0f}'i")
+print(d.groupby("kol")[["kayma_R", "ucret_fund_R", "R"]].mean().round(4).to_string())
+# stop genisligi -> kayma isirigi
+d["stop_q"] = pd.qcut(d.stop_pct, 4, labels=["dar", "orta-dar", "orta-genis", "genis"])
+print(d.groupby("stop_q", observed=True).agg(stop_ort=("stop_pct", "mean"), kayma_R=("kayma_R", "mean"), ortR=("R", "mean"), n=("R", "size")).round(4).to_string())
+print("\n=== ESZAMANLILIK: giriste AYNI YONDE acik pozisyon sayisi ===")
+d["ayni_b"] = pd.cut(d.acik_ayni, [-1, 0, 1, 2, 3, 99], labels=["0", "1", "2", "3", "4+"])
+print(d.groupby(["ayni_b", "yari"], observed=True).apply(ozet).round(3).unstack("yari").to_string())
+d["top_b"] = pd.cut(d.acik_top, [-1, 0, 1, 2, 3, 4, 99], labels=["0", "1", "2", "3", "4", "5+"])
+print(d.groupby(["top_b"], observed=True).apply(ozet).round(3).to_string())
+d.to_pickle("islemler2.pkl")

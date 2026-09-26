@@ -1,0 +1,27 @@
+unmatched entry bars: 0
+entry close vs intended_entry |bp|: median 0.00, 95% 0.00, max 0.00
+replay exit-reason agreement: 1.000; mean gross R actual +0.2582 vs replay +0.2578; corr 1.000
+replay         0    1    2
+exit_reason               
+max_hold       0    0  186
+sl_hit       476    0    0
+tp_hit         0  274    0
+
+=== PLACEBO (gross R, bar-replay) ===
+donchian  n=412 actual +0.283 | A timing-placebo mean +0.135 (book 95% range +0.001..+0.271; p(A>=act)=0.005) | B flipped side -0.142 | C random side+time +0.023 (95% -0.085..+0.147)
+          TP rate actual 0.274 vs A 0.177; SL rate actual 0.500 vs A 0.476
+squeeze   n=368 actual +0.253 | A timing-placebo mean +0.055 (book 95% range -0.094..+0.194; p(A>=act)=0.005) | B flipped side -0.138 | C random side+time +0.021 (95% -0.136..+0.163)
+          TP rate actual 0.288 vs A 0.217; SL rate actual 0.546 vs A 0.589
+mean_rev  n=156 actual +0.201 | A timing-placebo mean +0.029 (book 95% range -0.110..+0.198; p(A>=act)=0.025) | B flipped side -0.032 | C random side+time +0.001 (95% -0.192..+0.183)
+          TP rate actual 0.353 vs A 0.284; SL rate actual 0.442 vs A 0.494
+ALL       n=936 actual +0.258 | A +0.086 (95% +0.004..+0.176, p=0.000) | C +0.018
+excess over timing placebo (act_i - mean A_i), week-cluster bootstrap:
+  donchian  excess vs A +0.149 [-0.023,+0.321] p(<=0)=0.0457 | actual - flipped +0.426 [+0.151,+0.702] p=0.0013
+  squeeze   excess vs A +0.198 [+0.021,+0.374] p(<=0)=0.0140 | actual - flipped +0.392 [+0.109,+0.663] p=0.0022
+  mean_rev  excess vs A +0.172 [-0.015,+0.365] p(<=0)=0.0372 | actual - flipped +0.232 [-0.121,+0.586] p=0.1005
+  ALL       excess vs A +0.172 [+0.072,+0.277] p(<=0)=0.0003 | actual - flipped +0.380 [+0.217,+0.541] p=0.0000
+
+=== SIGNED FORWARD DRIFT after entry (close-to-close, R units, no bracket) ===
+donchian  h1: act +0.009±0.029 / placebo +0.002  h4: act +0.047±0.054 / placebo +0.008  h12: act +0.101±0.090 / placebo +0.026  h24: act +0.102±0.111 / placebo +0.044  h48: act +0.203±0.138 / placebo +0.087  h120: act +0.426±0.262 / placebo +0.217
+squeeze   h1: act +0.038±0.049 / placebo +0.003  h4: act +0.053±0.083 / placebo +0.001  h12: act +0.079±0.136 / placebo +0.002  h24: act +0.080±0.191 / placebo +0.006  h48: act +0.274±0.294 / placebo +0.013  h120: act +0.163±0.537 / placebo +0.051
+mean_rev  h1: act -0.021±0.048 / placebo +0.001  h4: act -0.041±0.098 / placebo +0.003  h12: act +0.003±0.142 / placebo -0.001  h24: act +0.097±0.201 / placebo +0.028  h48: act +0.002±0.354 / placebo +0.086  h120: act +0.010±0.506 / placebo +0.100

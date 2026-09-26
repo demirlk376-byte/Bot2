@@ -1,0 +1,13 @@
+missing bars per coin {'SOL': 0, 'ETH': 0, 'ADA': 12, 'NEAR': 12, 'BCH': 42, 'ICP': 42, 'BNB': 12, 'XRP': 0, 'DOGE': 0, 'XLM': 42, 'LTC': 12, 'BTC': 12}
+betas {'SOL': np.float64(1.0), 'ETH': np.float64(0.75), 'ADA': np.float64(1.14), 'NEAR': np.float64(1.19), 'BCH': np.float64(0.82), 'ICP': np.float64(1.1), 'BNB': np.float64(0.59), 'XRP': np.float64(0.92), 'DOGE': np.float64(1.08), 'XLM': np.float64(0.94), 'LTC': np.float64(0.87)}
+h=24 ALL: own +0.091 [-0.000,+0.182] p=0.0503 | mkt +0.018 [-0.054,+0.090] p=0.614 | idio +0.073 [+0.016,+0.131] p=0.0138 | own-net-slip +0.038 [-0.053,+0.129] p=0.404
+h=24 TRAIN: own +0.082 [-0.038,+0.202] p=0.169 | mkt +0.032 [-0.075,+0.139] p=0.538 | idio +0.050 [-0.033,+0.133] p=0.224 | own-net-slip +0.023 [-0.097,+0.143] p=0.694
+h=24 TEST: own +0.103 [-0.050,+0.257] p=0.176 | mkt -0.001 [-0.101,+0.099] p=0.982 | idio +0.104 [+0.023,+0.186] p=0.0146 | own-net-slip +0.058 [-0.094,+0.210] p=0.432
+h=48 ALL: own +0.189 [+0.047,+0.330] p=0.0103 | mkt +0.043 [-0.072,+0.157] p=0.457 | idio +0.146 [+0.055,+0.237] p=0.00238 | own-net-slip +0.135 [-0.005,+0.276] p=0.0579
+h=48 TRAIN: own +0.133 [-0.017,+0.284] p=0.0801 | mkt +0.042 [-0.105,+0.189] p=0.56 | idio +0.091 [-0.036,+0.218] p=0.149 | own-net-slip +0.074 [-0.074,+0.222] p=0.311
+h=48 TEST: own +0.264 [-0.009,+0.537] p=0.0574 | mkt +0.044 [-0.156,+0.243] p=0.651 | idio +0.220 [+0.089,+0.351] p=0.00237 | own-net-slip +0.219 [-0.051,+0.489] p=0.106
+    donchian own +0.190 p=0.015 | mkt +0.065 p=0.33 | idio +0.125 p=0.044
+    squeeze own +0.263 p=0.068 | mkt +0.052 p=0.65 | idio +0.211 p=0.048
+    mean_rev own +0.009 p=0.96 | mkt -0.038 p=0.78 | idio +0.047 p=0.67
+placebo random-time trades (same coin/side/stop/RR/maxhold, K=30/trade, n=28079): mean signed idx move over life +0.013% (se 0.026); mean gross R +0.021
+  placebo R ~ move: alpha +0.018 slope 0.215 R2 0.495 share 0.14 (meanR +0.021)

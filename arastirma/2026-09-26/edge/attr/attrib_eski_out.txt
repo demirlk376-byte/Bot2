@@ -1,0 +1,136 @@
+n=1677  sum R_net=263.3  mean R_net=+0.1570  log growth=3.808 (x45.1)  final equity $450,534
+
+=== SLEEVE ===
+             n    WR  meanR     lo     hi p_le0   sumR    shR sumLog  shLog
+grp                                                                        
+donchian  1107 0.416 +0.160 +0.030 +0.288 0.007 +177.4 +67.4% +2.598 +68.2%
+mean_rev   154 0.494 +0.211 +0.023 +0.396 0.013  +32.5 +12.3% +0.731 +19.2%
+squeeze    416 0.411 +0.128 -0.032 +0.294 0.060  +53.4 +20.3% +0.479 +12.6%
+
+=== SIDE ===
+         n    WR  meanR     lo     hi p_le0   sumR    shR sumLog  shLog
+grp                                                                    
+long   812 0.415 +0.170 +0.026 +0.311 0.012 +137.9 +52.4% +2.252 +59.1%
+short  865 0.428 +0.145 -0.009 +0.300 0.033 +125.4 +47.6% +1.556 +40.9%
+
+=== SLEEVE x SIDE ===
+                  n    WR  meanR     lo     hi p_le0   sumR    shR sumLog  shLog
+grp                                                                             
+donchian_long   579 0.411 +0.191 +0.005 +0.371 0.023 +110.4 +41.9% +2.029 +53.3%
+donchian_short  528 0.420 +0.127 -0.089 +0.329 0.117  +67.0 +25.4% +0.569 +15.0%
+mean_rev_long    59 0.458 +0.140 -0.157 +0.440 0.184   +8.3  +3.1% +0.189  +5.0%
+mean_rev_short   95 0.516 +0.255 +0.017 +0.496 0.019  +24.2  +9.2% +0.541 +14.2%
+squeeze_long    174 0.414 +0.110 -0.139 +0.340 0.196  +19.2  +7.3% +0.035  +0.9%
+squeeze_short   242 0.409 +0.141 -0.085 +0.367 0.105  +34.2 +13.0% +0.445 +11.7%
+
+=== EXIT REASON ===
+            n    WR  meanR     lo     hi p_le0    sumR     shR  sumLog   shLog
+grp                                                                           
+max_hold  373 0.735 +0.485 +0.402 +0.569 0.000  +180.7  +68.6%  +4.757 +124.9%
+sl_hit    871 0.000 -1.061 -1.066 -1.057 1.000  -924.6 -351.1% -25.584 -671.9%
+tp_hit    433 1.000 +2.326 +2.296 +2.352 0.000 +1007.2 +382.5% +24.635 +647.0%
+
+=== SLEEVE x EXIT ===
+                        n    WR  meanR     lo     hi p_le0   sumR     shR  sumLog   shLog
+grp                                                                                      
+(donchian, max_hold)  271 0.742 +0.530 +0.425 +0.635 0.000 +143.7  +54.6%  +3.857 +101.3%
+(donchian, sl_hit)    577 0.000 -1.043 -1.045 -1.041 1.000 -601.9 -228.5% -17.831 -468.3%
+(donchian, tp_hit)    259 1.000 +2.454 +2.450 +2.458 0.000 +635.6 +241.4% +16.571 +435.2%
+(mean_rev, max_hold)   32 0.656 +0.264 +0.121 +0.413 0.000   +8.5   +3.2%  +0.235   +6.2%
+(mean_rev, sl_hit)     67 0.000 -1.006 -1.006 -1.005 1.000  -67.4  -25.6%  -1.845  -48.4%
+(mean_rev, tp_hit)     55 1.000 +1.662 +1.661 +1.662 0.000  +91.4  +34.7%  +2.341  +61.5%
+(squeeze, max_hold)    70 0.743 +0.409 +0.246 +0.579 0.000  +28.6  +10.9%  +0.665  +17.5%
+(squeeze, sl_hit)     227 0.000 -1.125 -1.136 -1.113 1.000 -255.3  -97.0%  -5.908 -155.2%
+(squeeze, tp_hit)     119 1.000 +2.354 +2.337 +2.371 0.000 +280.1 +106.4%  +5.723 +150.3%
+
+=== HOLD BUCKET ===
+          n    WR  meanR     lo     hi p_le0   sumR    shR sumLog   shLog
+grp                                                                      
+<=6h    130 0.215 -0.344 -0.631 -0.053 0.987  -44.8 -17.0% -1.311  -34.4%
+6-24h   513 0.298 -0.066 -0.221 +0.085 0.802  -33.7 -12.8% -2.126  -55.8%
+24-48h  363 0.386 +0.226 +0.028 +0.429 0.012  +82.1 +31.2% +1.024  +26.9%
+>48h    671 0.575 +0.387 +0.261 +0.516 0.000 +259.7 +98.6% +6.222 +163.4%
+
+=== COIN ===
+        n    WR  meanR     lo     hi p_le0  sumR    shR sumLog  shLog
+grp                                                                  
+ADA   162 0.426 +0.206 -0.012 +0.416 0.034 +33.3 +12.6% +0.603 +15.8%
+BCH   147 0.395 +0.086 -0.134 +0.321 0.241 +12.6  +4.8% +0.127  +3.3%
+BNB   160 0.381 +0.063 -0.153 +0.285 0.293 +10.1  +3.8% -0.080  -2.1%
+DOGE  106 0.415 +0.186 -0.103 +0.485 0.113 +19.7  +7.5% +0.381 +10.0%
+ETH   160 0.419 +0.165 -0.075 +0.408 0.090 +26.4 +10.0% +0.404 +10.6%
+ICP   158 0.392 +0.137 -0.085 +0.359 0.113 +21.6  +8.2% +0.247  +6.5%
+LTC   154 0.494 +0.211 +0.027 +0.399 0.015 +32.5 +12.3% +0.731 +19.2%
+NEAR  158 0.449 +0.190 -0.036 +0.423 0.051 +30.1 +11.4% +0.510 +13.4%
+SOL   162 0.444 +0.267 +0.028 +0.507 0.016 +43.3 +16.4% +0.787 +20.7%
+TRX    59 0.424 +0.045 -0.340 +0.466 0.418  +2.7  +1.0% -0.109  -2.9%
+XLM   112 0.420 +0.148 -0.131 +0.439 0.148 +16.6  +6.3% +0.133  +3.5%
+XRP   139 0.396 +0.104 -0.161 +0.368 0.230 +14.4  +5.5% +0.074  +1.9%
+
+=== YEAR (exit) ===
+        n    WR  meanR     lo     hi p_le0  sumR    shR sumLog  shLog
+grp                                                                  
+2023  383 0.423 +0.205 -0.014 +0.411 0.032 +78.6 +29.9% +1.285 +33.7%
+2024  525 0.427 +0.156 -0.012 +0.325 0.035 +81.7 +31.0% +1.262 +33.1%
+2025  486 0.416 +0.154 -0.000 +0.306 0.026 +75.0 +28.5% +0.897 +23.6%
+2026  283 0.420 +0.099 -0.166 +0.373 0.260 +28.0 +10.6% +0.363  +9.5%
+
+=== TRAIN/TEST ===
+         n    WR  meanR     lo     hi p_le0   sumR    shR sumLog  shLog
+grp                                                                    
+TEST   769 0.417 +0.134 -0.010 +0.269 0.033 +103.0 +39.1% +1.261 +33.1%
+TRAIN  908 0.425 +0.177 +0.042 +0.308 0.005 +160.3 +60.9% +2.547 +66.9%
+
+=== SPLIT x SLEEVE ===
+                     n    WR  meanR     lo     hi p_le0   sumR    shR sumLog  shLog
+grp                                                                                
+(TEST, donchian)   538 0.409 +0.120 -0.059 +0.301 0.102  +64.3 +24.4% +0.573 +15.0%
+(TEST, mean_rev)    73 0.466 +0.142 -0.127 +0.416 0.156  +10.4  +3.9% +0.270  +7.1%
+(TEST, squeeze)    158 0.424 +0.180 -0.097 +0.454 0.103  +28.4 +10.8% +0.417 +11.0%
+(TRAIN, donchian)  569 0.422 +0.199 +0.021 +0.373 0.014 +113.1 +43.0% +2.025 +53.2%
+(TRAIN, mean_rev)   81 0.519 +0.273 +0.008 +0.536 0.023  +22.1  +8.4% +0.460 +12.1%
+(TRAIN, squeeze)   258 0.403 +0.097 -0.110 +0.305 0.175  +25.1  +9.5% +0.062  +1.6%
+
+=== (2) R_net DISTRIBUTION SHAPE ===
+             n     WR   mWin  mLoss  payoff   skew      sum  top5%sh  top10%sh  top20%sh  sum_wo_top10  top10%sh_log  log_wo_top10
+sl                                                                                                                                
+ALL       1677  0.422  1.727 -0.987   1.749  0.618  263.336    0.789     1.574     3.108      -151.117         3.030        -7.729
+donchian  1107  0.416  1.745 -0.967   1.806  0.664  177.433    0.768     1.546     3.066       -96.883         2.975        -5.131
+mean_rev   154  0.494  1.341 -0.890   1.506  0.187   32.476    0.410     0.768     1.587         7.520         1.012        -0.008
+squeeze    416  0.411  1.849 -1.073   1.724  0.595   53.427    0.960     1.908     3.729       -48.496         5.800        -2.300
+
+R_net quantiles: [-1.393 -1.128 -1.046 -1.006  1.662  2.452  2.466  2.478  2.489]
+share of trades with |R_net - (-1)|<0.02: 0.068 ; TP-level (>=1.6): 0.271
+max_hold trades: n=373 mean R_net=+0.485 WR=0.735 sumR=+180.7 range [-0.90,+2.19]
+
+=== (3) BREAK-EVEN WR vs ACTUAL (empirical payoff)  +  martingale null on SL/TP-resolved trades ===
+donchian  n=1107 WR=0.416 [0.387,0.445] payoff=1.81 BE-WR=0.356 margin=+0.059 [+0.012,+0.104] binom p=2.8e-05 | TP|SL/TP 259/836=0.310 [0.279,0.342] vs 1/(1+RR)=0.286 p=0.067
+mean_rev  n= 154 WR=0.494 [0.416,0.572] payoff=1.51 BE-WR=0.399 margin=+0.095 [+0.007,+0.179] binom p=0.011 | TP|SL/TP 55/122=0.451 [0.365,0.539] vs 1/(1+RR)=0.375 p=0.052
+squeeze   n= 416 WR=0.411 [0.365,0.459] payoff=1.72 BE-WR=0.367 margin=+0.044 [-0.015,+0.098] binom p=0.036 | TP|SL/TP 119/346=0.344 [0.296,0.395] vs 1/(1+RR)=0.286 p=0.011
+ALL       n=1677 WR=0.422 [0.398,0.445] payoff=1.75 BE-WR=0.364 margin=+0.058 [+0.024,+0.093] binom p=6.1e-07 | 
+
+=== (4) COST DRAG (mean per trade, R units; risk unit = qty*|intended_entry-sl0|) ===
+          R_gross  c_slip_in  c_slip_out   c_fee  c_fund   R_net  cost_total  cost_share_of_gross  stop_pct_med
+kol                                                                                                            
+donchian   0.2031    -0.0375     -0.0006 -0.0047  0.0000  0.1603     -0.0428               0.2109        0.0466
+mean_rev   0.2166     0.0000     -0.0011 -0.0093  0.0047  0.2109     -0.0058               0.0266        0.0218
+squeeze    0.2561    -0.1119     -0.0017 -0.0141 -0.0000  0.1284     -0.1277               0.4985        0.0169
+ALL        0.2175    -0.0525     -0.0009 -0.0075  0.0004  0.1570     -0.0605               0.2781        0.0366
+  donchian  gross mean +0.203 [+0.076,+0.332]
+  mean_rev  gross mean +0.217 [+0.036,+0.412]
+  squeeze   gross mean +0.256 [+0.097,+0.422]
+  ALL       gross mean +0.218 [+0.120,+0.316]
+
+=== (5) CONCENTRATION ===
+COINS: groups=12 positive=12 (100%)  HHI(positive-share)=0.105 -> effective N=9.6
+   top-1 share of net sumR: 16.4%   of log-growth: 20.7%   | remove top-1: sumR +220.0, log +3.021
+   top-3 share of net sumR: 41.4%   of log-growth: 55.7%   | remove top-3: sumR +154.3, log +1.687
+   top-5 share of net sumR: 62.9%   of log-growth: 79.7%   | remove top-5: sumR +97.8, log +0.773
+   coin sumR: {'SOL': 43.3, 'ADA': 33.3, 'LTC': 32.5, 'NEAR': 30.1, 'ETH': 26.4, 'ICP': 21.6, 'DOGE': 19.7, 'XLM': 16.6, 'XRP': 14.4, 'BCH': 12.6, 'BNB': 10.1, 'TRX': 2.7}
+MONTHS: groups=40 positive=27 (68%)  HHI(positive-share)=0.056 -> effective N=17.9
+   top-1 share of net sumR: 14.2%   of log-growth: 22.0%   | remove top-1: sumR +226.0, log +2.969
+   top-3 share of net sumR: 35.2%   of log-growth: 53.8%   | remove top-3: sumR +170.5, log +1.760
+   top-5 share of net sumR: 51.8%   of log-growth: 79.1%   | remove top-5: sumR +126.9, log +0.797
+   months: top-5 share obs 51.8% vs perm-null median 42.2% (p(null>=obs)=0.026); positive months obs 67.5% vs null median 75.0% (p(null<=obs)=0.074); SD of monthly sumR obs 11.45 vs null 9.34 (p(null>=obs)=0.032)
+   coin heterogeneity within donchian: perm p=0.905  mean R by coin {'ADA': np.float64(0.206), 'BCH': np.float64(0.086), 'BNB': np.float64(0.063), 'ETH': np.float64(0.165), 'ICP': np.float64(0.137), 'NEAR': np.float64(0.19), 'SOL': np.float64(0.267)}  n {'ADA': np.int64(162), 'BCH': np.int64(147), 'BNB': np.int64(160), 'ETH': np.int64(160), 'ICP': np.int64(158), 'NEAR': np.int64(158), 'SOL': np.int64(162)}
+   coin heterogeneity within squeeze: perm p=0.947  mean R by coin {'DOGE': np.float64(0.186), 'TRX': np.float64(0.045), 'XLM': np.float64(0.148), 'XRP': np.float64(0.104)}  n {'DOGE': np.int64(106), 'TRX': np.int64(59), 'XLM': np.int64(112), 'XRP': np.int64(139)}

@@ -1,0 +1,9 @@
+underwater 95 trades: peak after trade 298 (2024-02-15 02:00:00+00:00), trough 2024-04-12 18:00:00+00:00, recovery trade 393 2024-06-05 03:00:00+00:00, depth 36.1%, trough->recovery 49 trades
+underwater 84 trades: peak after trade 820 (2026-02-05 21:00:00+00:00), trough 2026-05-04 05:00:00+00:00, recovery trade 904 2026-06-03 20:00:00+00:00, depth 42.6%, trough->recovery 27 trades
+underwater 84 trades: peak after trade 520 (2024-12-04 03:00:00+00:00), trough 2025-03-06 19:00:00+00:00, recovery trade 604 2025-04-09 03:00:00+00:00, depth 32.5%, trough->recovery 21 trades
+EP1 2026-02-06..05-04: n=58 meanR=-0.228 WR=0.276 (16/58) avgWin=+1.67 exit={'sl_hit': 35, 'max_hold': 14, 'tp_hit': 9} kol={'donchian': 23, 'squeeze': 23, 'mean_rev': 12} | fixed-window z=-2.19 naive p=0.0144 | scan p(any 58-window sumR<=obs) A=0.653 B=0.841
+EP2 2026-06-08..07-19: n=30 meanR=-0.568 WR=0.200 (6/30) avgWin=+0.97 exit={'sl_hit': 20, 'max_hold': 8, 'tp_hit': 2} kol={'squeeze': 12, 'donchian': 10, 'mean_rev': 8} | fixed-window z=-2.83 naive p=0.0023 | scan p(any 30-window sumR<=obs) A=0.227 B=0.402
+2026-02..07 whole: n=122 meanR=-0.010 WR=0.352 (43/122) avgWin=+1.75 exit={'sl_hit': 68, 'tp_hit': 27, 'max_hold': 27} kol={'donchian': 55, 'squeeze': 43, 'mean_rev': 24} | fixed-window z=-1.54 naive p=0.0613 | scan p(any 122-window sumR<=obs) A=0.880 B=0.956
+2026 YTD: n=150 meanR=+0.106 WR=0.400 (60/150) avgWin=+1.73 exit={'sl_hit': 78, 'tp_hit': 39, 'max_hold': 33} kol={'donchian': 69, 'squeeze': 53, 'mean_rev': 28} | fixed-window z=-0.75 naive p=0.2275 | scan p(any 150-window sumR<=obs) A=1.000 B=1.000
+TEST alone mean 0.1874 t-CI [0.042 0.333]
+TEST day-cluster CI [0.012 0.363]

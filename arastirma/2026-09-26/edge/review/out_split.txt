@@ -1,0 +1,39 @@
+TRAIN n=538 +0.2033 WR 0.431 | TEST n=398 +0.1874 WR 0.427 | diff -0.0159
+ perm one-sided p=0.431  CI iid [-0.208  0.177] day [-0.245  0.205] month [-0.21   0.169]  SE day 0.115 -> MDE80 (2s .05) 0.322; month SE 0.096 -> 0.269
+ TEST alone day-cluster CI [0.009 0.365]
+  donchian  TRAIN n=234 +0.285 TEST n=178 +0.183 Welch p=0.497
+  squeeze   TRAIN n=222 +0.097 TEST n=146 +0.223 Welch p=0.445
+  mean_rev  TRAIN n=82 +0.257 TEST n=74 +0.127 Welch p=0.498
+
+per-year (exit year) day-cluster boot CI:
+  2023: n=248 mean +0.281 CI [+0.076,+0.490] WR 0.452
+  2024: n=290 mean +0.137 CI [-0.040,+0.315] WR 0.414
+  2025: n=248 mean +0.236 CI [+0.013,+0.461] WR 0.444
+  2026: n=150 mean +0.106 CI [-0.185,+0.401] WR 0.400
+  ANOVA p=0.571  Kruskal p=0.312
+  OLS slope of R over full sample (per whole period) -0.062
+
+Change-point (single mean drop, max over breaks, min seg 30): z=2.88 at trade 906 (2026-06-08), before +0.222 (n=906) after -0.568 (n=30); p A=0.050 B=0.109
+  last  30 trades mean -0.568 vs prior +0.222: z=2.88 one-sided p=0.002 WR 0.200
+  last  60 trades mean +0.086 vs prior +0.204: z=0.60 one-sided p=0.275 WR 0.400
+  last 122 trades mean -0.010 vs prior +0.227: z=1.66 one-sided p=0.049 WR 0.352
+  last 150 trades mean +0.106 vs prior +0.214: z=0.82 one-sided p=0.207 WR 0.400
+  last 200 trades mean +0.106 vs prior +0.221: z=0.98 one-sided p=0.165 WR 0.410
+  last 300 trades mean +0.196 vs prior +0.197: z=0.01 one-sided p=0.496 WR 0.433
+
+Top drawdown episodes (trades after peak through trough):
+ DD 46.0% peak 2026-06-04 04:00:00+00:00 trough 2026-07-19 01:00:00+00:00 rec OPEN n=30 meanR -0.568 WR 0.200 (6/30) sumR -17.04
+    fixed-window p(mean)=0.0023 binom p(WR)=0.0075 | scan sumR A=0.220 B=0.401 | scan wins A=0.695 B=0.856 | exits {'sl_hit': 20, 'max_hold': 8, 'tp_hit': 2} kol {'squeeze': 12, 'donchian': 10, 'mean_rev': 8}
+ DD 42.6% peak 2026-02-05 21:00:00+00:00 trough 2026-05-04 05:00:00+00:00 rec trade 904 n=57 meanR -0.253 WR 0.263 (15/57) sumR -14.43
+    fixed-window p(mean)=0.0109 binom p(WR)=0.0071 | scan sumR A=0.555 B=0.768 | scan wins A=0.442 B=0.634 | exits {'sl_hit': 35, 'max_hold': 13, 'tp_hit': 9} kol {'squeeze': 23, 'donchian': 22, 'mean_rev': 12}
+ DD 36.6% peak 2024-01-23 21:00:00+00:00 trough 2024-02-07 20:00:00+00:00 rec trade 298 n=18 meanR -0.740 WR 0.167 (3/18) sumR -13.32
+    fixed-window p(mean)=0.0036 binom p(WR)=0.0184 | scan sumR A=0.389 B=0.606 | scan wins A=0.986 B=0.999 | exits {'sl_hit': 14, 'max_hold': 3, 'tp_hit': 1} kol {'squeeze': 9, 'donchian': 7, 'mean_rev': 2}
+ DD 36.1% peak 2024-02-15 02:00:00+00:00 trough 2024-04-12 18:00:00+00:00 rec trade 393 n=46 meanR -0.227 WR 0.261 (12/46) sumR -10.44
+    fixed-window p(mean)=0.0261 binom p(WR)=0.0137 | scan sumR A=0.909 B=0.982 | scan wins A=0.761 B=0.883 | exits {'sl_hit': 31, 'tp_hit': 8, 'max_hold': 7} kol {'squeeze': 19, 'donchian': 19, 'mean_rev': 8}
+
+Multi-scale scan (min over k=10..200 of standardized window deficit): obs -3.03; P(null <= obs) A=0.430 B=0.699; null median A -2.98 B -3.20
+
+Longest losing streak 13: 2026-04-18 12:00:00+00:00 .. 2026-05-04 05:00:00+00:00 exits {'sl_hit': 12, 'max_hold': 1} kol {'squeeze': 7, 'donchian': 4, 'mean_rev': 2} sumR -13.62
+Worst 10-trade window sumR -11.02: kol {'squeeze': 6, 'donchian': 2, 'mean_rev': 2} exits {'sl_hit': 10} stop% range 0.64-3.08 meanR -1.102
+All SL hits: n=476 meanR -1.064; by kol {'donchian': -1.042, 'mean_rev': -1.006, 'squeeze': -1.107}
+ lag-1 corr of consecutive SL-hit R sizes: +0.180 (n=476)

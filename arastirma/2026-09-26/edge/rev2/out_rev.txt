@@ -1,0 +1,64 @@
+missing bars per coin {'SOL': 0, 'ETH': 0, 'ADA': 12, 'NEAR': 12, 'BCH': 42, 'ICP': 42, 'BNB': 12, 'XRP': 0, 'DOGE': 0, 'XLM': 42, 'LTC': 12, 'BTC': 12}
+n 936 sumR 183.93 meanR 0.1965 long share 0.452
+
+=== (1) R ~ signed market move over trade life; A=analyst exit level (xt), C=corrected (xt-1h)
+ALL   A mi pct  alpha +0.123 [+0.057,+0.188] p=0.000535 slope 0.208±0.033 R2=0.468 mkt share 38%  mean x +0.355
+ALL   A mi stop alpha +0.062 [-0.003,+0.126] p=0.0613 slope 0.759±0.050 R2=0.565 mkt share 69%  mean x +0.178
+ALL   A ml pct  alpha +0.135 [+0.063,+0.207] p=0.000493 slope 0.196±0.030 R2=0.419 mkt share 31%  mean x +0.315
+ALL   A ml stop alpha +0.075 [+0.006,+0.145] p=0.0351 slope 0.714±0.047 R2=0.515 mkt share 62%  mean x +0.169
+ALL   A mb pct  alpha +0.127 [+0.042,+0.212] p=0.00452 slope 0.253±0.036 R2=0.311 mkt share 36%  mean x +0.276
+ALL   A mb stop alpha +0.110 [+0.027,+0.193] p=0.0105 slope 0.845±0.098 R2=0.370 mkt share 44%  mean x +0.102
+ALL   C mi pct  alpha +0.130 [+0.063,+0.197] p=0.000351 slope 0.214±0.031 R2=0.477 mkt share 34%  mean x +0.311
+ALL   C mi stop alpha +0.065 [-0.000,+0.131] p=0.0508 slope 0.804±0.056 R2=0.586 mkt share 67%  mean x +0.163
+ALL   C ml pct  alpha +0.141 [+0.069,+0.214] p=0.000338 slope 0.201±0.029 R2=0.427 mkt share 28%  mean x +0.275
+ALL   C ml stop alpha +0.079 [+0.008,+0.149] p=0.0302 slope 0.754±0.053 R2=0.531 mkt share 60%  mean x +0.156
+ALL   C mb pct  alpha +0.128 [+0.040,+0.217] p=0.00555 slope 0.260±0.037 R2=0.314 mkt share 35%  mean x +0.262
+ALL   C mb stop alpha +0.107 [+0.020,+0.194] p=0.0177 slope 0.899±0.096 R2=0.380 mkt share 46%  mean x +0.100
+TRAIN A mi pct  alpha +0.091 [+0.010,+0.172] p=0.0303 slope 0.229±0.034 R2=0.475 mkt share 55%  mean x +0.492
+TRAIN A mi stop alpha +0.046 [-0.043,+0.136] p=0.291 slope 0.737±0.075 R2=0.546 mkt share 77%  mean x +0.213
+TRAIN C mi pct  alpha +0.097 [+0.014,+0.179] p=0.0235 slope 0.230±0.032 R2=0.479 mkt share 52%  mean x +0.465
+TRAIN C mi stop alpha +0.048 [-0.042,+0.139] p=0.276 slope 0.782±0.083 R2=0.563 mkt share 76%  mean x +0.198
+TEST  A mi pct  alpha +0.155 [+0.041,+0.270] p=0.0104 slope 0.189±0.050 R2=0.468 mkt share 17%  mean x +0.169
+TEST  A mi stop alpha +0.084 [-0.016,+0.184] p=0.0954 slope 0.794±0.060 R2=0.594 mkt share 55%  mean x +0.130
+TEST  C mi pct  alpha +0.167 [+0.050,+0.284] p=0.00762 slope 0.198±0.052 R2=0.482 mkt share 11%  mean x +0.103
+TEST  C mi stop alpha +0.090 [-0.010,+0.190] p=0.0762 slope 0.837±0.068 R2=0.619 mkt share 52%  mean x +0.116
+market share A idx pct: 38%  month-boot 95% CI [6%,60%]
+market share A idx stop: 69%  month-boot 95% CI [41%,101%]
+market share C idx pct: 34%  month-boot 95% CI [2%,56%]
+market share C idx stop: 67%  month-boot 95% CI [39%,96%]
+equity space A: alpha +0.340 [+0.120,+0.560] p=0.00333 %/trade slope 0.712 R2=0.470 mkt 236.3 of 554.4 %-pts
+equity space C: alpha +0.365 [+0.140,+0.590] p=0.00218 %/trade slope 0.731 R2=0.481 mkt 213.0 of 554.4 %-pts
+R by quintile of signed idx move (stop units, corrected): [-0.983, -0.879, -0.323, 1.137, 2.037]
+|move|<0.25 stop (C): n=119 meanR -0.035 [-0.268,+0.198] p=0.764
+|move|<0.25 stop (A): n=122 meanR -0.216 [-0.387,-0.044] p=0.0152
+
+=== (2a) mean signed move over trade life, cluster by entry month
+  ALL   mi_A: +0.355 [+0.008,+0.702] p=0.0455 %
+  ALL   mi_C: +0.311 [-0.030,+0.652] p=0.0727 %
+  ALL   ml_C: +0.275 [-0.069,+0.620] p=0.114 %
+  ALL   mb_C: +0.262 [-0.068,+0.592] p=0.116 %
+  TRAIN mi_A: +0.492 [+0.092,+0.892] p=0.0184 %
+  TRAIN mi_C: +0.465 [+0.046,+0.884] p=0.0314 %
+  TRAIN ml_C: +0.435 [+0.011,+0.860] p=0.045 %
+  TRAIN mb_C: +0.368 [-0.080,+0.816] p=0.102 %
+  TEST  mi_A: +0.169 [-0.486,+0.824] p=0.595 %
+  TEST  mi_C: +0.103 [-0.507,+0.713] p=0.727 %
+  TEST  ml_C: +0.059 [-0.555,+0.672] p=0.843 %
+  TEST  mb_C: +0.118 [-0.421,+0.658] p=0.651 %
+               n  hold_med  mv_med  mv_mean
+exit_reason                                
+max_hold     186      83.5    0.90     1.11
+sl_hit       476      16.0   -2.00    -2.54
+tp_hit       274      25.0    3.67     4.73
+  post-exit +24h signed idx move after sl_hit: +0.138 [-0.241,+0.517] p=0.466 % n=476
+  post-exit +24h signed idx move after tp_hit: -0.681 [-1.407,+0.046] p=0.0655 % n=274
+  post-exit +24h signed idx move after max_hold: -0.181 [-0.806,+0.445] p=0.562 % n=186
+  post-exit +24h all: -0.165 [-0.530,+0.200] p=0.366
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/edge/rev2/rev.py", line 118, in <module>
+    pe=d.sg*(L('IDX',d.xa+pd.Timedelta(f'{h}h'))-L('IDX',d.xa))*100
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user-Bot2/4f0a318a-bb3d-55e5-bc2c-d9194f822f40/scratchpad/edge/rev2/rev.py", line 28, in L
+    T=pd.DatetimeIndex(T); pos=lvl.index.get_indexer(T); assert (pos>=0).all(), 'missing'
+                                                                ^^^^^^^^^^^^^^
+AssertionError: missing
