@@ -6249,3 +6249,59 @@ Uc tarama ayni anda (14 kosu) -> RAM bitti; tutus taramasi coktu, CAP
 tabani SESSIZCE bozuldu (TRAIN MAR 7.53 vs dogrusu 6.47). Artik: logunda
 sleeve error/MemoryError olan kosu tablodan dislanir, ayni anda tek tarama
 kilidi var, .yedek kopyalar tabloya alinmaz.
+
+---
+
+## 2026-09-26 · IKIZ: TUTUS SURESI (T) -- hicbiri gecmedi, EKSEN KAPANDI
+
+CAP 1.5 tabaninda kosuldu (h_taban = c_taban = n_taban BIREBIR: 952 islem,
+TR MAR 6.47, TE MAR 4.22 -- uc ayri taramada determinizm tutuyor; DONCHIAN_MAX_HOLD
+varsayilani 120 davranisi degistirmiyor).
+```
+ayar     tutus                     TE yil%  TE DD  TR MAR  TE MAR   dTR    dTE   hukum
+h_d80    donchian 80s                132.0   41.0   5.18    3.22   -1.29  -1.00  kaldi
+h_taban  donchian 120s / diger 48    175.0   41.5   6.47    4.22    0      0     taban
+h_d180   donchian 180s               170.3   39.4   4.88    4.32   -1.59  +0.10  tek yari
+h_d240   donchian 240s               151.2   41.3   4.91    3.66   -1.56  -0.56  kaldi
+h_1s72   diger kollar 72 mum         185.3   42.1   5.56    4.41   -0.91  +0.19  tek yari
+h_1s96   diger kollar 96 mum         144.3   43.9   4.99    3.29   -1.48  -0.93  kaldi
+```
+- Iki eksende de sekil yok: d180'in +0.10'u yalniz dusuk maxDD'den (getirisi
+  tabandan DUSUK), d240 geri dusuyor. 1s72'nin +0.19'u 1s96'nin -0.93'u ile
+  celisiyor. "Tek yari" kazananlar TRAIN'de kazandiklarinin 5-16 katini kaybediyor.
+- max_hold cikislarinin iyi olmasi (+0.38R, WR %70) kismen SECIM etkisi: stop da TP
+  de gormeyen islem max_hold'a ulasir; daha uzun tutmak R eklemiyor.
+- CAP 2.5'te yeniden kosmak GEREKSIZ: CAP islem R'sini degil boyutu degistirir;
+  uzun tutus buyuk pozisyonlarin marjinini daha uzun baglar (marjin duvari zaten 2.5'te).
+- **HUKUM: Donchian 120 saat / diger kollar 48 mum KALIR.** Yeni, onceden kayitli
+  bir gerekce olmadan acilmaz.
+- Bu KARAR'da gorunen `.yedek` satirlari: rapor 147f89c ONCESI kodla uretildi
+  (duzeltme ikiz_rapor -> DA._kosular yolunda). `git pull` + IKIZ.bat -> 6 (RAPOR).
+
+### PROJEKSIYON DUZELTMESI -- $340 + ayda $150 (ay sonu katki)
+Onceki sohbette verilen rakamlar YANLISTI (1 yil $5,950 / 2 yil $18,400 @ %8.8).
+Dogrusu (dongu + kapali form, bagimsiz ikinci hesapla dogrulandi):
+```
+aylik sabit   12 ay    24 ay
+%0 (bot yok)  $2,140   $3,940   <- yatirilan
+%4.4          $2,876   $7,128
+%8.80         $3,921  $13,773   (IKIZ taban TE)
+%9.79         $4,210  $16,082   (IKIZ CAP 2.5 TE)
+```
+Monte Carlo (cipa CAP 2.5 aylik serisi, ortalama IKIZ TE %9.79 geo'ya kaydirildi,
+50k yol) medyanlari: A (IKIZ seviyesi) $4,397 / $17,603 · B (edge %75) $3,430 /
+$10,220 · C (edge %50) $2,681 / $6,125. Yatirilanin altinda bitme: A %12/%5,
+B %23/%15, C %36/%31. Oynaklik ~%31/ay -> edge'in yarisi buyumenin ~%26'si kalir.
+Sadece TEST aylarina kalibre edilince (std %39) C daha da kotu (24 ayda %38 alti).
+
+### ⚠ OLCEK SINIRI (CAP 2.5 ile yeni)
+Kayma yalniz $59-513 nominalde olculdu (hepsi CAP 1.5). CAP 2.5'te nominal =
+min(%2.8/stop, 2.5) x bakiye: medyan islem ~0.78x, p90 ~2.06x, tavana carpan 2.5x.
+Olculen araliktan cikis: tavan islemleri $205 bakiyede (yani BUGUN), medyan islem
+~$656, islemlerin %90'i ~$1,284, ~%99'u ~$2,000. Yalniz katkilarla bakiye 3. ayda
+$656'yi, 7. ayda $1,284'u geciyor -> 1. yilin cogu ve 2. yilin tamami olculmemis
+kayma varsayimina dayaniyor. +12bp ek kayma edge'in %25'ini, +24bp %50'sini siler.
+**Kayma bakiye ~$650 ve ~$1,300'u gecerken YENIDEN OLCULMELI.**
+Not: repoda CAP 2.5'in VPS'e alindigina dair kayit yok (DURUM.md:17 hala 1.5);
+FILTRE.sh'in uygulandigi da dogrulanmamis -> VPS'te `bash FILTRE.sh durum` /
+`ayar_dogrula.py`.
