@@ -34,3 +34,6 @@ data/*_bnc_*.csv
 # Kullanicinin makinesi bu yuzden 36 commit geride kaldi ve yeni menu
 # tuslari hic gelmedi; saatlerce bat dosyalarinda hata arandi.
 KARAR.txt
+
+# tarama kilidi (ayni anda tek tarama)
+.ikiz_kilit

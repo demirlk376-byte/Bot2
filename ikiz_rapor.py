@@ -115,6 +115,13 @@ def _karar_dosyasi():
     ekle(f"  motor: {guncel or '(damgasiz)'}   (en son kosan kosunun motoru)")
     ekle("=" * 92)
 
+    _hatali = DA._hatali_kosular()
+    if _hatali:
+        ekle("  ⚠ HATALI KOSULAR -- TABLOYA ALINMADI (logunda sleeve error /")
+        ekle("    MemoryError var; sinyaller sessizce atlanmis olabilir, TEKRAR KOS):")
+        for _a, _h in _hatali:
+            ekle(f"      {_a:<20s} {_h} hata satiri")
+        ekle("")
     if not olcum:
         ekle("  Guncel kodla kosmus konfigurasyon YOK. Taramayi calistir.")
     else:

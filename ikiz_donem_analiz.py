@@ -242,10 +242,46 @@ def _kosular() -> list[str]:
     bulunan = []
     for y in sorted(glob.glob(os.path.join(KOK, "ikiz_*.db"))):
         ad = os.path.splitext(os.path.basename(y))[0].replace("ikiz_", "")
-        if _meta(y).get("motor_surum"):
+        if _meta(y).get("motor_surum") and _hata_sayisi(ad) == 0:
             bulunan.append(ad)
     sirali = [a for a in SIRA if a in bulunan]
     return sirali + [a for a in bulunan if a not in sirali]
+
+
+# ⚠ SESSIZ BOZULMA KORUMASI (2026-09-26). Kullanici uc taramayi AYNI ANDA
+# baslatti (14 kosu), RAM bitti. Bir kolun analyze()'i MemoryError firlatinca
+# main.py onu "sleeve error" diye YAKALAYIP o mumun sinyalini SESSIZCE atliyor;
+# islem dizisi degisiyor ve kosu "basarili" gorunuyor. Kanit: birebir ayni
+# ayarla kosan c_taban ve n_taban TRAIN MAR'da 7.53 vs 6.47 cikti (bugune dek
+# her taban 6.47'ydi). Logunda bu izlerden biri olan kosu tablodan DISLANIR.
+_HATA_IZI = ("sleeve error", "MemoryError")
+
+
+def _hata_sayisi(ad: str) -> int:
+    yol = os.path.join(KOK, f"ikiz_{ad}.log")
+    if not os.path.exists(yol):
+        return 0
+    n = 0
+    try:
+        with open(yol, encoding="utf-8", errors="replace") as f:
+            for satir in f:
+                if any(iz in satir for iz in _HATA_IZI):
+                    n += 1
+    except OSError:
+        return 0
+    return n
+
+
+def _hatali_kosular() -> list[tuple[str, int]]:
+    """motor damgali AMA logunda hata olan kosular (rapora UYARI olarak basilir)."""
+    cikti = []
+    for y in sorted(glob.glob(os.path.join(KOK, "ikiz_*.db"))):
+        ad = os.path.splitext(os.path.basename(y))[0].replace("ikiz_", "")
+        if _meta(y).get("motor_surum"):
+            h = _hata_sayisi(ad)
+            if h:
+                cikti.append((ad, h))
+    return cikti
 
 
 def _taban_sec(adlar) -> str | None:

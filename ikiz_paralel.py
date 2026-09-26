@@ -776,6 +776,9 @@ def kos(ad_ve_env):
     red = sum(1 for x in satirlar if "Insufficient free margin" in x
               or "Yetersiz bakiye" in x)
     cikti += f"\n  MARJIN REDDI: {red} islem"
+    hata = sum(1 for x in satirlar if "sleeve error" in x or "MemoryError" in x)
+    if hata:
+        cikti += f"\n  ⚠ HATA: {hata} satir -- bu kosu GECERSIZ, raporda dislanacak"
     return ad, ek, sure, cikti, p.returncode
 
 
@@ -847,7 +850,41 @@ def _nabiz(tarama, bitti, aralik=120):
               + "\n".join(parcalar), flush=True)
 
 
+_KILIT = os.path.join(KOK, ".ikiz_kilit")
+
+
+def _kilit_al() -> bool:
+    """⚠ AYNI ANDA TEK TARAMA. Kullanici uc taramayi birlikte baslatti (14 kosu),
+    RAM bitti: tutus taramasinin 6 kosusu MemoryError ile coktu, digerleri
+    sessizce bozuldu. Kilit 4 saatten eskiyse bayat sayilir (cokmus kosu)."""
+    import time as _t
+    if os.path.exists(_KILIT):
+        yas = _t.time() - os.path.getmtime(_KILIT)
+        if yas < 4 * 3600:
+            print("\n" + "=" * 70)
+            print("  BASKA BIR TARAMA KOSUYOR (ya da yarida kaldi).")
+            print("  Ayni anda iki tarama RAM'i bitirir ve sonuclari SESSIZCE bozar.")
+            print(f"  Once o bitsin. Emin olarak bittiyse su dosyayi sil:\n    {_KILIT}")
+            print("=" * 70)
+            return False
+    with open(_KILIT, "w") as f:
+        f.write(str(os.getpid()))
+    return True
+
+
 def main():
+    if not _kilit_al():
+        sys.exit(1)
+    try:
+        _main()
+    finally:
+        try:
+            os.remove(_KILIT)
+        except OSError:
+            pass
+
+
+def _main():
     hangi = sys.argv[1] if len(sys.argv) > 1 else "risk"
     en_fazla = int(sys.argv[2]) if len(sys.argv) > 2 else min(12, os.cpu_count() or 4)
     try:
