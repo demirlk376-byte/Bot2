@@ -6305,3 +6305,69 @@ kayma varsayimina dayaniyor. +12bp ek kayma edge'in %25'ini, +24bp %50'sini sile
 Not: repoda CAP 2.5'in VPS'e alindigina dair kayit yok (DURUM.md:17 hala 1.5);
 FILTRE.sh'in uygulandigi da dogrulanmamis -> VPS'te `bash FILTRE.sh durum` /
 `ayar_dogrula.py`.
+
+---
+
+## 2026-09-26 · KAYIP ANATOMISI -- para NEREDE ve NASIL gidiyor + ERKEN UYARI
+
+Kullanici: "dalgali olsun sorun yok, ama para neden ve nasil kaybediliyor, tespit
+edip onleyelim." Veri: IKIZ taban (ikiz_a_taban_islemler.csv = c_taban, 952 islem,
+hacim 2.5 + risk %3.5 + CAP 1.5, gercek maliyetler). Betikler scratchpad'de; arac
+`erken_uyari.py` + `tests/test_erken_uyari.py` (15 test).
+
+### 1) NASIL: kaybin tamami "bilet" -- ve bilet kusursuz calisiyor
+- 477/952 islem stop (%50). Her biri tam **-1.00R** (ort -1.001R); tek islemde en
+  kotu -%4.8 equity. Kayip $'inin %95'i stoplardan, gerisi zararli max_hold.
+  TP'ler (+1.96R) hepsini oduyor. Kacak stop, bosluk, felaket islem YOK.
+- Maliyet: giris kaymasi islem basi **0.053R = kayma-oncesi edge'in %22'si**
+  (squeeze 0.094R = %39; dar stop ceyregi 0.103R). Ucret+funding 0.0075R.
+
+### 2) NEDEN dususler: SANS dizisi -- ve tarih SANSLIYDI
+- En uzun kayip serisi 13; ayni islemler rastgele sirada medyan 11, %95 15.
+- Aylik WR asiri-dagilimi yok (chi2 p=0.34). Dusus donemleri = WR %13-34'e inen
+  donemler; long da short da kaybediyor (yon sorunu degil).
+- Gercek maxDD %40.9, rastgele siralamalarin **10. yuzdeligi** (medyan %50.2,
+  %95 %66.5). Bu riskte 3.3 yilda ~%50 dusus BEKLENMELI.
+- Kotu seri SONRASI daha IYI: son 10 islemde WR <=%20 -> sonraki 10'un ort R'si
+  +0.39 (WR %40-60 sonrasi +0.11). Defterin "durdurma dipte keser" bulgusuyla ayni.
+
+### 3) Tek sans-disi yapi: AYNI MUMDA COKLU KIRILIM -- ama iki yonlu
+- 6 saat icinde kapanan >=2 zarar, zarar $'inin %38'i (null %20, p<0.003);
+  >=3: %10 vs %3. Lag-1 R otokor +0.125, runs z=-2.83.
+- Mekanizma: donchian ayni 4h mumda 3-7 coinde birden ayni yone kiriyor. 17 olay
+  (75 islem): en buyuk kayiplar (-%18.6 2026-01-26 bes short, -%14.4, -%14.2) VE
+  en buyuk kazanclar (+%31.1, +%28.7, +%22.6). Olay basi ort +%0.77 (TR +1.62,
+  TE -0.78) -- sifir-beklentili yuksek varyans.
+- Grup boyutlama post-hoc 8 varyant: yalniz "yon butcesi %10.5" iki yarida da
+  gecti (+0.64/+0.75), komsulari kaldi (%7: +2.39/-1.58, %14: +0.79/-0.11)
+  -> gurultu. 2026-09-09 EŞZAMANLI MARUZİYET hukmuyle AYNI. **KAPALI.**
+
+### 4) ASIL ONLENEBILIR KAYIP: yanlis kalibre DURDURMA kurallari
+Ay-blok bootstrap, 3000 yol, 24 ay, IKIZ islemleri (arac tanimlariyla):
+```
+kural                          saglikli 12a/24a   edge%75 24a   olu edge 24a (medyan ay)
+3 ay ust uste negatif           %27 / %51          %69           %99 (5)
+canli R %95 alt siniri<0 (2ay)  3. ayda %87        %94           %100 (3)
+R-CUSUM k=.09 h=35              %3.0 / %9.6        %28           %94 (10)
+birim deger tepeden -%60        %2.2 / %5.0        %17           %89 (10)
+ikisinden biri (erken_uyari)    %3.2 / %10.0       %29           %94 (10); -0.10R: %100 (6)
+```
+- DURUM'un "3 ay negatif %0.8" rakami %80-pozitif-ay ankoruna gore hesaplanmisti;
+  guncel IKIZ'de aylarin %35'i negatif. Kural saglikli botu dipte durdururdu.
+- **Katki korlugu:** $340 + $150/ay'da HAM equity'ye bakan -%60 cizgisi edge olse
+  24 ayda yalniz %20 caliyor (medyan 20. ay), bu arada yatirilanin medyan $1,326'si
+  eriyor. Katkidan bagimsiz birim degerle %92, medyan 9. ay.
+- Hiz siniri fiziksel: R std 1.34, edge 0.17 -> olu edge'i ~10 aydan hizli ayiran
+  olcu yok. Olu-edge senaryosunda asil koruma BOYUT.
+
+### ARAC: `erken_uyari.py` (salt okur, aylik sentinel --dogrula mesajina eklendi)
+R-CUSUM + katkidan bagimsiz birim deger (R x min(risk, CAP x stop%)) + yurutme
+(son 60 market girisinde kayma vs 15.85bp; son 30 gunde stoptan kotu R<-1.5 ve yabanci kol -- eski, duzeltilmis olaylar kalici uyari uretmesin).
+IKIZ tabaninin 40 ayinda: CUSUM tepe 20.9 (<35, yanlis alarm YOK), birim deger
+maxDD %40.7, kayma 15.8bp. DURUM izleme tablosu + kirmizi cizgi + live_verify
+maddesi buna gore duzeltildi.
+
+### ACIK KALAN
+- PORTFOY_STOP (IKIZ.bat -> O) ve MAX_SAME_DIRECTION (-> N) taramalari 09-23'te
+  kodlandi, sonucu HIC raporlanmadi. Bu girdinin 3. bulgusu ve 09-09 hukmu
+  gecmeyeceklerini soyluyor; yine de on-kayitli, kosulup kapatilmali.

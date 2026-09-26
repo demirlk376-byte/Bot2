@@ -296,9 +296,16 @@ def main():
         try:
             sys.path.insert(0, BOT_DIR)
             import live_verify
-            ok = notify(f"📉 Aylık canlı doğrulama · {stamp}\n\n" + live_verify.kisa_ozet())
+            metin = f"📉 Aylık canlı doğrulama · {stamp}\n\n" + live_verify.kisa_ozet()
         except Exception as e:
-            ok = notify(f"⚠️ Aylık doğrulama ÇALIŞMADI · {stamp}\n{type(e).__name__}: {e}")
+            metin = f"⚠️ Aylık doğrulama ÇALIŞMADI · {stamp}\n{type(e).__name__}: {e}"
+        # Ayrı try: erken uyarı bozulsa bile live_verify mesajı gitmeli.
+        try:
+            import erken_uyari
+            metin += "\n\n" + erken_uyari.kisa_ozet(os.path.join(BOT_DIR, "trades.db"))
+        except Exception as e:
+            metin += f"\n\n⚠️ Erken uyarı ÇALIŞMADI: {type(e).__name__}: {e}"
+        ok = notify(metin)
         sys.exit(0 if ok else 1)
 
     if arg == "--report":

@@ -1,6 +1,8 @@
 # Sistem Durumu
 
-*Son güncelleme: 2026-09-14*
+*Son güncelleme: 2026-09-26 (izleme kuralı + kırmızı çizgi yeniden kalibre edildi). Bölüm 1'deki
+yapılandırma 2026-09-14 tarihli: 09-22 kararının (FILTRE.sh: hacim 2.5, risk %3.5, TRX çıkar) VPS'e
+uygulandığı teyitsiz → `bash FILTRE.sh durum`.*
 
 **Özet sayfası (telefondan okumak için):**
 https://claude.ai/code/artifact/2bde810a-b5ed-4adf-b01a-be868027eb34
@@ -1928,17 +1930,34 @@ tartışmasında bilinmesi gereken en önemli sınırlama.
 Gerekçe sunuldu, karar tekrarlandı, uygulanıyor. **Bu bir ihmal değil, bilgili
 bir tercih** — ve gerekçem burada kayıtlı ki ileride bakan yanılmasın.
 
-### İZLEME KURALI (ankorda ayların %80'i pozitif)
-| olay | ankor altında olasılık | ne yapmalı |
-|---|---|---|
-| 2 ay üst üste negatif | %4.0 | not et, bekle |
-| **3 ay üst üste negatif** | **%0.8** | **DUR ve bak** |
-| 4 ay üst üste negatif | %0.2 | sistem bozuk say |
-| equity < tepe × %40 | — | DUR (kırmızı çizgi, 5d — 2026-09-12'de oranlandı) |
+### İZLEME KURALI — 2026-09-26'da YENİDEN KALİBRE EDİLDİ (`erken_uyari.py`)
 
-3 ay üst üste negatif, ankor doğruysa 125 ayda bir olur. Gerçekleşirse
-"şanssızlık" değil, edge'in beklenenden zayıf olduğunun işaretidir — ve
-1246 işlem beklemeden elde edebileceğimiz TEK erken uyarı budur.
+⚠ **Eski tablo yanlıştı.** "%80'i pozitif ay" varsayımıyla hesaplanmıştı. Güncel
+ayarın İKİZ'inde ayların **%35'i negatif** (TEST'te %42). O yüzden "3 ay üst üste
+negatif %0.8" değil, **sağlıklı botta 12 ayda ~%27** (ay-blok bootstrap; aylar
+anti-persistent olduğu için gerçek oran biraz daha düşük, İKİZ'in 40 ayında
+hiç olmadı). Bu kural sağlıklı botu dipte durdururdu — defterde 36/36 kez para
+kaybettiren şeyin ta kendisi.
+
+**Tek komut:** `venv/bin/python erken_uyari.py` (aylık Telegram doğrulamasına da eklendi).
+
+| ölçü | sağlıklı botta yanlış alarm (12 ay / 24 ay) | edge ölürse yakalama | ne yapmalı |
+|---|---|---|---|
+| **R-CUSUM > 35** (edge alarmı) | %3 / %10 | %94 (24 ayda), medyan **10. ay** | **DUR ve bak** |
+| **birim değer tepeden −%60** (katkıdan bağımsız) | %2 / %5 | %89, medyan 10. ay | **DUR ve bak** |
+| ikisinden biri (aracın hükmü) | %3.2 / %10.0 | %94, medyan 10. ay; −0.10R'de medyan 6. ay | |
+| yürütme uyarısı (kayma > model, stoptan kötü, yabancı kol) | — | günler/haftalar | kayma_denetim / kar_farki / ayar_dogrula |
+| 3 ay üst üste negatif | **%27 / %51** | — | **not et, bekle** (tek başına alarm DEĞİL) |
+| canlı R'nin %95 alt sınırı < 0 | 3. ayda **%87** | — | **bilgi** — n~220'ye kadar sıfırı içermesi normal |
+
+NORMAL BANT (12 ay, İKİZ, bu risk): en kötü gün tipik −%11 (5 yılda bir −%17) ·
+en kötü ay tipik −%16 (5 yılda bir −%22) · tepeden düşüş tipik %39 (5 yılda bir
+%47, 20 yılda bir %57) · üst üste 10-14 kayıp · yılda 4-7 negatif ay.
+**Bunların hiçbiri alarm değildir.** Edge %75'e inerse bantlar ~5 puan derinleşir.
+
+Hız sınırı fiziksel: işlem başı R'nin std'si 1.4, edge 0.18. Ölü edge'i
+10 aydan hızlı ayırt eden bir ölçü yok. Bu yüzden ölü-edge senaryosundaki asıl
+koruma BOYUT (risk %), tespit değil.
 
 
 ---
@@ -2245,7 +2264,10 @@ Dar stoplu işlemler iki kat iyi. Risk arttıkça CAP bu İYİ işlemleri daha �
 **YERİNE GEÇEN KURAL — kanıt beklemek yerine bozulma izle:**
 1. `live_verify` her ay çalışsın (sentinel otomatik yapıyor).
 2. Canlı R, ankor güven aralığının İÇİNDE kaldığı sürece sistem sağlıklı → dokunma.
-3. Alt sınır sıfırın ALTINA düşer ve orada kalırsa → dur ve incele.
+3. ~~Alt sınır sıfırın ALTINA düşer ve orada kalırsa → dur ve incele.~~
+   **2026-09-26: bu madde sağlıklı botta 3. ayda %87 alarm veriyordu** (alt sınır
+   n~220'ye kadar zaten sıfırın altında). Yerine `erken_uyari.py`'nin R-CUSUM'u:
+   sağlıklıyken 12 ayda %3 yanlış alarm, ölü edge'i medyan 10. ayda yakalar.
 4. Risk artışı istatistikle değil **bakiye eşiğiyle** değerlendirilsin: bakiye
    **$1,000'i geçtiğinde** yeniden bakılır. Gerekçe: küçük hesapta artırmanın tek
    gerekçesi "edge kanıtlandı" olurdu ve o kanıt 35 ay sürüyor; bakiye eşiği ise
@@ -2298,8 +2320,14 @@ yazıyor (`manual pause via Telegram`), günlük zarar limitiyle karışmaz.
 
 **Kırmızı çizgi (2026-09-12'de DÜZELTİLDİ — önceki iki sürüm de YANLIŞTI):**
 
-  **TEPE equity'nin %60 altına inerse DUR ve bak.**
-  (tepe $306 iken → **$122**. Tepe büyüdükçe çizgi de büyür.)
+  **BİRİM DEĞER tepeden %60 düşerse DUR ve bak** (`erken_uyari.py`, [2]).
+
+⚠ **2026-09-26: HAM equity'ye bakmak KÖR.** Ayda $150 eklenirken edge ölse bile
+equity dolar olarak büyümeye devam edebilir: $340 + $150/ay simülasyonunda
+ham-equity çizgisi 24 ayda yalnız **%20** çaldı (medyan 20. ay) ve bu arada
+yatırılan paranın medyan **$1,326'sı** eridi. Katkıdan bağımsız birim değerle
+(her işlem R × risk% ile bileşiklenir, fon pay fiyatı gibi) **%92**, medyan 9. ay.
+Eski "tepe equity × %40" okuması yalnız katkı YOKKEN doğrudur.
 
 ⚠ İKİ HATA DÜZELTİLDİ:
 
