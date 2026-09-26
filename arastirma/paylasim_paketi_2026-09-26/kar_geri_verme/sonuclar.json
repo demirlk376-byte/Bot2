@@ -1,0 +1,315 @@
+{
+ "pnl_yeniden_kurulum": {
+  "n": 936,
+  "tolerans_usd": 0.01,
+  "uyusmayan": 0,
+  "max_fark_usd": 3.4269760362803936e-09
+ },
+ "cikis_eslesme": {
+  "tip_eslesen": 936,
+  "bar_eslesen_kayit_eksi_2s": 906,
+  "cift_dokunus": 1
+ },
+ "R_net": {
+  "ort": 0.19650608675985254,
+  "toplam": 183.92969720722198
+ },
+ "mfe_tablo": {
+  "donchian": {
+   "n": 412,
+   "0.5R_gorup_zarar_kesin": 118,
+   "0.5R_gorup_zarar_ust": 118,
+   "0.5R_gorup_kar_kesin": 172,
+   "0.5R_gorulen_kesin": 290,
+   "sl_0.5R_hic_ulasmayan": 115,
+   "sl_n": 206,
+   "1.0R_gorup_zarar_kesin": 53,
+   "1.0R_gorup_zarar_ust": 53,
+   "1.0R_gorup_kar_kesin": 166,
+   "1.0R_gorulen_kesin": 219,
+   "sl_1.0R_hic_ulasmayan": 166,
+   "1.5R_gorup_zarar_kesin": 18,
+   "1.5R_gorup_zarar_ust": 18,
+   "1.5R_gorup_kar_kesin": 158,
+   "1.5R_gorulen_kesin": 176,
+   "sl_1.5R_hic_ulasmayan": 192
+  },
+  "mean_rev": {
+   "n": 156,
+   "0.5R_gorup_zarar_kesin": 35,
+   "0.5R_gorup_zarar_ust": 35,
+   "0.5R_gorup_kar_kesin": 76,
+   "0.5R_gorulen_kesin": 111,
+   "sl_0.5R_hic_ulasmayan": 44,
+   "sl_n": 69,
+   "1.0R_gorup_zarar_kesin": 12,
+   "1.0R_gorup_zarar_ust": 12,
+   "1.0R_gorup_kar_kesin": 71,
+   "1.0R_gorulen_kesin": 83,
+   "sl_1.0R_hic_ulasmayan": 63,
+   "1.5R_gorup_zarar_kesin": 4,
+   "1.5R_gorup_zarar_ust": 4,
+   "1.5R_gorup_kar_kesin": 59,
+   "1.5R_gorulen_kesin": 63,
+   "sl_1.5R_hic_ulasmayan": 68
+  },
+  "squeeze": {
+   "n": 368,
+   "0.5R_gorup_zarar_kesin": 107,
+   "0.5R_gorup_zarar_ust": 108,
+   "0.5R_gorup_kar_kesin": 149,
+   "0.5R_gorulen_kesin": 256,
+   "sl_0.5R_hic_ulasmayan": 107,
+   "sl_n": 201,
+   "1.0R_gorup_zarar_kesin": 58,
+   "1.0R_gorup_zarar_ust": 59,
+   "1.0R_gorup_kar_kesin": 144,
+   "1.0R_gorulen_kesin": 202,
+   "sl_1.0R_hic_ulasmayan": 152,
+   "1.5R_gorup_zarar_kesin": 19,
+   "1.5R_gorup_zarar_ust": 20,
+   "1.5R_gorup_kar_kesin": 132,
+   "1.5R_gorulen_kesin": 151,
+   "sl_1.5R_hic_ulasmayan": 187
+  },
+  "HEPSI": {
+   "n": 936,
+   "0.5R_gorup_zarar_kesin": 260,
+   "0.5R_gorup_zarar_ust": 261,
+   "0.5R_gorup_kar_kesin": 397,
+   "0.5R_gorulen_kesin": 657,
+   "sl_0.5R_hic_ulasmayan": 266,
+   "sl_n": 476,
+   "1.0R_gorup_zarar_kesin": 123,
+   "1.0R_gorup_zarar_ust": 124,
+   "1.0R_gorup_kar_kesin": 381,
+   "1.0R_gorulen_kesin": 504,
+   "sl_1.0R_hic_ulasmayan": 381,
+   "1.5R_gorup_zarar_kesin": 41,
+   "1.5R_gorup_zarar_ust": 42,
+   "1.5R_gorup_kar_kesin": 349,
+   "1.5R_gorulen_kesin": 390,
+   "sl_1.5R_hic_ulasmayan": 447
+  }
+ },
+ "saatlik": {
+  "isaret": 28759,
+  "son_deger": 791666.2027103185,
+  "son_gerceklesmis": 791666.2027103185,
+  "csv_toplam_pnl": 791666.2027103184,
+  "veri_sonu_acik": 0
+ },
+ "maxdd_saatlik": 0.47250069204247325,
+ "maxdd_gerceklesmis_saatlik": 0.4599764135153621,
+ "stop_ek_kayip_oran": {
+  "0.5": -0.039013290333198065,
+  "0.95": 0.0,
+  "0.99": 0.0,
+  "min": -0.376076444911786
+ },
+ "boyutlama_dogrulama": {
+  "taban_orani_medyan": 0.9999999992944573,
+  "p05": 0.9871495419742025,
+  "p95": 1.0158024664799767
+ },
+ "U_grup": {
+  "0_acik_pozisyon_yok": {
+   "n": 375,
+   "R_ort": 0.17848057160937772,
+   "WR": 0.43733333333333335,
+   "ayni_yon_ort": 0.0,
+   "pnl": 241323.83637744928
+  },
+  "1_acik_kar_yok_veya_zarar": {
+   "n": 169,
+   "R_ort": 0.3388419955111752,
+   "WR": 0.47337278106508873,
+   "ayni_yon_ort": 0.8224852071005917,
+   "pnl": 60789.279723302665
+  },
+  "2_acik_kar_0-3%": {
+   "n": 197,
+   "R_ort": 0.2050721171229787,
+   "WR": 0.4213197969543147,
+   "ayni_yon_ort": 0.9238578680203046,
+   "pnl": 222339.13748222834
+  },
+  "3_acik_kar_>3%": {
+   "n": 195,
+   "R_ort": 0.09915886430302513,
+   "WR": 0.38461538461538464,
+   "ayni_yon_ort": 1.594871794871795,
+   "pnl": 257213.94912733824
+  }
+ },
+ "U_grup_fark_3_eksi_0": {
+  "fark": -0.07932170730635259,
+  "ci95_hafta": [
+   -0.36672248983960826,
+   0.23601687023892826
+  ]
+ },
+ "U>3%_ayni_yon": {
+  "ayni yonde acik yok": {
+   "n": 26,
+   "R_ort": 0.37672093201926127
+  },
+  "ayni yonde acik var": {
+   "n": 169,
+   "R_ort": 0.05645700773129647
+  }
+ },
+ "dususler": [
+  {
+   "derinlik": 0.47250069204247325,
+   "tutar": -706268.9223324393,
+   "tepe": {
+    "zaman": "2026-06-06 05:00:00+00:00",
+    "deger": 1494746.8527071544,
+    "acik": 1,
+    "long_oran": 0.0,
+    "short_oran": 0.34567042035747847,
+    "stop_ek_kayip_oran": -0.05418467337070342,
+    "gerceklesmemis_oran": 0.01927879095136478
+   },
+   "dip": {
+    "zaman": "2026-07-18 17:00:00+00:00",
+    "deger": 788477.930374715,
+    "acik": 2,
+    "long_oran": 0.0,
+    "short_oran": 3.4852871141767796,
+    "stop_ek_kayip_oran": -0.013277136257369808,
+    "gerceklesmemis_oran": -0.06669981761602266
+   },
+   "toparlanma": null,
+   "A_tepede_acik_fiyat": -81006.71435725338,
+   "A_n": 1,
+   "B_sonradan_acilan_fiyat": -617695.5078521091,
+   "B_n": 29,
+   "C_ucret": -7566.700123073088,
+   "kayma_fiyat_icinde_bilgi": -50652.523466263374,
+   "aciklanamayan": -3.6088749766349792e-09,
+   "B_kaybedenlerde_U_kaynakli": -3005.1201894756887,
+   "B_kazananlarda_U_kaynakli": 708.8242781380948,
+   "B_U_pay_medyan": 0.0,
+   "B_ayni_yon_medyan": 0.0,
+   "B_R_ort": -0.5526019016437418
+  },
+  {
+   "derinlik": 0.4253616122175573,
+   "tutar": -29605.22891837295,
+   "tepe": {
+    "zaman": "2024-01-23 14:00:00+00:00",
+    "deger": 69600.14272099132,
+    "acik": 7,
+    "long_oran": 0.0,
+    "short_oran": 6.190402102010278,
+    "stop_ek_kayip_oran": -0.34440648900350246,
+    "gerceklesmemis_oran": 0.10871317672576158
+   },
+   "dip": {
+    "zaman": "2024-04-13 07:00:00+00:00",
+    "deger": 39994.91380261837,
+    "acik": 5,
+    "long_oran": 0.0,
+    "short_oran": 2.475163687781697,
+    "stop_ek_kayip_oran": -0.1129258559278041,
+    "gerceklesmemis_oran": -0.07989667033118061
+   },
+   "toparlanma": "2024-08-04 18:00:00+00:00",
+   "A_tepede_acik_fiyat": -17901.97005197639,
+   "A_n": 7,
+   "B_sonradan_acilan_fiyat": -10834.577061726402,
+   "B_n": 72,
+   "C_ucret": -868.6818046698603,
+   "kayma_fiyat_icinde_bilgi": -6014.181224443868,
+   "aciklanamayan": -2.9831426218152046e-10,
+   "B_kaybedenlerde_U_kaynakli": -1444.0555805125302,
+   "B_kazananlarda_U_kaynakli": 1580.308818551536,
+   "B_U_pay_medyan": 0.0,
+   "B_ayni_yon_medyan": 0.0,
+   "B_R_ort": 0.065110113311323
+  },
+  {
+   "derinlik": 0.4219953675913881,
+   "tutar": -513289.58945068065,
+   "tepe": {
+    "zaman": "2026-02-06 01:00:00+00:00",
+    "deger": 1216339.393440194,
+    "acik": 2,
+    "long_oran": 0.0,
+    "short_oran": 0.7712607155579444,
+    "stop_ek_kayip_oran": -0.07506242946162045,
+    "gerceklesmemis_oran": 0.0041140946043036275
+   },
+   "dip": {
+    "zaman": "2026-05-04 05:00:00+00:00",
+    "deger": 703049.8039895133,
+    "acik": 1,
+    "long_oran": 0.0,
+    "short_oran": 1.1736357825758066,
+    "stop_ek_kayip_oran": -0.050880388568637004,
+    "gerceklesmemis_oran": 0.011608471995656924
+   },
+   "toparlanma": "2026-06-02 23:00:00+00:00",
+   "A_tepede_acik_fiyat": -91326.09590983558,
+   "A_n": 2,
+   "B_sonradan_acilan_fiyat": -407998.9065175403,
+   "B_n": 56,
+   "C_ucret": -13964.587023302625,
+   "kayma_fiyat_icinde_bilgi": -97748.68283744705,
+   "aciklanamayan": -2.153683453798294e-09,
+   "B_kaybedenlerde_U_kaynakli": -8152.536191776283,
+   "B_kazananlarda_U_kaynakli": 5715.9909040005095,
+   "B_U_pay_medyan": 0.0,
+   "B_ayni_yon_medyan": 0.0,
+   "B_R_ort": -0.19999529752963446
+  }
+ ],
+ "U_pay_girislerde": {
+  "0.05": -0.022191954809285153,
+  "0.25": 0.0,
+  "0.5": 0.0,
+  "0.75": 0.023360157509176048,
+  "0.95": 0.06376952368794836
+ },
+ "U_pay_dilim_R": {
+  "(-0.0935, 0.0]": {
+   "n": 544,
+   "R_ort": 0.22829873454945818,
+   "pnl": 302113.1161007518
+  },
+  "(0.0, 0.00224]": {
+   "n": 18,
+   "R_ort": 0.18041378993437787,
+   "pnl": -69773.4141080869
+  },
+  "(0.00224, 0.0314]": {
+   "n": 187,
+   "R_ort": 0.200405056126984,
+   "pnl": 325577.0399779422
+  },
+  "(0.0314, 0.196]": {
+   "n": 187,
+   "R_ort": 0.10166840587033092,
+   "pnl": 223749.46073971124
+  }
+ },
+ "filtre": {
+  "filtresiz_donchian": 1107,
+  "filtreli_donchian": 412,
+  "ortak": 286,
+  "elenen_oran_alti": 801,
+  "yerinden_oran_ustu": 20,
+  "oran_bilinmeyen": 0,
+  "yalniz_filtreli": 126,
+  "yalniz_filtreli_oran_ustu": 126,
+  "yalniz_filtreli_eskide_slot_dolu": 118,
+  "yerinden_yenide_slot_dolu": 20,
+  "yalniz_filtreli_sebep": {
+   "yuva dolu: filtrenin eledigi islem": 118,
+   "aciklanamadi (farkli risk/CAP/TRX: marjin veya koltuk olabilir)": 6,
+   "eskide 2 ardisik zarar sogumasi": 2
+  }
+ }
+}
