@@ -261,6 +261,54 @@ def rapor(s: dict, risk: float, cap: float, ilk: str | None, son: str | None) ->
     return "\n".join(L)
 
 
+def ay_basi_equity(db: str, paper: bool = False) -> dict[str, float]:
+    """Her ayın İLK gününün başlangıç equity'si (daily_stats, gün başında yazılır)."""
+    try:
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=15)
+        satir = con.execute("SELECT date, starting_balance FROM daily_stats WHERE is_paper=?"
+                            " ORDER BY date", (1 if paper else 0,)).fetchall()
+        con.close()
+    except sqlite3.Error:
+        return {}
+    out: dict[str, float] = {}
+    for gun, bakiye in satir:
+        if bakiye and str(gun)[:7] not in out:
+            out[str(gun)[:7]] = float(bakiye)
+    return out
+
+
+def aylik_tablo(islemler: list[dict], ay_basi: dict[str, float]) -> str:
+    """GERÇEK para: defterdeki gerçekleşen PnL (ücret dahil, açık pozisyon hariç), tüm
+    kollar. % = ay PnL / ay başı equity — ay içi katkı boyutu büyütür, yaklaşık okunur."""
+    aylar: dict[str, list[dict]] = {}
+    for t in islemler:
+        aylar.setdefault(t["exit_time"][:7], []).append(t)
+    L = ["", f"  {'ay':<8s} {'işlem':>5s} {'WR':>5s} {'top R':>7s} {'PnL $':>9s}"
+             f" {'ay başı $':>10s} {'≈ ay %':>8s}"]
+    carpim, n_yuzde, top = 1.0, 0, 0.0
+    for ay in sorted(aylar):
+        ts = aylar[ay]
+        pnl = sum(t["pnl_usdt"] for t in ts)
+        Rs = [r for r in (r_net(t) for t in ts) if r is not None]
+        wr = sum(1 for t in ts if t["pnl_usdt"] > 0) / len(ts) * 100
+        bas = ay_basi.get(ay)
+        yuzde = pnl / bas * 100 if bas else None
+        if yuzde is not None:
+            carpim *= 1 + yuzde / 100
+            n_yuzde += 1
+        top += pnl
+        L.append(f"  {ay:<8s} {len(ts):>5d} {wr:>4.0f}% {sum(Rs):>+7.2f} {pnl:>+9.2f}"
+                 f" {(f'{bas:,.2f}' if bas else '—'):>10s}"
+                 f" {(f'{yuzde:+.1f}%' if yuzde is not None else '—'):>8s}")
+    L.append(f"  {'TOPLAM':<8s} {len(islemler):>5d} {'':>5s} {'':>7s} {top:>+9.2f}")
+    if n_yuzde:
+        L.append(f"  aylık ortalama (bileşik, {n_yuzde} ay): %{(carpim ** (1 / n_yuzde) - 1) * 100:+.1f}"
+                 f"  — İKİZ TEST ~%10; ileriye gerçekçi ~%6 (edge %75)")
+    L.append("  ⚠ ay içi katkı ve açık pozisyonlar % sütununu kaydırır; defter geçmişte borsadan")
+    L.append("    fazla yazmıştı (kar_farki.py). Kesin sayı için borsa: telegram /status.")
+    return "\n".join(L)
+
+
 def kisa_ozet(db: str = DB_VARSAYILAN, risk: float | None = None,
               cap: float | None = None) -> str:
     risk, cap = _ayarlar(risk, cap)
@@ -286,6 +334,7 @@ def main() -> None:
     ap.add_argument("--bas", help="bu tarihten sonra AÇILAN işlemler (YYYY-AA-GG)")
     ap.add_argument("--risk", type=float, help="işlem başı risk (varsayılan .env)")
     ap.add_argument("--cap", type=float, help="POSITION_CAP_FRACTION (varsayılan .env)")
+    ap.add_argument("--aylik", action="store_true", help="ay ay gerçekleşen kâr tablosu")
     a = ap.parse_args()
     if not os.path.exists(a.db):
         raise SystemExit(f"✗ {a.db} yok. /opt/bot2 içinde çalıştır ya da --db ver.")
@@ -295,6 +344,8 @@ def main() -> None:
     ilk = islemler[0]["entry_time"] if islemler else None
     son = islemler[-1]["exit_time"] if islemler else None
     print(rapor(s, risk, cap, ilk, son))
+    if a.aylik:
+        print(aylik_tablo(islemler, ay_basi_equity(a.db, a.paper)))
 
 
 if __name__ == "__main__":

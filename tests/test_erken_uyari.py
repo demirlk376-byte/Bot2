@@ -135,6 +135,16 @@ def test_ESKI_yabanci_kol_ve_eski_stop_hatasi_KALICI_uyari_URETMEZ():
     assert E.hukum(s) == "NORMAL"
 
 
+def test_aylik_tablo_ay_basi_equity_ile_yuzde():
+    islemler = [_islem(pnl=20.0, bit="2026-08-05T00:00:00+00:00"),
+                _islem(pnl=-10.0, bit="2026-08-20T00:00:00+00:00"),
+                _islem(pnl=30.0, bit="2026-09-03T00:00:00+00:00")]
+    m = E.aylik_tablo(islemler, {"2026-08": 200.0, "2026-09": 250.0})
+    assert "+5.0%" in m and "+12.0%" in m      # 10/200, 30/250
+    assert "+40.00" in m                        # toplam PnL
+    assert "—" in E.aylik_tablo(islemler, {})   # daily_stats yoksa % boş, çökmez
+
+
 def test_veritabani_okuma_filtreleri():
     yol = os.path.join(tempfile.mkdtemp(prefix="erken-uyari-"), "trades.db")
     c = sqlite3.connect(yol)
