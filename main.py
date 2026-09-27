@@ -347,6 +347,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
                     )
                     web_dashboard.add_signal(ctx.symbol, "BB", bb_combined.direction,
                                              mr_sig.reason, f"block:rejim={regime}")
+                    _sayac_artir("bb_engel")   # yalnız sayaç (sessizlik özeti)
                 elif bb_combined.direction != 0:
                     result = await executor.execute_signal(bb_combined, atr_val)
                     if result.success and result.position:
@@ -367,6 +368,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
                         logger.warning("[%s] BB skipped: %s", ctx.symbol, result.error)
                         web_dashboard.add_signal(ctx.symbol, "BB", bb_combined.direction,
                                                  mr_sig.reason, f"block:{result.error}")
+                        _sayac_artir("yurutme_engel")   # yalnız sayaç
                 else:
                     # direction=0: strategy didn't generate a signal
                     web_dashboard.add_signal(ctx.symbol, "BB", 0, mr_sig.reason)
@@ -631,6 +633,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
                 # Independent slot (symbol:squeeze), uses bo_allowed gate (trending
                 # markets are fine for momentum — ranging markets suppress breakouts).
                 if ctx.squeeze_strategy is not None and bo_allowed:
+                    _squeeze_rejim_acik(ctx.symbol, regime, adx_val)   # yalnız log
                     sq_sig = ctx.squeeze_strategy.analyze(df, atr_val)
                     if sq_sig.direction != 0:
                         sq_combined = CombinedSignal(
@@ -692,11 +695,14 @@ def make_on_candle_close(ctx: "SymbolContext"):
                             logger.warning("[%s] Squeeze skipped: %s", ctx.symbol, result.error)
                             web_dashboard.add_signal(ctx.symbol, "Squeeze", sq_sig.direction,
                                                      sq_sig.reason, f"block:{result.error}")
+                            _sayac_artir("yurutme_engel")   # yalnız sayaç
                     else:
                         logger.debug("[%s] squeeze: %s", ctx.symbol, sq_sig.reason)
                         web_dashboard.add_signal(ctx.symbol, "Squeeze", 0, sq_sig.reason)
                 elif ctx.squeeze_strategy is not None:
                     web_dashboard.add_signal(ctx.symbol, "Squeeze", 0, f"block:rejim={regime}")
+                    # yalnız log/sayaç: durum DEĞİŞİNCE log + gölge sinyal kontrolü
+                    _squeeze_rejim_engel(ctx, regime, adx_val, df, atr_val)
             except Exception as _se:
                 logger.error("[%s] Squeeze sleeve error: %s", ctx.symbol, _se)
 
@@ -794,6 +800,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
                             ctx.symbol,
                             None if df_4h is None or not len(df_4h) else df_4h.index[-1],
                             expected_4h_open)
+                        _sayac_artir("donch_4h_bayat")   # yalnız sayaç
                     elif df_4h.index[-1] == ctx.donchian_last_4h:
                         logger.debug("[%s] donchian: 4h bar %s already analyzed",
                                      ctx.symbol, ctx.donchian_last_4h)
@@ -803,12 +810,14 @@ def make_on_candle_close(ctx: "SymbolContext"):
                                      config.strategy.atr_period).iloc[-1]
                         if not (pd.isna(atr_4h) or atr_4h <= 0):
                             dch_sig = ctx.donchian_strategy.analyze(df_4h, float(atr_4h))
+                            _sayac_artir("donch_analiz")   # yalnız sayaç
                             if dch_sig.direction != 0 and not _donchian_mtf_ok(
                                     df_4h, dch_sig.direction):
                                 logger.info("[%s] Donchian MTF: günlük trend ters "
                                             "(dir=%d), atlandı", ctx.symbol, dch_sig.direction)
                                 web_dashboard.add_signal(ctx.symbol, "Donch", 0,
                                                          "MTF: günlük trend ters")
+                                _sayac_artir("donch_mtf")   # yalnız sayaç (log yukarıda)
                             elif dch_sig.direction != 0:
                                 dch_combined = CombinedSignal(
                                     direction=dch_sig.direction,
@@ -851,8 +860,12 @@ def make_on_candle_close(ctx: "SymbolContext"):
                                     logger.warning("[%s] Donchian skipped: %s", ctx.symbol, result.error)
                                     web_dashboard.add_signal(ctx.symbol, "Donch", dch_sig.direction,
                                                              dch_sig.reason, f"block:{result.error}")
+                                    _sayac_artir("yurutme_engel")   # yalnız sayaç
                             else:
                                 web_dashboard.add_signal(ctx.symbol, "Donch", 0, dch_sig.reason)
+                                # yalnız log/sayaç: HAM kırılım vardı ama filtre eledi
+                                # ise INFO; "no breakout" vb. sessiz kalır.
+                                _donch_elenme_kaydet(ctx.symbol, dch_sig.reason)
             except Exception as _se:
                 logger.error("[%s] Donchian sleeve error: %s", ctx.symbol, _se)
 
@@ -1154,6 +1167,184 @@ def _donchian_mtf_ok(df_4h, direction: int) -> bool:
         return (direction == 1 and daily_up) or (direction == -1 and not daily_up)
     except Exception:
         return True   # hata olursa filtreleme (mevcut davranış)
+
+
+# ── SESSİZLİK GÖRÜNÜRLÜĞÜ (yalnız log + sayaç) ──────────────────────────────
+# 2026-09-27: canlıda 4-5 gün işlem açılmadı ve günlükte (journal) NEDENİ
+# yoktu — Donchian filtre gerekçeleri ve squeeze rejim engeli yalnızca web
+# paneline gidiyordu. Aşağıdakiler SADECE log/sayaç üretir: hiçbir karar
+# koşulunu, çağrı sırasını ya da işlem durumunu DEĞİŞTİRMEZ. Her biri kendi
+# try/except'i içinde; istisna kol mantığına, emre ya da heartbeat'e SIZMAZ.
+# Ağ çağrısı yok, DB yazımı yok, işlem yolunda yeni await yok.
+_sessizlik_sayac: dict[str, int] = {}          # heartbeat'te okunup sıfırlanır
+_squeeze_rejim_engelli: dict[str, bool] = {}   # coin -> son görülen kapı durumu
+_SESSIZLIK_UYARI_SN = 6 * 86400                # 6+ gün girişsiz -> ipucu satırı
+
+# strategies/donchian.py'nin "HAM KIRILIM YOKTU" gerekçeleri. Bunlar ELENME
+# değil (piyasa kanalı kırmamış) — loglanmaz, sayılmaz. Buradakiler dışındaki
+# her direction=0 gerekçesi = kırılım VARDI ama bir filtre eledi (hacim,
+# EMA200, teyit/retest, mum kalitesi, chase, ADX, OBV, ATR genişleme).
+_DONCH_KIRILIM_YOK = (
+    "no breakout", "insufficient data", "ATR not available", "EMA200 not ready",
+    "degenerate channel", "kirilim basarisizligi yok", "supurme+reclaim yok",
+)
+
+
+def _sayac_artir(anahtar: str, n: int = 1) -> None:
+    """Sessizlik sayacını artır. ASLA istisna atmaz."""
+    try:
+        _sessizlik_sayac[anahtar] = _sessizlik_sayac.get(anahtar, 0) + n
+    except Exception as e:
+        logger.debug("sessizlik sayacı: %s", e)
+
+
+def _donch_elenme_turu(reason) -> "str | None":
+    """Donchian direction=0 gerekçesini sınıflar (SAF).
+    None = ham kırılım yoktu · 'hacim' = hacim filtresi eledi · 'diger' = başka
+    filtre eledi. MTF reddi ayrı dalda sayılır (strateji değil main.py kararı)."""
+    r = str(reason or "").strip()
+    if not r or r.startswith(_DONCH_KIRILIM_YOK):
+        return None
+    if r.startswith("hacim"):
+        return "hacim"
+    return "diger"
+
+
+def _donch_elenme_kaydet(symbol: str, reason) -> None:
+    """Ham kırılım filtreye takıldıysa INFO log + sayaç; değilse hiçbir şey.
+    Coin başına en fazla 4 saatte bir çağrılır (4h bar). ASLA istisna atmaz."""
+    try:
+        tur = _donch_elenme_turu(reason)
+        if tur is None:
+            return
+        _sayac_artir(f"donch_{tur}")
+        logger.info("[%s] Donchian elendi: %s", symbol, reason)
+    except Exception as e:
+        logger.debug("donchian elenme kaydı: %s", e)
+
+
+def _squeeze_rejim_acik(symbol: str, regime: str, adx_val: float) -> None:
+    """Squeeze rejim kapısı AÇIK görüldü. Yalnız ENGELLİ -> AÇIK geçişinde log
+    (her saat her coin için DEĞİL). ASLA istisna atmaz."""
+    try:
+        if _squeeze_rejim_engelli.get(symbol, False):
+            logger.info("[%s] Squeeze rejim kapısı AÇILDI (rejim=%s, ADX=%.1f)",
+                        symbol, regime, adx_val)
+        _squeeze_rejim_engelli[symbol] = False
+    except Exception as e:
+        logger.debug("squeeze rejim durumu: %s", e)
+
+
+def _squeeze_rejim_engel(ctx: "SymbolContext", regime: str, adx_val: float,
+                         df, atr_val: float) -> None:
+    """Squeeze rejim kapısı ENGELLİ (bo_allowed=False). Sayaç + yalnız AÇIK ->
+    ENGELLİ geçişinde log. Ek olarak GÖLGE değerlendirme: analyze() durumsuz
+    (saf) bir fonksiyon; sonucu YALNIZ log/sayaca gider, karar yoluna, slota ya
+    da emre GİRMEZ. Kapı olmasa sinyal VAR mıydı sorusunu cevaplar — "rejim
+    engeli işlemi kaçırdı mı" ancak böyle görülür. ASLA istisna atmaz."""
+    try:
+        _sayac_artir("squeeze_rejim")
+        if not _squeeze_rejim_engelli.get(ctx.symbol, False):
+            logger.info("[%s] Squeeze rejim kapısı ENGELLİ (rejim=%s, ADX=%.1f) — "
+                        "rejim dönene dek squeeze girişi yok",
+                        ctx.symbol, regime, adx_val)
+        _squeeze_rejim_engelli[ctx.symbol] = True
+        golge = ctx.squeeze_strategy.analyze(df, atr_val)
+        if golge.direction != 0:
+            _sayac_artir("squeeze_rejim_sinyal")
+            logger.info("[%s] Squeeze sinyali rejim kapısına takıldı "
+                        "(rejim=%s, ADX=%.1f): %s",
+                        ctx.symbol, regime, adx_val, golge.reason)
+    except Exception as e:
+        logger.debug("squeeze rejim engeli kaydı: %s", e)
+
+
+def _sure_yaz(sn: float) -> str:
+    """Saniye -> '5g 3sa' / '7sa 12dk' / '40dk' (SAF)."""
+    sn = max(0, int(sn))
+    gun, kalan = divmod(sn, 86400)
+    saat, kalan = divmod(kalan, 3600)
+    if gun:
+        return f"{gun}g {saat}sa"
+    if saat:
+        return f"{saat}sa {kalan // 60}dk"
+    return f"{kalan // 60}dk"
+
+
+def _sessizlik_ozeti_bicimle(sayac: dict, son_giris_sn: "float | None",
+                             pencere_saat: "float | None" = None) -> str:
+    """Heartbeat'e eklenen sessizlik özeti (SAF, test edilebilir).
+
+    sayac        : önceki heartbeat'ten beri _sessizlik_sayac kopyası
+    son_giris_sn : son girişin üzerinden geçen saniye; None = bilinmiyor (atlanır)
+    pencere_saat : sayaç penceresi (heartbeat aralığı), başlıkta gösterilir
+    ⚠ Telegram HTML modunda gönderiliyor: çıktıda '<', '>', '&' OLMAMALI."""
+    s = sayac or {}
+
+    def g(k):
+        try:
+            return int(s.get(k, 0) or 0)
+        except Exception:
+            return 0
+
+    baslik = "Sessizlik"
+    if pencere_saat:
+        baslik += f" (son {pencere_saat:g}sa)"
+    parca = []
+    if son_giris_sn is not None:
+        parca.append(f"son giriş {_sure_yaz(son_giris_sn)} önce")
+    donch = (f"Donch 4h analiz {g('donch_analiz')}, elenen kırılım: hacim "
+             f"{g('donch_hacim')} / MTF {g('donch_mtf')} / diğer {g('donch_diger')}")
+    if g("donch_4h_bayat"):
+        donch += f", 4h bayat {g('donch_4h_bayat')}"
+    parca.append(donch)
+    parca.append(f"Squeeze rejim engeli {g('squeeze_rejim')} "
+                 f"(engellenen sinyal {g('squeeze_rejim_sinyal')})")
+    parca.append(f"BB engel {g('bb_engel')}")
+    parca.append(f"yürütme engeli {g('yurutme_engel')}")
+    ozet = f"{baslik}: " + " · ".join(parca)
+    if son_giris_sn is not None and son_giris_sn >= _SESSIZLIK_UYARI_SN:
+        ozet += ("\n⚠ 6+ gün işlem yok — "
+                 "'venv/bin/python saglik_kaniti.py 7' çalıştır")
+    return ozet
+
+
+async def _son_giris_yasi_sn() -> "float | None":
+    """Bu moddaki (canlı/paper) SON GİRİŞİN üzerinden geçen saniye. DB'den tek
+    satırlık OKUMA (LIMIT 1, 5 sn zaman aşımı); okunamazsa None. Yalnız
+    heartbeat'ten çağrılır — işlem yolunda değil."""
+    try:
+        if db is None:
+            return None
+        son = await asyncio.wait_for(
+            db.get_all_trades(limit=1, is_paper=config.exchange.paper_mode),
+            timeout=5)
+        if not son:
+            return None
+        t = datetime.fromisoformat(str(son[0].entry_time).replace("Z", "+00:00"))
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=timezone.utc)
+        return max(0.0, (datetime.now(timezone.utc) - t).total_seconds())
+    except Exception as e:
+        logger.debug("son giriş zamanı okunamadı: %s", e)
+        return None
+
+
+async def _sessizlik_ozeti_al(pencere_saat: "float | None" = None) -> str:
+    """Heartbeat için sessizlik özeti: son girişin yaşı + önceki heartbeat'ten
+    beri sayaçlar. Sayaçlar OKUNDUĞU ANDA sıfırlanır (kopya ile clear arasında
+    await yok → artış kaybolmaz). Özet günlüğe de yazılır. ASLA istisna atmaz;
+    hata olursa '' döner ve heartbeat eskisi gibi gider."""
+    try:
+        yas = await _son_giris_yasi_sn()
+        sayac = dict(_sessizlik_sayac)
+        _sessizlik_sayac.clear()
+        ozet = _sessizlik_ozeti_bicimle(sayac, yas, pencere_saat)
+        logger.info("Sessizlik özeti: %s", ozet.replace("\n", " | "))
+        return ozet
+    except Exception as e:
+        logger.debug("sessizlik özeti: %s", e)
+        return ""
 
 
 async def _update_trailing_stops(symbol: str, current_price: float, atr_val: float) -> None:
@@ -1625,6 +1816,8 @@ async def heartbeat_loop() -> None:
         since_tg += interval
         if (telegram or ntfy) and since_tg >= tg_every:
             since_tg = 0
+            # Neden işlem yok? özeti (log + mesaj); asla istisna atmaz.
+            ozet = await _sessizlik_ozeti_al(tg_every / 3600)
             try:
                 # ⚠ ESKİ HATA: burada get_balance() vardı = SERBEST bakiye
                 # (kilitli marj HARİÇ). Pozisyon açıkken heartbeat /status'tan
@@ -1655,6 +1848,8 @@ async def heartbeat_loop() -> None:
                     msg = (f"Bot çalışıyor · equity ${eq:,.2f} · yatırılan "
                            f"${inv:,.2f} · {etiket} ${kar:+,.2f} · açık {n_open} · "
                            f"gerçekleşmemiş ${upnl:+.2f}")
+                if ozet:
+                    msg = f"{msg}\n{ozet}"
                 if telegram:
                     await telegram.send_alert(msg, "INFO")
                 if ntfy:
