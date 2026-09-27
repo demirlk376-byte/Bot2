@@ -1,6 +1,6 @@
 # OI → Donchian kırılım kalitesi (önceden kayıt)
 
-**Durum: ÖNCEDEN KAYITLI, VPS KOŞUSU BEKLİYOR.**
+**Durum: VPS koşusu 2026-09-27 yapıldı → HÜKÜM C** (sonuç en altta). Tanımlar koşudan önce sabitlendi.
 - Canlı `trades.db` ve güncel `data/oi_log.csv` VPS'te.
 - Aşağıdaki tanımlar, eşikler ve karar kuralı **sonuç görülmeden** sabitlendi. Sonuçtan
   sonra değiştirilmez.
@@ -130,4 +130,48 @@ cd /opt/bot2 && git pull && venv/bin/python arastirma/oi_edge_test/oi_edge_audit
 
 ## Sonuç
 
-_(VPS çıktısı gelince eklenecek.)_
+**VPS koşusu (2026-09-27): HÜKÜM C — OI bu şekilde işe yaramıyor.**
+
+**Veri:**
+- OI kapsamı: 2026-07-29 21:46 → 2026-09-27 22:11, yani 60.0 gün.
+- 68.196 satır, 15 dk ızgara kapsamı %98.6, en büyük boşluk 16 dk.
+- Duplicate, bozuk kayıt ve sıçrama 0. Kalite **PASS**.
+- En büyük ardışık OI oranı ETH'de |ln| 1.215, BCH'de 1.146. İkisi de ×10 eşiğinin
+  (|ln| 2.303) altında.
+
+**Donchian işlemleri:**
+- Toplam 74, geçerli OI eşleşmesi **65**.
+- Geçersiz 9:
+  - 7'si OI başlangıcından önce açılmış.
+  - 2'sinde "coin için OI yok".
+- R güvenilmez: 0. Lookahead ihlali: **0**.
+
+**Primary test:**
+
+| grup | n | ort R | medyan | WR | PF | TP/SL/max-hold/diğer |
+|---|---|---|---|---|---|---|
+| OI_RISING (>0) | 24 | +0.078 | −1.003 | %33.3 | 1.13 | 6/13/1/4 |
+| OI_NOT_RISING (≤0) | 41 | +0.662 | +0.505 | %56.1 | 2.74 | 13/14/3/11 |
+
+- **delta_R −0.583.** Hafta-kümeli %95 GA [−1.230, +0.136] (9 hafta). İşlem düzeyi GA
+  [−1.305, +0.165].
+- **Spearman** rho −0.246, p 0.052 (kontrol).
+- Etki hipotezin **tersi** yönünde, ama istatistiksel olarak anlamlı değil. GA sıfırı
+  içeriyor, p > 0.05.
+- Kural gereği delta_R ≤ 0 → **C**.
+
+**Betimsel (karar değildir):**
+- long n=57, ort R +0.593 · short n=8, ort R −0.601.
+- Coin başına n=6-13; hepsi küçük.
+
+**Dikkat:**
+- n=65 kapının hemen üstünde. Yalnız 9 hafta ve tek bir piyasa dönemi (Ağustos-Eylül 2026).
+- "diğer" çıkışlar (15 işlem; büyük olasılıkla Telegram'dan elle kapatmalar) outcome'a
+  gürültü katıyor.
+- 09-22'de hacim filtresi devreye girdi; örneklem iki farklı giriş kuralını karıştırıyor.
+
+**Bu önceden kayıtlı hipotez kapandı.**
+- Ters yöndeki işaret yeni bir filtre önerisi **değildir**.
+- Test edilecekse ayrı, önceden kayıtlı bir hipotez ve yeni (bu 65 işlemden bağımsız)
+  veri gerekir.
+- Başka lookback veya eşik denenmedi.
