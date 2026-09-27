@@ -1,6 +1,6 @@
 # Canlı max_hold market çıkışlarının execution maliyeti (önceden kayıt)
 
-**Durum: VPS KOŞUSU BEKLİYOR.** Kurallar sonuç görülmeden sabitlendi.
+**Durum: VPS koşusu 2026-09-28 yapıldı → HÜKÜM D (15 ≤ n < 30, yalnız keşif).** Kurallar sonuç görülmeden sabitlendi.
 
 ## 1. Doğrulanan kod yolu
 
@@ -145,4 +145,47 @@ cd /opt/bot2 && git pull && venv/bin/python arastirma/max_hold_execution_audit/m
 
 ## Sonuç
 
-_(VPS çıktısı gelince eklenecek.)_
+**VPS koşusu: HÜKÜM D (keşif).** n=25; kapı 30. Karar verilmez.
+
+| | değer |
+|---|---|
+| aday / geçerli / elenen | 25 / 25 / 0 |
+| zamanlama tutarlılığı · lookahead | 25/25 → RECONSTRUCTION **PASS** · ihlal 0 |
+| kayma ort / medyan | **+1.32bp** / +0.06bp (std 5.93) |
+| p25 / p75 / p90 | −1.73 / +4.08 / +8.65 |
+| min / max | −12.59 / +16.10 |
+| %95 bootstrap GA | **[−0.95, +3.58]** (sıfırı içeriyor) |
+| kayma R (n=9) | ort +0.0098, medyan +0.0088 |
+| stop kaynağı | 16 işlemde güvenilir stop yok (eski kollar); 9 işlemde ATR ile doğrulanmış `sl_price` |
+| gecikme (mum kapanışı → exit_time) | ort 21.9 sn, medyan 24.8 sn |
+| market ücreti | 1.00bp → toplam çıkış maliyeti ort **+2.32bp** |
+| **PERFECT_FILL_SAVING_UPPER_BOUND** | **$+0.54** toplam · +0.0159R/işlem · yıllık **$+2.04** (canlı dönem 98 gün) |
+| canlı net PnL payı | net PnL $+136.30 → **%0.40** |
+| nominal–kayma | Spearman rho −0.187, p 0.371. Büyüklükle artmıyor. Q1→Q4 ort +2.03 / +1.43 / +1.27 / +0.44bp |
+
+**Kol bazında (hepsi n<10, betimsel):**
+
+| kol | n | ort kayma |
+|---|---|---|
+| orb | 9 | +2.96bp |
+| donchian | 7 | +3.51bp |
+| asia_bo | 3 | −1.79bp |
+| fvg | 2 | +0.48bp |
+| mean_rev | 2 | −8.11bp |
+| squeeze | 2 | +1.26bp |
+
+**Okuma (karar değil):**
+
+- **Örneklem ağırlıkla emekli kollardan.** Haziran 2026'daki gün-içi kollar (ORB, FVG,
+  Asia BO; max_hold 6h; BTC dahil) örneğin çoğunu oluşturuyor. Aktif kollardan yalnız
+  donchian 7 ve squeeze 2 var. Nominaller küçük ($60-$249).
+- **Maliyet çok küçük.** Kayma yaklaşık sıfır (GA sıfırı içeriyor). Kusursuz limit
+  dolumu varsayımında bile tasarruf 98 günde $0.54, yani yıllık yaklaşık $2. Bu, canlı
+  net kârın %0.40'ı.
+- **Önceki tahmin desteklenmiyor.** Eski "max_hold çıkışlarını limite çevir, kârın
+  ~%4.8'ini geri al" tahmini 15.85bp varsayımına dayanıyordu. Bu keşif verisi ona
+  yakın bir şey göstermiyor. Ölçülen toplam maliyet yaklaşık 2.3bp; üst sınır ~%0.4.
+- **Kesinleşme koşulu.** Hüküm D, çünkü n<30. Kurala göre A için GA > 0 ve üst sınır
+  ≥ %2 gerekiyordu. Bu veride ikisi de yok. n≥30 olduğunda aynı değerler kalırsa sonuç
+  kurala göre C'ye döner (üst sınır < %0.5 ve GA sıfırı içeriyor).
+- **Gölge limit deneyi (bölüm 5) şu an gerekmiyor.**
