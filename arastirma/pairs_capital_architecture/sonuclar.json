@@ -1,0 +1,44 @@
+{
+ "baseline_test": {
+  "final": 60623.27632999724,
+  "getiri": 5.062327632999724,
+  "cagr": 2.2124936169300047,
+  "maxdd": 0.4725006920422281,
+  "maxdd_usd": 54083.82459078717,
+  "en_kotu_ay": -0.2668689887892054,
+  "medyan_ay": 0.10124587059267309,
+  "pozitif_ay": 68.42105263157895,
+  "getiri_dd": 10.713905224391283,
+  "toparlanma_gun": NaN,
+  "pgr": 0.7588538475866751,
+  "sualti_gun": 548.4583333333334
+ },
+ "baseline_train": {
+  "final": 131096.58543327457,
+  "getiri": 12.109658543327457,
+  "cagr": 3.401872682076702,
+  "maxdd": 0.42536161221214563,
+  "maxdd_usd": 56443.19933165546,
+  "en_kotu_ay": -0.22464557666520668,
+  "medyan_ay": 0.14087628393484497,
+  "pozitif_ay": 71.42857142857143,
+  "getiri_dd": 28.46909122887155,
+  "toparlanma_gun": 194.16666666666666,
+  "pgr": 0.7299624375841706,
+  "sualti_gun": 621.1666666666666
+ },
+ "hukum": "B",
+ "robust": false,
+ "komsu_ciftler": [],
+ "useful": [],
+ "guclu": [],
+ "liq_hepsi": false,
+ "konsantr": false,
+ "ihlal": 0,
+ "fiz": "UNCERTAIN",
+ "bilinmeyen": [
+  "ALGO",
+  "DOT",
+  "ETC"
+ ]
+}
