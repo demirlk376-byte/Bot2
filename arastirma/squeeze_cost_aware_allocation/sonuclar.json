@@ -1,0 +1,776 @@
+{
+ "kosular": [
+  "A15",
+  "A5",
+  "B15",
+  "B5",
+  "C15",
+  "C5",
+  "R0"
+ ],
+ "R0": {
+  "n_ref": 936,
+  "n_r0": 936,
+  "birebir": true
+ },
+ "M": {
+  "A15": {
+   "TUM": {
+    "cagr": 2.686906848523909,
+    "maxdd": 0.4746042429152396,
+    "en_kotu_ay": -0.2679425368449403,
+    "sualti_gun": 1171.3333333333333,
+    "pgr": 0.7326133743282003,
+    "final": 720353.5299270522,
+    "getiri": 71.27843356589698,
+    "ret_std_saat": 0.010735842072641234,
+    "islem": 936,
+    "n_kol": {
+     "donchian": 412,
+     "squeeze": 368,
+     "mean_rev": 156
+    },
+    "ucret_usd": 51143.77827234409,
+    "kayma_usd": 352222.2099851089,
+    "funding_usd": 30367.456496571765,
+    "maliyet_usd": 433733.44475402473,
+    "risk_kol_pct": {
+     "donchian": 3.5159810605606125,
+     "squeeze": 3.3149644608067454,
+     "mean_rev": 3.4760364986948358
+    },
+    "squeeze_cap_baglayici": 100,
+    "squeeze_n": 368,
+    "yil": 3.2806297056810405
+   },
+   "TRAIN": {
+    "cagr": 3.2710434683027634,
+    "maxdd": 0.425754785545423,
+    "en_kotu_ay": -0.2273542762379016,
+    "sualti_gun": 621.25,
+    "pgr": 0.734919116701309,
+    "final": 123986.91857272103,
+    "getiri": 11.440530773835734,
+    "ret_std_saat": 0.011286636143980932,
+    "islem": 539,
+    "n_kol": {
+     "donchian": 235,
+     "squeeze": 222,
+     "mean_rev": 82
+    },
+    "ucret_usd": 5837.9757471056055,
+    "kayma_usd": 41518.86508675436,
+    "funding_usd": 2574.3695994531595,
+    "maliyet_usd": 49931.21043331313,
+    "risk_kol_pct": {
+     "donchian": 3.5162377817150614,
+     "squeeze": 3.216423530988703,
+     "mean_rev": 3.4478330763722207
+    },
+    "squeeze_cap_baglayici": 80,
+    "squeeze_n": 222,
+    "yil": 1.7363677846224048
+   },
+   "TEST": {
+    "cagr": 2.1262769331502835,
+    "maxdd": 0.4746042429152396,
+    "en_kotu_ay": -0.2679425368449403,
+    "sualti_gun": 548.5416666666666,
+    "pgr": 0.7640025573004681,
+    "final": 720353.5299270522,
+    "getiri": 4.81293629943443,
+    "ret_std_saat": 0.010081375445341942,
+    "islem": 397,
+    "n_kol": {
+     "donchian": 177,
+     "squeeze": 146,
+     "mean_rev": 74
+    },
+    "ucret_usd": 45305.8025252385,
+    "kayma_usd": 310703.3448983545,
+    "funding_usd": 27793.086897118606,
+    "maliyet_usd": 383802.2343207116,
+    "risk_kol_pct": {
+     "donchian": 3.5156402160900178,
+     "squeeze": 3.464800669160207,
+     "mean_rev": 3.5072889396469242
+    },
+    "squeeze_cap_baglayici": 20,
+    "squeeze_n": 146,
+    "yil": 1.5441478439425051
+   },
+   "red": 2
+  },
+  "A5": {
+   "TUM": {
+    "cagr": 3.6387891047907805,
+    "maxdd": 0.46221953085914846,
+    "en_kotu_ay": -0.25686048637425407,
+    "sualti_gun": 1166.9166666666667,
+    "pgr": 0.7228313453221801,
+    "final": 1533540.1234525123,
+    "getiri": 152.54186805616996,
+    "ret_std_saat": 0.010720302568750466,
+    "islem": 935,
+    "n_kol": {
+     "donchian": 412,
+     "squeeze": 367,
+     "mean_rev": 156
+    },
+    "ucret_usd": 97105.42371722547,
+    "kayma_usd": 385390.0416289771,
+    "funding_usd": 58790.22508396093,
+    "maliyet_usd": 541285.6904301635,
+    "risk_kol_pct": {
+     "donchian": 3.515900971868556,
+     "squeeze": 3.30767309720408,
+     "mean_rev": 3.47581749126217
+    },
+    "squeeze_cap_baglayici": 99,
+    "squeeze_n": 367,
+    "yil": 3.2806297056810405
+   },
+   "TRAIN": {
+    "cagr": 4.67929986489174,
+    "maxdd": 0.39401713057688426,
+    "en_kotu_ay": -0.2071378334829238,
+    "sualti_gun": 617.4166666666666,
+    "pgr": 0.7328588908162501,
+    "final": 203798.74900646115,
+    "getiri": 19.40483985480249,
+    "ret_std_saat": 0.011271102376263324,
+    "islem": 538,
+    "n_kol": {
+     "donchian": 235,
+     "squeeze": 221,
+     "mean_rev": 82
+    },
+    "ucret_usd": 8450.448269149874,
+    "kayma_usd": 33091.804102296985,
+    "funding_usd": 3902.833575859192,
+    "maliyet_usd": 45445.08594730605,
+    "risk_kol_pct": {
+     "donchian": 3.5161580569678135,
+     "squeeze": 3.2083613039546757,
+     "mean_rev": 3.4475527945529367
+    },
+    "squeeze_cap_baglayici": 79,
+    "squeeze_n": 221,
+    "yil": 1.7363677846224048
+   },
+   "TEST": {
+    "cagr": 2.6963157339748554,
+    "maxdd": 0.46221953085914846,
+    "en_kotu_ay": -0.25686048637425407,
+    "sualti_gun": 547.7916666666666,
+    "pgr": 0.7428881831267152,
+    "final": 1533540.1234525123,
+    "getiri": 6.528689241321247,
+    "ret_std_saat": 0.010065733089048342,
+    "islem": 397,
+    "n_kol": {
+     "donchian": 177,
+     "squeeze": 146,
+     "mean_rev": 74
+    },
+    "ucret_usd": 88654.97544807558,
+    "kayma_usd": 352298.2375266801,
+    "funding_usd": 54887.39150810175,
+    "maliyet_usd": 495840.6044828574,
+    "risk_kol_pct": {
+     "donchian": 3.5155596441943993,
+     "squeeze": 3.458001222602152,
+     "mean_rev": 3.507137830858887
+    },
+    "squeeze_cap_baglayici": 20,
+    "squeeze_n": 146,
+    "yil": 1.5441478439425051
+   },
+   "red": 3
+  },
+  "B15": {
+   "TUM": {
+    "cagr": 1.9957299770894354,
+    "maxdd": 0.5651418938581961,
+    "en_kotu_ay": -0.2792844296198058,
+    "sualti_gun": 1170.4166666666667,
+    "pgr": 0.7655152624097397,
+    "final": 364246.423355547,
+    "getiri": 35.57874479091789,
+    "ret_std_saat": 0.010960457484959402,
+    "islem": 936,
+    "n_kol": {
+     "donchian": 412,
+     "squeeze": 368,
+     "mean_rev": 156
+    },
+    "ucret_usd": 30064.646622894736,
+    "kayma_usd": 209139.78033385618,
+    "funding_usd": 14304.685227849595,
+    "maliyet_usd": 253509.11218460053,
+    "risk_kol_pct": {
+     "donchian": 2.639136212752124,
+     "squeeze": 4.309393998162604,
+     "mean_rev": 3.4784253031315995
+    },
+    "squeeze_cap_baglayici": 219,
+    "squeeze_n": 368,
+    "yil": 3.2806297056810405
+   },
+   "TRAIN": {
+    "cagr": 2.082224205421959,
+    "maxdd": 0.5651418938581961,
+    "en_kotu_ay": -0.2792844296198058,
+    "sualti_gun": 616.8333333333334,
+    "pgr": 0.7955432053966169,
+    "final": 70309.59428507833,
+    "getiri": 6.060705447741477,
+    "ret_std_saat": 0.01105819303273639,
+    "islem": 539,
+    "n_kol": {
+     "donchian": 235,
+     "squeeze": 222,
+     "mean_rev": 82
+    },
+    "ucret_usd": 4111.852409279047,
+    "kayma_usd": 29438.1018941332,
+    "funding_usd": 998.802297720252,
+    "maliyet_usd": 34548.756601132496,
+    "risk_kol_pct": {
+     "donchian": 2.6395264804752805,
+     "squeeze": 4.04250224110582,
+     "mean_rev": 3.453014192060845
+    },
+    "squeeze_cap_baglayici": 157,
+    "squeeze_n": 222,
+    "yil": 1.7363677846224048
+   },
+   "TEST": {
+    "cagr": 1.9023316572548792,
+    "maxdd": 0.45439360662431083,
+    "en_kotu_ay": -0.2633121813618935,
+    "sualti_gun": 551.9583333333334,
+    "pgr": 0.7582948065960614,
+    "final": 364246.423355547,
+    "getiri": 4.182625677854447,
+    "ret_std_saat": 0.010850317730053542,
+    "islem": 397,
+    "n_kol": {
+     "donchian": 177,
+     "squeeze": 146,
+     "mean_rev": 74
+    },
+    "ucret_usd": 25952.794213615693,
+    "kayma_usd": 179701.67843972304,
+    "funding_usd": 13305.882930129343,
+    "maliyet_usd": 218960.35558346807,
+    "risk_kol_pct": {
+     "donchian": 2.638618060690307,
+     "squeeze": 4.715215710947578,
+     "mean_rev": 3.5065835613451375
+    },
+    "squeeze_cap_baglayici": 62,
+    "squeeze_n": 146,
+    "yil": 1.5441478439425051
+   },
+   "red": 2
+  },
+  "B5": {
+   "TUM": {
+    "cagr": 2.9131373842001307,
+    "maxdd": 0.5270479162775323,
+    "en_kotu_ay": -0.25514894897365215,
+    "sualti_gun": 1163.375,
+    "pgr": 0.737796891964782,
+    "final": 877383.1858342205,
+    "getiri": 86.8729952170837,
+    "ret_std_saat": 0.010935313200641568,
+    "islem": 936,
+    "n_kol": {
+     "donchian": 412,
+     "squeeze": 368,
+     "mean_rev": 156
+    },
+    "ucret_usd": 62247.74132933557,
+    "kayma_usd": 217024.51572120428,
+    "funding_usd": 30752.738377055237,
+    "maliyet_usd": 310024.99542759504,
+    "risk_kol_pct": {
+     "donchian": 2.639067196922039,
+     "squeeze": 4.298436747771573,
+     "mean_rev": 3.478164521996728
+    },
+    "squeeze_cap_baglayici": 219,
+    "squeeze_n": 368,
+    "yil": 3.2806297056810405
+   },
+   "TRAIN": {
+    "cagr": 3.2102487269055127,
+    "maxdd": 0.5270479162775323,
+    "en_kotu_ay": -0.25514894897365215,
+    "sualti_gun": 611.9166666666666,
+    "pgr": 0.7607999946146665,
+    "final": 121160.69274630286,
+    "getiri": 11.13466720822947,
+    "ret_std_saat": 0.011036024939343116,
+    "islem": 539,
+    "n_kol": {
+     "donchian": 235,
+     "squeeze": 222,
+     "mean_rev": 82
+    },
+    "ucret_usd": 5980.220085338257,
+    "kayma_usd": 20736.496998473252,
+    "funding_usd": 1568.4671585985338,
+    "maliyet_usd": 28285.184242410043,
+    "risk_kol_pct": {
+     "donchian": 2.6394613037725376,
+     "squeeze": 4.032110994573567,
+     "mean_rev": 3.452683996280518
+    },
+    "squeeze_cap_baglayici": 157,
+    "squeeze_n": 222,
+    "yil": 1.7363677846224048
+   },
+   "TEST": {
+    "cagr": 2.605282918397621,
+    "maxdd": 0.43558029552070066,
+    "en_kotu_ay": -0.2497568066533682,
+    "sualti_gun": 549.9166666666666,
+    "pgr": 0.743961588922072,
+    "final": 877383.1858342205,
+    "getiri": 6.244304519624309,
+    "ret_std_saat": 0.010821749072312608,
+    "islem": 397,
+    "n_kol": {
+     "donchian": 177,
+     "squeeze": 146,
+     "mean_rev": 74
+    },
+    "ucret_usd": 56267.521243997304,
+    "kayma_usd": 196288.01872273104,
+    "funding_usd": 29184.271218456706,
+    "maliyet_usd": 281739.81118518504,
+    "risk_kol_pct": {
+     "donchian": 2.6385439477137496,
+     "squeeze": 4.703397824552104,
+     "mean_rev": 3.5063996991417183
+    },
+    "squeeze_cap_baglayici": 62,
+    "squeeze_n": 146,
+    "yil": 1.5441478439425051
+   },
+   "red": 2
+  },
+  "C15": {
+   "TUM": {
+    "cagr": 2.6508825786376935,
+    "maxdd": 0.4685606971512305,
+    "en_kotu_ay": -0.26409219832560915,
+    "sualti_gun": 1171.2916666666667,
+    "pgr": 0.7299764588666507,
+    "final": 697568.1839155275,
+    "getiri": 68.98728445442275,
+    "ret_std_saat": 0.010533993552758553,
+    "islem": 936,
+    "n_kol": {
+     "donchian": 412,
+     "squeeze": 368,
+     "mean_rev": 156
+    },
+    "ucret_usd": 48904.666927919796,
+    "kayma_usd": 336944.1658262783,
+    "funding_usd": 28910.246432280517,
+    "maliyet_usd": 414759.0791864786,
+    "risk_kol_pct": {
+     "donchian": 3.4429976021592217,
+     "squeeze": 3.2601768824788055,
+     "mean_rev": 3.408750546768765
+    },
+    "squeeze_cap_baglayici": 93,
+    "squeeze_n": 368,
+    "yil": 3.2806297056810405
+   },
+   "TRAIN": {
+    "cagr": 3.240192696239334,
+    "maxdd": 0.41767767451413984,
+    "en_kotu_ay": -0.221713391346123,
+    "sualti_gun": 621.2916666666666,
+    "pgr": 0.7317401681538461,
+    "final": 122444.60499754183,
+    "getiri": 11.284914360300197,
+    "ret_std_saat": 0.011081727281213895,
+    "islem": 539,
+    "n_kol": {
+     "donchian": 235,
+     "squeeze": 222,
+     "mean_rev": 82
+    },
+    "ucret_usd": 5711.00795203426,
+    "kayma_usd": 40628.016598070346,
+    "funding_usd": 2505.6349398717684,
+    "maliyet_usd": 48844.65948997637,
+    "risk_kol_pct": {
+     "donchian": 3.4435557065544407,
+     "squeeze": 3.1688714311702983,
+     "mean_rev": 3.383826378064452
+    },
+    "squeeze_cap_baglayici": 77,
+    "squeeze_n": 222,
+    "yil": 1.7363677846224048
+   },
+   "TEST": {
+    "cagr": 2.0867762054939134,
+    "maxdd": 0.4685606971512305,
+    "en_kotu_ay": -0.26409219832560915,
+    "sualti_gun": 548.4583333333334,
+    "pgr": 0.7622609552270477,
+    "final": 697568.1839155275,
+    "getiri": 4.69991412228001,
+    "ret_std_saat": 0.009882637043373568,
+    "islem": 397,
+    "n_kol": {
+     "donchian": 177,
+     "squeeze": 146,
+     "mean_rev": 74
+    },
+    "ucret_usd": 43193.65897588553,
+    "kayma_usd": 296316.1492282079,
+    "funding_usd": 26404.611492408745,
+    "maliyet_usd": 365914.41969650215,
+    "risk_kol_pct": {
+     "donchian": 3.442256616097773,
+     "squeeze": 3.399011198852015,
+     "mean_rev": 3.4363692201978684
+    },
+    "squeeze_cap_baglayici": 16,
+    "squeeze_n": 146,
+    "yil": 1.5441478439425051
+   },
+   "red": 2
+  },
+  "C5": {
+   "TUM": {
+    "cagr": 3.545635217392711,
+    "maxdd": 0.4562054920427694,
+    "en_kotu_ay": -0.2531002603722954,
+    "sualti_gun": 1166.625,
+    "pgr": 0.7216723691369429,
+    "final": 1434840.8608167735,
+    "getiri": 142.6561810684015,
+    "ret_std_saat": 0.01053053525824563,
+    "islem": 937,
+    "n_kol": {
+     "donchian": 412,
+     "squeeze": 369,
+     "mean_rev": 156
+    },
+    "ucret_usd": 89807.60882731559,
+    "kayma_usd": 355987.8283604616,
+    "funding_usd": 54201.45435722483,
+    "maliyet_usd": 499996.89154500194,
+    "risk_kol_pct": {
+     "donchian": 3.442922872347888,
+     "squeeze": 3.251593934461603,
+     "mean_rev": 3.4085359556367094
+    },
+    "squeeze_cap_baglayici": 94,
+    "squeeze_n": 369,
+    "yil": 3.2806297056810405
+   },
+   "TRAIN": {
+    "cagr": 4.542119742791832,
+    "maxdd": 0.3848985174902281,
+    "en_kotu_ay": -0.20170935725987216,
+    "sualti_gun": 617.125,
+    "pgr": 0.7321265937704324,
+    "final": 195332.40723929083,
+    "getiri": 18.55666891652426,
+    "ret_std_saat": 0.011087492965223017,
+    "islem": 540,
+    "n_kol": {
+     "donchian": 235,
+     "squeeze": 223,
+     "mean_rev": 82
+    },
+    "ucret_usd": 8065.208772764388,
+    "kayma_usd": 31463.99287582381,
+    "funding_usd": 3773.5509800542527,
+    "maliyet_usd": 43302.75262864245,
+    "risk_kol_pct": {
+     "donchian": 3.4434839593337525,
+     "squeeze": 3.1593723085510867,
+     "mean_rev": 3.383550188104218
+    },
+    "squeeze_cap_baglayici": 78,
+    "squeeze_n": 223,
+    "yil": 1.7363677846224048
+   },
+   "TEST": {
+    "cagr": 2.639062429287966,
+    "maxdd": 0.4562054920427694,
+    "en_kotu_ay": -0.2531002603722954,
+    "sualti_gun": 547.75,
+    "pgr": 0.7411908868911369,
+    "final": 1434840.8608167735,
+    "getiri": 6.349380561194118,
+    "ret_std_saat": 0.00986748747141335,
+    "islem": 397,
+    "n_kol": {
+     "donchian": 177,
+     "squeeze": 146,
+     "mean_rev": 74
+    },
+    "ucret_usd": 81742.40005455122,
+    "kayma_usd": 324523.8354846377,
+    "funding_usd": 50427.90337717058,
+    "maliyet_usd": 456694.1389163595,
+    "risk_kol_pct": {
+     "donchian": 3.442177926349706,
+     "squeeze": 3.392452993215337,
+     "mean_rev": 3.436222887226766
+    },
+    "squeeze_cap_baglayici": 16,
+    "squeeze_n": 146,
+    "yil": 1.5441478439425051
+   },
+   "red": 1
+  },
+  "R0": {
+   "TUM": {
+    "cagr": 2.7945359634753557,
+    "maxdd": 0.47250069204247325,
+    "en_kotu_ay": -0.26686898878919507,
+    "sualti_gun": 1171.1666666666667,
+    "pgr": 0.7273766388683306,
+    "final": 791666.2027103185,
+    "getiri": 78.43376503584038,
+    "ret_std_saat": 0.010729566112693809,
+    "islem": 936,
+    "n_kol": {
+     "donchian": 412,
+     "squeeze": 368,
+     "mean_rev": 156
+    },
+    "ucret_usd": 54988.33237368121,
+    "kayma_usd": 378590.9422094517,
+    "funding_usd": 1.0904266822819864e-08,
+    "maliyet_usd": 433579.27458314376,
+    "risk_kol_pct": {
+     "donchian": 3.5159505393559103,
+     "squeeze": 3.314969253666405,
+     "mean_rev": 3.4760597054559543
+    },
+    "squeeze_cap_baglayici": 100,
+    "squeeze_n": 368,
+    "yil": 3.2806297056810405
+   },
+   "TRAIN": {
+    "cagr": 3.401872681993283,
+    "maxdd": 0.4253616122175573,
+    "en_kotu_ay": -0.22464557666801055,
+    "sualti_gun": 621.1666666666666,
+    "pgr": 0.7299624375890016,
+    "final": 130655.6927372217,
+    "getiri": 12.109658542896078,
+    "ret_std_saat": 0.011277746495033141,
+    "islem": 539,
+    "n_kol": {
+     "donchian": 235,
+     "squeeze": 222,
+     "mean_rev": 82
+    },
+    "ucret_usd": 6041.063356083645,
+    "kayma_usd": 42959.019864291426,
+    "funding_usd": 1.3019780809031545e-09,
+    "maliyet_usd": 49000.08322037637,
+    "risk_kol_pct": {
+     "donchian": 3.5161788919664843,
+     "squeeze": 3.2164424626431716,
+     "mean_rev": 3.447879168909692
+    },
+    "squeeze_cap_baglayici": 80,
+    "squeeze_n": 222,
+    "yil": 1.7363677846224048
+   },
+   "TEST": {
+    "cagr": 2.21249361692731,
+    "maxdd": 0.47250069204247325,
+    "en_kotu_ay": -0.26686898878919507,
+    "sualti_gun": 548.4583333333334,
+    "pgr": 0.7588538475869103,
+    "final": 791666.2027103185,
+    "getiri": 5.062327632991872,
+    "ret_std_saat": 0.010078365700755147,
+    "islem": 397,
+    "n_kol": {
+     "donchian": 177,
+     "squeeze": 146,
+     "mean_rev": 74
+    },
+    "ucret_usd": 48947.26901759757,
+    "kayma_usd": 335631.9223451603,
+    "funding_usd": 9.602288741916709e-09,
+    "maliyet_usd": 384579.1913627674,
+    "risk_kol_pct": {
+     "donchian": 3.515647359336222,
+     "squeeze": 3.4647839633044715,
+     "mean_rev": 3.507286786493703
+    },
+    "squeeze_cap_baglayici": 20,
+    "squeeze_n": 146,
+    "yil": 1.5441478439425051
+   },
+   "red": 2
+  }
+ },
+ "ayar": {
+  "A15": {
+   "AD": "A15",
+   "SQZ_SLIP_BP": null,
+   "FIX_FUNDING": true,
+   "slip_giris": 15.85,
+   "slip_cikis": 0.24,
+   "funding": true,
+   "risk_scale": 1.75,
+   "donchian_risk_pct": 0.035,
+   "squeeze_risk_pct": 0.035,
+   "max_risk_per_trade": 0.035,
+   "cap": 2.5,
+   "max_positions": 7,
+   "leverage": 10
+  },
+  "A5": {
+   "AD": "A5",
+   "SQZ_SLIP_BP": "5.13",
+   "FIX_FUNDING": true,
+   "slip_giris": 15.85,
+   "slip_cikis": 0.24,
+   "funding": true,
+   "risk_scale": 1.75,
+   "donchian_risk_pct": 0.035,
+   "squeeze_risk_pct": 0.035,
+   "max_risk_per_trade": 0.035,
+   "cap": 2.5,
+   "max_positions": 7,
+   "leverage": 10
+  },
+  "B15": {
+   "AD": "B15",
+   "SQZ_SLIP_BP": null,
+   "FIX_FUNDING": true,
+   "slip_giris": 15.85,
+   "slip_cikis": 0.24,
+   "funding": true,
+   "risk_scale": 1.75,
+   "donchian_risk_pct": 0.02625,
+   "squeeze_risk_pct": 0.0525,
+   "max_risk_per_trade": 0.035,
+   "cap": 2.5,
+   "max_positions": 7,
+   "leverage": 10
+  },
+  "B5": {
+   "AD": "B5",
+   "SQZ_SLIP_BP": "5.13",
+   "FIX_FUNDING": true,
+   "slip_giris": 15.85,
+   "slip_cikis": 0.24,
+   "funding": true,
+   "risk_scale": 1.75,
+   "donchian_risk_pct": 0.02625,
+   "squeeze_risk_pct": 0.0525,
+   "max_risk_per_trade": 0.035,
+   "cap": 2.5,
+   "max_positions": 7,
+   "leverage": 10
+  },
+  "C15": {
+   "AD": "C15",
+   "SQZ_SLIP_BP": null,
+   "FIX_FUNDING": true,
+   "slip_giris": 15.85,
+   "slip_cikis": 0.24,
+   "funding": true,
+   "risk_scale": 1.713501,
+   "donchian_risk_pct": 0.03427002,
+   "squeeze_risk_pct": 0.03427002,
+   "max_risk_per_trade": 0.03427002,
+   "cap": 2.5,
+   "max_positions": 7,
+   "leverage": 10
+  },
+  "C5": {
+   "AD": "C5",
+   "SQZ_SLIP_BP": "5.13",
+   "FIX_FUNDING": true,
+   "slip_giris": 15.85,
+   "slip_cikis": 0.24,
+   "funding": true,
+   "risk_scale": 1.713501,
+   "donchian_risk_pct": 0.03427002,
+   "squeeze_risk_pct": 0.03427002,
+   "max_risk_per_trade": 0.03427002,
+   "cap": 2.5,
+   "max_positions": 7,
+   "leverage": 10
+  },
+  "R0": {
+   "AD": "R0",
+   "SQZ_SLIP_BP": null,
+   "FIX_FUNDING": false,
+   "slip_giris": 15.85,
+   "slip_cikis": 0.24,
+   "funding": true,
+   "risk_scale": 1.75,
+   "donchian_risk_pct": 0.035,
+   "squeeze_risk_pct": 0.035,
+   "max_risk_per_trade": 0.035,
+   "cap": 2.5,
+   "max_positions": 7,
+   "leverage": 10
+  }
+ },
+ "esleme": {
+  "sigma_A": 0.011271102376263324,
+  "sigma_B": 0.011036024939343116,
+  "k_B": 1.0,
+  "not_": "B k\u00fc\u00e7\u00fclt\u00fclmez",
+  "sigma_C": 0.011087492965223017,
+  "C_kalan_fark": 0.004663638054714703
+ },
+ "karar_ana": {
+  "K1": false,
+  "K1_rota_getiri": false,
+  "K1_rota_dd": false,
+  "K2": true,
+  "K3": false,
+  "rota": "buyume",
+  "ga": [
+   -0.42580649650333635,
+   0.38334997818887107
+  ],
+  "ga_B_vs_C_buyume": [
+   -0.4037884282403558,
+   0.3976097478158637
+  ],
+  "hukum": "REJECTED"
+ },
+ "karar_stres": {
+  "K1": false,
+  "K1_rota_getiri": false,
+  "K1_rota_dd": false,
+  "K2": false,
+  "K3": false,
+  "rota": "buyume",
+  "ga": [
+   -0.4770608474783614,
+   0.33083905957811294
+  ],
+  "ga_B_vs_C_buyume": [
+   -0.45847024604666714,
+   0.34369199715705145
+  ],
+  "hukum": "REJECTED"
+ }
+}
