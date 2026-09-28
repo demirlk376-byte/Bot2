@@ -67,29 +67,37 @@ def indir(klasor):
         bas = int(pd.Timestamp(BAS, tz="UTC").timestamp() * 1000)
         bit = int(pd.Timestamp(BIT, tz="UTC").timestamp() * 1000)
         rows, cur, hata = [], bas, None
+        # SAYFALAMA: dönen SON barın açılışından devam et (sabit pencere DEĞİL). MEXC istek başına
+        # istenenden az bar döndürebilir; sabit pencereyle ilerlemek aradaki barları sessizce
+        # kaybettiriyordu (2026-09-28 ilk VPS koşusu: kapsam %36, dağınık boşluklar).
         while cur < bit:
-            son = min(cur + 1000 * 4 * 3600 * 1000, bit)
+            b = None
             for deneme in range(4):
                 try:
                     r = S.get("https://api.mexc.com/api/v3/klines",
                               params={"symbol": sym, "interval": "4h", "startTime": cur,
-                                      "endTime": son, "limit": 1000}, timeout=30)
+                                      "endTime": bit, "limit": 1000}, timeout=30)
                     r.raise_for_status()
                     b = r.json()
                     break
                 except Exception as e:
-                    hata = str(e); b = None; time.sleep(2 ** deneme)
-            if b is None:
+                    hata = str(e); time.sleep(2 ** deneme)
+            if not b:
                 break
             rows += b
-            cur = son
+            son_acilis = int(b[-1][0])
+            if son_acilis + 4 * 3600 * 1000 <= cur:
+                break
+            cur = son_acilis + 4 * 3600 * 1000
             time.sleep(0.2)
         if rows:
             d = pd.DataFrame([x[:6] for x in rows], columns=["open_time", "open", "high", "low", "close", "volume"])
             d["open_time"] = pd.to_datetime(d["open_time"].astype("int64"), unit="ms", utc=True)
             d = d.drop_duplicates("open_time").sort_values("open_time")
             d.to_csv(os.path.join(klasor, f"{c}_spot_4h.csv"), index=False)
-            rapor[c] = dict(n=len(d), ilk=str(d.open_time.iloc[0]), son=str(d.open_time.iloc[-1]))
+            beklenen = int((d.open_time.iloc[-1] - d.open_time.iloc[0]) / pd.Timedelta(hours=4)) + 1
+            rapor[c] = dict(n=len(d), beklenen=beklenen, eksik=beklenen - len(d),
+                            ilk=str(d.open_time.iloc[0]), son=str(d.open_time.iloc[-1]))
         else:
             rapor[c] = dict(n=0, hata=hata)
         print(f"  {sym}: {rapor[c]}", flush=True)

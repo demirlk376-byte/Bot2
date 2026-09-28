@@ -138,4 +138,22 @@ venv/bin/python arastirma/basis_edge_test/basis_edge_test.py
 
 ## Sonuç
 
-_(VPS çıktısı gelince eklenecek.)_
+### VPS 1. koşu (2026-09-28): D, ama indirici kusuru nedeniyle GEÇERSİZ
+
+**İlk koşunun sonucu:**
+- Kapsam TRAIN %35.7 (84 geçerli işlem), TEST %35.6 (63). Kapı gereği → D.
+- Eksiklerin nedeni ağırlıkla iki tür:
+  - "sinyal barında perp/spot yok" (ETH 32, NEAR 26, ICP 23, SOL 21, …)
+  - dağınık "önceki 30 günde yetersiz bar (39/180, 143/180 …)"
+
+**Neden geçersiz:**
+- Bu desen gerçek veri eksikliğine değil, **indirici kusuruna** uyuyor.
+- İndirici sabit 1000-bar zaman pencereleriyle ilerliyordu. MEXC istek başına daha az bar
+  döndürünce her pencerenin kalanı sessizce kayboldu.
+
+**Düzeltme:**
+- Sayfalama artık dönen son barın açılışından devam ediyor.
+- İndirme raporu coin başına beklenen/eksik bar sayısını yazıyor.
+- Hipotez, özellik, eşikler ve kapılar **değişmedi**.
+
+**2. koşu bekleniyor.**
