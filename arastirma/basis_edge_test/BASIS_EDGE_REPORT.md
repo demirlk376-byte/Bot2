@@ -1,6 +1,6 @@
 # MEXC perp–spot BASIS → Donchian kırılım kalitesi (önceden kayıt)
 
-**Durum: VPS KOŞUSU BEKLİYOR.**
+**Durum: VPS 2. koşusu (2026-09-28) yapıldı → STAGE A FAIL — BASIS EDGE YOK / KANIT YETERSİZ.** Stage B (ikiz) koşulmadı.
 - MEXC spot verisi yerelde yok. Bu ortamdan borsaya erişim de kapalı (ağ politikası 403).
 - Spot 4h mumları yalnız VPS'ten, public API ile indirilebilir.
 - Aşağıdaki tanımlar ve kurallar **sonuç görülmeden** sabitlendi.
@@ -156,4 +156,46 @@ venv/bin/python arastirma/basis_edge_test/basis_edge_test.py
 - İndirme raporu coin başına beklenen/eksik bar sayısını yazıyor.
 - Hipotez, özellik, eşikler ve kapılar **değişmedi**.
 
-**2. koşu bekleniyor.**
+### VPS 2. koşu (düzeltilmiş indirici): STAGE A FAIL
+
+**Veri:**
+- Kapsam TRAIN **%100** (235/235), TEST **%100** (177/177).
+- Veri kalitesi PASS; lookahead ihlali 0.
+- İlk koşudaki %36 kapsam gerçekten indirici kusuruydu.
+
+| | TRAIN | TEST |
+|---|---|---|
+| Spearman rho | −0.019 | −0.054 |
+| hafta-boot rho ort · %95 GA | −0.019 · [−0.143, +0.105] (73 hafta) | −0.056 · [−0.225, +0.127] (63 hafta) |
+| Theil-Sen eğim | ~0 | ~0 |
+| CROWDED (z≥+1) | n=94, ort R +0.222, PF 1.41, WR %39.4 | n=69, ort R +0.211, PF 1.39, WR %40.6 |
+| NORMAL (z<+1) | n=141, ort R +0.307, PF 1.63, WR %46.1 | n=108, ort R +0.168, PF 1.30, WR %41.7 |
+| **delta_R** | **−0.086** | **+0.042** |
+| delta hafta-kümeli %95 GA | [−0.458, +0.285] | **[−0.391, +0.528]** |
+
+**Kriterler:**
+
+| # | koşul | sonuç |
+|---|---|---|
+| 1 | TRAIN rho < 0 | ✓ |
+| 2 | TEST rho < 0 | ✓ |
+| 3 | TEST bootstrap rho yönü negatif | ✓ |
+| 4 | TRAIN delta < 0 | ✓ |
+| 5 | TEST delta < 0 | ✗ (+0.042) |
+| 6 | TEST CROWDED n ≥ 30 | ✓ |
+| 7 | TRAIN CROWDED n ≥ 30 | ✓ |
+| 8 | TRAIN ve TEST delta ≤ −0.15R | ✗ |
+| 9 | TEST delta GA tamamen < 0 | ✗ |
+
+**Yorum:**
+- rho'ların işareti negatif ama büyüklüğü sıfıra çok yakın (−0.02 / −0.05) ve GA'lar sıfırı
+  rahatça içeriyor.
+- CROWDED grubu TEST'te NORMAL'den biraz **daha iyi**.
+- Yıl-yıl delta işaret değiştiriyor (betimsel): 2023 −0.36 · 2024 +0.15 · 2025 −0.20 · 2026 +0.45.
+- Coin ve yön kırılımları da tutarlı bir desen göstermiyor.
+- Basis aşırılığı Donchian sonucunu **ayırmıyor**.
+
+**Karar:**
+- Önceden sabit kural gereği STAGE A FAIL. `BASIS_CROWDING_HALF_RISK` ikizi koşulmadı.
+- Başka lookback, eşik, basis dönüşümü veya funding/OI birleşimi denenmedi.
+- Bu eksen, bu tanımla kapandı.
