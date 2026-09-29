@@ -69,7 +69,7 @@ def _post(S, body, deneme=5):
     return None
 
 
-def indir():
+def indir(n_top=N_TOP, sadece_mum=False):
     import requests
     os.makedirs(VERI, exist_ok=True)
     S = requests.Session()
@@ -87,11 +87,13 @@ def indir():
                         hacim_ay=float(wp.get("month", {}).get("vlm") or 0)))
     tab = pd.DataFrame(tab)
     tab.to_csv(os.path.join(VERI, "lider_tablosu.csv"), index=False)
-    sec = tab[(tab.deger >= MIN_DEGER) & (tab.pnl_ay > 0) & (tab.pnl_tum > 0)].nlargest(N_TOP, "pnl_ay")
+    sec = tab[(tab.deger >= MIN_DEGER) & (tab.pnl_ay > 0) & (tab.pnl_tum > 0)].nlargest(n_top, "pnl_ay")
     sec.to_csv(os.path.join(VERI, "secilen.csv"), index=False)
     print(f"lider tablosu {len(tab)} satır → seçilen {len(sec)}", flush=True)
     simdi = int(time.time() * 1000)
-    for i, a in enumerate(sec.adres):
+    for i, a in enumerate([] if sadece_mum else sec.adres):
+        if os.path.exists(os.path.join(VERI, f"dolum_{a}.json")):
+            continue                        # önceki koşudan var (yeniden indirme yok)
         dolum, bas_ms = [], 0
         for _ in range(8):                  # yanıt ≤ 2000 dolum; API yalnız son ~10k dolumu tutar
             b = _post(S, {"type": "userFillsByTime", "user": a, "startTime": bas_ms, "endTime": simdi})
@@ -107,14 +109,24 @@ def indir():
             json.dump(dolum, f)
         print(f"  [{i + 1}/{len(sec)}] {a[:10]}… {len(dolum)} dolum", flush=True)
         time.sleep(0.3)
+    # MUMLAR SAYFALI: tek istek sınırlı sayıda mum döndürüyor (ilk VPS koşusunda 19 işlemin 17'si
+    # bağlamsız kaldı). 300 barlık pencerelerle 400 gün geriye.
     bas = simdi - 400 * 86400 * 1000
+    adim = 300 * 4 * 3600 * 1000
     for c in BIZIM:
-        m = _post(S, {"type": "candleSnapshot", "req": {"coin": c, "interval": "4h",
-                                                          "startTime": bas, "endTime": simdi}})
+        tum, t0 = {}, bas
+        while t0 < simdi:
+            m = _post(S, {"type": "candleSnapshot", "req": {"coin": c, "interval": "4h",
+                                                              "startTime": t0, "endTime": min(t0 + adim, simdi)}})
+            for x in (m or []):
+                tum[int(x["t"])] = x
+            t0 += adim
+            time.sleep(0.25)
+        m = [tum[k] for k in sorted(tum)]
         with open(os.path.join(VERI, f"mum4h_{c}.json"), "w") as f:
-            json.dump(m or [], f)
-        print(f"  mum {c}: {len(m or [])}", flush=True)
-        time.sleep(0.3)
+            json.dump(m, f)
+        ilk = pd.to_datetime(m[0]["t"], unit="ms", utc=True) if m else None
+        print(f"  mum {c}: {len(m)} (ilk {ilk})", flush=True)
 
 
 # ─────────────────────────── analiz ───────────────────────────
@@ -274,6 +286,7 @@ def analiz():
     if len(Y):
         b = baglam(Y, M)
         ok = [x is not None for x in b]
+        print(f"  bağlamı hesaplanabilen {sum(ok)}/{len(ok)} (düşenlerde girişten önce ≥210 kapanmış 4h mum yok)")
         Y = Y[ok].copy()
         B = pd.DataFrame([x for x in b if x is not None], index=Y.index)
         Y = pd.concat([Y, B], axis=1)
@@ -334,5 +347,8 @@ def analiz():
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--indir", action="store_true")
+    ap.add_argument("--n-top", type=int, default=N_TOP,
+                    help="evren genişliği (aylık PnL ilk N); diğer kurallar aynı")
+    ap.add_argument("--sadece-mum", action="store_true", help="yalnız 4h mumları yeniden indir")
     a = ap.parse_args()
-    indir() if a.indir else analiz()
+    indir(a.n_top, a.sadece_mum) if a.indir else analiz()

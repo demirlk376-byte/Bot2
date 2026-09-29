@@ -1,6 +1,6 @@
 # Lider traderların stratejileri ve bota eklenebilirlik
 
-**Durum: VPS KOŞUSU BEKLİYOR.** Bu ortamdan Hyperliquid, Binance ve MEXC API'lerine erişim engelli
+**Durum: 1. VPS koşusu (2026-09-29) yapıldı → ENTEGRASYON HÜKMÜ D (veri yetersiz). 2. koşu (geniş evren + sayfalı mum) bekleniyor.** Bu ortamdan Hyperliquid, Binance ve MEXC API'lerine erişim engelli
 (ağ politikası). Araç VPS'te çalışacak.
 
 ## 1. Şimdiye kadar bulunan dış kanıt (web aramasıyla)
@@ -94,4 +94,37 @@ venv/bin/python arastirma/top_trader_analizi/top_trader_analizi.py
 
 ## Sonuç
 
-_(VPS çıktısı gelince eklenecek.)_
+### 1. VPS koşusu (ilk 40 → dolum verisi olan 29 hesap)
+
+**Trader tipleri:**
+
+| tip | hesap |
+|---|---|
+| HFT / piyasa yapıcı | **23** |
+| swing/trend | 4 |
+| gün içi | 2 |
+
+- HFT hesaplarının çoğunda günde 180 ile 28.000 arasında dolum var.
+- Maker payı hesaba göre %0 ile %100 arasında değişiyor. Yani yalnız klasik piyasa yapıcılar
+  değil, yüksek frekanslı taker botları da var.
+- Dış analizle (12 hesabın 8'i iki taraflı yüksek frekans) tutarlı.
+
+**Yön alan traderların bizim 11 coinimizde tur işlemi:** yalnız **19**. Bunların yalnız 2'sinde
+giriş bağlamı hesaplanabildi.
+- **Sebep:** Mumlar tek istekle çekiliyordu ve yetersiz geliyordu.
+- **Düzeltme:** Sayfalı indirme.
+
+**Entegrasyon testi:** 11 olay (< 50) → **D**.
+
+**Çıkarım:**
+- Lider tablosunun tepesi ağırlıkla yüksek frekanslı işlem.
+- Bu strateji 4h kırılım botumuza **taşınamaz**. Bizim işlem başı maliyetimiz ~17bp; onların
+  avantajı bunun altında ve milisaniye düzeyinde.
+- Yön alan azınlık için test ancak daha geniş evrenle mümkün.
+
+### 2. koşu (bekleniyor; kurallar aynı)
+
+**Değişenler:** Yalnız evren genişliği (`--n-top 300`) ve sayfalı mum indirme.
+- Tip eşikleri, bağlam tanımları, zaman bölmeli seçim, maliyet ve hüküm kuralları değişmedi.
+- Hüküm D "veri yetersiz" demektir, "başarısız" değil. Bu yüzden evreni büyütmek eşik
+  oynaması değildir.
