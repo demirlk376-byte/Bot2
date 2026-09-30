@@ -1,0 +1,969 @@
+{
+ "kosulan": [
+  "A",
+  "A75",
+  "A75_2x",
+  "A75_f",
+  "A_2x",
+  "A_f",
+  "B",
+  "B_2x",
+  "B_f",
+  "S",
+  "S_2x",
+  "S_cikis"
+ ],
+ "kosulmayan": [],
+ "karsilastirma": [
+  {
+   "kosu": "A",
+   "net_usdt": 793565.4044424149,
+   "getiri_pct": 7935.654044424149,
+   "islem": 936,
+   "aday_islem": 0,
+   "beklenti_usdt": 835.1134644341008,
+   "profit_factor": 1.1608901863723056,
+   "komisyon": 54988.33237368121,
+   "kayma": 383993.4033617747,
+   "funding": 3.5351721550114235e-12,
+   "acik_kalan": 2,
+   "kapanan_pnl_toplam": 781666.2027103184,
+   "max_dd_pct": 46.62249826583878,
+   "max_dd_zaman": "2026-07-18 22:00:00+00:00",
+   "sualti_en_uzun_gun": 194.125,
+   "acik_risk_ort_pct": 5.307147985919379,
+   "acik_risk_max_pct": 37.57733414524103,
+   "marjin_ort_pct": 13.183520878209773,
+   "marjin_max_pct": 95.68984829972382
+  },
+  {
+   "kosu": "A75",
+   "net_usdt": 416266.80345239857,
+   "getiri_pct": 4162.668034523986,
+   "islem": 937,
+   "aday_islem": 0,
+   "beklenti_usdt": 440.1563846969115,
+   "profit_factor": 1.1975457729234065,
+   "komisyon": 24271.0931077915,
+   "kayma": 170550.5276482554,
+   "funding": 1.939282068263992e-12,
+   "acik_kalan": 2,
+   "kapanan_pnl_toplam": 412426.5324610061,
+   "max_dd_pct": 37.979088585598475,
+   "max_dd_zaman": "2026-07-18 22:00:00+00:00",
+   "sualti_en_uzun_gun": 123.79166666666667,
+   "acik_risk_ort_pct": 4.03769710437621,
+   "acik_risk_max_pct": 29.191771433651624,
+   "marjin_ort_pct": 10.193305997318571,
+   "marjin_max_pct": 82.01160112859037
+  },
+  {
+   "kosu": "B",
+   "net_usdt": 116449.41413834885,
+   "getiri_pct": 1164.4941413834883,
+   "islem": 1200,
+   "aday_islem": 264,
+   "beklenti_usdt": 96.01803798744179,
+   "profit_factor": 1.11373404661111,
+   "komisyon": 15747.655869247226,
+   "kayma": 116472.54407327583,
+   "funding": 9.709455461859307e-13,
+   "acik_kalan": 2,
+   "kapanan_pnl_toplam": 115221.64558493014,
+   "max_dd_pct": 42.83776006505339,
+   "max_dd_zaman": "2026-07-18 22:00:00+00:00",
+   "sualti_en_uzun_gun": 214.16666666666666,
+   "acik_risk_ort_pct": 4.069323457156997,
+   "acik_risk_max_pct": 29.191624779836744,
+   "marjin_ort_pct": 10.56319875700132,
+   "marjin_max_pct": 82.01175532742074
+  },
+  {
+   "kosu": "S",
+   "net_usdt": -8986.190763081258,
+   "getiri_pct": -89.86190763081258,
+   "islem": 208,
+   "aday_islem": 208,
+   "beklenti_usdt": -43.20284020712144,
+   "profit_factor": 0.48310798078701295,
+   "komisyon": 618.2898287154366,
+   "kayma": 4954.492959243017,
+   "funding": 4.0467629247586956e-14,
+   "acik_kalan": 0,
+   "kapanan_pnl_toplam": -8986.19076308126,
+   "max_dd_pct": 90.42706259132044,
+   "max_dd_zaman": "2025-12-21 11:00:00+00:00",
+   "sualti_en_uzun_gun": 1181.9166666666667,
+   "acik_risk_ort_pct": 0.10850777875643744,
+   "acik_risk_max_pct": 24.144633038893897,
+   "marjin_ort_pct": 0.9214988728914311,
+   "marjin_max_pct": 99.38108444792879
+  },
+  {
+   "kosu": "A_2x",
+   "net_usdt": 148301.71534408818,
+   "getiri_pct": 1483.0171534408817,
+   "islem": 936,
+   "aday_islem": 0,
+   "beklenti_usdt": 156.88709277015207,
+   "profit_factor": 1.1059452000545178,
+   "komisyon": 15070.353651108795,
+   "kayma": 211604.67239879834,
+   "funding": 1.2412848526821563e-12,
+   "acik_kalan": 2,
+   "kapanan_pnl_toplam": 146846.31883286234,
+   "max_dd_pct": 49.39838328529343,
+   "max_dd_zaman": "2026-07-18 22:00:00+00:00",
+   "sualti_en_uzun_gun": 217.29166666666666,
+   "acik_risk_ort_pct": 5.327699363055489,
+   "acik_risk_max_pct": 37.99290917418479,
+   "marjin_ort_pct": 13.232987030836846,
+   "marjin_max_pct": 96.91793429164785
+  },
+  {
+   "kosu": "A75_2x",
+   "net_usdt": 107529.98668567106,
+   "getiri_pct": 1075.2998668567107,
+   "islem": 937,
+   "aday_islem": 0,
+   "beklenti_usdt": 114.21326941813068,
+   "profit_factor": 1.1333265547218234,
+   "komisyon": 9000.665336425896,
+   "kayma": 127122.47553231264,
+   "funding": 7.136513602290506e-13,
+   "acik_kalan": 2,
+   "kapanan_pnl_toplam": 107017.83344478844,
+   "max_dd_pct": 40.48501499513121,
+   "max_dd_zaman": "2026-07-18 22:00:00+00:00",
+   "sualti_en_uzun_gun": 213.29166666666666,
+   "acik_risk_ort_pct": 4.0499614289220975,
+   "acik_risk_max_pct": 29.44623807106358,
+   "marjin_ort_pct": 10.224065631033499,
+   "marjin_max_pct": 82.96100847241021
+  },
+  {
+   "kosu": "B_2x",
+   "net_usdt": 7857.333202114878,
+   "getiri_pct": 78.57333202114877,
+   "islem": 1200,
+   "aday_islem": 264,
+   "beklenti_usdt": 6.470074964864745,
+   "profit_factor": 1.0269252573299343,
+   "komisyon": 4212.232304116202,
+   "kayma": 62523.00590812188,
+   "funding": 3.326228181776969e-13,
+   "acik_kalan": 2,
+   "kapanan_pnl_toplam": 7764.089957837694,
+   "max_dd_pct": 56.12006324081281,
+   "max_dd_zaman": "2024-07-07 07:00:00+00:00",
+   "sualti_en_uzun_gun": 541.2916666666666,
+   "acik_risk_ort_pct": 4.0841921078569525,
+   "acik_risk_max_pct": 29.446019126148215,
+   "marjin_ort_pct": 10.60071168296836,
+   "marjin_max_pct": 82.96055189312422
+  },
+  {
+   "kosu": "S_2x",
+   "net_usdt": -9587.243525468797,
+   "getiri_pct": -95.87243525468796,
+   "islem": 132,
+   "aday_islem": 132,
+   "beklenti_usdt": -72.63063276870304,
+   "profit_factor": 0.29073829722345423,
+   "komisyon": 380.8458130182165,
+   "kayma": 6105.234075095312,
+   "funding": 2.708944180085382e-14,
+   "acik_kalan": 0,
+   "kapanan_pnl_toplam": -9587.2435254688,
+   "max_dd_pct": 96.4291904275311,
+   "max_dd_zaman": "2026-02-28 19:00:00+00:00",
+   "sualti_en_uzun_gun": 1181.9166666666667,
+   "acik_risk_ort_pct": 0.10886961106202485,
+   "acik_risk_max_pct": 49.250392538452076,
+   "marjin_ort_pct": 0.6620938514266873,
+   "marjin_max_pct": 101.88685750620148
+  },
+  {
+   "kosu": "S_cikis",
+   "net_usdt": -9577.671412592555,
+   "getiri_pct": -95.77671412592555,
+   "islem": 137,
+   "aday_islem": 137,
+   "beklenti_usdt": -69.91001031089462,
+   "profit_factor": 0.32672416897850626,
+   "komisyon": 400.5620673815636,
+   "kayma": 5632.219532429816,
+   "funding": 2.6256774532384952e-14,
+   "acik_kalan": 0,
+   "kapanan_pnl_toplam": -9577.671412592563,
+   "max_dd_pct": 96.3048808989334,
+   "max_dd_zaman": "2026-02-28 19:00:00+00:00",
+   "sualti_en_uzun_gun": 1181.9166666666667,
+   "acik_risk_ort_pct": 0.10458525595391012,
+   "acik_risk_max_pct": 47.98514329724026,
+   "marjin_ort_pct": 0.6484492746820503,
+   "marjin_max_pct": 98.7602560899451
+  },
+  {
+   "kosu": "A_f",
+   "net_usdt": 721185.9155348664,
+   "getiri_pct": 7211.859155348664,
+   "islem": 936,
+   "aday_islem": 0,
+   "beklenti_usdt": 758.9247114605251,
+   "profit_factor": 1.1569011898386052,
+   "komisyon": 51143.77827234409,
+   "kayma": 357240.18856719404,
+   "funding": 30367.45649656169,
+   "acik_kalan": 2,
+   "kapanan_pnl_toplam": 710353.5299270515,
+   "max_dd_pct": 46.827088575281635,
+   "max_dd_zaman": "2026-07-18 22:00:00+00:00",
+   "sualti_en_uzun_gun": 194.125,
+   "acik_risk_ort_pct": 5.307787494242231,
+   "acik_risk_max_pct": 37.56160960814219,
+   "marjin_ort_pct": 13.184652257812479,
+   "marjin_max_pct": 95.68837056172042
+  },
+  {
+   "kosu": "A75_f",
+   "net_usdt": 385522.8076386044,
+   "getiri_pct": 3855.2280763860444,
+   "islem": 937,
+   "aday_islem": 0,
+   "beklenti_usdt": 407.63891572815464,
+   "profit_factor": 1.1930557451917254,
+   "komisyon": 22963.237448175983,
+   "kayma": 161401.24332734488,
+   "funding": 12917.248000471991,
+   "acik_kalan": 2,
+   "kapanan_pnl_toplam": 381957.6640372809,
+   "max_dd_pct": 38.15998187267382,
+   "max_dd_zaman": "2026-07-18 22:00:00+00:00",
+   "sualti_en_uzun_gun": 123.79166666666667,
+   "acik_risk_ort_pct": 4.038064883119112,
+   "acik_risk_max_pct": 29.18043581205686,
+   "marjin_ort_pct": 10.193910899804152,
+   "marjin_max_pct": 82.00808145539138
+  },
+  {
+   "kosu": "B_f",
+   "net_usdt": 107651.35904291426,
+   "getiri_pct": 1076.5135904291426,
+   "islem": 1200,
+   "aday_islem": 264,
+   "beklenti_usdt": 88.75706371009029,
+   "profit_factor": 1.1102258135886476,
+   "komisyon": 14992.268773670505,
+   "kayma": 110897.08190061594,
+   "funding": 5214.670600381249,
+   "acik_kalan": 2,
+   "kapanan_pnl_toplam": 106508.47645210836,
+   "max_dd_pct": 43.00006469387056,
+   "max_dd_zaman": "2026-07-18 22:00:00+00:00",
+   "sualti_en_uzun_gun": 214.20833333333334,
+   "acik_risk_ort_pct": 4.069684005423222,
+   "acik_risk_max_pct": 29.180305379616335,
+   "marjin_ort_pct": 10.563779193229085,
+   "marjin_max_pct": 82.00834559324174
+  }
+ ],
+ "aday_B": {
+  "islem": 264,
+  "kazanma_orani": 0.2727272727272727,
+  "ort_net_R": -0.4161453192999887,
+  "toplam_net_R": -109.86236429519703,
+  "ort_R_GA95": [
+   -0.5309075783653164,
+   -0.2963267275641012
+  ],
+  "medyan_R": -1.0250260042098738,
+  "net_usdt": -82786.82374995766,
+  "pf": 0.4066009345136722,
+  "cikis_nedeni": {
+   "sl_hit": 186,
+   "tp_hit": 65,
+   "max_hold": 13
+  },
+  "ayni_mum_stop_hedef": 12,
+  "sl_gap": 0,
+  "gecersiz_risk": 0,
+  "yil_ort_R": {
+   "2023": -0.4782202522932261,
+   "2024": -0.40633946751273053,
+   "2025": -0.3637393344803245,
+   "2026": -0.45621510521289366
+  },
+  "yil_islem": {
+   "2023": 52,
+   "2024": 83,
+   "2025": 82,
+   "2026": 47
+  },
+  "ort_tutus_mum": 3.3106060606060606,
+  "en_iyi_cikarma": {
+   "en_iyi_1_cikarilinca": {
+    "net_usdt": -85693.36039089411,
+    "toplam_R": -111.40751496263813,
+    "ort_R": -0.42360271848911835
+   },
+   "en_iyi_3_cikarilinca": {
+    "net_usdt": -90720.49250713392,
+    "toplam_R": -114.25126844640266,
+    "ort_R": -0.4377443235494355
+   },
+   "en_iyi_5_cikarilinca": {
+    "net_usdt": -95333.7585716896,
+    "toplam_R": -116.67243712036114,
+    "ort_R": -0.45047273019444456
+   },
+   "en_iyi_10_cikarilinca": {
+    "net_usdt": -105439.44046632177,
+    "toplam_R": -122.71175346501575,
+    "ort_R": -0.48311713962604624
+   }
+  }
+ },
+ "huni_B": {
+  "hazirlik": 4637,
+  "hazirlik_yon": {
+   "long": 2523,
+   "short": 2114
+  },
+  "iptal": 4319,
+  "iptal_neden": {
+   "p_zaman_asimi": 1625,
+   "ilk_temas_ema_otesinde_kapandi": 1216,
+   "f_zaman_asimi": 928,
+   "P_geri_alindi": 373,
+   "q_zaman_asimi": 177
+  },
+  "eksik_mum": 10,
+  "sinyal": 317,
+  "gecersiz_seviye": 0,
+  "sonuc": {
+   "dolum": 264,
+   "engellendi": 28,
+   "risk_haritasinda_yok": 25
+  },
+  "engel_neden": {
+   "SEMBOLDE_TERS_POZISYON": 24,
+   "SEMBOLDE_AYNI_YON_POZISYON": 4
+  },
+  "kapanan": 264
+ },
+ "degismezler_B": {
+  "aday_islem": 264,
+  "hata_sayisi": 0,
+  "hatalar": [],
+  "ayni_hazirliktan_tekrar_deneme": 0,
+  "ayni_damga_ayni_sembol_bot_girisi": 0,
+  "max_hold_cikis": 13
+ },
+ "aday_B_yarilar": [
+  {
+   "yarim": "1_ilk",
+   "islem": 129,
+   "kazanma_orani": 0.2558139534883721,
+   "ort_R": -0.4548896205629015,
+   "toplam_R": -58.680761052614294,
+   "net_usdt": -15752.15186261283,
+   "pf": 0.3841934313389479
+  },
+  {
+   "yarim": "2_son",
+   "islem": 135,
+   "kazanma_orani": 0.28888888888888886,
+   "ort_R": -0.3791229869820942,
+   "toplam_R": -51.18160324258272,
+   "net_usdt": -67034.67188734486,
+   "pf": 0.41163175449561545
+  }
+ ],
+ "aday_S": {
+  "islem": 208,
+  "kazanma_orani": 0.28846153846153844,
+  "ort_net_R": -0.37041469198409477,
+  "toplam_net_R": -77.04625593269171,
+  "ort_R_GA95": [
+   -0.49839784454834835,
+   -0.23550023397308864
+  ],
+  "medyan_R": -1.0195822962427417,
+  "net_usdt": -8986.19076308126,
+  "pf": 0.48310798078701295,
+  "cikis_nedeni": {
+   "sl_hit": 142,
+   "tp_hit": 51,
+   "max_hold": 15
+  },
+  "ayni_mum_stop_hedef": 5,
+  "sl_gap": 0,
+  "gecersiz_risk": 0,
+  "yil_ort_R": {
+   "2023": -0.4998893789155354,
+   "2024": -0.4338504531395011,
+   "2025": -0.12803552001438528,
+   "2026": -0.27050954119882864
+  },
+  "yil_islem": {
+   "2023": 58,
+   "2024": 92,
+   "2025": 53,
+   "2026": 5
+  },
+  "ort_tutus_mum": 3.581730769230769,
+  "en_iyi_cikarma": {
+   "en_iyi_1_cikarilinca": {
+    "net_usdt": -9177.879256874523,
+    "toplam_R": -78.83178641126345,
+    "ort_R": -0.380829886044751
+   },
+   "en_iyi_3_cikarilinca": {
+    "net_usdt": -9559.116052878613,
+    "toplam_R": -82.35110654418949,
+    "ort_R": -0.40171271484970483
+   },
+   "en_iyi_5_cikarilinca": {
+    "net_usdt": -9936.068362309195,
+    "toplam_R": -85.77075866621533,
+    "ort_R": -0.4225160525429327
+   },
+   "en_iyi_10_cikarilinca": {
+    "net_usdt": -10868.341086270717,
+    "toplam_R": -94.09260441572076,
+    "ort_R": -0.4752151738167715
+   }
+  }
+ },
+ "huni_S": {
+  "hazirlik": 4637,
+  "hazirlik_yon": {
+   "long": 2523,
+   "short": 2114
+  },
+  "iptal": 4319,
+  "iptal_neden": {
+   "p_zaman_asimi": 1625,
+   "ilk_temas_ema_otesinde_kapandi": 1216,
+   "f_zaman_asimi": 928,
+   "P_geri_alindi": 373,
+   "q_zaman_asimi": 177
+  },
+  "eksik_mum": 10,
+  "sinyal": 317,
+  "gecersiz_seviye": 0,
+  "sonuc": {
+   "dolum": 208,
+   "engellendi": 84,
+   "risk_haritasinda_yok": 25
+  },
+  "engel_neden": {
+   "MARJIN_YETERSIZ": 84
+  },
+  "kapanan": 208
+ },
+ "degismezler_S": {
+  "aday_islem": 208,
+  "hata_sayisi": 0,
+  "hatalar": [],
+  "ayni_hazirliktan_tekrar_deneme": 0,
+  "ayni_damga_ayni_sembol_bot_girisi": 0,
+  "max_hold_cikis": 15
+ },
+ "aday_S_yarilar": [
+  {
+   "yarim": "1_ilk",
+   "islem": 144,
+   "kazanma_orani": 0.2569444444444444,
+   "ort_R": -0.4641215663275981,
+   "toplam_R": -66.83350555117413,
+   "net_usdt": -7806.873061968935,
+   "pf": 0.38299612870547406
+  },
+  {
+   "yarim": "2_son",
+   "islem": 64,
+   "kazanma_orani": 0.359375,
+   "ort_R": -0.15957422471121233,
+   "toplam_R": -10.212750381517589,
+   "net_usdt": -1179.317701112325,
+   "pf": 0.7507870798072539
+  }
+ ],
+ "aday_B_2x": {
+  "islem": 264,
+  "kazanma_orani": 0.25757575757575757,
+  "ort_net_R": -0.5148742346099503,
+  "toplam_net_R": -135.9267979370269,
+  "ort_R_GA95": [
+   -0.6123823221902649,
+   -0.41382312362387835
+  ],
+  "medyan_R": -1.0235452442571258,
+  "net_usdt": -31640.51878320377,
+  "pf": 0.27712092856578957,
+  "cikis_nedeni": {
+   "sl_hit": 186,
+   "tp_hit": 65,
+   "max_hold": 13
+  },
+  "ayni_mum_stop_hedef": 12,
+  "sl_gap": 0,
+  "gecersiz_risk": 0,
+  "yil_ort_R": {
+   "2023": -0.5818182683690712,
+   "2024": -0.5031556890943186,
+   "2025": -0.459360703991344,
+   "2026": -0.5583563416960967
+  },
+  "yil_islem": {
+   "2023": 52,
+   "2024": 83,
+   "2025": 82,
+   "2026": 47
+  },
+  "ort_tutus_mum": 3.3106060606060606,
+  "en_iyi_cikarma": {
+   "en_iyi_1_cikarilinca": {
+    "net_usdt": -32128.519238848414,
+    "toplam_R": -137.14877545973465,
+    "ort_R": -0.521478233687204
+   },
+   "en_iyi_3_cikarilinca": {
+    "net_usdt": -32947.30548499633,
+    "toplam_R": -140.1174492949231,
+    "ort_R": -0.536848464731506
+   },
+   "en_iyi_5_cikarilinca": {
+    "net_usdt": -33671.13873125832,
+    "toplam_R": -142.41018820475506,
+    "ort_R": -0.5498462865048458
+   },
+   "en_iyi_10_cikarilinca": {
+    "net_usdt": -35323.478753175936,
+    "toplam_R": -148.18392646079513,
+    "ort_R": -0.583401285278721
+   }
+  }
+ },
+ "huni_B_2x": {
+  "hazirlik": 4637,
+  "hazirlik_yon": {
+   "long": 2523,
+   "short": 2114
+  },
+  "iptal": 4319,
+  "iptal_neden": {
+   "p_zaman_asimi": 1625,
+   "ilk_temas_ema_otesinde_kapandi": 1216,
+   "f_zaman_asimi": 928,
+   "P_geri_alindi": 373,
+   "q_zaman_asimi": 177
+  },
+  "eksik_mum": 10,
+  "sinyal": 317,
+  "gecersiz_seviye": 0,
+  "sonuc": {
+   "dolum": 264,
+   "engellendi": 28,
+   "risk_haritasinda_yok": 25
+  },
+  "engel_neden": {
+   "SEMBOLDE_TERS_POZISYON": 24,
+   "SEMBOLDE_AYNI_YON_POZISYON": 4
+  },
+  "kapanan": 264
+ },
+ "degismezler_B_2x": {
+  "aday_islem": 264,
+  "hata_sayisi": 0,
+  "hatalar": [],
+  "ayni_hazirliktan_tekrar_deneme": 0,
+  "ayni_damga_ayni_sembol_bot_girisi": 0,
+  "max_hold_cikis": 13
+ },
+ "aday_S_2x": {
+  "islem": 132,
+  "kazanma_orani": 0.25,
+  "ort_net_R": -0.5154174129414584,
+  "toplam_net_R": -68.03509850827251,
+  "ort_R_GA95": [
+   -0.6507487526604906,
+   -0.36653158214316905
+  ],
+  "medyan_R": -1.0184820533395724,
+  "net_usdt": -9587.2435254688,
+  "pf": 0.29073829722345423,
+  "cikis_nedeni": {
+   "sl_hit": 93,
+   "tp_hit": 28,
+   "max_hold": 11
+  },
+  "ayni_mum_stop_hedef": 3,
+  "sl_gap": 0,
+  "gecersiz_risk": 0,
+  "yil_ort_R": {
+   "2023": -0.600574609525377,
+   "2024": -0.522479455542437,
+   "2025": -0.136394372079069,
+   "2026": 0.01113978435956516
+  },
+  "yil_islem": {
+   "2023": 58,
+   "2024": 61,
+   "2025": 10,
+   "2026": 3
+  },
+  "ort_tutus_mum": 3.8257575757575757,
+  "en_iyi_cikarma": {
+   "en_iyi_1_cikarilinca": {
+    "net_usdt": -9771.572793875357,
+    "toplam_R": -69.64194254225765,
+    "ort_R": -0.5316178820019668
+   },
+   "en_iyi_3_cikarilinca": {
+    "net_usdt": -10136.150933498495,
+    "toplam_R": -72.76732380966185,
+    "ort_R": -0.5640877814702469
+   },
+   "en_iyi_5_cikarilinca": {
+    "net_usdt": -10492.637975874297,
+    "toplam_R": -75.72670660765924,
+    "ort_R": -0.5962732803752696
+   },
+   "en_iyi_10_cikarilinca": {
+    "net_usdt": -11332.393521968776,
+    "toplam_R": -82.19756930441147,
+    "ort_R": -0.6737505680689465
+   }
+  }
+ },
+ "huni_S_2x": {
+  "hazirlik": 4637,
+  "hazirlik_yon": {
+   "long": 2523,
+   "short": 2114
+  },
+  "iptal": 4319,
+  "iptal_neden": {
+   "p_zaman_asimi": 1625,
+   "ilk_temas_ema_otesinde_kapandi": 1216,
+   "f_zaman_asimi": 928,
+   "P_geri_alindi": 373,
+   "q_zaman_asimi": 177
+  },
+  "eksik_mum": 10,
+  "sinyal": 317,
+  "gecersiz_seviye": 0,
+  "sonuc": {
+   "engellendi": 160,
+   "dolum": 132,
+   "risk_haritasinda_yok": 25
+  },
+  "engel_neden": {
+   "MARJIN_YETERSIZ": 160
+  },
+  "kapanan": 132
+ },
+ "degismezler_S_2x": {
+  "aday_islem": 132,
+  "hata_sayisi": 0,
+  "hatalar": [],
+  "ayni_hazirliktan_tekrar_deneme": 0,
+  "ayni_damga_ayni_sembol_bot_girisi": 0,
+  "max_hold_cikis": 11
+ },
+ "aday_S_cikis": {
+  "islem": 137,
+  "kazanma_orani": 0.24087591240875914,
+  "ort_net_R": -0.6082424280157819,
+  "toplam_net_R": -83.32921263816212,
+  "ort_R_GA95": [
+   -0.7738405848737931,
+   -0.432504333825938
+  ],
+  "medyan_R": -1.1591440788664265,
+  "net_usdt": -9577.671412592563,
+  "pf": 0.32672416897850626,
+  "cikis_nedeni": {
+   "sl_hit": 98,
+   "tp_hit": 28,
+   "max_hold": 11
+  },
+  "ayni_mum_stop_hedef": 3,
+  "sl_gap": 0,
+  "gecersiz_risk": 0,
+  "yil_ort_R": {
+   "2023": -0.6914544826118775,
+   "2024": -0.6299665741859326,
+   "2025": -0.20667164516289996,
+   "2026": -0.0012124092652339158
+  },
+  "yil_islem": {
+   "2023": 58,
+   "2024": 65,
+   "2025": 11,
+   "2026": 3
+  },
+  "ort_tutus_mum": 3.781021897810219,
+  "en_iyi_cikarma": {
+   "en_iyi_1_cikarilinca": {
+    "net_usdt": -9769.359906385822,
+    "toplam_R": -85.11474311673386,
+    "ort_R": -0.625843699387749
+   },
+   "en_iyi_3_cikarilinca": {
+    "net_usdt": -10150.596702389916,
+    "toplam_R": -88.6340632496599,
+    "ort_R": -0.6614482332064172
+   },
+   "en_iyi_5_cikarilinca": {
+    "net_usdt": -10527.549011820496,
+    "toplam_R": -92.05371537168574,
+    "ort_R": -0.6973766316036798
+   },
+   "en_iyi_10_cikarilinca": {
+    "net_usdt": -11442.677570207414,
+    "toplam_R": -100.01307361434638,
+    "ort_R": -0.7875045166483967
+   }
+  }
+ },
+ "huni_S_cikis": {
+  "hazirlik": 4637,
+  "hazirlik_yon": {
+   "long": 2523,
+   "short": 2114
+  },
+  "iptal": 4319,
+  "iptal_neden": {
+   "p_zaman_asimi": 1625,
+   "ilk_temas_ema_otesinde_kapandi": 1216,
+   "f_zaman_asimi": 928,
+   "P_geri_alindi": 373,
+   "q_zaman_asimi": 177
+  },
+  "eksik_mum": 10,
+  "sinyal": 317,
+  "gecersiz_seviye": 0,
+  "sonuc": {
+   "engellendi": 155,
+   "dolum": 137,
+   "risk_haritasinda_yok": 25
+  },
+  "engel_neden": {
+   "MARJIN_YETERSIZ": 155
+  },
+  "kapanan": 137
+ },
+ "degismezler_S_cikis": {
+  "aday_islem": 137,
+  "hata_sayisi": 0,
+  "hatalar": [],
+  "ayni_hazirliktan_tekrar_deneme": 0,
+  "ayni_damga_ayni_sembol_bot_girisi": 0,
+  "max_hold_cikis": 11
+ },
+ "aday_B_f": {
+  "islem": 264,
+  "kazanma_orani": 0.2727272727272727,
+  "ort_net_R": -0.41515942929161465,
+  "toplam_net_R": -109.60208933298627,
+  "ort_R_GA95": [
+   -0.5302033124761337,
+   -0.2954591089048355
+  ],
+  "medyan_R": -1.0220776289959934,
+  "net_usdt": -78568.27283295007,
+  "pf": 0.40768349783800073,
+  "cikis_nedeni": {
+   "sl_hit": 186,
+   "tp_hit": 65,
+   "max_hold": 13
+  },
+  "ayni_mum_stop_hedef": 12,
+  "sl_gap": 0,
+  "gecersiz_risk": 0,
+  "yil_ort_R": {
+   "2023": -0.4744436285141571,
+   "2024": -0.40485399618219825,
+   "2025": -0.36422725625312574,
+   "2026": -0.45662774371002846
+  },
+  "yil_islem": {
+   "2023": 52,
+   "2024": 83,
+   "2025": 82,
+   "2026": 47
+  },
+  "ort_tutus_mum": 3.3106060606060606,
+  "en_iyi_cikarma": {
+   "en_iyi_1_cikarilinca": {
+    "net_usdt": -81321.27885062952,
+    "toplam_R": -111.14724000042737,
+    "ort_R": -0.4226130798495337
+   },
+   "en_iyi_3_cikarilinca": {
+    "net_usdt": -86052.96301806218,
+    "toplam_R": -113.99807037370269,
+    "ort_R": -0.43677421599119803
+   },
+   "en_iyi_5_cikarilinca": {
+    "net_usdt": -90374.10169795268,
+    "toplam_R": -116.41589914698484,
+    "ort_R": -0.44948223608874455
+   },
+   "en_iyi_10_cikarilinca": {
+    "net_usdt": -99857.30589133083,
+    "toplam_R": -122.44891449980217,
+    "ort_R": -0.4820823405504023
+   }
+  }
+ },
+ "huni_B_f": {
+  "hazirlik": 4637,
+  "hazirlik_yon": {
+   "long": 2523,
+   "short": 2114
+  },
+  "iptal": 4319,
+  "iptal_neden": {
+   "p_zaman_asimi": 1625,
+   "ilk_temas_ema_otesinde_kapandi": 1216,
+   "f_zaman_asimi": 928,
+   "P_geri_alindi": 373,
+   "q_zaman_asimi": 177
+  },
+  "eksik_mum": 10,
+  "sinyal": 317,
+  "gecersiz_seviye": 0,
+  "sonuc": {
+   "dolum": 264,
+   "engellendi": 28,
+   "risk_haritasinda_yok": 25
+  },
+  "engel_neden": {
+   "SEMBOLDE_TERS_POZISYON": 24,
+   "SEMBOLDE_AYNI_YON_POZISYON": 4
+  },
+  "kapanan": 264
+ },
+ "degismezler_B_f": {
+  "aday_islem": 264,
+  "hata_sayisi": 0,
+  "hatalar": [],
+  "ayni_hazirliktan_tekrar_deneme": 0,
+  "ayni_damga_ayni_sembol_bot_girisi": 0,
+  "max_hold_cikis": 13
+ },
+ "A_referans_esleme": {
+  "referans_islem": 936,
+  "A_islem": 936,
+  "ortak": 936,
+  "yalniz_A": 0,
+  "yalniz_referans": 0,
+  "A_pnl": 781666.2027103184,
+  "referans_pnl": 781666.2027103184,
+  "pnl_farki": 0.0
+ },
+ "A_negatif_haftalar": {
+  "hafta": 75,
+  "A_toplam": -2144511.9569591964,
+  "A75_toplam": -885617.6373793373,
+  "B_toplam": -379930.2513553428,
+  "B_eksi_A": 1764581.7056038538,
+  "B_eksi_A75": 505687.3860239946,
+  "B_eksi_A75_pozitif_hafta": 62,
+  "aday_pnl": -36701.40765887384
+ },
+ "A_dusus_donemleri": [
+  {
+   "tepe": "2026-06-06 05:00:00+00:00",
+   "dip": "2026-07-18 22:00:00+00:00",
+   "toparlanma": "2026-07-19 00:00:00+00:00",
+   "A_dusus_pct": -46.62249826583877,
+   "A75_pct": -37.979088585598475,
+   "B_pct": -42.83776006505339,
+   "B_eksi_A75_pp": -4.858671479454912,
+   "B_eksi_A_pp": 3.784738200785387,
+   "aday_islem": 11,
+   "aday_pnl": -13088.991698248985,
+   "aday_short": 2
+  },
+  {
+   "tepe": "2024-01-23 14:00:00+00:00",
+   "dip": "2024-04-13 07:00:00+00:00",
+   "toparlanma": "2024-08-04 18:00:00+00:00",
+   "A_dusus_pct": -42.55858011054937,
+   "A75_pct": -31.97765938850311,
+   "B_pct": -37.61940980104451,
+   "B_eksi_A75_pp": -5.641750412541402,
+   "B_eksi_A_pp": 4.939170309504859,
+   "aday_islem": 18,
+   "aday_pnl": -2735.4347646343244,
+   "aday_short": 8
+  },
+  {
+   "tepe": "2026-02-06 01:00:00+00:00",
+   "dip": "2026-05-04 05:00:00+00:00",
+   "toparlanma": "2026-06-02 23:00:00+00:00",
+   "A_dusus_pct": -42.197167878440354,
+   "A75_pct": -33.44443051805802,
+   "B_pct": -35.739318503016,
+   "B_eksi_A75_pp": -2.294887984957983,
+   "B_eksi_A_pp": 6.457849375424352,
+   "aday_islem": 17,
+   "aday_pnl": -6016.510482258304,
+   "aday_short": 12
+  },
+  {
+   "tepe": "2023-07-14 01:00:00+00:00",
+   "dip": "2023-08-08 23:00:00+00:00",
+   "toparlanma": "2023-08-17 22:00:00+00:00",
+   "A_dusus_pct": -38.049177664289225,
+   "A75_pct": -30.189400359607575,
+   "B_pct": -34.21428167269773,
+   "B_eksi_A75_pp": -4.024881313090156,
+   "B_eksi_A_pp": 3.8348959915914915,
+   "aday_islem": 8,
+   "aday_pnl": -611.3404910310765,
+   "aday_short": 2
+  },
+  {
+   "tepe": "2024-12-04 11:00:00+00:00",
+   "dip": "2025-03-08 04:00:00+00:00",
+   "toparlanma": "2025-04-08 20:00:00+00:00",
+   "A_dusus_pct": -34.38341357366714,
+   "A75_pct": -25.564419339348767,
+   "B_pct": -21.662173458876676,
+   "B_eksi_A75_pp": 3.9022458804720883,
+   "B_eksi_A_pp": 12.721240114790467,
+   "aday_islem": 21,
+   "aday_pnl": 2535.30050882055,
+   "aday_short": 10
+  }
+ ],
+ "yillik_B_A75": {
+  "2023": {
+   "A75_yil_pct": 338.04723540733795,
+   "B_yil_pct": 223.81626486706438,
+   "B_eksi_A75_usdt": -11423.097054027356
+  },
+  "2024": {
+   "A75_yil_pct": 112.41016273140616,
+   "B_yil_pct": 47.453718920457156,
+   "B_eksi_A75_usdt": -33874.67500130746
+  },
+  "2025": {
+   "A75_yil_pct": 252.99236057985343,
+   "B_yil_pct": 155.04888801333388,
+   "B_eksi_A75_usdt": -161365.8663949439
+  },
+  "2026": {
+   "A75_yil_pct": 29.783645905932875,
+   "B_yil_pct": 3.833859682897267,
+   "B_eksi_A75_usdt": -93153.75086377098
+  }
+ }
+}

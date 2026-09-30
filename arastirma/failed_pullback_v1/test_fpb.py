@@ -573,3 +573,15 @@ def test_R_hesabi_dolum_ve_ilk_stoptan():
     assert A.r0_usdt(99.8, 101.0, 2.0) == pytest.approx(2.4)
     assert A.net_r(-2.6, 99.8, 101.0, 2.0) == pytest.approx(-2.6 / 2.4)
     assert np.isnan(A.net_r(1.0, 101.0, 101.0, 2.0))    # sıfır risk → geçersiz, işaretlenir
+
+
+def test_adx_esigi_iki_uc():
+    # önceki ADX tam 30 (≤30) → geçiş sayılır; güncel ADX tam 30 (>30 değil) → sayılmaz
+    m = isinma()
+    m[99]["adx"] = 30.0
+    m.append(dict(h=104, l=102.5, c=103.5, ema=100.6, atr=1, adx=30.5))
+    ol, _ = kos(m)
+    assert len(tur(ol, "hazirlik")) == 1
+    m[100]["adx"] = 30.0
+    ol, _ = kos(m)
+    assert tur(ol, "hazirlik") == []

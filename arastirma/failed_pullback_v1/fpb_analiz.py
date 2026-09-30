@@ -173,30 +173,42 @@ def aday_islemleri(k):
     if d.empty:
         return d
     d["gecersiz_risk"] = ~np.isfinite(d["net_R"])
-    d["tutus_saat"] = (d["cikis_zamani"] - d["giris_zamani"]).dt.total_seconds() / 3600
+    # cikis_zamani DB damgasıdır (asenkron kapanış kaydı → bazen +1 saat); tutuş için tutus_mum kullanılır
     return d
 
 
+def _veri(onb, veri_dizini, coin):
+    if coin not in onb:
+        x = pd.read_csv(os.path.join(veri_dizini, f"{coin}_fut_1h.csv"))
+        x["ts"] = pd.to_datetime(x["ts"], utc=True)
+        onb[coin] = x.set_index("ts")
+    return onb[coin]
+
+
 def belirsizlik_isaretle(d, veri_dizini):
-    """Çıkış mumunda stop ve hedef birlikte görüldü mü (kaynak 1h veri)."""
+    """Çıkış mumunu VERİDEN bulur (DB exit_time kapanış geri çağrısı asenkron işlendiği
+    için bazen bir damga geç yazılıyor; fiyat doğru, damga değil). Giriş mumu q+1'den
+    itibaren stop/hedefe ilk değen mum = çıkış mumu; ikisine birden değdiyse işaretlenir."""
     if d.empty:
         return d
-    onb = {}
-    bel = []
+    onb, bel, mum_say = {}, [], []
     for _, r in d.iterrows():
-        coin = r["sembol"].split("/")[0]
-        if coin not in onb:
-            x = pd.read_csv(os.path.join(veri_dizini, f"{coin}_fut_1h.csv"))
-            x["ts"] = pd.to_datetime(x["ts"], utc=True)
-            onb[coin] = x.set_index("ts")
-        x = onb[coin]
-        mum = r["cikis_zamani"].floor("h") - pd.Timedelta(hours=1)   # çıkış kapanışta → o mumun açılışı
-        if r["cikis_nedeni"] in ("sl_hit", "tp_hit") and mum in x.index:
-            m = x.loc[mum]
-            bel.append(ayni_mum_belirsiz(r["yon"], r["stop"], r["hedef"], m["high"], m["low"]))
-        else:
-            bel.append(False)
+        x = _veri(onb, veri_dizini, r["sembol"].split("/")[0])
+        g = r["giris_zamani"]
+        pen = x.loc[g: g + pd.Timedelta(hours=11)]           # q+1 .. q+12 (12 mum)
+        b, n = False, len(pen)
+        for j, (_, m) in enumerate(pen.iterrows()):
+            if r["yon"] == "long":
+                s_, t_ = m["low"] <= r["stop"], m["high"] >= r["hedef"]
+            else:
+                s_, t_ = m["high"] >= r["stop"], m["low"] <= r["hedef"]
+            if s_ or t_:
+                b, n = (s_ and t_), j + 1
+                break
+        bel.append(b)
+        mum_say.append(n)
     d["ayni_mum_stop_hedef"] = bel
+    d["tutus_mum"] = mum_say
     return d
 
 
@@ -230,7 +242,7 @@ def aday_istatistik(d):
                 sl_gap=int(d["sl_gap"].sum()), gecersiz_risk=int(d["gecersiz_risk"].sum()),
                 yil_ort_R={int(k): float(v) for k, v in d.groupby(yil)["net_R"].mean().items()},
                 yil_islem={int(k): int(v) for k, v in d.groupby(yil).size().items()},
-                ort_tutus_saat=float(d["tutus_saat"].mean()), en_iyi_cikarma=cikar)
+                ort_tutus_mum=float(d["tutus_mum"].mean()), en_iyi_cikarma=cikar)
 
 
 def huni(k):
@@ -342,6 +354,8 @@ def main(dizin):
         aday[ad] = d
         sonuc[f"aday_{ad}"] = aday_istatistik(d)
         sonuc[f"huni_{ad}"] = huni(kosular[ad])
+        if not d.empty:
+            sonuc[f"degismezler_{ad}"] = degismezler(kosular[ad], d, veri)
         if ad in ("B", "S"):
             d.to_csv(os.path.join(BURA, f"aday_islemler_{ad}.csv"), index=False)
             sin = kosular[ad]["sin"]
@@ -377,6 +391,57 @@ def main(dizin):
     with open(os.path.join(BURA, "sonuclar.json"), "w") as f:
         json.dump(sonuc, f, indent=1, default=str)
     return sonuc
+
+
+def degismezler(k, d, veri_dizini):
+    """Tam koşu üzerinde davranış değişmezleri (her aday işlemi için)."""
+    ay = k["ozet"]["ayar"]
+    g_bp = float(ay["slip_giris"])
+    sin = k["sin"]
+    isl = k["isl"]
+    onb, hata = {}, []
+    for _, r in d.iterrows():
+        coin = r["sembol"].split("/")[0]
+        x = _veri(onb, veri_dizini, coin)
+        q_kap = r["q_zaman"] + pd.Timedelta(hours=1)
+        if r["giris_zamani"] != q_kap:
+            hata.append(("giris_q_kapanisi_degil", r["kimlik"]))
+        cq = float(x.loc[r["q_zaman"], "close"])
+        yon = 1 if r["yon"] == "long" else -1
+        if not math.isclose(r["E_fill"], cq * (1 + yon * g_bp / 1e4), rel_tol=1e-9):
+            hata.append(("dolum_q_kapanisi_arti_kayma_degil", r["kimlik"]))
+        c_bp = float(ay["slip_cikis"]) if ay.get("ADAY_CIKIS_SLIP_BP") in (None, "None") \
+            else float(ay["ADAY_CIKIS_SLIP_BP"])
+        if r["cikis_nedeni"] == "max_hold":
+            c12 = float(x.loc[r["giris_zamani"] + pd.Timedelta(hours=11), "close"])   # q+12 kapanışı = q+13 açılışı
+            if not math.isclose(r["cikis_fiyati"], c12 * (1 - yon * c_bp / 1e4), rel_tol=1e-9):
+                hata.append(("max_hold_q12_kapanisi_degil", r["kimlik"]))
+            if r["tutus_mum"] != 12:
+                hata.append(("max_hold_oncesi_stop_hedef_gorulmustu", r["kimlik"]))
+        elif r["cikis_nedeni"] in ("sl_hit", "tp_hit"):
+            sev = r["stop"] if r["cikis_nedeni"] == "sl_hit" else r["hedef"]
+            bp = c_bp if r["cikis_nedeni"] == "sl_hit" else 0.0
+            if not math.isclose(r["cikis_fiyati"], sev * (1 - yon * bp / 1e4), rel_tol=1e-9):
+                hata.append(("cikis_seviyede_degil", r["kimlik"]))
+            if r["tutus_mum"] > 12:
+                hata.append(("12_mumdan_uzun", r["kimlik"]))
+    a_isl = isl[isl["aday"]]
+    db_stop = dict(zip(a_isl["id"], a_isl["sl_price"]))
+    db_tp = dict(zip(a_isl["id"], a_isl["tp_price"]))
+    dol = sin[sin["sonuc"] == "dolum"] if "sonuc" in sin.columns else sin
+    for _, s in dol.iterrows():
+        if s["pos_id"] in db_stop and not (math.isclose(db_stop[s["pos_id"]], s["S"], rel_tol=1e-12)
+                                           and math.isclose(db_tp[s["pos_id"]], s["T"], rel_tol=1e-12)):
+            hata.append(("stop_hedef_sinyalden_farkli", s["kimlik"]))
+    tekrar = int(sin["kimlik"].duplicated().sum()) if len(sin) else 0
+    # öncelik: aday girişi olan damgada aynı sembolde bot girişi olmamalı (bot önce denendi)
+    bot = isl[~isl["aday"]]
+    cak = 0
+    for _, r in d.iterrows():
+        cak += int(((bot["symbol"] == r["sembol"]) & (bot["entry_time"] == r["giris_zamani"])).sum())
+    return dict(aday_islem=len(d), hata_sayisi=len(hata), hatalar=hata[:20],
+                ayni_hazirliktan_tekrar_deneme=tekrar, ayni_damga_ayni_sembol_bot_girisi=cak,
+                max_hold_cikis=int((d["cikis_nedeni"] == "max_hold").sum()))
 
 
 def referans_esle(kA):
