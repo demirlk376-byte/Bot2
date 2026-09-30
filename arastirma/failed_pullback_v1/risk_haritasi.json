@@ -1,0 +1,143 @@
+{
+ "A_risk_scale": 1.75,
+ "haric_semboller": [
+  "TRX/USDT:USDT"
+ ],
+ "harita": {
+  "ADA/USDT:USDT": {
+   "long": 0.00875,
+   "short": 0.00875
+  },
+  "BCH/USDT:USDT": {
+   "long": 0.00875,
+   "short": 0.00875
+  },
+  "BNB/USDT:USDT": {
+   "long": 0.00875,
+   "short": 0.00875
+  },
+  "DOGE/USDT:USDT": {
+   "long": 0.00875,
+   "short": 0.00875
+  },
+  "ETH/USDT:USDT": {
+   "long": 0.00875,
+   "short": 0.00875
+  },
+  "ICP/USDT:USDT": {
+   "long": 0.00875,
+   "short": 0.00875
+  },
+  "LTC/USDT:USDT": {
+   "long": 0.00875,
+   "short": 0.00875
+  },
+  "NEAR/USDT:USDT": {
+   "long": 0.00875,
+   "short": 0.00875
+  },
+  "SOL/USDT:USDT": {
+   "long": 0.00875,
+   "short": 0.00875
+  },
+  "XLM/USDT:USDT": {
+   "long": 0.00875,
+   "short": 0.00875
+  },
+  "XRP/USDT:USDT": {
+   "long": 0.00875,
+   "short": 0.00875
+  }
+ },
+ "kaynak": {
+  "ADA/USDT:USDT": {
+   "long": {
+    "donchian": 0.035
+   },
+   "short": {
+    "donchian": 0.035
+   }
+  },
+  "BCH/USDT:USDT": {
+   "long": {
+    "donchian": 0.035
+   },
+   "short": {
+    "donchian": 0.035
+   }
+  },
+  "BNB/USDT:USDT": {
+   "long": {
+    "donchian": 0.035
+   },
+   "short": {
+    "donchian": 0.035
+   }
+  },
+  "DOGE/USDT:USDT": {
+   "long": {
+    "squeeze": 0.035
+   },
+   "short": {
+    "squeeze": 0.035
+   }
+  },
+  "ETH/USDT:USDT": {
+   "long": {
+    "donchian": 0.035
+   },
+   "short": {
+    "donchian": 0.035
+   }
+  },
+  "ICP/USDT:USDT": {
+   "long": {
+    "donchian": 0.035
+   },
+   "short": {
+    "donchian": 0.035
+   }
+  },
+  "LTC/USDT:USDT": {
+   "long": {
+    "mean_rev": 0.035
+   },
+   "short": {
+    "mean_rev": 0.035
+   }
+  },
+  "NEAR/USDT:USDT": {
+   "long": {
+    "donchian": 0.035
+   },
+   "short": {
+    "donchian": 0.035
+   }
+  },
+  "SOL/USDT:USDT": {
+   "long": {
+    "donchian": 0.035
+   },
+   "short": {
+    "donchian": 0.035
+   }
+  },
+  "XLM/USDT:USDT": {
+   "long": {
+    "squeeze": 0.035
+   },
+   "short": {
+    "squeeze": 0.035
+   }
+  },
+  "XRP/USDT:USDT": {
+   "long": {
+    "squeeze": 0.035
+   },
+   "short": {
+    "squeeze": 0.035
+   }
+  }
+ },
+ "kural": "aday_risk = 0.25 x min(A'daki etkin kol risk%)"
+}
