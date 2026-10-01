@@ -1,0 +1,392 @@
+{
+ "olusturma": "2026-10-01 15:23:57.693388+00:00",
+ "baslangic": "2023-01-01 00:00:00+00:00",
+ "semboller": [
+  "SOL",
+  "ETH",
+  "ADA",
+  "NEAR",
+  "BCH",
+  "XRP",
+  "DOGE",
+  "TRX",
+  "XLM",
+  "LTC",
+  "ICP",
+  "BNB"
+ ],
+ "dosyalar": {
+  "veri/mexc_5m/SOL.npz": {
+   "sha256": "5f4d31258f38552d791fb1bc2ccd607aeba8996ae0a97bef55b4815f754bff0d",
+   "satir": 103923,
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/mexc_5m/ETH.npz": {
+   "sha256": "8f7c58bedfacd68b166ed66757855fb0f24b2494d6a3df0d1de374d5841daf95",
+   "satir": 103923,
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/mexc_5m/ADA.npz": {
+   "sha256": "221382f164141f93cfe49405be9a38c5d4c84b219cbf04000d50d9a61ba964be",
+   "satir": 103923,
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/mexc_5m/NEAR.npz": {
+   "sha256": "baf51837135c88d6b2693be4a57c0f5b3d217ab5f251e9ffb8d394995106ba18",
+   "satir": 103923,
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/mexc_5m/BCH.npz": {
+   "sha256": "905ea92c522a8f955efffa09b112ca4c0bf3215980a2bc86d0218ca496f52432",
+   "satir": 103923,
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/mexc_5m/XRP.npz": {
+   "sha256": "9a495f82e4cb7ca45dd76bd794b9eea5128ce067079c77cc75df6c13a8552486",
+   "satir": 103923,
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/mexc_5m/DOGE.npz": {
+   "sha256": "f539c4f5bf2aff7140ea9c3d4fb2b34c5d1d05e162bde3dbe106f5c0d24b4173",
+   "satir": 103923,
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/mexc_5m/TRX.npz": {
+   "sha256": "725169dd6f093e73842f7807900c6978164e0eb35e7b653a90692b5d15980b76",
+   "satir": 103923,
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/mexc_5m/XLM.npz": {
+   "sha256": "10311363c2afe618774c93fd0b20ea42084305c8041e56bf01d8a834a84a9498",
+   "satir": 103923,
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/mexc_5m/LTC.npz": {
+   "sha256": "df77912eccaafda17515de7720f00a7cabc4683dbfe0924e3aeb267bfbe2575b",
+   "satir": 103923,
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/mexc_5m/ICP.npz": {
+   "sha256": "e7c1948785e2d75c54cebeb445718a1969ef2d9196042359ae0ad47c1dc205c5",
+   "satir": 103923,
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/mexc_5m/BNB.npz": {
+   "sha256": "e06eceeb9a83b06987a8f0525a8ff329e8b2c61500996947c0cda8692c8753d6",
+   "satir": 103923,
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/binance_5m/SOL.npz": {
+   "sha256": "bc7915db74279451114321601b79565d7c94cc065307fd3f10d190a22c5e2359",
+   "satir": 394272,
+   "ilk": "2023-01-01 00:00:00+00:00",
+   "son": "2026-09-30 23:55:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/binance_funding/SOL.csv": {
+   "sha256": "54546825a2d90acb0567556dc9c95d29df5f1049b357e7098cac056e98e2ef3d",
+   "satir": 4107,
+   "kolonlar": [
+    "calc_time",
+    "funding_interval_hours",
+    "last_funding_rate"
+   ]
+  },
+  "veri/binance_5m/ETH.npz": {
+   "sha256": "29f2cc902c0693ae2b9352bb0032e7b5e8873c5a0b70c6fc3dff4bb750fce06b",
+   "satir": 394272,
+   "ilk": "2023-01-01 00:00:00+00:00",
+   "son": "2026-09-30 23:55:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/binance_funding/ETH.csv": {
+   "sha256": "de31c7781b27c593da849b6ff4f01cb7f7602fa9f74f4e391a61ed8be54d5127",
+   "satir": 4107,
+   "kolonlar": [
+    "calc_time",
+    "funding_interval_hours",
+    "last_funding_rate"
+   ]
+  },
+  "veri/binance_5m/ADA.npz": {
+   "sha256": "671cf123b30376558f44478745d75cbde99bfae782b20f949c3c633260dc044d",
+   "satir": 394272,
+   "ilk": "2023-01-01 00:00:00+00:00",
+   "son": "2026-09-30 23:55:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/binance_funding/ADA.csv": {
+   "sha256": "83a0364354cceeb7963f699e1bb001b03c5fe8e4d10203732904190049c4786b",
+   "satir": 4107,
+   "kolonlar": [
+    "calc_time",
+    "funding_interval_hours",
+    "last_funding_rate"
+   ]
+  },
+  "veri/binance_5m/NEAR.npz": {
+   "sha256": "969a95a0c349c03438c5855c3175f68395b1695e79a36dd1310a356f512a6325",
+   "satir": 394272,
+   "ilk": "2023-01-01 00:00:00+00:00",
+   "son": "2026-09-30 23:55:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/binance_funding/NEAR.csv": {
+   "sha256": "4ed8cf962cf3c737feca573cbe31dc5aa265de713f3c16a7c906ac034b9674b5",
+   "satir": 4107,
+   "kolonlar": [
+    "calc_time",
+    "funding_interval_hours",
+    "last_funding_rate"
+   ]
+  },
+  "veri/binance_5m/BCH.npz": {
+   "sha256": "1be9fae49962b72a12a65a8d3723ce1ffc8193c413284fcd15f14b973ad54477",
+   "satir": 394272,
+   "ilk": "2023-01-01 00:00:00+00:00",
+   "son": "2026-09-30 23:55:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/binance_funding/BCH.csv": {
+   "sha256": "9508c3452c8861986d4c7c96145782c073e3e226f00b66652d26b1df4fef883d",
+   "satir": 4107,
+   "kolonlar": [
+    "calc_time",
+    "funding_interval_hours",
+    "last_funding_rate"
+   ]
+  },
+  "veri/binance_5m/XRP.npz": {
+   "sha256": "f471ddc00a5f97e6d41f5f2c28167e5a3b0bc312806313c7b45f77e2d1bbc1ed",
+   "satir": 394272,
+   "ilk": "2023-01-01 00:00:00+00:00",
+   "son": "2026-09-30 23:55:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/binance_funding/XRP.csv": {
+   "sha256": "946c9ac664810f27c09b7c4e9ab0a04b9677922ee947eca09843f5ab1cf67ce5",
+   "satir": 4107,
+   "kolonlar": [
+    "calc_time",
+    "funding_interval_hours",
+    "last_funding_rate"
+   ]
+  },
+  "veri/binance_5m/DOGE.npz": {
+   "sha256": "52e656f75696e7c4821cb4608123a1acf1d857ff96283b7215c24ac1b67f345d",
+   "satir": 394272,
+   "ilk": "2023-01-01 00:00:00+00:00",
+   "son": "2026-09-30 23:55:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/binance_funding/DOGE.csv": {
+   "sha256": "6d973d12405c11d7e1dd676410fcc82bf9e0af5ab9e843e52d2e0d0224dd032b",
+   "satir": 4107,
+   "kolonlar": [
+    "calc_time",
+    "funding_interval_hours",
+    "last_funding_rate"
+   ]
+  },
+  "veri/binance_5m/TRX.npz": {
+   "sha256": "2fae5866a171c9840a6dcae6ce5f78f2b8a396bdd7b72aff888ff79531b4d288",
+   "satir": 394272,
+   "ilk": "2023-01-01 00:00:00+00:00",
+   "son": "2026-09-30 23:55:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/binance_funding/TRX.csv": {
+   "sha256": "954f76dc6274e281366e4ac9045d7aa108c63feeb83fa5cc59911a2688b50db4",
+   "satir": 4107,
+   "kolonlar": [
+    "calc_time",
+    "funding_interval_hours",
+    "last_funding_rate"
+   ]
+  },
+  "veri/binance_5m/XLM.npz": {
+   "sha256": "1534582783845c02b94cc1a2e0ee2603cb61f83619488373af936f32c837b238",
+   "satir": 394272,
+   "ilk": "2023-01-01 00:00:00+00:00",
+   "son": "2026-09-30 23:55:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/binance_funding/XLM.csv": {
+   "sha256": "276ac4ed0c193b49e749c8b7b3f10e3cff7cfbe7f0446f28558a7c4493ac0912",
+   "satir": 4107,
+   "kolonlar": [
+    "calc_time",
+    "funding_interval_hours",
+    "last_funding_rate"
+   ]
+  },
+  "veri/binance_5m/LTC.npz": {
+   "sha256": "e72df5873b052f0acd045b0365d2e39967c9ca2da09f0e616143c32fc3174abb",
+   "satir": 394272,
+   "ilk": "2023-01-01 00:00:00+00:00",
+   "son": "2026-09-30 23:55:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/binance_funding/LTC.csv": {
+   "sha256": "f9a1eb8d8387a258cb5c6f2ca56bf708ce273d417c1d718a79a8c968c5177126",
+   "satir": 4107,
+   "kolonlar": [
+    "calc_time",
+    "funding_interval_hours",
+    "last_funding_rate"
+   ]
+  },
+  "veri/binance_5m/ICP.npz": {
+   "sha256": "6a79bcaead3ffdd52fb9b0f9f1b00707fe09897fb5389571fc9ba3a88c600ce0",
+   "satir": 394272,
+   "ilk": "2023-01-01 00:00:00+00:00",
+   "son": "2026-09-30 23:55:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/binance_funding/ICP.csv": {
+   "sha256": "8c5d716af49cd64c1ed11acd5f60af62937897b248376ade74b367d6e512acb2",
+   "satir": 4107,
+   "kolonlar": [
+    "calc_time",
+    "funding_interval_hours",
+    "last_funding_rate"
+   ]
+  },
+  "veri/binance_5m/BNB.npz": {
+   "sha256": "25a437c3c2b668a5db3cfa94a7c81da0120cd9e388b1103a2e05b3a7b7399553",
+   "satir": 394272,
+   "ilk": "2023-01-01 00:00:00+00:00",
+   "son": "2026-09-30 23:55:00+00:00",
+   "bosluk_sayisi": 0,
+   "eksik_bar": 0,
+   "tekrar": 0
+  },
+  "veri/binance_funding/BNB.csv": {
+   "sha256": "7772d075fd001d43aa301ee3d72d0050fc349b22f8be34b5e89bd34573e3e25b",
+   "satir": 4107,
+   "kolonlar": [
+    "calc_time",
+    "funding_interval_hours",
+    "last_funding_rate"
+   ]
+  },
+  "veri/mexc_funding/SOL.csv": {
+   "sha256": "ef1e13d50f114c0b98f7448156d28d53091b2f790e9d81ec8cce9d9700fe6309",
+   "satir": 1620
+  },
+  "veri/mexc_funding/ETH.csv": {
+   "sha256": "96ab08ec284ee47bcf3f88d69706072633516c9ed2a766d901146168b9796153",
+   "satir": 1620
+  },
+  "veri/mexc_funding/ADA.csv": {
+   "sha256": "2fef4d505e03db1992fbc2669f50df2b4c4768053933e91e7992527a0f7b98c5",
+   "satir": 1620
+  },
+  "veri/mexc_funding/NEAR.csv": {
+   "sha256": "c4aba90e86f1f154516512d9f30484360689c526117297124378cb9c78bc87af",
+   "satir": 1620
+  },
+  "veri/mexc_funding/BCH.csv": {
+   "sha256": "fb184f8d63d010e3cb7696b7ef1667904de332d60d42c816a826947cd491888d",
+   "satir": 1620
+  },
+  "veri/mexc_funding/XRP.csv": {
+   "sha256": "3676fa6c2da5d9340c93442257970f4775325c4c02f64db7750399d7250d34d6",
+   "satir": 1620
+  },
+  "veri/mexc_funding/DOGE.csv": {
+   "sha256": "12a80ab124026f0e6eb067863b75b790c3b76f74bd4cdb6322ac756d413a2cb2",
+   "satir": 1620
+  },
+  "veri/mexc_funding/TRX.csv": {
+   "sha256": "48d1be848dda852cd33ca7f4c0a2dca889f6bb456fcc1e97c5737516cc1d55f0",
+   "satir": 1620
+  },
+  "veri/mexc_funding/XLM.csv": {
+   "sha256": "92a334a6d9300474052f749cfcfa73390ad57ff702309d8591788d9903e0bec5",
+   "satir": 1620
+  },
+  "veri/mexc_funding/LTC.csv": {
+   "sha256": "6e3c5fa511420326c1c52569f3a7033160d8be8114ef48ca415b9cd9b8b09df0",
+   "satir": 1620
+  },
+  "veri/mexc_funding/ICP.csv": {
+   "sha256": "a6b2ac5c40808a237dfd056ad9567ddc016ec30a6597cff6819882e73414c6c8",
+   "satir": 1620
+  },
+  "veri/mexc_funding/BNB.csv": {
+   "sha256": "0a338a6c4359b986fa1a2dcb834c2c6a5aa90c0e69ae900de989860beccd9b7a",
+   "satir": 1620
+  }
+ }
+}

@@ -1,0 +1,267 @@
+MEXC detail: ['ADA', 'BCH', 'BNB', 'DOGE', 'ETH', 'ICP', 'LTC', 'NEAR', 'SOL', 'TRX', 'XLM', 'XRP']
+MEXC SOL: 103923 bar 2025-10-05 19:05:00+00:00
+MEXC ETH: 103923 bar 2025-10-05 19:05:00+00:00
+MEXC ADA: 103923 bar 2025-10-05 19:05:00+00:00
+MEXC NEAR: 103923 bar 2025-10-05 19:05:00+00:00
+MEXC BCH: 103923 bar 2025-10-05 19:05:00+00:00
+MEXC XRP: 103923 bar 2025-10-05 19:05:00+00:00
+MEXC DOGE: 103923 bar 2025-10-05 19:05:00+00:00
+MEXC TRX: 103923 bar 2025-10-05 19:05:00+00:00
+MEXC XLM: 103923 bar 2025-10-05 19:05:00+00:00
+MEXC LTC: 103923 bar 2025-10-05 19:05:00+00:00
+MEXC ICP: 103923 bar 2025-10-05 19:05:00+00:00
+MEXC BNB: 103923 bar 2025-10-05 19:05:00+00:00
+BINANCE SOL: 394272 bar
+BINANCE ETH: 394272 bar
+BINANCE ADA: 394272 bar
+BINANCE NEAR: 394272 bar
+BINANCE BCH: 394272 bar
+BINANCE XRP: 394272 bar
+BINANCE DOGE: 394272 bar
+BINANCE TRX: 394272 bar
+BINANCE XLM: 394272 bar
+BINANCE LTC: 394272 bar
+BINANCE ICP: 394272 bar
+BINANCE BNB: 394272 bar
+{
+"veri/mexc_5m/SOL.npz": [
+103923,
+"2025-10-05 19:05:00+00:00",
+0
+],
+"veri/mexc_5m/ETH.npz": [
+103923,
+"2025-10-05 19:05:00+00:00",
+0
+],
+"veri/mexc_5m/ADA.npz": [
+103923,
+"2025-10-05 19:05:00+00:00",
+0
+],
+"veri/mexc_5m/NEAR.npz": [
+103923,
+"2025-10-05 19:05:00+00:00",
+0
+],
+"veri/mexc_5m/BCH.npz": [
+103923,
+"2025-10-05 19:05:00+00:00",
+0
+],
+"veri/mexc_5m/XRP.npz": [
+103923,
+"2025-10-05 19:05:00+00:00",
+0
+],
+"veri/mexc_5m/DOGE.npz": [
+103923,
+"2025-10-05 19:05:00+00:00",
+0
+],
+"veri/mexc_5m/TRX.npz": [
+103923,
+"2025-10-05 19:05:00+00:00",
+0
+],
+"veri/mexc_5m/XLM.npz": [
+103923,
+"2025-10-05 19:05:00+00:00",
+0
+],
+"veri/mexc_5m/LTC.npz": [
+103923,
+"2025-10-05 19:05:00+00:00",
+0
+],
+"veri/mexc_5m/ICP.npz": [
+103923,
+"2025-10-05 19:05:00+00:00",
+0
+],
+"veri/mexc_5m/BNB.npz": [
+103923,
+"2025-10-05 19:05:00+00:00",
+0
+],
+"veri/binance_5m/SOL.npz": [
+394272,
+"2023-01-01 00:00:00+00:00",
+0
+],
+"veri/binance_funding/SOL.csv": [
+4107,
+null,
+null
+],
+"veri/binance_5m/ETH.npz": [
+394272,
+"2023-01-01 00:00:00+00:00",
+0
+],
+"veri/binance_funding/ETH.csv": [
+4107,
+null,
+null
+],
+"veri/binance_5m/ADA.npz": [
+394272,
+"2023-01-01 00:00:00+00:00",
+0
+],
+"veri/binance_funding/ADA.csv": [
+4107,
+null,
+null
+],
+"veri/binance_5m/NEAR.npz": [
+394272,
+"2023-01-01 00:00:00+00:00",
+0
+],
+"veri/binance_funding/NEAR.csv": [
+4107,
+null,
+null
+],
+"veri/binance_5m/BCH.npz": [
+394272,
+"2023-01-01 00:00:00+00:00",
+0
+],
+"veri/binance_funding/BCH.csv": [
+4107,
+null,
+null
+],
+"veri/binance_5m/XRP.npz": [
+394272,
+"2023-01-01 00:00:00+00:00",
+0
+],
+"veri/binance_funding/XRP.csv": [
+4107,
+null,
+null
+],
+"veri/binance_5m/DOGE.npz": [
+394272,
+"2023-01-01 00:00:00+00:00",
+0
+],
+"veri/binance_funding/DOGE.csv": [
+4107,
+null,
+null
+],
+"veri/binance_5m/TRX.npz": [
+394272,
+"2023-01-01 00:00:00+00:00",
+0
+],
+"veri/binance_funding/TRX.csv": [
+4107,
+null,
+null
+],
+"veri/binance_5m/XLM.npz": [
+394272,
+"2023-01-01 00:00:00+00:00",
+0
+],
+"veri/binance_funding/XLM.csv": [
+4107,
+null,
+null
+],
+"veri/binance_5m/LTC.npz": [
+394272,
+"2023-01-01 00:00:00+00:00",
+0
+],
+"veri/binance_funding/LTC.csv": [
+4107,
+null,
+null
+],
+"veri/binance_5m/ICP.npz": [
+394272,
+"2023-01-01 00:00:00+00:00",
+0
+],
+"veri/binance_funding/ICP.csv": [
+4107,
+null,
+null
+],
+"veri/binance_5m/BNB.npz": [
+394272,
+"2023-01-01 00:00:00+00:00",
+0
+],
+"veri/binance_funding/BNB.csv": [
+4107,
+null,
+null
+],
+"veri/mexc_funding/SOL.csv": [
+1620,
+null,
+null
+],
+"veri/mexc_funding/ETH.csv": [
+1620,
+null,
+null
+],
+"veri/mexc_funding/ADA.csv": [
+1620,
+null,
+null
+],
+"veri/mexc_funding/NEAR.csv": [
+1620,
+null,
+null
+],
+"veri/mexc_funding/BCH.csv": [
+1620,
+null,
+null
+],
+"veri/mexc_funding/XRP.csv": [
+1620,
+null,
+null
+],
+"veri/mexc_funding/DOGE.csv": [
+1620,
+null,
+null
+],
+"veri/mexc_funding/TRX.csv": [
+1620,
+null,
+null
+],
+"veri/mexc_funding/XLM.csv": [
+1620,
+null,
+null
+],
+"veri/mexc_funding/LTC.csv": [
+1620,
+null,
+null
+],
+"veri/mexc_funding/ICP.csv": [
+1620,
+null,
+null
+],
+"veri/mexc_funding/BNB.csv": [
+1620,
+null,
+null
+]
+}
