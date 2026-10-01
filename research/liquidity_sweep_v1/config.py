@@ -94,7 +94,7 @@ REASONS = {
     "DAILY_LOSS_BLOCKED",     # canlı DAILY_MAX_LOSS_PCT kapısı
     "MAX_POSITIONS_BLOCKED",  # canlı MAX_POSITIONS kapısı
     "GEOMETRY_PROTECT_CLOSE",  # dolum sonrası plan geometrisi bozuldu → koruma kapanışı
-    "PENDING", "CENSORED",
+    "PENDING", "CENSORED", "SUPERSEDED", "DUPLICATE_SIGNAL_IGNORED",
 }
 EXIT_REASONS = ("STOP", "TARGET", "TIME_EXIT", "AMBIGUOUS_SL_TP", "GEOMETRY_PROTECT_CLOSE")
 

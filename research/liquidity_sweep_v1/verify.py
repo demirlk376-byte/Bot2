@@ -189,5 +189,21 @@ def main(a):
     rep["sure_dk"] = round((time.time() - t0) / 60, 1)
     with open(os.path.join(out, "fidelity_gates.json"), "w") as f:
         json.dump(rep, f, indent=1, ensure_ascii=False, default=str)
+    lines = ["# Uyum raporu (fidelity_report)", "", f"Genel: {'GEÇTİ' if rep['all_ok'] else 'METRICS_INVALID — sapma var'}", "",
+             "| kapı | sonuç | ayrıntı |", "|---|---|---|"]
+    for k, v in rep.items():
+        if isinstance(v, dict):
+            det = {x: y for x, y in v.items() if x not in ("ok", "counts", "hashes")}
+            lines.append(f"| {k} | {'✓' if v.get('ok') else '✗'} | {json.dumps(det, ensure_ascii=False, default=str)[:400]} |")
+    lines += ["", "## Model sınırları", "",
+              "| varsayım | durum |", "|---|---|",
+              "| emir defteri / kuyruk | yok; tam dolum varsayımı |",
+              "| veri gecikmesi / ağ | yok; ilk 5m açılışında idealize yürütme |",
+              "| mark / tetik fiyatı | tarihsel mark yok; stop/hedef trade OHLCV ile; birebir mark tetikleme İDDİA EDİLMEZ |",
+              "| likidasyon | modellenmez (risk/marjin kapıları likidasyon mesafesinin çok altında) |",
+              "| venue | fiyat Binance USDⓈ-M (MEXC vekili); tick/kontrat MEXC güncel metadata |",
+              "| funding | Binance gerçek settlement zamanları (vekil); mark = son 5m kapanışı |"]
+    with open(os.path.join(out, "fidelity_report.md"), "w") as f:
+        f.write("\n".join(lines) + "\n")
     print(json.dumps({k: (v.get("ok") if isinstance(v, dict) else v) for k, v in rep.items()}, indent=1))
     return rep

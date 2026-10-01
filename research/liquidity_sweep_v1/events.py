@@ -51,10 +51,15 @@ def detect(family: str, dv: Derived, book: LevelBook):
         if refs["LOW"] is None and refs["HIGH"] is None:
             continue
         if not (v15[j] and v15[j - 1]):
+            # ihlal dışlanamaz → seviye tüketilir (DATA_INVALID); sonraki bir ihlal "ilk" sayılmaz
             notes["DATA_INVALID_SKIP"] += 1
+            for lv in refs.values():
+                if lv is not None:
+                    lv.consumed_at, lv.consume_reason = tau + C.M15, "DATA_INVALID"
             continue
         A = a15[j - 1]
         hits = {}
+        inv_bar = False
         for s, lv in refs.items():
             if lv is None:
                 continue
@@ -68,19 +73,21 @@ def detect(family: str, dv: Derived, book: LevelBook):
             if not (pre and touch):
                 continue
             if not I.usable(A):
-                notes["INVALID_INDICATOR"] += 1
+                inv_bar = True
                 continue
             if s == "LOW" and l15[j] <= L - C.PENETRATION_ATR * A + eps:
                 hits[s] = lv
             elif s == "HIGH" and h15[j] >= L + C.PENETRATION_ATR * A - eps:
                 hits[s] = lv
+        if inv_bar:
+            notes["INVALID_INDICATOR"] += 1
         if not hits:
             continue
         close_t = tau + C.M15
         double = len(hits) == 2
         for s, lv in hits.items():
             lv.consumed_at = close_t
-            lv.consume_reason = "DOUBLE_SIDED_SWEEP" if double else "SWEEP"
+            lv.consume_reason = "DOUBLE_SIDED_SWEEP" if double else "LEVEL_CONSUMED"
             side = "LONG" if s == "LOW" else "SHORT"
             micro = dv.micro_reference(side == "LONG", tau)
             events.append(MarketEvent(

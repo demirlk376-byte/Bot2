@@ -143,7 +143,8 @@ class World:
             for s, dv in self.derived.items():
                 b = LV.LevelBook(fam, dv)
                 evs, notes = EV.detect(fam, dv, b)
-                b.finalize(g1)
+                b.finalize(D.last_complete_day_ms(dv.sd) or g1)
+                notes["L4_INVALID_INDICATOR"] = b.invalid_indicator
                 self.books[fam][s], self.events[fam][s], self.notes[fam][s] = b, evs, notes
         self._setups = {}
         log(f"dünya hazır: {len(self.derived)} sembol, {time.time() - t0:.0f} sn")
@@ -171,8 +172,11 @@ def run_variant(W: World, vid, phase, cost, C0, outdir=None, record_equity=True)
     m = MT.run_metrics(res, recs, W.window(phase), C0, phase)
     fam, K, F = vid.split("_")
     m.update(variant_id=vid, cost_scenario=cost.name, signals=len(sig),
-             sweep_events=sum(1 for r in recs), trend_rejected=sum(1 for r in recs if r.terminal_status == "SIGNAL"
-                                                                   and F == "F1" and not r.F1_pass),
+             sweep_events=sum(1 for r in recs),
+             trend_rejected=sum(1 for r in recs if r.terminal_status == "SIGNAL" and F == "F1"
+                                and not r.F1_pass and r.F1_reason == "TREND_REJECTED"),
+             trend_invalid_indicator=sum(1 for r in recs if r.terminal_status == "SIGNAL" and F == "F1"
+                                         and not r.F1_pass and r.F1_reason == "INVALID_INDICATOR"),
              reclaim_count=sum(1 for r in recs if r.reclaim_time is not None),
              structure_break_count=sum(1 for r in recs if r.first_break_time is not None
                                        and r.terminal_status not in ("WEAK_FIRST_BREAK", "INVALID_INDICATOR")),
@@ -261,6 +265,7 @@ def cmd_freeze(a):
         funding_mode={s: sd.funding_source for s, sd in U["symbols"].items()},
         funding_mark_proxy="settlement anında bilinen son 5m kapanış (gerçek mark fiyatı yok)",
         data_quality=U["quality"], data_gaps_in_main_period=gaps,
+        dates_ms={k: int(dates[k]) for k in ("T0", "T1", "B1", "B2")},
         T0=t2s(dates["T0"]), T1=t2s(dates["T1"]), B1=t2s(dates["B1"]), B2=t2s(dates["B2"]), N_days=dates["N_days"],
         partitions={p: [t2s(dates[p][0]), t2s(dates[p][1])] for p in PHASES},
         warmup=dict(h1=C.WARMUP_1H, lower_tf=C.WARMUP_LOWER_TF),
@@ -305,11 +310,24 @@ def cmd_freeze(a):
 
 def load_manifest(run_dir):
     man = json.load(open(os.path.join(run_dir, "experiment_manifest.json")))
-    # kod/konfig değiştiyse eski manifestle devam ETME
+    # kod/konfig/veri değiştiyse eski manifestle devam ETME (resume yalnız aynı hashlerde)
     if man["source_hashes"] != code_hashes() or man["config_hash"] != sha_bytes(
             json.dumps(config_dict(), sort_keys=True, default=str).encode()):
         raise SystemExit("KOD/KONFİG HASH DEĞİŞTİ — bu run_id ile devam edilemez (yeni freeze gerekir)")
+    for path, h in man["data_hashes"].items():
+        if not os.path.exists(path) or D.sha256_file(path) != h:
+            raise SystemExit(f"VERİ HASH DEĞİŞTİ: {path} — bu run_id ile devam edilemez")
     return man
+
+
+def world_for(man, a, W=None):
+    """Aşama komutları tarihleri MANİFESTTEN alır; yeniden hesaplanan değer farklıysa reddeder."""
+    W = W or World(a.data)
+    frozen = man["dates_ms"]
+    for k, v in frozen.items():
+        if int(W.dates[k]) != int(v):
+            raise SystemExit(f"TARİH {k} manifestten farklı ({W.dates[k]} != {v}) — reddedildi")
+    return W
 
 
 def _phase(W, run_dir, man, phase, vids, tag):
@@ -336,7 +354,7 @@ def _strip(m):
 
 def cmd_discovery(a, W=None):
     man = load_manifest(a.run)
-    W = W or World(a.data)
+    W = world_for(man, a, W)
     res = _phase(W, a.run, man, "DISCOVERY", C.VARIANT_IDS, "keşif")
     sel, rows = SL.select(res, "DISCOVERY")
     obj = dict(manifest_hash=man["manifest_hash"], phase="DISCOVERY", selected=sel,
@@ -359,7 +377,7 @@ def cmd_validation(a, W=None):
     sel = disc["selected"]
     obj = dict(manifest_hash=man["manifest_hash"], phase="VALIDATION", candidates=sel, selected=[], rows=[])
     if sel:
-        W = W or World(a.data)
+        W = world_for(man, a, W)
         res = _phase(W, a.run, man, "VALIDATION", sel, "doğrulama")
         chosen, rows = SL.select(res, "VALIDATION")
         obj.update(selected=chosen, rows=rows,
@@ -386,7 +404,7 @@ def cmd_final(a, W=None):
         obj["skip_reason"] = "doğrulamadan uygun aday yok — final AÇILMADI"
     else:
         vid = sf["selected"][0]
-        W = W or World(a.data)
+        W = world_for(man, a, W)
         res = _phase(W, a.run, man, "FINAL", [vid], "final")
         mN, mS = res[vid]
         tr = pd.read_csv(os.path.join(a.run, "FINAL", f"{vid}_NORMAL", "trades.csv"))

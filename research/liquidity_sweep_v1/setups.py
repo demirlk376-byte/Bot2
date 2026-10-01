@@ -167,10 +167,12 @@ def eval_K2(ev, dv, vb="K2"):
     for i in range(1, C.K2_WINDOW_15M + 1):
         jj = j + i
         close_t = g0 + (jj + 1) * C.M15
+        if jj >= len(dv.c15):
+            return _end(r, "CENSORED", close_t)
+        if not np.isfinite(dv.c15[jj]):
+            return _end(r, "DATA_INVALID", close_t)
         if close_t >= ev.level_expires_at:
             return _end(r, "LEVEL_EXPIRED", ev.level_expires_at)
-        if jj >= len(dv.c15) or not np.isfinite(dv.c15[jj]):
-            return _end(r, "DATA_INVALID", close_t)
         cq = dv.c15[jj]
         if (cq > L + eps) if lng else (cq < L - eps):
             r.reclaim_time = close_t
@@ -207,12 +209,14 @@ def _k3_core(ev, dv, vb):
     for i in range(C.K3_WINDOW_5M):
         k = k0 + i
         t_close = sd.t_open(k) + C.M5
-        if t_close >= ev.level_expires_at:
-            return _end(r, "LEVEL_EXPIRED", ev.level_expires_at), None
-        if k >= sd.n5 or not sd.valid5[k]:
+        if k >= sd.n5:
+            return _end(r, "CENSORED", t_close), None
+        if not sd.valid5[k]:
             return _end(r, "DATA_INVALID", t_close), None
         if (sd.l[k] <= S + eps) if lng else (sd.h[k] >= S - eps):
-            return _end(r, "STOP_BEFORE_ENTRY", t_close), None
+            return _end(r, "STOP_BEFORE_ENTRY", t_close), None      # bar içinde, süre bitiminden önce
+        if t_close >= ev.level_expires_at:
+            return _end(r, "LEVEL_EXPIRED", ev.level_expires_at), None
         brk = (sd.c[k] > Hm + eps) if lng else (sd.c[k] < Hm - eps)
         if not brk:
             continue
@@ -247,12 +251,14 @@ def eval_K4(ev, dv, vb="K4"):
     S = st["S"][1]
     k = m + 1
     t_close = sd.t_open(k) + C.M5
-    if t_close >= ev.level_expires_at:
-        return _end(r, "LEVEL_EXPIRED", ev.level_expires_at)
-    if k >= sd.n5 or not sd.valid5[k] or not sd.valid5[m - 1]:
+    if k >= sd.n5:
+        return _end(r, "CENSORED", t_close)
+    if not sd.valid5[k] or not sd.valid5[m - 1]:
         return _end(r, "DATA_INVALID", t_close)
     if (sd.l[k] <= S + eps) if lng else (sd.h[k] >= S - eps):
         return _end(r, "STOP_BEFORE_ENTRY", t_close)
+    if t_close >= ev.level_expires_at:
+        return _end(r, "LEVEL_EXPIRED", ev.level_expires_at)
     if lng:
         if not (sd.l[k] > sd.h[m - 1] + eps):
             return _end(r, "NO_FVG", t_close)
@@ -266,14 +272,16 @@ def eval_K4(ev, dv, vb="K4"):
     for i in range(C.K4_WINDOW_5M):
         kk = m + 2 + i
         tc = sd.t_open(kk) + C.M5
-        if tc >= ev.level_expires_at:
-            return _end(r, "LEVEL_EXPIRED", ev.level_expires_at)
-        if kk >= sd.n5 or not sd.valid5[kk]:
+        if kk >= sd.n5:
+            return _end(r, "CENSORED", tc)
+        if not sd.valid5[kk]:
             return _end(r, "DATA_INVALID", tc)
         if (sd.l[kk] <= S + eps) if lng else (sd.h[kk] >= S - eps):
             return _end(r, "STOP_BEFORE_ENTRY", tc)                 # öncelik 1
         if (sd.c[kk] < g_lo - eps) if lng else (sd.c[kk] > g_hi + eps):
             return _end(r, "FVG_INVALIDATED", tc)                    # öncelik 2
+        if tc >= ev.level_expires_at:
+            return _end(r, "LEVEL_EXPIRED", ev.level_expires_at)     # öncelik 3 (teyitten önce)
         if lng:
             conf = sd.l[kk] <= g_mid + eps and sd.c[kk] > g_hi + eps
         else:

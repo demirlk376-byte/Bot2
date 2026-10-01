@@ -50,8 +50,14 @@ def simulate(variant_id, phase, window, signals, universe, cost, C0, record_equi
     risk_cap = C.PORTFOLIO_RISK_CAP_FRAC * C0
     tol = max(1e-6, C0 * 1e-10)
     lev = C.LIVE_GATES["LEVERAGE"]
-    by_time = {}
+    by_time, seen = {}, set()
     for r in signals:
+        if r.market_event_id in seen:          # aynı olay ikinci kez gelirse emir/ücret/funding OLUŞMAZ
+            res.outcomes.append(dict(market_event_id=r.market_event_id, symbol=r.symbol, signal_time=r.signal_time,
+                                     terminal_status="DUPLICATE_SIGNAL_IGNORED", reason_code="DUPLICATE_SIGNAL_IGNORED",
+                                     trade_id=None))
+            continue
+        seen.add(r.market_event_id)
         by_time.setdefault(r.signal_time, []).append(r)
     open_pos: dict[str, Position] = {}
     marks = {}

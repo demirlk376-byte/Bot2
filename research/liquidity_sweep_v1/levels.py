@@ -151,9 +151,11 @@ class LevelBook:
                     if prev is not None:
                         gap = (p - prev) * C.H1
                         a1 = dv.atr1h[p + C.PIVOT_RIGHT]          # ikinci pivot onayındaki son tam 1H bar
-                        if not I.usable(a1):
+                        if gap > C.EQUAL_PIVOT_MAX_GAP_MS:
+                            pass
+                        elif not I.usable(a1):
                             self.invalid_indicator += 1
-                        elif gap <= C.EQUAL_PIVOT_MAX_GAP_MS:
+                        else:
                             tol = C.EQUAL_PIVOT_TOL_ATR * a1
                             if abs(arr[p] - arr[prev]) <= tol + dv.eps:
                                 price = max(arr[p], arr[prev]) if side == "HIGH" else min(arr[p], arr[prev])
@@ -168,7 +170,6 @@ class LevelBook:
             raise ValueError(family)
         for side in self.timeline:
             self.timeline[side].sort(key=lambda x: x[0])
-            self._keys = None
         self._k = {s: [x[0] for x in self.timeline[s]] for s in self.timeline}
 
     def _add(self, side, known, lv):
@@ -189,9 +190,23 @@ class LevelBook:
         return lv
 
     def finalize(self, data_end_ms):
+        """Tüketilmemiş seviyeler: daha yeni bir referansla süresi dolmadan değiştirildiyse SUPERSEDED;
+        süresi veri sonundan önce dolduysa LEVEL_EXPIRED; değilse CENSORED (veri bitti)."""
+        sup = {}
+        for side, tl in self.timeline.items():
+            for (k1, lv), (k2, _nx) in zip(tl, tl[1:]):
+                if lv is not None and k2 < lv.expires_at:
+                    sup[id(lv)] = k2
         for lv in self.levels:
-            if lv.consumed_at is None:
-                lv.consume_reason = "LEVEL_EXPIRED" if lv.expires_at <= data_end_ms else "PENDING"
+            if lv.consumed_at is not None:
+                continue
+            if id(lv) in sup and (sup[id(lv)] < data_end_ms):
+                lv.consume_reason = "SUPERSEDED"
+                lv.meta["superseded_at"] = sup[id(lv)]
+            elif lv.expires_at <= data_end_ms:
+                lv.consume_reason = "LEVEL_EXPIRED"
+            else:
+                lv.consume_reason = "CENSORED"
 
 
 def _d(ms):

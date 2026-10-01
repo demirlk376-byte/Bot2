@@ -155,35 +155,50 @@ def contract_meta(detail: dict, symbol: str):
 
 
 def load_funding(path_csv, g0, g1):
-    """Binance fundingRate CSV: calc_time(ms) / funding_interval_hours / last_funding_rate
-    (eski dosyalarda sütun adları farklı olabilir → adlarla eşlenir). Settlement zamanı
-    5m ızgarasına ±1 sn içinde ise o sınıra oturtulur (borsa zamanlama titreşimi); daha uzak
-    olanlar on_grid=False işaretlenir ve muhasebede belirsiz sayılır."""
+    """Binance fundingRate CSV (şema: calc_time ms, funding_interval_hours, last_funding_rate).
+    Sıra: (1) ayrıştırılamayan satırlar SAYILIR ve atılır; (2) settlement zamanı 5m ızgarasına
+    ±1 sn içinde ise o sınıra oturtulur (borsa titreşimi), değilse on_grid=False; (3) OTURTMADAN
+    SONRA tekilleştirme: aynı sınırda aynı oran → yinelenen; farklı oran → ÇATIŞMA (o settlement
+    kullanılmaz, sayılır); (4) kapsam: ardışık settlement'lar arası > aralık+1dk ise boşluk sayılır.
+    Veri yoksa NOT_MODELED."""
     if not path_csv or not os.path.exists(path_csv):
-        return np.zeros(0, "int64"), np.zeros(0), np.zeros(0, bool), "NOT_MODELED", {}
+        return np.zeros(0, "int64"), np.zeros(0), np.zeros(0, bool), "NOT_MODELED", {"rows": 0}
     d = pd.read_csv(path_csv)
     cols = {c.lower(): c for c in d.columns}
-    tcol = next((cols[c] for c in ("calc_time", "fundingtime", "funding_time", "timestamp", "0") if c in cols), None)
-    rcol = next((cols[c] for c in ("last_funding_rate", "fundingrate", "funding_rate", "rate", "2") if c in cols), None)
+    tcol = next((cols[c] for c in ("calc_time", "fundingtime", "funding_time", "settletime") if c in cols), None)
+    rcol = next((cols[c] for c in ("last_funding_rate", "fundingrate", "funding_rate") if c in cols), None)
+    icol = next((cols[c] for c in ("funding_interval_hours", "collectcycle") if c in cols), None)
     if tcol is None or rcol is None:
         raise ValueError(f"funding şeması tanınmadı: {list(d.columns)}")
-    t = pd.to_numeric(d[tcol], errors="coerce").astype("float64").to_numpy()
-    r = pd.to_numeric(d[rcol], errors="coerce").astype("float64").to_numpy()
+    t = pd.to_numeric(d[tcol], errors="coerce").to_numpy(dtype="float64")
+    r = pd.to_numeric(d[rcol], errors="coerce").to_numpy(dtype="float64")
+    iv = pd.to_numeric(d[icol], errors="coerce").to_numpy(dtype="float64") if icol else np.full(len(t), 8.0)
     ok = np.isfinite(t) & np.isfinite(r)
-    t, r = t[ok].astype("int64"), r[ok]
-    if len(t) and t.max() > 10**14:          # şema: ms; µs görülürse açıkça hata ver
-        raise ValueError("funding zaman birimi ms değil")
-    o = np.argsort(t, kind="stable")
-    t, r = t[o], r[o]
-    keep = np.r_[True, np.diff(t) > 0]
-    t, r = t[keep], r[keep]
+    q = dict(rows=int(len(t)), dropped_unparseable=int((~ok).sum()))
+    t, r, iv = t[ok].astype("int64"), r[ok], iv[ok]
+    if len(t) and t.max() > 10**14:
+        raise ValueError("funding zaman birimi ms değil (şema: calc_time ms)")
     snapped = np.round(t / C.M5).astype("int64") * C.M5
     on_grid = np.abs(t - snapped) <= 1000
     t = np.where(on_grid, snapped, t)
-    m = (t >= g0) & (t < g1)
-    q = dict(rows=int(len(t)), in_range=int(m.sum()), off_grid=int((~on_grid & m).sum()),
-             max_jitter_ms=int(np.abs(t - snapped)[on_grid].max()) if on_grid.any() else 0)
-    return t[m], r[m], on_grid[m], "BINANCE_UM_PROXY (gerçek settlement zamanları; MEXC değil)", q
+    df = pd.DataFrame(dict(t=t, r=r, g=on_grid, iv=iv)).sort_values("t", kind="stable")
+    dup = df.duplicated(["t", "r"], keep="first")
+    df = df[~dup]
+    conflict = df.duplicated("t", keep=False)
+    q.update(duplicates_after_snap=int(dup.sum()), conflicting_settlements=int(conflict.sum() // 2 if conflict.any() else 0))
+    df = df[~conflict]
+    m = (df["t"] >= g0) & (df["t"] < g1)
+    w = df[m]
+    gaps = 0
+    if len(w) > 1:
+        dt = np.diff(w["t"].to_numpy())
+        lim = (w["iv"].to_numpy()[1:] * C.H1 + C.MIN)
+        gaps = int((dt > lim).sum())
+    q.update(in_range=int(m.sum()), off_grid=int((~w["g"]).sum()), coverage_gaps=gaps,
+             first=ms_to_str(int(w["t"].min())) if len(w) else None,
+             last=ms_to_str(int(w["t"].max())) if len(w) else None)
+    return (w["t"].to_numpy("int64"), w["r"].to_numpy(float), w["g"].to_numpy(bool),
+            "BINANCE_UM_PROXY (gerçek settlement zamanları; MEXC değil)", q)
 
 
 # ───────────────────────────── evren kurulumu ────────────────────────────────
@@ -220,6 +235,8 @@ def build_universe(veri_dir, symbols=None):
     detail_p = os.path.join(veri_dir, "mexc_contract_detail.json")
     detail = json.load(open(detail_p)) if os.path.exists(detail_p) else {}
     raws, hashes, starts, ends = {}, {}, {}, {}
+    if os.path.exists(detail_p):
+        hashes[detail_p] = sha256_file(detail_p)
     for s in symbols:
         p = os.path.join(veri_dir, source, f"{s}.npz")
         if not os.path.exists(p):
@@ -243,6 +260,8 @@ def build_universe(veri_dir, symbols=None):
         arrs, valid = to_grid(raws[s], keep, g0, n5)
         fpath = os.path.join(veri_dir, "binance_funding", f"{s}.csv")
         ft, fr, fg, fsrc, fq = load_funding(fpath, g0, g1)
+        if os.path.exists(fpath):
+            hashes[fpath] = sha256_file(fpath)
         sd = SymbolData(symbol=s, source=source, g0=g0, o=arrs["o"], h=arrs["h"], l=arrs["l"], c=arrs["c"],
                         v=arrs["v"], valid5=valid, tick=meta[0], contract_size=meta[1], vol_unit=meta[2],
                         min_vol=meta[3], meta_source=meta[4], funding_t=ft, funding_rate=fr,
