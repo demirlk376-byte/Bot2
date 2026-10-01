@@ -37,3 +37,7 @@ KARAR.txt
 
 # tarama kilidi (ayni anda tek tarama)
 .ikiz_kilit
+
+# LIQUIDITY_SWEEP_V1: ham veri (veri/sweep5m dalında) ve koşu çıktıları repoya girmez
+research_data/
+research_outputs/
