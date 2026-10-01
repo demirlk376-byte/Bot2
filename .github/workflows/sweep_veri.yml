@@ -1,0 +1,24 @@
+name: Sweep V1 veri (tek seferlik)
+on:
+  push:
+    branches: [veri/sweep5m]
+permissions:
+  contents: write
+jobs:
+  indir:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install --quiet pandas numpy requests
+      - run: python sweep_veri_indir.py veri 2>&1 | tee indirme_log.txt
+      - run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add veri indirme_log.txt
+          git commit -m "veri: sweep v1 ham 5m + funding + metadata [skip ci]"
+          git push
