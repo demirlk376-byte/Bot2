@@ -1,0 +1,32 @@
+
+BTC DOMİNANS FİLTRESİ — AŞAMA 1   veri 2023-03-01 → 2026-09-30
+işlem 936, kapsamda 936 (%100.0)   taban ort R +0.185 (toplam +173.3R)
+  F1: engellenen  379 (%40)  ort R +0.174 GA[+0.027,+0.321] toplam +65.9R  |  kalan  557 ort R +0.193 toplam +107.4R
+  F2: engellenen  193 (%21)  ort R +0.284 GA[+0.058,+0.492] toplam +54.8R  |  kalan  743 ort R +0.159 toplam +118.5R
+  F3: engellenen  351 (%38)  ort R +0.158 GA[+0.016,+0.308] toplam +55.3R  |  kalan  585 ort R +0.202 toplam +117.9R
+    F1 kol  donchian  engellenen n=142 ort +0.288 | kalan n=270 ort +0.201
+    F1 kol  mean_rev  engellenen n= 85 ort +0.080 | kalan n= 71 ort +0.334
+    F1 kol  squeeze   engellenen n=152 ort +0.120 | kalan n=216 ort +0.136
+    F1 yon  long      engellenen n=233 ort +0.186 | kalan n=190 ort +0.128
+    F1 yon  short     engellenen n=146 ort +0.155 | kalan n=367 ort +0.226
+    F1 yari 1_ilk     engellenen n=224 ort +0.095 | kalan n=293 ort +0.290
+    F1 yari 2_son     engellenen n=155 ort +0.288 | kalan n=264 ort +0.085
+  plasebo (200 kaydırma): gerçek +0.174, yüzdelik %44.0, plasebo %5–%95 [+0.097, +0.272]
+  kapı a_kapsam>=95: ✓
+  kapı b_F1_engellenen_ort<0_ve_GA_ust<0: ✗
+  kapı c_iki_yarida_engellenen<0: ✗
+  kapı d_F2_ve_F3_engellenen<0: ✗
+  kapı e_plasebo_yuzdelik<=5: ✗
+HÜKÜM (yaygın kural F1): REDDEDİLDİ (Aşama 1 kapısı geçilemedi)
+
+TERS KURAL T1 — SAKLI dönem (2025-03 öncesi + 2026-06 sonrası): işlem 612, kapsamda %100.0
+  T1 engellenen 356 ort R +0.213 GA[+0.038,+0.387] toplam +75.7R | kalan 256 ort R +0.095
+    1_ilk: engellenen n=171 ort +0.287
+    2_son: engellenen n=185 ort +0.144
+  plasebo: yüzdelik %79.5 [%5–%95: +0.074, +0.261]
+  kapı a_sakli_kapsam>=95: ✓
+  kapı b_engellenen_n>=100: ✓
+  kapı c_engellenen_ort<0_ve_GA_ust<0: ✗
+  kapı d_iki_parcada_engellenen<0: ✗
+  kapı e_plasebo_yuzdelik<=5: ✗
+HÜKÜM (ters kural T1): REDDEDİLDİ (saklı dönemde tutmadı)
