@@ -1,0 +1,32 @@
+name: BTCDOM veri (tek seferlik)
+
+# Yalnız veri/btcdom dalına push'ta çalışır. Binance BTCDOMUSDT 1h mumlarını indirir,
+# btcd_filtre aşama 1'i koşar, çıktıları AYNI dala commit eder. Emir yok, sır yok.
+on:
+  push:
+    branches: [veri/btcdom]
+
+permissions:
+  contents: write
+
+jobs:
+  indir:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install --quiet pandas numpy requests
+      - name: indir
+        run: python arastirma/btcd_filtre/btcd_filtre.py indir --cikti veri_btcdom
+      - name: asama1
+        run: python arastirma/btcd_filtre/btcd_filtre.py asama1 --cikti veri_btcdom | tee veri_btcdom/asama1_cikti.txt
+      - name: commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add veri_btcdom
+          git commit -m "veri: BTCDOMUSDT 1h + asama1 [skip ci]"
+          git push
