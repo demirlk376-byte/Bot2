@@ -1,0 +1,17 @@
+{
+ "mum": 31416,
+ "ilk": "2023-03-01 00:00:00+00:00",
+ "son": "2026-09-29 23:00:00+00:00",
+ "bosluk_1sa_ustu": 0,
+ "en_buyuk_bosluk": "0 days 01:00:00",
+ "kapanis_min": 1423.5,
+ "kapanis_max": 5796.7,
+ "kaynak_ozet": {
+  "vision-aylik": 43,
+  "vision-gunluk": 29,
+  "fapi": 0
+ },
+ "eksik_aylar": [
+  "2026-09"
+ ]
+}
