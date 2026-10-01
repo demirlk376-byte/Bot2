@@ -189,3 +189,16 @@ def test_indir_aylik_eksikse_gunluge_ve_fapiye_duser(tmp_path, monkeypatch):
     assert any("fapi" in u for u in cagri)                            # bugün → fapi
     s = B.btcd_yukle(str(tmp_path / "btcdom_1h.csv"))
     assert s.index[0] == pd.Timestamp("2023-12-01 01:00", tz="UTC")   # indeks = kapanış zamanı
+
+
+def test_ters_kural_yonu_ve_sakli_donem():
+    s = seri(baslangic="2024-12-01", n=24 * 200, fn=lambda i: 50.0 * np.exp(0.03 * (i % 400 < 200) * (i % 200) / 168))
+    tl = [s.index[24 * 10 + 9 * k] for k in range(400)]
+    d = pd.DataFrame([islem(t.isoformat(), 1 if k % 2 else -1, R=0.5) for k, t in enumerate(tl)])
+    e = B.etiketle(d, s)
+    k = e[e["kapsamda"] & (e["d7"] != 0)]
+    assert (k["T1"] == ~k["F1"]).all()                      # d7≠0 iken ters kural F1'in tümleyeni
+    t = B.ters_degerlendir(e, s)
+    gorulen = (e["giris"] >= B.TERS_GORULEN[0]) & (e["giris"] < B.TERS_GORULEN[1])
+    assert t["sakli_islem"] == int((~gorulen).sum())        # görülen dönem saklı teste girmez
+    assert t["sakli_islem"] < len(e)

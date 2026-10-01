@@ -38,6 +38,11 @@ YARI_SINIR = pd.Timestamp("2024-12-01", tz="UTC")
 BAYAT = pd.Timedelta(hours=2)
 BANT = 0.02
 PLASEBO_N = 200
+# Ters kuralın SAKLI test dönemi: yerel kuru denemede etiketlenmemiş işlemler
+# (4h yerel veri 2025-03-01 → 2026-06-01'i kapsıyordu; fikir oradan doğdu).
+TERS_GORULEN = (pd.Timestamp("2025-03-01", tz="UTC"), pd.Timestamp("2026-06-01", tz="UTC"))
+TERS_YARI = pd.Timestamp("2024-03-01", tz="UTC")
+TERS_MIN_N = 100
 
 # ───────────────────────────── veri ──────────────────────────────────────────
 VISION = "https://data.binance.vision/data/futures/um"
@@ -194,6 +199,8 @@ def etiketle(d: pd.DataFrame, seri: pd.Series, kaydir=pd.Timedelta(0)) -> pd.Dat
     out["F1"] = ((y == 1) & (d7 > 0)) | ((y == -1) & (d7 < 0))
     out["F2"] = ((y == 1) & (d7 > BANT)) | ((y == -1) & (d7 < -BANT))
     out["F3"] = ((y == 1) & (d3 > 0)) | ((y == -1) & (d3 < 0))
+    # TERS kural (2026-10-01 eki, MANIFEST "Ek: ters kural"): dominansla AYNI yöne izin ver
+    out["T1"] = ((y == 1) & (d7 < 0)) | ((y == -1) & (d7 > 0))
     out["kapsamda"] = np.isfinite(d7) & np.isfinite(d3)
     return out
 
@@ -215,7 +222,7 @@ def grup(d, maske):
                 toplam_R=float(x.sum()), kazanma=float((x > 0).mean()) if len(x) else float("nan"))
 
 
-def plasebo(d, seri, gercek):
+def plasebo(d, seri, gercek, maske="F1"):
     span = seri.index.max() - seri.index.min()
     if span < pd.Timedelta(days=120):
         return dict(durum="seri plasebo için kısa")
@@ -227,7 +234,7 @@ def plasebo(d, seri, gercek):
     ortlar = []
     for s in kaydirmalar:
         e = etiketle(d, sar, kaydir=s)
-        m = e["kapsamda"] & e["F1"]
+        m = e["kapsamda"] & e[maske]
         ortlar.append(float(e.loc[m, "net_R"].mean()))
     ortlar = np.array(ortlar)
     return dict(kaydirma=PLASEBO_N, gercek=gercek,
@@ -281,10 +288,45 @@ def asama1(a):
         s["HUKUM"] = "AŞAMA 1 GEÇTİ → Aşama 2 (ikiz portföy testi)"
     else:
         s["HUKUM"] = "REDDEDİLDİ (Aşama 1 kapısı geçilemedi)"
+    s["TERS"] = ters_degerlendir(d, seri)
     d.to_csv(os.path.join(a.cikti, "islemler_etiketli.csv"), index=False)
     with open(os.path.join(a.cikti, "asama1_sonuc.json"), "w") as f:
         json.dump(s, f, indent=1, ensure_ascii=False, default=str)
     yaz(s)
+
+
+def ters_degerlendir(d, seri):
+    """Ters kural T1 yalnız SAKLI dönemde değerlendirilir (MANIFEST ek bölümü)."""
+    sakli = (d["giris"] < TERS_GORULEN[0]) | (d["giris"] >= TERS_GORULEN[1])
+    h = d[sakli]
+    hk = h[h["kapsamda"]]
+    m = hk["T1"]
+    t = dict(sakli_islem=len(h), sakli_kapsamda=len(hk),
+             sakli_kapsam_yuzde=float(len(hk) / len(h) * 100) if len(h) else 0.0,
+             engellenen=grup(hk, m), kalan=grup(hk, ~m),
+             engellenen_GA95=boot(hk.loc[m, "net_R"], hk.loc[m, "hafta"]),
+             yari={ad: grup(hk, m & msk) for ad, msk in (("1_ilk", hk["giris"] < TERS_YARI),
+                                                         ("2_son", hk["giris"] >= TERS_YARI))},
+             )
+    g = d[~sakli & d["kapsamda"]]
+    t["gorulen_donem_betimsel"] = grup(g, g["T1"]) if len(g) else {}
+    t["plasebo"] = plasebo(h, seri, t["engellenen"]["ort_R"], maske="T1") if len(hk) else {}
+    p = t["plasebo"]
+    kapi = {
+        "a_sakli_kapsam>=95": t["sakli_kapsam_yuzde"] >= 95,
+        "b_engellenen_n>=100": t["engellenen"]["n"] >= TERS_MIN_N,
+        "c_engellenen_ort<0_ve_GA_ust<0": t["engellenen"]["ort_R"] < 0 and t["engellenen_GA95"][1] < 0,
+        "d_iki_parcada_engellenen<0": all(v["n"] > 0 and v["ort_R"] < 0 for v in t["yari"].values()),
+        "e_plasebo_yuzdelik<=5": isinstance(p.get("yuzdelik"), float) and p["yuzdelik"] <= 5,
+    }
+    t["kapi"] = kapi
+    if not kapi["a_sakli_kapsam>=95"]:
+        t["HUKUM"] = "KANIT YETERSİZ (saklı dönemde dominans verisi eksik)"
+    elif all(kapi.values()):
+        t["HUKUM"] = "SAKLI DÖNEMDE GEÇTİ → Aşama 2 (ikiz portföy testi)"
+    else:
+        t["HUKUM"] = "REDDEDİLDİ (saklı dönemde tutmadı)"
+    return t
 
 
 def yaz(s):
@@ -310,7 +352,21 @@ def yaz(s):
         print(f"  plasebo: {p.get('durum')}")
     for k_, v in s["kapi"].items():
         print(f"  kapı {k_}: {'✓' if v else '✗'}")
-    print(f"HÜKÜM: {s['HUKUM']}")
+    print(f"HÜKÜM (yaygın kural F1): {s['HUKUM']}")
+    t = s["TERS"]
+    e, k = t["engellenen"], t["kalan"]
+    print(f"\nTERS KURAL T1 — SAKLI dönem (2025-03 öncesi + 2026-06 sonrası): işlem {t['sakli_islem']}, "
+          f"kapsamda %{t['sakli_kapsam_yuzde']:.1f}")
+    print(f"  T1 engellenen {e['n']} ort R {r(e['ort_R'])} GA[{r(t['engellenen_GA95'][0])},"
+          f"{r(t['engellenen_GA95'][1])}] toplam {e['toplam_R']:+.1f}R | kalan {k['n']} ort R {r(k['ort_R'])}")
+    for ad, v in t["yari"].items():
+        print(f"    {ad}: engellenen n={v['n']} ort {r(v['ort_R'])}")
+    p = t.get("plasebo") or {}
+    if "yuzdelik" in p:
+        print(f"  plasebo: yüzdelik %{p['yuzdelik']:.1f} [%5–%95: {r(p['plasebo_p05'])}, {r(p['plasebo_p95'])}]")
+    for k_, v in t["kapi"].items():
+        print(f"  kapı {k_}: {'✓' if v else '✗'}")
+    print(f"HÜKÜM (ters kural T1): {t['HUKUM']}")
 
 
 def main():

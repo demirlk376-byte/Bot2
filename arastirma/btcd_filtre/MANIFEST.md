@@ -81,3 +81,39 @@ paper izleme gerekir.
 ## Notlar
 - Bu veri (2023–2026) botun geliştirilmesinde defalarca kullanıldı; dokunulmamış test değildir.
 - Kurallar ve eşikler sonuçlardan sonra değiştirilmez. Başka dominans tanımı ya da eşik taranmaz.
+
+---
+
+## Ek: TERS KURAL T1 (2026-10-01; kullanıcı isteği, saklı veri görülmeden yazıldı)
+
+**Kaynağı — açıkça sonuçtan doğdu:**
+- Kullanıcı, F1'in kuru denemede ters yönde çıkmasını görünce kuralın tersine çevrilmesini istedi.
+  Kuru deneme: yerel 13 aylık 4h veri, 2025-03-01 → 2026-06-01; engellenen işlemler +0.44R,
+  kalanlar +0.26R.
+- Bu yüzden T1, **o dönemde test edilemez**. O dönem yalnız betimsel olarak raporlanır.
+
+**Kural T1:** dominansla AYNI yönde gir.
+- d7 < 0 iken LONG engellenir.
+- d7 > 0 iken SHORT engellenir.
+- d7 ≠ 0 iken F1'in tam tümleyenidir.
+
+**Saklı test dönemi:** kuru denemede etiketlenmemiş tüm işlemler.
+- 2025-03-01 öncesi (2023-04 → 2025-02).
+- 2026-06-01 sonrası.
+- Bu dönemlerin dominans verisi henüz hiç görülmedi; VPS indirmesiyle gelecek.
+
+**SAKLI DÖNEMDE GEÇER**, ancak aşağıdakilerin hepsi sağlanırsa:
+- (a) Saklı işlemlerin ≥ %95'i kapsamda.
+- (b) T1'in engellediği saklı işlem sayısı ≥ 100.
+- (c) T1'in engellediği işlemlerin ortalama net R'si < 0 **ve** hafta-kümeli %95 GA üst sınırı < 0.
+- (d) Engellenen ortalama R iki parçanın ikisinde de < 0 (sınır 2024-03-01).
+- (e) Plasebo: 200 dairesel kaydırma; gerçek değer en düşük %5'te.
+
+**Hüküm:**
+- Geçerse → Aşama 2. Tüm dönemde ikiz A ve T1 koşulur, 1x ve 2x maliyetle; ölçütler F1 için
+  yazılanların aynısıdır.
+- Aşama 2'yi de geçerse → ileriye dönük paper izleme. Doğrudan canlıya alınmaz.
+- (a) sağlanmazsa → KANIT YETERSİZ.
+- Diğer durumlarda → REDDEDİLDİ.
+
+**F1 değerlendirmesi değişmez:** F1 kuralları, kapıları ve tam dönem testi aynen geçerlidir.
