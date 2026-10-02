@@ -1,0 +1,156 @@
+{
+ "spec": "NW_KAMA_V2_2026-10-02 (MANIFEST.md)",
+ "base_commit": "9ef5ca4fe36d8084334610f50ff4daa76d9e5d82",
+ "dirty": false,
+ "source_hashes": {
+  "research/nw_kama_v2/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "research/nw_kama_v2/run.py": "19404eee355030972d938aca943a23e9db5f395b4259a652b131d970a6445eac",
+  "research/nw_kama_v2/signals.py": "146f0cd65d752d696ed0b07fc58514c0c43397f5c9439fd84c5eb47e0311e53d",
+  "research/liquidity_sweep_v1/accounting.py": "9ada6082e64d0033d09048bd822a8a2a3cdb94a3e563fd81724ce8e571d5197f",
+  "research/liquidity_sweep_v1/cli.py": "570b73d79a5861bf38099b6e20122125e13e6e41a0d6c879f733a5afa01696e2",
+  "research/liquidity_sweep_v1/config.py": "d254ad0ee66ae0db67279b6fd182c700cb1af17bfb4d445ac276368461bc8157",
+  "research/liquidity_sweep_v1/data_contract.py": "28d72919eee12142c0e456a42e39a1b007f2bc62af33d410d47e66cfc1a11b6c",
+  "research/liquidity_sweep_v1/events.py": "2bfd0af801ccd1990d3a132fc78963542c3c413664a6ae5af3e8f3e34c79ddf8",
+  "research/liquidity_sweep_v1/indicators_adapter.py": "925f9db25ce7d8f8aa2a268024586bef07b9a71c261f3575235d8862a0307326",
+  "research/liquidity_sweep_v1/levels.py": "0ce297f638b62b50bf17996d5e707a3a86c9076a4346a4aee7565c3a914167db",
+  "research/liquidity_sweep_v1/metrics.py": "3a704feb00f4b42b78e1220c55c99bd055aebcac79796d661b8a43b2c5d13d47",
+  "research/liquidity_sweep_v1/replay_adapter.py": "bbc98ae0fcc47ef63a364ab676f07d3411fb814613d3e0b5c7ab541ff224561f",
+  "research/liquidity_sweep_v1/selection.py": "cb492a75dcd27a6c3f92bccc646991efc37a318463344694bd4209966b6c890b",
+  "research/liquidity_sweep_v1/setups.py": "6ff84c747b466ddc86781edb752669e0e43443be76474cc74e814165aa8c0695",
+  "research/liquidity_sweep_v1/verify.py": "70cf0cd02b350d6c99a1077f832955afd925cfa09bd65e315a1e171e98da5313",
+  "validate_nw_kama.py": "3a129fd11d9d42e1f0e7f18b96038aa7f252536e6e7821d861bb67c80ca009b2",
+  "backtest_nw_kama.py": "30274c74cff68be0a9a332f63eaf9bacc26a742a70aab93b1685427fe307dd5d"
+ },
+ "data_hashes": {
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/mexc_contract_detail.json": "2aac4e73001f5e85a73c3c308e8b9843f3846197f75c206361cffb33baed480b",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_5m/SOL.npz": "bc7915db74279451114321601b79565d7c94cc065307fd3f10d190a22c5e2359",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_5m/ETH.npz": "29f2cc902c0693ae2b9352bb0032e7b5e8873c5a0b70c6fc3dff4bb750fce06b",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_5m/ADA.npz": "671cf123b30376558f44478745d75cbde99bfae782b20f949c3c633260dc044d",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_5m/NEAR.npz": "969a95a0c349c03438c5855c3175f68395b1695e79a36dd1310a356f512a6325",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_5m/BCH.npz": "1be9fae49962b72a12a65a8d3723ce1ffc8193c413284fcd15f14b973ad54477",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_5m/XRP.npz": "f471ddc00a5f97e6d41f5f2c28167e5a3b0bc312806313c7b45f77e2d1bbc1ed",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_5m/DOGE.npz": "52e656f75696e7c4821cb4608123a1acf1d857ff96283b7215c24ac1b67f345d",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_5m/TRX.npz": "2fae5866a171c9840a6dcae6ce5f78f2b8a396bdd7b72aff888ff79531b4d288",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_5m/XLM.npz": "1534582783845c02b94cc1a2e0ee2603cb61f83619488373af936f32c837b238",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_5m/LTC.npz": "e72df5873b052f0acd045b0365d2e39967c9ca2da09f0e616143c32fc3174abb",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_5m/ICP.npz": "6a79bcaead3ffdd52fb9b0f9f1b00707fe09897fb5389571fc9ba3a88c600ce0",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_5m/BNB.npz": "25a437c3c2b668a5db3cfa94a7c81da0120cd9e388b1103a2e05b3a7b7399553",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_funding/SOL.csv": "54546825a2d90acb0567556dc9c95d29df5f1049b357e7098cac056e98e2ef3d",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_funding/ETH.csv": "de31c7781b27c593da849b6ff4f01cb7f7602fa9f74f4e391a61ed8be54d5127",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_funding/ADA.csv": "83a0364354cceeb7963f699e1bb001b03c5fe8e4d10203732904190049c4786b",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_funding/NEAR.csv": "4ed8cf962cf3c737feca573cbe31dc5aa265de713f3c16a7c906ac034b9674b5",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_funding/BCH.csv": "9508c3452c8861986d4c7c96145782c073e3e226f00b66652d26b1df4fef883d",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_funding/XRP.csv": "946c9ac664810f27c09b7c4e9ab0a04b9677922ee947eca09843f5ab1cf67ce5",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_funding/DOGE.csv": "6d973d12405c11d7e1dd676410fcc82bf9e0af5ab9e843e52d2e0d0224dd032b",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_funding/TRX.csv": "954f76dc6274e281366e4ac9045d7aa108c63feeb83fa5cc59911a2688b50db4",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_funding/XLM.csv": "276ac4ed0c193b49e749c8b7b3f10e3cff7cfbe7f0446f28558a7c4493ac0912",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_funding/LTC.csv": "f9a1eb8d8387a258cb5c6f2ca56bf708ce273d417c1d718a79a8c968c5177126",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_funding/ICP.csv": "8c5d716af49cd64c1ed11acd5f60af62937897b248376ade74b367d6e512acb2",
+  "/home/user/sweep/research_data/liquidity_sweep_v1/veri/binance_funding/BNB.csv": "7772d075fd001d43aa301ee3d72d0050fc349b22f8be34b5e89bd34573e3e25b"
+ },
+ "source_exchange": "BINANCE_USDM (MEXC venue vekili)",
+ "dates": {
+  "T0": "2023-02-12 00:00:00+00:00",
+  "B1": "2025-04-18 00:00:00+00:00",
+  "B2": "2026-01-08 00:00:00+00:00",
+  "T1": "2026-10-01 00:00:00+00:00"
+ },
+ "variant_ids": [
+  "1h_event_A",
+  "1h_event_B",
+  "1h_state_A",
+  "1h_state_B",
+  "1h_agree_A",
+  "1h_agree_B",
+  "2h_event_A",
+  "2h_event_B",
+  "2h_state_A",
+  "2h_state_B",
+  "2h_agree_A",
+  "2h_agree_B",
+  "4h_event_A",
+  "4h_event_B",
+  "4h_state_A",
+  "4h_state_B",
+  "4h_agree_A",
+  "4h_agree_B",
+  "1D_event_A",
+  "1D_event_B",
+  "1D_state_A",
+  "1D_state_B",
+  "1D_agree_A",
+  "1D_agree_B"
+ ],
+ "params": {
+  "TFS": {
+   "1h": 12,
+   "2h": 24,
+   "4h": 48,
+   "1D": 288
+  },
+  "MODES": [
+   "event",
+   "state",
+   "agree"
+  ],
+  "PARAMS": {
+   "A": {
+    "h": 3,
+    "win": 15,
+    "mult": 1.5,
+    "er": 5,
+    "lb": {
+     "event": 1,
+     "state": 2,
+     "agree": 0
+    }
+   },
+   "B": {
+    "h": 5,
+    "win": 25,
+    "mult": 2.0,
+    "er": 10,
+    "lb": {
+     "event": 2,
+     "state": 3,
+     "agree": 0
+    }
+   }
+  },
+  "SL_ATR": 2.0,
+  "TP_ATR": 4.0,
+  "MAX_HOLD_BARS": 15
+ },
+ "cost": {
+  "name": "NORMAL",
+  "entry_fee_rate": 0.0001,
+  "exit_fee_rate": 0.0001,
+  "entry_slip_bp": 15.85,
+  "exit_slip_bp": 0.24,
+  "source": "ikiz/kos.py 936 referansı: PAPER_SLIP_GIRIS_BP=15.85, PAPER_SLIP_CIKIS_BP=0.24, exchange.PaperExchange.FEE_RATE=0.0001 (taker); ölçüm kaynağı: canlı Donchian/çıkış denetimleri"
+ },
+ "stress": {
+  "name": "STRESS",
+  "entry_fee_rate": 0.0001,
+  "exit_fee_rate": 0.0001,
+  "entry_slip_bp": 31.7,
+  "exit_slip_bp": 0.48,
+  "source": "ikiz/kos.py 936 referansı: PAPER_SLIP_GIRIS_BP=15.85, PAPER_SLIP_CIKIS_BP=0.24, exchange.PaperExchange.FEE_RATE=0.0001 (taker); ölçüm kaynağı: canlı Donchian/çıkış denetimleri ×2 kayma"
+ },
+ "risk": {
+  "C0": 10000.0,
+  "per_trade": 25.0,
+  "cap": 100.0,
+  "gates": {
+   "LEVERAGE": 10,
+   "MAX_POSITIONS": 7,
+   "POSITION_CAP_FRACTION": 2.5,
+   "DAILY_MAX_LOSS_PCT": 0.35,
+   "ONE_PER_SYMBOL": true,
+   "MARGIN_PREFLIGHT_FRAC": 0.95
+  }
+ },
+ "previous_data_use": "previously_examined (tüm dönemler; FİNAL bağımsız değil)",
+ "run_id": "20261002T202722Z_9ef5ca4f_d40b2916",
+ "manifest_hash": "d40b2916bd92251cd6877805c0d04ad7783f538d90aaa7a802d9a2ef76b41d2c"
+}
