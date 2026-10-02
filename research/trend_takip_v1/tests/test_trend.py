@@ -126,3 +126,17 @@ def test_nwk_1g_eski_fonksiyonla_ayni_ve_filtre_alt_kume():
     for f in ("F1", "F2", "F3"):
         fx = E.nwk_entries({"AAA": s, "ETH": s}, filt=f)["AAA"]
         assert set(fx.items()) <= set(f0.items())
+
+
+def test_g_filtreleri_alt_kume_ve_funding_nedensel():
+    a = _dalgali()
+    fund = [(T0 + i * 8 * C.H1 + 1, 0.0003 if i % 7 == 0 else 0.0) for i in range(3 * 700)]
+    s = sym(a, funding=fund)
+    s.v = np.abs(np.random.default_rng(1).normal(100, 30, len(a)))
+    f0 = E.nwk_entries({"AAA": s})["AAA"]
+    for f in ("G1", "G2", "G3"):
+        assert set(E.nwk_entries({"AAA": s}, filt=f)["AAA"].items()) <= set(f0.items())
+    g1 = E.nwk_entries({"AAA": s}, filt="G1")["AAA"]
+    s2 = sym(a, funding=fund[:3 * 400] + [(x, 0.01) for x, _ in fund[3 * 400:]])
+    g1b = E.nwk_entries({"AAA": s2}, filt="G1")["AAA"]
+    assert {i: d for i, d in g1.items() if i < 398} == {i: d for i, d in g1b.items() if i < 398}

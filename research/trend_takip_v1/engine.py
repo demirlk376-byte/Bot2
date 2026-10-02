@@ -42,6 +42,7 @@ class Sym:
     mv: float
     f_t: np.ndarray        # funding settlement ms
     f_r: np.ndarray
+    v: np.ndarray = None   # günlük hacim (yalnız filtre G2/G3)
 
 
 def variant_parts(vid):
@@ -88,7 +89,8 @@ def adx(h, l, c, n=14):
 def nwk_entries(syms: dict, tf_days=1, filt="F0", market="ETH"):
     """NW+KAMA event_A girişleri, tf_days günlük mumda (2D: UTC epoch'tan 2 günlük blokların son günü
     kapanışı), sinyal o blok-son günün indeksine yazılır. filt: F0 yok, F1 coin SMA200 yönü,
-    F2 piyasa (ETH) SMA200 yönü, F3 ADX14 > 20."""
+    F2 piyasa (ETH) SMA200 yönü, F3 ADX14 > 20, G1 funding (long: 3g ort ≤ 0.0001, short: ≥ 0),
+    G2 hacim > önceki 20g medyanı, G3 = G1 ve G2."""
     sma = {n: pd.Series(s.c).rolling(200).mean().to_numpy() for n, s in syms.items()}
     mk = syms.get(market)
     mk_up = {int(t): (c > m) for t, c, m in zip(mk.t, mk.c, sma[market])} if mk is not None else {}
@@ -107,6 +109,17 @@ def nwk_entries(syms: dict, tf_days=1, filt="F0", market="ETH"):
                 continue
             if filt == "F3" and not (np.isfinite(ax[i]) and ax[i] > 20):
                 continue
+            if filt in ("G1", "G3"):                 # funding kalabalığı: son 3 günün settlement ortalaması
+                tc = int(s.t[i]) + DAY
+                a, b = np.searchsorted(s.f_t, tc - 3 * DAY, side="right"), np.searchsorted(s.f_t, tc, side="right")
+                if b <= a:
+                    continue
+                fm = float(np.mean(s.f_r[a:b]))
+                if (d > 0 and fm > 0.0001) or (d < 0 and fm < 0.0):
+                    continue
+            if filt in ("G2", "G3"):                 # hacim teyidi: sinyal günü hacmi > önceki 20 gün medyanı
+                if s.v is None or i < 20 or not s.v[i] > np.median(s.v[i - 20:i]):
+                    continue
             o[i] = d
         out[n] = o
     return out

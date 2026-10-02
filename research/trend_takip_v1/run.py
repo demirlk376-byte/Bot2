@@ -38,7 +38,7 @@ def load(data, meta):
         o = np.argsort(ft[ok])
         tick, cs, vu, mv, _ = contract_meta(det, s)
         syms[s] = E.Sym(s, k.open_time.to_numpy("int64"), *(k[c].to_numpy(float) for c in ("open", "high", "low", "close")),
-                        tick, cs, vu, mv, ft[ok][o].astype("int64"), fr[ok][o])
+                        tick, cs, vu, mv, ft[ok][o].astype("int64"), fr[ok][o], v=k.volume.to_numpy(float))
     return syms
 
 
