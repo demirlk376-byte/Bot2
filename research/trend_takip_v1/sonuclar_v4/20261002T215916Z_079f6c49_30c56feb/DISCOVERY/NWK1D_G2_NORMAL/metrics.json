@@ -1,0 +1,31 @@
+{
+ "phase": "DISCOVERY",
+ "closed": 138,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.10127683303301926,
+ "net_USDT": 342.1524963428025,
+ "win_rate": 0.41304347826086957,
+ "profit_factor_usdt": 1.2843921877322744,
+ "avg_hold_days": 29.181159420289855,
+ "best_trade_R": 6.511375036109286,
+ "full_weeks": 179,
+ "weeks_with_trades": 82,
+ "nominal_CI": [
+  -0.12743276205055895,
+  0.32683753456794373
+ ],
+ "LCB": -0.12743276205055895,
+ "boot_reliable": true,
+ "MDD_close_pct": 3.2894331248476645,
+ "underwater_longest_d": 363.0,
+ "return_pct": 3.4215249634280256,
+ "reconciliation_gap": 3.3935521059902385e-11,
+ "funding": 16.207580055802573,
+ "fees": 3.4812137129999994,
+ "years": 3.4496919917864477,
+ "variant_id": "NWK1D_G2",
+ "cost": "NORMAL"
+}

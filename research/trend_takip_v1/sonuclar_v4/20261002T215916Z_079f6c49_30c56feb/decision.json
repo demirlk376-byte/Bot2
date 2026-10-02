@@ -1,0 +1,457 @@
+{
+ "run_id": "20261002T215916Z_079f6c49_30c56feb",
+ "manifest_hash": "30c56febe4861b22940ec25e90724524b33b2f5fa230b323001732402cd7d3c4",
+ "table": {
+  "DISCOVERY": {
+   "NWK1D_F0": {
+    "NORMAL": {
+     "closed": 174,
+     "expectancy_net_R": 0.07964600008154106,
+     "return_pct": 3.4483101167413457,
+     "MDD_close_pct": 2.8756853839631074,
+     "win_rate": 0.40229885057471265,
+     "LCB": -0.11704126046089024,
+     "years": 3.4496919917864477
+    },
+    "STRESS": {
+     "closed": 174,
+     "expectancy_net_R": 0.07104534107398187,
+     "return_pct": 3.033747837242655,
+     "MDD_close_pct": 2.946538975991855,
+     "win_rate": 0.40229885057471265,
+     "LCB": -0.12445075256456826,
+     "years": 3.4496919917864477
+    }
+   },
+   "NWK1D_G1": {
+    "NORMAL": {
+     "closed": 140,
+     "expectancy_net_R": 0.12535878865934846,
+     "return_pct": 4.307783361145299,
+     "MDD_close_pct": 1.9435637621124713,
+     "win_rate": 0.42142857142857143,
+     "LCB": -0.09190332292530169,
+     "years": 3.4496919917864477
+    },
+    "STRESS": {
+     "closed": 140,
+     "expectancy_net_R": 0.11619204094363077,
+     "return_pct": 4.017597158861061,
+     "MDD_close_pct": 1.9702379827168095,
+     "win_rate": 0.42142857142857143,
+     "LCB": -0.09915822595238893,
+     "years": 3.4496919917864477
+    }
+   },
+   "NWK1D_G2": {
+    "NORMAL": {
+     "closed": 138,
+     "expectancy_net_R": 0.10127683303301926,
+     "return_pct": 3.4215249634280256,
+     "MDD_close_pct": 3.2894331248476645,
+     "win_rate": 0.41304347826086957,
+     "LCB": -0.12743276205055895,
+     "years": 3.4496919917864477
+    },
+    "STRESS": {
+     "closed": 138,
+     "expectancy_net_R": 0.09253997824578035,
+     "return_pct": 3.081887062744963,
+     "MDD_close_pct": 3.3520558643343334,
+     "win_rate": 0.41304347826086957,
+     "LCB": -0.13461307172543943,
+     "years": 3.4496919917864477
+    }
+   },
+   "NWK1D_G3": {
+    "NORMAL": {
+     "closed": 116,
+     "expectancy_net_R": 0.09369577813764621,
+     "return_pct": 2.647883146598692,
+     "MDD_close_pct": 2.976416571821672,
+     "win_rate": 0.4051724137931034,
+     "LCB": -0.15455710679355905,
+     "years": 3.4496919917864477
+    },
+    "STRESS": {
+     "closed": 116,
+     "expectancy_net_R": 0.08476923988794952,
+     "return_pct": 2.4337363684204183,
+     "MDD_close_pct": 2.991874618798932,
+     "win_rate": 0.4051724137931034,
+     "LCB": -0.1613169923094149,
+     "years": 3.4496919917864477
+    }
+   },
+   "T1": {
+    "NORMAL": {
+     "closed": 163,
+     "expectancy_net_R": 0.2719183910210066,
+     "return_pct": 10.931447294424878,
+     "MDD_close_pct": 4.092725320597279,
+     "win_rate": 0.4723926380368098,
+     "LCB": 0.028737810087069094,
+     "years": 3.4496919917864477
+    },
+    "STRESS": {
+     "closed": 163,
+     "expectancy_net_R": 0.2684870212498755,
+     "return_pct": 10.829440373040933,
+     "MDD_close_pct": 3.9630545954906173,
+     "win_rate": 0.4601226993865031,
+     "LCB": 0.02733621253403578,
+     "years": 3.4496919917864477
+    }
+   }
+  },
+  "VALIDATION": {
+   "NWK1D_F0": {
+    "NORMAL": {
+     "closed": 47,
+     "expectancy_net_R": 0.3523170520654318,
+     "return_pct": 4.0269296187095245,
+     "MDD_close_pct": 1.6951932415009943,
+     "win_rate": 0.5319148936170213,
+     "LCB": -0.12436313860919879,
+     "years": 1.1498973305954825
+    },
+    "STRESS": {
+     "closed": 47,
+     "expectancy_net_R": 0.3388285104480669,
+     "return_pct": 3.92859519787217,
+     "MDD_close_pct": 1.6782312914440702,
+     "win_rate": 0.5106382978723404,
+     "LCB": -0.13333709893905363,
+     "years": 1.1498973305954825
+    }
+   },
+   "NWK1D_G1": {
+    "NORMAL": {
+     "closed": 46,
+     "expectancy_net_R": 0.3828248655299928,
+     "return_pct": 4.286296103607515,
+     "MDD_close_pct": 1.7502278883045634,
+     "win_rate": 0.5434782608695652,
+     "LCB": -0.10902442440316817,
+     "years": 1.1498973305954825
+    },
+    "STRESS": {
+     "closed": 46,
+     "expectancy_net_R": 0.3690336755917958,
+     "return_pct": 4.145447980995731,
+     "MDD_close_pct": 1.7319818116818326,
+     "win_rate": 0.5217391304347826,
+     "LCB": -0.11660099739751614,
+     "years": 1.1498973305954825
+    }
+   },
+   "NWK1D_G2": {
+    "NORMAL": {
+     "closed": 41,
+     "expectancy_net_R": 0.30614550622876513,
+     "return_pct": 3.0646456548658008,
+     "MDD_close_pct": 1.7706485284909492,
+     "win_rate": 0.5121951219512195,
+     "LCB": -0.20187170934816168,
+     "years": 1.1498973305954825
+    },
+    "STRESS": {
+     "closed": 41,
+     "expectancy_net_R": 0.29328957079966567,
+     "return_pct": 2.9475143466534552,
+     "MDD_close_pct": 1.75184922840496,
+     "win_rate": 0.5121951219512195,
+     "LCB": -0.21049672458074656,
+     "years": 1.1498973305954825
+    }
+   },
+   "NWK1D_G3": {
+    "NORMAL": {
+     "closed": 41,
+     "expectancy_net_R": 0.31465794473860303,
+     "return_pct": 3.15052990135741,
+     "MDD_close_pct": 1.7691966425447694,
+     "win_rate": 0.5121951219512195,
+     "LCB": -0.1944600942934048,
+     "years": 1.1498973305954825
+    },
+    "STRESS": {
+     "closed": 41,
+     "expectancy_net_R": 0.301716106377525,
+     "return_pct": 3.033059345845065,
+     "MDD_close_pct": 1.750416576473291,
+     "win_rate": 0.5121951219512195,
+     "LCB": -0.2016544240769526,
+     "years": 1.1498973305954825
+    }
+   },
+   "T1": {
+    "NORMAL": {
+     "closed": 67,
+     "expectancy_net_R": 0.4454767163768089,
+     "return_pct": 7.374493787706851,
+     "MDD_close_pct": 5.44736552039106,
+     "win_rate": 0.47761194029850745,
+     "LCB": -0.12650754604584,
+     "years": 1.1498973305954825
+    },
+    "STRESS": {
+     "closed": 67,
+     "expectancy_net_R": 0.4340947841127112,
+     "return_pct": 7.1948567233635545,
+     "MDD_close_pct": 5.451252863173623,
+     "win_rate": 0.4626865671641791,
+     "LCB": -0.1332248837639658,
+     "years": 1.1498973305954825
+    }
+   }
+  }
+ },
+ "decisions": {
+  "NWK1D_G1_vs_F0": {
+   "improves": false,
+   "checks": {
+    "DISCOVERY": {
+     "meanR": true,
+     "mdd": true,
+     "total": true,
+     "stress": true
+    },
+    "VALIDATION": {
+     "meanR": true,
+     "mdd": false,
+     "total": true,
+     "stress": true
+    }
+   }
+  },
+  "NWK1D_G2_vs_F0": {
+   "improves": false,
+   "checks": {
+    "DISCOVERY": {
+     "meanR": true,
+     "mdd": false,
+     "total": true,
+     "stress": true
+    },
+    "VALIDATION": {
+     "meanR": false,
+     "mdd": false,
+     "total": true,
+     "stress": true
+    }
+   }
+  },
+  "NWK1D_G3_vs_F0": {
+   "improves": false,
+   "checks": {
+    "DISCOVERY": {
+     "meanR": true,
+     "mdd": false,
+     "total": true,
+     "stress": true
+    },
+    "VALIDATION": {
+     "meanR": false,
+     "mdd": false,
+     "total": true,
+     "stress": true
+    }
+   }
+  }
+ },
+ "combined_T1": {
+  "NWK1D_F0": {
+   "DISCOVERY": {
+    "return_pct": 14.379757411166574,
+    "MDD_pct": 4.615738934924255
+   },
+   "VALIDATION": {
+    "return_pct": 11.401423406416798,
+    "MDD_pct": 5.481459784427357
+   }
+  },
+  "NWK1D_G1": {
+   "DISCOVERY": {
+    "return_pct": 15.239230655570355,
+    "MDD_pct": 4.222156059255651
+   },
+   "VALIDATION": {
+    "return_pct": 11.66078989131478,
+    "MDD_pct": 5.307094516531963
+   }
+  },
+  "NWK1D_G2": {
+   "DISCOVERY": {
+    "return_pct": 14.352972257853107,
+    "MDD_pct": 4.004941972608963
+   },
+   "VALIDATION": {
+    "return_pct": 10.439139442572996,
+    "MDD_pct": 4.970062270809321
+   }
+  },
+  "NWK1D_G3": {
+   "DISCOVERY": {
+    "return_pct": 13.579330441023703,
+    "MDD_pct": 3.964992031831126
+   },
+   "VALIDATION": {
+    "return_pct": 10.52502368906462,
+    "MDD_pct": 4.893442017302307
+   }
+  }
+ },
+ "selection": {
+  "DISCOVERY": {
+   "selected": [
+    "NWK1D_G1",
+    "NWK1D_F0",
+    "NWK1D_G2"
+   ],
+   "rows": [
+    {
+     "variant_id": "NWK1D_F0",
+     "eligible": true,
+     "status": "ELIGIBLE",
+     "reason": "OK",
+     "normal_LCB": -0.11704126046089024,
+     "stress_LCB": -0.12445075256456826,
+     "normal_MDD": 2.8756853839631074,
+     "normal_exp_R": 0.07964600008154106,
+     "stress_exp_R": 0.07104534107398187,
+     "normal_net_USDT": 344.8310116741346,
+     "stress_net_USDT": 303.3747837242655,
+     "normal_closed": 174,
+     "stress_closed": 174,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK1D_G1",
+     "eligible": true,
+     "status": "ELIGIBLE",
+     "reason": "OK",
+     "normal_LCB": -0.09190332292530169,
+     "stress_LCB": -0.09915822595238893,
+     "normal_MDD": 1.9435637621124713,
+     "normal_exp_R": 0.12535878865934846,
+     "stress_exp_R": 0.11619204094363077,
+     "normal_net_USDT": 430.7783361145299,
+     "stress_net_USDT": 401.75971588610605,
+     "normal_closed": 140,
+     "stress_closed": 140,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK1D_G2",
+     "eligible": true,
+     "status": "ELIGIBLE",
+     "reason": "OK",
+     "normal_LCB": -0.12743276205055895,
+     "stress_LCB": -0.13461307172543943,
+     "normal_MDD": 3.2894331248476645,
+     "normal_exp_R": 0.10127683303301926,
+     "stress_exp_R": 0.09253997824578035,
+     "normal_net_USDT": 342.1524963428025,
+     "stress_net_USDT": 308.1887062744963,
+     "normal_closed": 138,
+     "stress_closed": 138,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK1D_G3",
+     "eligible": true,
+     "status": "ELIGIBLE",
+     "reason": "OK",
+     "normal_LCB": -0.15455710679355905,
+     "stress_LCB": -0.1613169923094149,
+     "normal_MDD": 2.976416571821672,
+     "normal_exp_R": 0.09369577813764621,
+     "stress_exp_R": 0.08476923988794952,
+     "normal_net_USDT": 264.78831465986923,
+     "stress_net_USDT": 243.37363684204186,
+     "normal_closed": 116,
+     "stress_closed": 116,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    }
+   ]
+  },
+  "VALIDATION": {
+   "selected": [],
+   "rows": [
+    {
+     "variant_id": "NWK1D_F0",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR_POSITIVE",
+     "normal_LCB": -0.12436313860919879,
+     "stress_LCB": -0.13333709893905363,
+     "normal_MDD": 1.6951932415009943,
+     "normal_exp_R": 0.3523170520654318,
+     "stress_exp_R": 0.3388285104480669,
+     "normal_net_USDT": 402.69296187095244,
+     "stress_net_USDT": 392.859519787217,
+     "normal_closed": 47,
+     "stress_closed": 47,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK1D_G1",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR_POSITIVE",
+     "normal_LCB": -0.10902442440316817,
+     "stress_LCB": -0.11660099739751614,
+     "normal_MDD": 1.7502278883045634,
+     "normal_exp_R": 0.3828248655299928,
+     "stress_exp_R": 0.3690336755917958,
+     "normal_net_USDT": 428.6296103607515,
+     "stress_net_USDT": 414.5447980995731,
+     "normal_closed": 46,
+     "stress_closed": 46,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK1D_G2",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR_POSITIVE",
+     "normal_LCB": -0.20187170934816168,
+     "stress_LCB": -0.21049672458074656,
+     "normal_MDD": 1.7706485284909492,
+     "normal_exp_R": 0.30614550622876513,
+     "stress_exp_R": 0.29328957079966567,
+     "normal_net_USDT": 306.46456548658006,
+     "stress_net_USDT": 294.7514346653455,
+     "normal_closed": 41,
+     "stress_closed": 41,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK1D_G3",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR_POSITIVE",
+     "normal_LCB": -0.1944600942934048,
+     "stress_LCB": -0.2016544240769526,
+     "normal_MDD": 1.7691966425447694,
+     "normal_exp_R": 0.31465794473860303,
+     "stress_exp_R": 0.301716106377525,
+     "normal_net_USDT": 315.052990135741,
+     "stress_net_USDT": 303.30593458450653,
+     "normal_closed": 41,
+     "stress_closed": 41,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    }
+   ]
+  }
+ }
+}
