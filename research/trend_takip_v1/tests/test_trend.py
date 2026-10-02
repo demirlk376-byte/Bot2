@@ -1,0 +1,80 @@
+import numpy as np
+import pytest
+
+from research.liquidity_sweep_v1 import config as C
+from research.trend_takip_v1 import engine as E
+
+DAY = C.DAY
+T0 = 1_577_836_800_000          # 2020-01-01
+ZERO = C.CostProfile("Z", 0, 0, 0, 0, "t")
+
+
+def sym(closes, name="AAA", spread=1.0, funding=()):
+    c = np.asarray(closes, float)
+    o = np.r_[c[0], c[:-1]]
+    h = np.maximum(o, c) + spread
+    l = np.minimum(o, c) - spread
+    t = T0 + np.arange(len(c)) * DAY
+    ft = np.array([x for x, _ in funding], dtype="int64")
+    fr = np.array([r for _, r in funding], float)
+    return E.Sym(name, t.astype("int64"), o, h, l, c, 0.01, 1.0, 0.001, 0.001, ft, fr)
+
+
+def flat_then_trend(n_flat=260, up=60, down=40):
+    return [100.0] * n_flat + [100 + 2 * i for i in range(1, up + 1)] + [220 - 4 * i for i in range(1, down + 1)]
+
+
+def test_kirilim_ertesi_acilista_long_ve_takip_stopu():
+    s = sym(flat_then_trend())
+    tr, bl, eq, led, op = E.simulate("N50_X3_L", (T0, T0 + 360 * DAY), {"AAA": s}, ZERO)
+    t = tr[0]
+    i_sig = 260                                      # ilk kapanış > önceki 50 gün tepesi (101)
+    assert t["fill_time"] == s.t[i_sig + 1] and t["E_fill"] == pytest.approx(s.o[i_sig + 1])
+    assert t["side"] == "LONG" and t["exit_reason"] in ("STOP", "STOP_GAP")
+    assert t["exit_time"] > s.t[260 + 60]            # trendin tepesinden SONRA çıkar (taşır)
+    assert t["net_R"] > 5                            # büyük trendin büyük kısmı alındı
+    assert abs((led.wallet - 10_000) - sum(x["net_PnL"] for x in tr)) < 1e-6
+
+
+def test_gelecek_degisince_gecmis_ayni():
+    a = flat_then_trend()
+    b = list(a)
+    b[330:] = [x * 1.3 for x in b[330:]]
+    r1 = E.simulate("N50_X5_LS", (T0, T0 + 360 * DAY), {"AAA": sym(a)}, ZERO)[0]
+    r2 = E.simulate("N50_X5_LS", (T0, T0 + 360 * DAY), {"AAA": sym(b)}, ZERO)[0]
+    cut = T0 + 330 * DAY
+    assert [x["fill_time"] for x in r1 if x["fill_time"] < cut] == [x["fill_time"] for x in r2 if x["fill_time"] < cut]
+
+
+def test_stop_yalniz_lehe_ve_bosluk_acilistan():
+    c = flat_then_trend(up=30, down=0) + [130.0] * 5
+    s = sym(c)
+    s.o[-3] = 120.0                                  # açılış stopun çok altında (boşluk)
+    s.l[-3] = 119.0
+    tr = E.simulate("N50_X3_L", (T0, T0 + 400 * DAY), {"AAA": s}, ZERO)[0]
+    t = tr[0]
+    assert t["exit_reason"] in ("STOP_GAP", "STOP")
+    if t["exit_reason"] == "STOP_GAP":
+        assert t["X_reference"] == pytest.approx(120.0)
+
+
+def test_donem_sonu_kapatilir_acik_kalmaz():
+    s = sym([100.0] * 260 + [100 + 2 * i for i in range(1, 80)])
+    tr, bl, eq, led, op = E.simulate("N100_X5_L", (T0, T0 + 300 * DAY), {"AAA": s}, ZERO)
+    assert not op
+    assert tr[-1]["exit_reason"] == "PARTITION_END"
+
+
+def test_xh_cikis_kapanista_sinyal_ertesi_acilista():
+    s = sym(flat_then_trend())
+    tr = E.simulate("N50_XH_L", (T0, T0 + 360 * DAY), {"AAA": s}, ZERO)[0]
+    t = tr[0]
+    assert t["exit_reason"] == "EXIT_SIGNAL" and t["exit_phase"] == "OPEN"
+
+
+def test_funding_isareti_ve_tek_kez():
+    fund = [(T0 + 300 * DAY + 8 * C.H1, 0.001)]
+    s = sym(flat_then_trend(), funding=fund)
+    tr, bl, eq, led, op = E.simulate("N50_X3_L", (T0, T0 + 360 * DAY), {"AAA": s}, ZERO)
+    t = tr[0]
+    assert t["funding_cashflow"] < 0 and led.funding == pytest.approx(t["funding_cashflow"])
