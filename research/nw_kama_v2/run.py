@@ -74,9 +74,17 @@ def main(argv=None):
     t0 = time.time()
     U = D.build_universe(a.data)
     dates = D.partition_dates(U)
+    # önceden kayıtla birebir: kaynak, evren ve dönem sınırları değişmişse koşma
+    if U["source"] != "binance_5m" or set(U["symbols"]) != set(C.UNIVERSE) or dates is None:
+        raise SystemExit(f"veri ön-kayıttan farklı: source={U['source']} excluded={U['excluded']}")
+    beklenen = dict(T0="2023-02-12", B1="2025-04-18", B2="2026-01-08", T1="2026-10-01")
+    for k, v in beklenen.items():
+        if t2s(dates[k])[:10] != v:
+            raise SystemExit(f"dönem sınırı {k} ön-kayıttan farklı: {t2s(dates[k])} != {v}")
     man = dict(spec="NW_KAMA_V2_2026-10-02 (MANIFEST.md)", base_commit=git("rev-parse", "HEAD"),
                dirty=bool(git("status", "--porcelain")), source_hashes=code_hashes(), data_hashes=U["raw_hashes"],
-               source_exchange="BINANCE_USDM (MEXC venue vekili)",
+               source_exchange=f"{U['source']} (BINANCE_USDM = MEXC venue vekili)",
+               active_universe=list(U["symbols"]), excluded=U["excluded"],
                dates={k: t2s(dates[k]) for k in ("T0", "B1", "B2", "T1")}, variant_ids=SG.VARIANT_IDS,
                params=dict(TFS=SG.TFS, MODES=SG.MODES, PARAMS=SG.PARAMS, SL_ATR=SG.SL_ATR, TP_ATR=SG.TP_ATR,
                            MAX_HOLD_BARS=SG.MAX_HOLD_BARS),

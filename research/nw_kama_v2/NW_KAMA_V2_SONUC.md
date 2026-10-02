@@ -58,3 +58,19 @@ yetmedi. Final dönemi kurallar gereği AÇILMADI; sonucu bilinmiyor ve bakılma
 2. **Bağımsız evrende ön-kayıtlı tekrar:** Aynı kurallar, bu 12 coinin DIŞINDAKİ likit coinlerde,
    aynı dönemlerde. Yeni coinler bu varyant için hiç görülmedi; örneklemi de büyütür.
 3. **Final dönemi** ancak tek aday doğrulamayı geçtiğinde açılır; bu turda açılmadı.
+
+## Denetim
+İki şüpheci denetçi incelendi.
+- **Tek YÜKSEK bulgu:** dönem sonu giriş yasağı. Düzeltme 1 ile giderildi.
+  - Denetçinin kendi tekrar koşusu da aynı iki adayı seçti: 1D_event_A ve 1D_state_A.
+- **Sinyal sadakati:** Sinyaller pandas ile bağımsız olarak yeniden uygulandı (eksik barlar
+  enjekte edilerek). 24 varyantın hepsinde sinyal zamanı, yön, E ve ATR birebir eşleşti.
+- **Geleceğe bakma:** Gelecek fiyatları bozan sarsma testinde, geçmiş sinyaller ve işlemler
+  değişmedi.
+- **Kalan 3 DÜŞÜK bulgu:** Bu veride etkisi sıfır.
+  - Kaynak, evren ve dönem sınırlarının ön-kayıtla zorunlu karşılaştırılması → eklendi
+    (koşu sonrası; sonucu değiştirmez).
+  - Atılan sinyallerin sayılması.
+- **Yan etki:** Motorun hash'i değiştiği için dondurulmuş sweep koşusunda `cli report` artık
+  "hash değişti" diye reddeder. Sweep sonucu zaten raporlandı; kendi davranışı değişmedi
+  (`max_hold_ms=None` → 12 saat).
