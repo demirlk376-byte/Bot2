@@ -76,18 +76,15 @@ def mdd_and_underwater(eq_t, eq, C0):
     peak = np.maximum.accumulate(np.r_[C0, eq])[1:]
     dd = 100 * (peak - eq) / peak
     under = eq < peak - 1e-12
-    longest = cur = 0
+    longest = 0
     t_start = None
     for i, u in enumerate(under):
-        if u:
-            if t_start is None:
-                t_start = eq_t[i - 1] if i > 0 else eq_t[i]
-            cur = eq_t[i] - t_start
-            longest = max(longest, cur)
-        else:
+        if u and t_start is None:
+            t_start = eq_t[i - 1] if i > 0 else eq_t[i]
+        elif not u and t_start is not None:
+            longest = max(longest, eq_t[i] - t_start)        # tepeye DÖNÜLEN kesite kadar
             t_start = None
-            cur = 0
-    unfinished = (eq_t[-1] - t_start) if (under[-1] and t_start is not None) else 0
+    unfinished = (eq_t[-1] - t_start) if t_start is not None else 0
     return float(dd.max()), longest / C.H1, unfinished / C.H1
 
 
@@ -137,6 +134,9 @@ def run_metrics(res, outcomes_events, window, C0, phase):
     m["metrics_valid"] = not invalid
     m["data_gap_exposure"] = res.flags["data_gap_positions"] > 0
     m["funding_order_ambiguous"] = res.flags["funding_off_grid"] > 0
+    m["funding_modeled"] = res.flags.get("funding_not_modeled", 0) == 0
+    m["funding_scope"] = "komisyon/kayma/funding dahil" if m["funding_modeled"] else \
+        "komisyon/kayma dahil, funding HARİÇ (NOT_MODELED)"
     if len(eq):
         open_frac = float(np.mean([r[8] > 0 for r in res.equity]))
         m.update(exposure_time_frac=open_frac,

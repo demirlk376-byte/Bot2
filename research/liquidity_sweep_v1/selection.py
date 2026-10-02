@@ -37,13 +37,17 @@ def stage_status(mN, mS, phase, need_lcb):
     """Bir varyantın bir aşamadaki durumu: (uygun_mu, kod, açıklama)."""
     if not (technical_ok(mN) and technical_ok(mS)):
         return False, YETERSIZ, "TECHNICAL_INVALID"
+    if not (mN.get("funding_modeled", True) and mS.get("funding_modeled", True)):
+        return False, YETERSIZ, "COST_COVERAGE_UNRESOLVED"
     if not (floors_ok(mN, phase) and floors_ok(mS, phase)):
         if positive(mN) and positive(mS):
             return False, YETERSIZ, "SAMPLE_FLOOR_POSITIVE"
         return False, YETERSIZ, "SAMPLE_FLOOR"
     if not (positive(mN) and positive(mS)):
         return False, ELENDI, "NOT_POSITIVE"
-    if need_lcb and not (_num(mN["LCB"]) > 0 and mN.get("boot_reliable")):
+    if need_lcb and not mN.get("boot_reliable"):
+        return False, YETERSIZ, "BOOTSTRAP_UNRELIABLE"
+    if need_lcb and not _num(mN["LCB"]) > 0:
         return False, YETERSIZ, "LCB_NOT_POSITIVE"
     return True, "ELIGIBLE", "OK"
 
@@ -63,7 +67,9 @@ def select(results, phase):
                          normal_LCB=mN["LCB"], stress_LCB=mS["LCB"], normal_MDD=mN["MDD_close_pct"],
                          normal_exp_R=mN.get("expectancy_net_R"), stress_exp_R=mS.get("expectancy_net_R"),
                          normal_net_USDT=mN["net_USDT"], stress_net_USDT=mS["net_USDT"],
-                         normal_closed=mN["closed"], stress_closed=mS["closed"]))
+                         normal_closed=mN["closed"], stress_closed=mS["closed"],
+                         normal_boot_reliable=mN.get("boot_reliable"),
+                         normal_boot_invalid_frac=mN.get("boot_invalid_frac")))
         if ok:
             elig.append(vid)
     elig.sort(key=lambda v: rank_key(v, *results[v]))
@@ -91,6 +97,9 @@ def overall_without_final(disc_rows, val_rows):
     if val_rows:
         return (ELENDI, "VALIDATION_ALL_NOT_POSITIVE") if all(r["status"] == ELENDI for r in val_rows) \
             else (YETERSIZ, "VALIDATION_UNCERTAIN")
-    if any(r["reason"] in ("TECHNICAL_INVALID", "SAMPLE_FLOOR_POSITIVE") for r in disc_rows):
-        return YETERSIZ, "DISCOVERY_SOME_UNDETERMINED"
-    return ELENDI, "DISCOVERY_NO_ELIGIBLE"
+    # Öncelik 1 (şartname §18.5): örneklem tabanı / teknik geçersizlik → KANIT YETERSİZ; ELENDİ yalnız
+    # yeterli ve geçerli örneklemde performans koşulu sağlanmadıysa. Bu yüzden 32 varyantın HEPSİ
+    # ELENDİ değilse genel hüküm KANIT YETERSİZ'dir (sayımlar ayrıca raporlanır).
+    if all(r["status"] == ELENDI for r in disc_rows):
+        return ELENDI, "DISCOVERY_ALL_ELIMINATED"
+    return YETERSIZ, "DISCOVERY_SOME_UNDETERMINED"

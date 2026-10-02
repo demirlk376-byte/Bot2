@@ -186,6 +186,7 @@ def main(a):
         rep["G2_G4_G5"] = "veri yok — koşulmadı"
     rep["G3_reference_isolation"] = g3_reference(out)
     rep["all_ok"] = all(v.get("ok", False) for v in rep.values() if isinstance(v, dict))
+    rep["source_hashes"] = cli.code_hashes()
     rep["sure_dk"] = round((time.time() - t0) / 60, 1)
     with open(os.path.join(out, "fidelity_gates.json"), "w") as f:
         json.dump(rep, f, indent=1, ensure_ascii=False, default=str)

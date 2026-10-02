@@ -183,6 +183,19 @@ def run_variant(W: World, vid, phase, cost, C0, outdir=None, record_equity=True)
              fvg_count=sum(1 for r in recs if r.fvg_known_at is not None),
              retest_count=sum(1 for r in recs if r.retest_time is not None),
              setup_terminals=pd.Series([r.terminal_status for r in recs]).value_counts().to_dict() if recs else {})
+    a_, b_ = W.window(phase)
+    lv_hi = lv_lo = 0
+    for b in W.books[fam].values():
+        for L in b.levels:
+            if a_ <= L.known_at < b_:
+                lv_hi += L.side == "HIGH"
+                lv_lo += L.side == "LOW"
+    elig_h = 0
+    for sd in W.U["symbols"].values():
+        k0, k1 = (a_ - sd.g0) // C.M5, (b_ - sd.g0) // C.M5
+        elig_h += int(sd.valid5[k0:k1].sum()) * 5 / 60
+    m.update(levels_created=dict(HIGH=int(lv_hi), LOW=int(lv_lo)), eligible_symbol_hours=float(elig_h),
+             _trade_nets=[t["net_PnL"] for t in res.trades])
     if outdir:
         d = os.path.join(outdir, phase, f"{vid}_{cost.name}")
         tr = pd.DataFrame(res.trades)
@@ -193,7 +206,7 @@ def run_variant(W: World, vid, phase, cost, C0, outdir=None, record_equity=True)
             eq = pd.DataFrame(res.equity, columns=RA.EQUITY_FIELDS)
             eq["timestamp_utc"] = pd.to_datetime(eq["timestamp_utc"], unit="ms", utc=True)
             write_csv(os.path.join(d, "equity_5m.csv.gz"), eq, gz=True)
-        write_json(os.path.join(d, "metrics.json"), m)
+        write_json(os.path.join(d, "metrics.json"), _strip(m))
     return m, res
 
 
@@ -236,8 +249,21 @@ def cmd_doctor(a):
     return info
 
 
+def gates_hash(out_root):
+    p = os.path.join(out_root, "_verify", "fidelity_gates.json")
+    if not os.path.exists(p):
+        raise SystemExit("uyum kapıları koşulmamış (cli verify) — dondurma reddedildi")
+    rep = json.load(open(p))
+    if not rep.get("all_ok"):
+        raise SystemExit("uyum kapıları GEÇMEDİ — METRICS_INVALID; dondurma reddedildi")
+    if rep.get("source_hashes") != code_hashes():
+        raise SystemExit("uyum raporu farklı kod sürümüyle üretilmiş — önce cli verify")
+    return D.sha256_file(p)
+
+
 def cmd_freeze(a):
     global _LOG
+    gh = gates_hash(a.out)
     W = World(a.data)
     U, dates = W.U, W.dates
     if dates is None:
@@ -276,7 +302,7 @@ def cmd_freeze(a):
         execution_resolution="5m (bar içi çift temas → stop önce, AMBIGUOUS_SL_TP)",
         event_order_version=C.EVENT_ORDER_VERSION,
         rng=dict(seed=C.BOOT_SEED, generator="numpy.random.default_rng (PCG64)", numpy=np.__version__),
-        previous_data_use=PREVIOUS_DATA_USE, variant_ids=C.VARIANT_IDS,
+        previous_data_use=PREVIOUS_DATA_USE, variant_ids=C.VARIANT_IDS, fidelity_gates_hash=gh,
         overall_decision_rule=SL.overall_without_final.__doc__,
     )
     core = json.dumps({k: v for k, v in man.items() if k not in ("created_at_utc",)}, sort_keys=True,
@@ -349,7 +375,7 @@ def _phase(W, run_dir, man, phase, vids, tag):
 
 
 def _strip(m):
-    return {k: v for k, v in m.items() if k not in ("flags",)}
+    return {k: v for k, v in m.items() if k not in ("flags",) and not k.startswith("_")}
 
 
 def cmd_discovery(a, W=None):
@@ -366,14 +392,25 @@ def cmd_discovery(a, W=None):
     return W, obj
 
 
+def _verified(path, man):
+    if not os.path.exists(path):
+        raise SystemExit(f"{os.path.basename(path)} yok")
+    obj = json.load(open(path))
+    h = obj.pop("hash", None)
+    if h != sha_bytes(json.dumps(obj, sort_keys=True, default=_js).encode()):
+        raise SystemExit(f"{os.path.basename(path)} hash tutmuyor — değiştirilmiş; reddedildi")
+    if obj.get("manifest_hash") != man["manifest_hash"]:
+        raise SystemExit(f"{os.path.basename(path)} farklı manifestle üretilmiş — reddedildi")
+    obj["hash"] = h
+    return obj
+
+
 def cmd_validation(a, W=None):
     man = load_manifest(a.run)
     p = os.path.join(a.run, "selection_discovery.json")
     if not os.path.exists(p):
         raise SystemExit("selection_discovery.json yok — doğrulama koşulamaz")
-    disc = json.load(open(p))
-    if disc["manifest_hash"] != man["manifest_hash"]:
-        raise SystemExit("keşif seçimi farklı manifestle üretilmiş — reddedildi")
+    disc = _verified(p, man)
     sel = disc["selected"]
     obj = dict(manifest_hash=man["manifest_hash"], phase="VALIDATION", candidates=sel, selected=[], rows=[])
     if sel:
@@ -396,9 +433,12 @@ def cmd_final(a, W=None):
     p = os.path.join(a.run, "selection_final.json")
     if not os.path.exists(p):
         raise SystemExit("selection_final.json yok — final performansı hesaplanamaz")
-    sf = json.load(open(p))
-    if sf["manifest_hash"] != man["manifest_hash"]:
-        raise SystemExit("final seçimi farklı manifestle üretilmiş — reddedildi")
+    sf = _verified(p, man)
+    disc = _verified(os.path.join(a.run, "selection_discovery.json"), man)
+    if not set(sf["selected"]) <= set(sf.get("candidates", [])) <= set(disc["selected"]):
+        raise SystemExit("final adayı doğrulama/keşif seçimlerinin alt kümesi değil — reddedildi")
+    if os.path.exists(os.path.join(a.run, "final_result.json")):
+        raise SystemExit("final_result.json zaten var — aynı run_id ile ikinci final koşusu yapılmaz")
     obj = dict(manifest_hash=man["manifest_hash"], phase="FINAL", candidate=None)
     if not sf["selected"]:
         obj["skip_reason"] = "doğrulamadan uygun aday yok — final AÇILMADI"
@@ -407,8 +447,8 @@ def cmd_final(a, W=None):
         W = world_for(man, a, W)
         res = _phase(W, a.run, man, "FINAL", [vid], "final")
         mN, mS = res[vid]
-        tr = pd.read_csv(os.path.join(a.run, "FINAL", f"{vid}_NORMAL", "trades.csv"))
-        top5 = float(tr["net_PnL"].sort_values(ascending=False).iloc[5:].sum()) if len(tr) else 0.0
+        nets = sorted(mN.get("_trade_nets", []), reverse=True)
+        top5 = float(sum(nets[5:])) if nets else 0.0
         indep = man["previous_data_use"]["FINAL"] == "untouched"
         dec, why = SL.final_decision(mN, mS, top5, indep)
         obj.update(candidate=vid, decision=dec, reason=why, top5_removed_net_USDT=top5, final_independent=indep,
@@ -419,6 +459,8 @@ def cmd_final(a, W=None):
 
 def cmd_report(a):
     man = load_manifest(a.run)
+    if os.path.exists(os.path.join(a.run, "RUN_FAILED.json")):
+        raise SystemExit("RUN_FAILED — karar üretilmez (RUN_FAILED.json)")
     disc = json.load(open(os.path.join(a.run, "selection_discovery.json")))
     sf = json.load(open(os.path.join(a.run, "selection_final.json"))) if os.path.exists(
         os.path.join(a.run, "selection_final.json")) else None
@@ -441,7 +483,12 @@ def cmd_report(a):
                                  ambiguous_exits=m.get("ambiguous_exits"), metrics_valid=m["metrics_valid"],
                                  full_weeks=m["full_weeks"], weeks_with_trades=m["weeks_with_trades"],
                                  blocked=json.dumps(m.get("blocked_reasons", {}), ensure_ascii=False)))
+    st = {r["variant_id"]: r for r in disc["rows"]}
+    for r in rows:
+        if r["phase"] == "DISCOVERY":
+            r.update(status=st[r["variant_id"]]["status"], reason=st[r["variant_id"]]["reason"])
     write_csv(os.path.join(a.run, "variant_results.csv"), pd.DataFrame(rows))
+    breakdowns(a.run)
     if fin and fin.get("decision"):
         decision, why = fin["decision"], fin["reason"]
     else:
@@ -455,15 +502,83 @@ def cmd_report(a):
     return summ
 
 
+def _guarded(a, phase, fn, *args):
+    """Yakalanmayan/yutulan istisna yok: hata RUN_FAILED olarak yazılır ve süreç sıfırdan farklı çıkar."""
+    import traceback
+    try:
+        return fn(*args)
+    except SystemExit:
+        raise
+    except Exception as e:
+        tb = traceback.format_exc()
+        log(f"RUN_FAILED {phase}: {type(e).__name__}: {e}")
+        if getattr(a, "run", None):
+            write_json(os.path.join(a.run, "RUN_FAILED.json"), dict(status="RUN_FAILED", phase=phase,
+                                                                    error=f"{type(e).__name__}: {e}", traceback=tb))
+        raise SystemExit(2)
+
+
+def breakdowns(run_dir):
+    """Teşhis dökümleri (aday seçimi için KULLANILMAZ): yıl/çeyrek/coin/yön ve K/F grupları,
+    F0↔F1 ortak market_event_id karşılaştırması. Boş dönemler de yazılır."""
+    allr = []
+    for vid in C.VARIANT_IDS:
+        p = os.path.join(run_dir, "DISCOVERY", f"{vid}_NORMAL", "trades.csv")
+        try:
+            t = pd.read_csv(p)
+        except Exception:
+            continue
+        if len(t):
+            allr.append(t)
+    if not allr:
+        return
+    t = pd.concat(allr, ignore_index=True)
+    ts = pd.to_datetime(t["exit_interval_start"], unit="ms", utc=True)
+    t["yil"], t["ceyrek"] = ts.dt.year, ts.dt.tz_localize(None).dt.to_period("Q").astype(str)
+    t["L"], t["K"], t["F"] = zip(*t["variant_id"].str.split("_"))
+    out = []
+    for by in (["variant_id", "yil"], ["variant_id", "ceyrek"], ["variant_id", "symbol"], ["variant_id", "side"],
+               ["L"], ["K"], ["F"], ["L", "K"]):
+        g = t.groupby(by)
+        df = pd.DataFrame(dict(islem=g.size(), ort_net_R=g["net_R"].mean(), toplam_net_R=g["net_R"].sum(),
+                               net_USDT=g["net_PnL"].sum(), kazanma=g["net_PnL"].apply(lambda x: (x > 0).mean())))
+        df = df.reset_index()
+        df.insert(0, "kirilim", "+".join(by))
+        out.append(df)
+    write_csv(os.path.join(run_dir, "breakdowns_discovery_NORMAL.csv"), pd.concat(out, ignore_index=True))
+    rows = []
+    for L in C.LEVEL_FAMILIES:
+        for K in C.ENTRY_MODELS:
+            ev = {}
+            for F in C.TREND_OPTS:
+                p = os.path.join(run_dir, "DISCOVERY", f"{L}_{K}_{F}_NORMAL", "events.csv")
+                try:
+                    ev[F] = pd.read_csv(p).set_index("market_event_id")["terminal_status"]
+                except Exception:
+                    ev[F] = pd.Series(dtype=str)
+            f0, f1 = ev["F0"], ev["F1"]
+            sig0 = f0[~f0.isin(["K1_RECLAIM_MISSING", "K2_NOT_APPLICABLE", "K2_TIMEOUT", "K3_TIMEOUT", "K4_TIMEOUT",
+                                "NO_MICRO_PIVOT", "STRUCTURE_ALREADY_BROKEN", "WEAK_FIRST_BREAK", "NO_FVG",
+                                "FVG_INVALIDATED", "STOP_BEFORE_ENTRY", "LEVEL_EXPIRED", "DATA_INVALID",
+                                "DOUBLE_SIDED_SWEEP", "BLOCKED_ACTIVE_SETUP", "INVALID_GEOMETRY", "CENSORED",
+                                "INVALID_INDICATOR"])]
+            rej = f1[f1.isin(["TREND_REJECTED", "INVALID_INDICATOR"])].index
+            rej_in_f0 = sig0.reindex(rej).dropna()
+            rows.append(dict(L=L, K=K, F0_sinyal=len(sig0), F1_trend_ret=len(rej),
+                             F1_ret_edilenlerin_F0_dolumu=int((rej_in_f0 == "CLOSED").sum()),
+                             F1_ret_edilenlerin_F0_portfoy_engeli=int((~rej_in_f0.isin(["CLOSED", "FILLED"])).sum())))
+    write_csv(os.path.join(run_dir, "f0_f1_karsilastirma.csv"), pd.DataFrame(rows))
+
+
 def cmd_run_all(a):
     if a.jobs != 1:
         raise SystemExit("yalnız --jobs 1 desteklenir (VPS'te canlı botla paralel iş açılmaz)")
     out, W = cmd_freeze(a)
     a.run = out
-    W, _ = cmd_discovery(a, W)
-    W, _ = cmd_validation(a, W)
-    W, _ = cmd_final(a, W)
-    return cmd_report(a)
+    W, _ = _guarded(a, "DISCOVERY", cmd_discovery, a, W)
+    W, _ = _guarded(a, "VALIDATION", cmd_validation, a, W)
+    W, _ = _guarded(a, "FINAL", cmd_final, a, W)
+    return _guarded(a, "REPORT", cmd_report, a)
 
 
 def main(argv=None):
@@ -477,7 +592,10 @@ def main(argv=None):
     a = p.parse_args(argv)
     if a.cmd == "verify":
         from . import verify as V
-        return V.main(a)
+        rep = V.main(a)
+        if not rep.get("all_ok"):
+            raise SystemExit(1)
+        return rep
     {"doctor": cmd_doctor, "freeze": cmd_freeze, "discovery": cmd_discovery, "validation": cmd_validation,
      "final": cmd_final, "report": cmd_report, "run-all": cmd_run_all}[a.cmd](a)
 

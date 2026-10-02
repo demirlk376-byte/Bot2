@@ -54,12 +54,14 @@ class Derived:
         self.atr1h = I.atr(self.h1h, self.l1h, self.c1h, C.ATR_PERIOD)
         self.atr5 = I.atr(sd.h, sd.l, sd.c, C.ATR_PERIOD)
         self.ema1h = I.ema(self.c1h, C.EMA_PERIOD)
-        nd = sd.n5 // C.GRID_PER_DAY
-        hh = sd.h[: nd * C.GRID_PER_DAY].reshape(nd, C.GRID_PER_DAY)
-        ll = sd.l[: nd * C.GRID_PER_DAY].reshape(nd, C.GRID_PER_DAY)
-        vd = D.agg_valid(sd.valid5, C.GRID_PER_DAY)
-        self.day_h = np.where(vd, hh.max(axis=1), np.nan)
-        self.day_l = np.where(vd, ll.min(axis=1), np.nan)
+        nd = -(-sd.n5 // C.GRID_PER_DAY)                 # kısmi son gün dahil (L1 o gün bilinir)
+        pad = nd * C.GRID_PER_DAY - sd.n5
+        hh = np.r_[sd.h, np.full(pad, np.nan)].reshape(nd, C.GRID_PER_DAY)
+        ll = np.r_[sd.l, np.full(pad, np.nan)].reshape(nd, C.GRID_PER_DAY)
+        vd = np.r_[sd.valid5, np.zeros(pad, bool)].reshape(nd, C.GRID_PER_DAY).all(axis=1)
+        with np.errstate(all="ignore"):
+            self.day_h = np.where(vd, np.nanmax(np.where(np.isnan(hh), -np.inf, hh), axis=1), np.nan)
+            self.day_l = np.where(vd, np.nanmin(np.where(np.isnan(ll), np.inf, ll), axis=1), np.nan)
         self.sess_h, self.sess_l, self.sess_v = D.session_hl(sd)
         # 1H pivotlar
         self.piv1h_high = pivots(self.h1h, self.v1h, kind="high")

@@ -128,11 +128,16 @@ def resample(sd: SymbolData, per):
 
 
 def session_hl(sd: SymbolData):
-    """Her UTC gün için [00:00,08:00) yüksek/düşük; 96 tam bar yoksa NaN."""
-    nd = sd.n5 // C.GRID_PER_DAY
-    hh = sd.h[: nd * C.GRID_PER_DAY].reshape(nd, C.GRID_PER_DAY)[:, : C.SESSION_BARS]
-    ll = sd.l[: nd * C.GRID_PER_DAY].reshape(nd, C.GRID_PER_DAY)[:, : C.SESSION_BARS]
-    vv = sd.valid5[: nd * C.GRID_PER_DAY].reshape(nd, C.GRID_PER_DAY)[:, : C.SESSION_BARS].all(axis=1)
+    """Her UTC gün için [00:00,08:00) yüksek/düşük; 96 tam bar yoksa NaN. Izgara gün ortasında
+    bitiyorsa son (kısmi) gün de dahil edilir — seansı tamamsa o günün L2'si bilinir."""
+    nd = -(-sd.n5 // C.GRID_PER_DAY)
+    pad = nd * C.GRID_PER_DAY - sd.n5
+    h = np.r_[sd.h, np.full(pad, np.nan)]
+    l = np.r_[sd.l, np.full(pad, np.nan)]
+    v = np.r_[sd.valid5, np.zeros(pad, bool)]
+    hh = h.reshape(nd, C.GRID_PER_DAY)[:, : C.SESSION_BARS]
+    ll = l.reshape(nd, C.GRID_PER_DAY)[:, : C.SESSION_BARS]
+    vv = v.reshape(nd, C.GRID_PER_DAY)[:, : C.SESSION_BARS].all(axis=1)
     H = np.where(vv, hh.max(axis=1), np.nan)
     L = np.where(vv, ll.min(axis=1), np.nan)
     return H, L, vv

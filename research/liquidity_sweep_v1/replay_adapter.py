@@ -71,7 +71,11 @@ def simulate(variant_id, phase, window, signals, universe, cost, C0, record_equi
             if start <= t <= end:
                 kk = int(-(-(int(t) - g0) // C.M5))         # ızgarada değilse SONRAKİ sınır (bayraklı)
                 fund.setdefault(kk, []).append((s, float(rate), bool(on)))
+    # funding verisi olmayan sembol (NOT_MODELED) veya pencerede hiç settlement yok → maliyet kapsamı açık
+    no_fund = {s for s, sd in syms.items()
+               if sd.funding_source == "NOT_MODELED" or not ((sd.funding_t >= start) & (sd.funding_t <= end)).any()}
     day_start_equity = C0
+    halt_until = 0
     tid = 0
 
     def close_pos(p: Position, ref, reason, k_ev, phase_tag, ambiguous=False):
@@ -123,8 +127,10 @@ def simulate(variant_id, phase, window, signals, universe, cost, C0, record_equi
                 st, tg = lo <= p.S + eps, hi >= p.T - eps
             else:
                 st, tg = hi >= p.S - eps, lo <= p.T + eps
+            if (st or tg) and any(fs == s and not fon for fs, _r, fon in fund.get(k, ())):
+                res.flags["funding_off_grid"] += 1      # çıkış ile ızgara dışı settlement sırası bilinemez
             if st and tg:
-                close_pos(p, p.S, "STOP", k, "INTRABAR", ambiguous=True)
+                close_pos(p, p.S, "AMBIGUOUS_SL_TP", k, "INTRABAR", ambiguous=True)
             elif st:
                 close_pos(p, p.S, "STOP", k, "INTRABAR")
             elif tg:
@@ -143,9 +149,13 @@ def simulate(variant_id, phase, window, signals, universe, cost, C0, record_equi
             p = open_pos.get(s)
             if p is None or p.entry_k >= k:
                 continue
+            mark = marks[s]
             if not on:
-                res.flags["funding_off_grid"] += 1
-            cf = funding_cashflow(p.d, p.q_base, marks[s], rate)
+                # ızgara dışı settlement τ ∈ (t-5m, t): o ANDA bilinen son fiyat = [t-5m) barının açılışı
+                sdv = syms[s]
+                if sdv.valid5[k - 1]:
+                    mark = float(sdv.o[k - 1])
+            cf = funding_cashflow(p.d, p.q_base, mark, rate)
             p.funding += cf
             p.funding_events += 1
             led.fund(cf)
@@ -220,7 +230,8 @@ def simulate(variant_id, phase, window, signals, universe, cost, C0, record_equi
                 _block(res, r, "MAX_POSITIONS_BLOCKED")
                 continue
             equity_now = led.wallet + sum(p.unrealized(marks[s]) for s, p in open_pos.items())
-            if equity_now <= day_start_equity * (1 - C.LIVE_GATES["DAILY_MAX_LOSS_PCT"]):
+            if halt_until > t or equity_now <= day_start_equity * (1 - C.LIVE_GATES["DAILY_MAX_LOSS_PCT"]):
+                halt_until = max(halt_until, (t // C.DAY + 1) * C.DAY)
                 _block(res, r, "DAILY_LOSS_BLOCKED")
                 continue
             E_budget = entry_fill(O, d, cost.entry_slip_bp, sd.tick)
@@ -239,14 +250,15 @@ def simulate(variant_id, phase, window, signals, universe, cost, C0, record_equi
             n_margin = floor_step(max(0.0, C.LIVE_GATES["MARGIN_PREFLIGHT_FRAC"] * free) / per_c_need,
                                   sd.vol_unit)
             n = min(n_risk, n_notional, n_margin)
+            open_risk = sum(p.R0 for p in open_pos.values())
+            if open_risk + max(n, sd.min_vol) * sd.contract_size * dist > risk_cap + tol:
+                _block(res, r, "RISK_CAP_BLOCKED")
+                continue
             if n < sd.min_vol - 1e-12:
                 _block(res, r, "MIN_ORDER_BLOCKED" if n_risk < sd.min_vol - 1e-12 else "MARGIN_BLOCKED")
                 continue
             q_base = n * sd.contract_size
             new_risk = q_base * dist
-            if sum(p.R0 for p in open_pos.values()) + new_risk > risk_cap + tol:
-                _block(res, r, "RISK_CAP_BLOCKED")
-                continue
             E_fill = E_budget                       # deterministik model: E_budget == E_fill
             notional = E_fill * q_base
             margin = notional / lev
@@ -259,11 +271,17 @@ def simulate(variant_id, phase, window, signals, universe, cost, C0, record_equi
                          entry_time=t, entry_open=O, E_budget=E_budget, margin=margin, entry_fee=fee,
                          R0=abs(E_fill - r.S) * q_base, rec=r)
             open_pos[r.symbol] = p
+            if r.symbol in no_fund:
+                res.flags["funding_not_modeled"] = res.flags.get("funding_not_modeled", 0) + 1
             res.outcomes.append(dict(market_event_id=r.market_event_id, symbol=r.symbol, signal_time=r.signal_time,
                                      terminal_status="FILLED", reason_code="FILLED", trade_id=p.trade_id))
             # dolum sonrası geometri koruması (kayma hedefi/stopu geçtiyse) — sinyal iptali DEĞİL
             if not ((r.S < E_fill < r.T) if d > 0 else (r.T < E_fill < r.S)):
                 close_pos(p, O, "GEOMETRY_PROTECT_CLOSE", k, "OPEN")
+    for t_sig, lst in by_time.items():
+        if t_sig >= end:
+            for r in lst:
+                _block(res, r, "CENSORED")
     for s, p in list(open_pos.items()):
         res.flags["censored_open_at_end"] += 1
         res.outcomes.append(dict(market_event_id=p.rec.market_event_id, symbol=s, signal_time=p.rec.signal_time,
