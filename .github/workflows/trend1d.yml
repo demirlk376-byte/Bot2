@@ -1,7 +1,7 @@
-name: Trend 1d veri (tek seferlik)
+name: Trend 1d veri yeni coinler (tek seferlik)
 on:
   push:
-    branches: [veri/trend1d]
+    branches: [veri/trend1d_yeni]
 permissions:
   contents: write
 jobs:

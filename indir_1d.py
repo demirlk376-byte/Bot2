@@ -1,7 +1,7 @@
 """Binance USDⓈ-M 1d mum + fundingRate, 2019-09 → bugün (kamuya açık; anahtar yok)."""
 import io, json, os, sys, time, zipfile, hashlib
 import pandas as pd, requests
-S = ["SOL","ETH","ADA","NEAR","BCH","XRP","DOGE","TRX","XLM","LTC","ICP","BNB"]
+S = "LINK AVAX DOT UNI ATOM FIL ETC AAVE ALGO XTZ SAND MANA AXS EGLD RUNE EOS THETA GRT CRV HBAR VET APT ARB OP INJ SUI".split()
 V = "https://data.binance.vision/data/futures/um"
 OUT = "veri"; os.makedirs(OUT, exist_ok=True)
 now = pd.Timestamp.now(tz="UTC"); ses = requests.Session()
@@ -30,3 +30,11 @@ for c in S:
     ozet[c] = dict(gun=len(k), ilk=str(pd.to_datetime(k.open_time.min(), unit="ms")), son=str(pd.to_datetime(k.open_time.max(), unit="ms")), funding=len(f))
     print(c, ozet[c], flush=True)
 json.dump(dict(olusturma=str(now), ozet=ozet), open(f"{OUT}/ozet.json","w"), indent=1)
+
+r = ses.get("https://contract.mexc.com/api/v1/contract/detail", timeout=60)
+try:
+    det = {e["baseCoin"]: e for e in r.json()["data"] if e.get("quoteCoin") == "USDT" and e["symbol"] == e["baseCoin"] + "_USDT"}
+    json.dump({c: det[c] for c in S if c in det}, open(f"{OUT}/mexc_contract_detail.json", "w"), indent=1)
+    print("mexc", sorted(c for c in S if c in det))
+except Exception as e:
+    print("mexc metadata alinamadi", r.status_code, e)
