@@ -1,0 +1,34 @@
+{
+ "phase": "YENI_COIN",
+ "closed": 157,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.4766802662902091,
+ "net_USDT": 1857.4097602044308,
+ "win_rate": 0.39490445859872614,
+ "profit_factor_usdt": 2.2026112853093043,
+ "avg_hold_days": 47.4203821656051,
+ "best_trade_R": 27.18438036084017,
+ "full_weeks": 239,
+ "weeks_with_trades": 59,
+ "nominal_CI": [
+  -0.01403520268088413,
+  1.2120996375154833
+ ],
+ "LCB": -0.01403520268088413,
+ "boot_reliable": true,
+ "MDD_close_pct": 9.095392544278388,
+ "underwater_longest_d": 756.0,
+ "return_pct": 18.574097602044308,
+ "reconciliation_gap": 1.5006662579253316e-11,
+ "funding": -450.65069320207033,
+ "fees": 2.718233593499999,
+ "years": 4.59958932238193,
+ "variant_id": "BASE_N50_X5_L",
+ "cost": "STRESS",
+ "blocked": {
+  "RISK_CAP_BLOCKED": 264
+ }
+}

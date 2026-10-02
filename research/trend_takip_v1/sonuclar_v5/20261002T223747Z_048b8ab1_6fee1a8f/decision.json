@@ -1,0 +1,145 @@
+{
+ "run_id": "20261002T223747Z_048b8ab1_6fee1a8f",
+ "manifest_hash": "6fee1a8f71fa24eaf0433bb3047807a18d3f17683551cbe3ce77b5a3f36115bc",
+ "coins": [
+  "AAVE",
+  "ALGO",
+  "APT",
+  "ARB",
+  "ATOM",
+  "AVAX",
+  "AXS",
+  "CRV",
+  "DOT",
+  "EGLD",
+  "ETC",
+  "GRT",
+  "HBAR",
+  "INJ",
+  "LINK",
+  "MANA",
+  "OP",
+  "RUNE",
+  "SAND",
+  "SUI",
+  "THETA",
+  "UNI",
+  "VET",
+  "XTZ"
+ ],
+ "excluded": {
+  "FIL": "MEXC_METADATA_YOK",
+  "EOS": "MEXC_METADATA_YOK"
+ },
+ "table": {
+  "BASE_N50_X5_L": {
+   "NORMAL": {
+    "closed": 157,
+    "expectancy_net_R": 0.4841216725236899,
+    "return_pct": 18.77612593591986,
+    "MDD_close_pct": 9.078658529134952,
+    "win_rate": 0.39490445859872614,
+    "LCB": -0.008930729267568282,
+    "years": 4.59958932238193,
+    "best_trade_R": 27.26940961142553
+   },
+   "STRESS": {
+    "closed": 157,
+    "expectancy_net_R": 0.4766802662902091,
+    "return_pct": 18.574097602044308,
+    "MDD_close_pct": 9.095392544278388,
+    "win_rate": 0.39490445859872614,
+    "LCB": -0.01403520268088413,
+    "years": 4.59958932238193,
+    "best_trade_R": 27.18438036084017
+   }
+  },
+  "T1": {
+   "NORMAL": {
+    "closed": 300,
+    "expectancy_net_R": 0.2578412238043094,
+    "return_pct": 19.0929480606426,
+    "MDD_close_pct": 7.066032476268385,
+    "win_rate": 0.47,
+    "LCB": 0.03637527747481382,
+    "years": 4.59958932238193,
+    "best_trade_R": 27.26940961142553
+   },
+   "STRESS": {
+    "closed": 303,
+    "expectancy_net_R": 0.23900827089590562,
+    "return_pct": 17.91567910017201,
+    "MDD_close_pct": 7.185161558806895,
+    "win_rate": 0.46534653465346537,
+    "LCB": 0.025612549437061476,
+    "years": 4.59958932238193,
+    "best_trade_R": 27.18438036084017
+   }
+  },
+  "NWK1D_F0": {
+   "NORMAL": {
+    "closed": 323,
+    "expectancy_net_R": 0.08323475225379047,
+    "return_pct": 6.4585280138565055,
+    "MDD_close_pct": 6.59859916201024,
+    "win_rate": 0.44891640866873067,
+    "LCB": -0.09516261410069321,
+    "years": 4.59958932238193,
+    "best_trade_R": 7.737199903596669
+   },
+   "STRESS": {
+    "closed": 323,
+    "expectancy_net_R": 0.07604569622307333,
+    "return_pct": 5.87015408559246,
+    "MDD_close_pct": 6.718749580705047,
+    "win_rate": 0.44891640866873067,
+    "LCB": -0.10139866849623733,
+    "years": 4.59958932238193,
+    "best_trade_R": 7.680075472217051
+   }
+  },
+  "NWK1D_G1": {
+   "NORMAL": {
+    "closed": 283,
+    "expectancy_net_R": 0.0598716870380789,
+    "return_pct": 4.122557544238141,
+    "MDD_close_pct": 5.560849484942186,
+    "win_rate": 0.45936395759717313,
+    "LCB": -0.12208460573833263,
+    "years": 4.59958932238193,
+    "best_trade_R": 4.508581711625942
+   },
+   "STRESS": {
+    "closed": 283,
+    "expectancy_net_R": 0.0527104650164627,
+    "return_pct": 3.598530781410166,
+    "MDD_close_pct": 5.74481410633337,
+    "win_rate": 0.45936395759717313,
+    "LCB": -0.12817627611266413,
+    "years": 4.59958932238193,
+    "best_trade_R": 4.478158770913601
+   }
+  }
+ },
+ "verdict": {
+  "T1": {
+   "normal_pos": true,
+   "stress_pos": true,
+   "meanR_pos": true,
+   "LCB_pos": true,
+   "TUTTU": true
+  },
+  "NWK1D_G1": {
+   "normal_pos": true,
+   "stress_pos": true,
+   "meanR_pos": true,
+   "LCB_pos": false,
+   "TUTTU": false
+  }
+ },
+ "G1_consistent": false,
+ "paket": {
+  "return_pct": 23.215505604880818,
+  "MDD_pct": 8.504604424922253
+ }
+}

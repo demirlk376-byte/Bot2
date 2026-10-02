@@ -1,0 +1,35 @@
+{
+ "phase": "YENI_COIN",
+ "closed": 323,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.08323475225379047,
+ "net_USDT": 645.8528013856505,
+ "win_rate": 0.44891640866873067,
+ "profit_factor_usdt": 1.2493346311091178,
+ "avg_hold_days": 28.647058823529413,
+ "best_trade_R": 7.737199903596669,
+ "full_weeks": 239,
+ "weeks_with_trades": 136,
+ "nominal_CI": [
+  -0.09516261410069321,
+  0.26216028844786454
+ ],
+ "LCB": -0.09516261410069321,
+ "boot_reliable": true,
+ "MDD_close_pct": 6.59859916201024,
+ "underwater_longest_d": 357.0,
+ "return_pct": 6.4585280138565055,
+ "reconciliation_gap": -5.4797055781818926e-11,
+ "funding": -84.2918872800494,
+ "fees": 6.843774334300001,
+ "years": 4.59958932238193,
+ "variant_id": "NWK1D_F0",
+ "cost": "NORMAL",
+ "blocked": {
+  "RISK_CAP_BLOCKED": 39,
+  "DATA_INVALID": 1
+ }
+}
