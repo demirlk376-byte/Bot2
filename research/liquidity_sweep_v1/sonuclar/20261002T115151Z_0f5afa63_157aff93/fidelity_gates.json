@@ -1,0 +1,229 @@
+{
+ "G1_pytest": {
+  "ok": true,
+  "summary": "445 passed in 17.18s"
+ },
+ "G6_bias": {
+  "ok": true,
+  "trades": 1701,
+  "mean_R": 0.05072632789148843,
+  "z": 1.4706618724379175,
+  "note": "sentetik rastgele yürüyüş, sıfır maliyet; işlemler varyantlar arası bağımsız DEĞİL (ortak olaylar) → z kaba bir yanlılık alarmıdır"
+ },
+ "G2_paper_reconciliation": {
+  "ok": true,
+  "trades": 400,
+  "max_abs_diff": 5.766409572061093e-11,
+  "tol": 1e-06,
+  "variant": "L1_K1_F0"
+ },
+ "G4_smoke_30d": {
+  "ok": true,
+  "errors": [],
+  "counts": {
+   "L1_K1_F0": {
+    "events": 346,
+    "signals": 162,
+    "trades": 151
+   },
+   "L1_K1_F1": {
+    "events": 346,
+    "signals": 53,
+    "trades": 52
+   },
+   "L1_K2_F0": {
+    "events": 346,
+    "signals": 83,
+    "trades": 78
+   },
+   "L1_K2_F1": {
+    "events": 346,
+    "signals": 30,
+    "trades": 28
+   },
+   "L1_K3_F0": {
+    "events": 346,
+    "signals": 11,
+    "trades": 11
+   },
+   "L1_K3_F1": {
+    "events": 346,
+    "signals": 2,
+    "trades": 2
+   },
+   "L1_K4_F0": {
+    "events": 346,
+    "signals": 2,
+    "trades": 2
+   },
+   "L1_K4_F1": {
+    "events": 346,
+    "signals": 0,
+    "trades": 0
+   },
+   "L2_K1_F0": {
+    "events": 442,
+    "signals": 203,
+    "trades": 182
+   },
+   "L2_K1_F1": {
+    "events": 442,
+    "signals": 75,
+    "trades": 75
+   },
+   "L2_K2_F0": {
+    "events": 442,
+    "signals": 104,
+    "trades": 99
+   },
+   "L2_K2_F1": {
+    "events": 442,
+    "signals": 34,
+    "trades": 33
+   },
+   "L2_K3_F0": {
+    "events": 442,
+    "signals": 12,
+    "trades": 12
+   },
+   "L2_K3_F1": {
+    "events": 442,
+    "signals": 8,
+    "trades": 8
+   },
+   "L2_K4_F0": {
+    "events": 442,
+    "signals": 3,
+    "trades": 3
+   },
+   "L2_K4_F1": {
+    "events": 442,
+    "signals": 2,
+    "trades": 2
+   },
+   "L3_K1_F0": {
+    "events": 1102,
+    "signals": 511,
+    "trades": 452
+   },
+   "L3_K1_F1": {
+    "events": 1102,
+    "signals": 205,
+    "trades": 200
+   },
+   "L3_K2_F0": {
+    "events": 1102,
+    "signals": 297,
+    "trades": 259
+   },
+   "L3_K2_F1": {
+    "events": 1102,
+    "signals": 130,
+    "trades": 125
+   },
+   "L3_K3_F0": {
+    "events": 1102,
+    "signals": 44,
+    "trades": 39
+   },
+   "L3_K3_F1": {
+    "events": 1102,
+    "signals": 19,
+    "trades": 19
+   },
+   "L3_K4_F0": {
+    "events": 1102,
+    "signals": 6,
+    "trades": 6
+   },
+   "L3_K4_F1": {
+    "events": 1102,
+    "signals": 2,
+    "trades": 2
+   },
+   "L4_K1_F0": {
+    "events": 85,
+    "signals": 31,
+    "trades": 30
+   },
+   "L4_K1_F1": {
+    "events": 85,
+    "signals": 13,
+    "trades": 13
+   },
+   "L4_K2_F0": {
+    "events": 85,
+    "signals": 30,
+    "trades": 30
+   },
+   "L4_K2_F1": {
+    "events": 85,
+    "signals": 12,
+    "trades": 12
+   },
+   "L4_K3_F0": {
+    "events": 85,
+    "signals": 3,
+    "trades": 3
+   },
+   "L4_K3_F1": {
+    "events": 85,
+    "signals": 1,
+    "trades": 1
+   },
+   "L4_K4_F0": {
+    "events": 85,
+    "signals": 2,
+    "trades": 2
+   },
+   "L4_K4_F1": {
+    "events": 85,
+    "signals": 1,
+    "trades": 1
+   }
+  },
+  "window": [
+   "2023-02-12 00:00:00+00:00",
+   "2023-03-14 00:00:00+00:00"
+  ]
+ },
+ "G5_determinism": {
+  "ok": true,
+  "hashes": [
+   [
+    "94719e859349b3816a2e0ea7d9c462e23429c10fbd56e25244feec408da09b7f",
+    "2882561b7737b740e09c8b2a89cff090b2adf2c308bdfe659e67bb93ed49323d"
+   ],
+   [
+    "94719e859349b3816a2e0ea7d9c462e23429c10fbd56e25244feec408da09b7f",
+    "2882561b7737b740e09c8b2a89cff090b2adf2c308bdfe659e67bb93ed49323d"
+   ],
+   [
+    "94719e859349b3816a2e0ea7d9c462e23429c10fbd56e25244feec408da09b7f",
+    "2882561b7737b740e09c8b2a89cff090b2adf2c308bdfe659e67bb93ed49323d"
+   ]
+  ]
+ },
+ "G3_reference_isolation": {
+  "ok": true,
+  "trades": 25,
+  "window": "2023-04-06→2023-05-20",
+  "note": "aynı süreçte araştırma paketi yüklü/yüklü değil"
+ },
+ "all_ok": true,
+ "source_hashes": {
+  "accounting.py": "9ada6082e64d0033d09048bd822a8a2a3cdb94a3e563fd81724ce8e571d5197f",
+  "cli.py": "570b73d79a5861bf38099b6e20122125e13e6e41a0d6c879f733a5afa01696e2",
+  "config.py": "d254ad0ee66ae0db67279b6fd182c700cb1af17bfb4d445ac276368461bc8157",
+  "data_contract.py": "28d72919eee12142c0e456a42e39a1b007f2bc62af33d410d47e66cfc1a11b6c",
+  "events.py": "2bfd0af801ccd1990d3a132fc78963542c3c413664a6ae5af3e8f3e34c79ddf8",
+  "indicators_adapter.py": "925f9db25ce7d8f8aa2a268024586bef07b9a71c261f3575235d8862a0307326",
+  "levels.py": "0ce297f638b62b50bf17996d5e707a3a86c9076a4346a4aee7565c3a914167db",
+  "metrics.py": "3a704feb00f4b42b78e1220c55c99bd055aebcac79796d661b8a43b2c5d13d47",
+  "replay_adapter.py": "f08eacdf489ed800cbe2190b3574116e1d695e46f8a464cf4e41be495d8c8e1b",
+  "selection.py": "cb492a75dcd27a6c3f92bccc646991efc37a318463344694bd4209966b6c890b",
+  "setups.py": "6ff84c747b466ddc86781edb752669e0e43443be76474cc74e814165aa8c0695",
+  "verify.py": "70cf0cd02b350d6c99a1077f832955afd925cfa09bd65e315a1e171e98da5313"
+ },
+ "sure_dk": 12.8
+}

@@ -1,0 +1,643 @@
+{
+ "quality": {
+  "SOL": {
+   "rows": 394272,
+   "non_finite": 0,
+   "non_positive": 0,
+   "ohlc_inconsistent": 0,
+   "negative_volume": 0,
+   "off_grid": 0,
+   "out_of_range_time": 0,
+   "duplicate_exact": 0,
+   "conflicting_timestamps": 0,
+   "valid_5m": 394272,
+   "first_bar": "2023-01-01 00:00:00+00:00",
+   "last_bar": "2026-09-30 23:55:00+00:00",
+   "funding": {
+    "rows": 4107,
+    "dropped_unparseable": 0,
+    "duplicates_after_snap": 0,
+    "conflicting_settlements": 0,
+    "in_range": 4107,
+    "off_grid": 0,
+    "coverage_gaps": 0,
+    "first": "2023-01-01 00:00:00+00:00",
+    "last": "2026-09-30 16:00:00+00:00"
+   }
+  },
+  "ETH": {
+   "rows": 394272,
+   "non_finite": 0,
+   "non_positive": 0,
+   "ohlc_inconsistent": 0,
+   "negative_volume": 0,
+   "off_grid": 0,
+   "out_of_range_time": 0,
+   "duplicate_exact": 0,
+   "conflicting_timestamps": 0,
+   "valid_5m": 394272,
+   "first_bar": "2023-01-01 00:00:00+00:00",
+   "last_bar": "2026-09-30 23:55:00+00:00",
+   "funding": {
+    "rows": 4107,
+    "dropped_unparseable": 0,
+    "duplicates_after_snap": 0,
+    "conflicting_settlements": 0,
+    "in_range": 4107,
+    "off_grid": 0,
+    "coverage_gaps": 0,
+    "first": "2023-01-01 00:00:00+00:00",
+    "last": "2026-09-30 16:00:00+00:00"
+   }
+  },
+  "ADA": {
+   "rows": 394272,
+   "non_finite": 0,
+   "non_positive": 0,
+   "ohlc_inconsistent": 0,
+   "negative_volume": 0,
+   "off_grid": 0,
+   "out_of_range_time": 0,
+   "duplicate_exact": 0,
+   "conflicting_timestamps": 0,
+   "valid_5m": 394272,
+   "first_bar": "2023-01-01 00:00:00+00:00",
+   "last_bar": "2026-09-30 23:55:00+00:00",
+   "funding": {
+    "rows": 4107,
+    "dropped_unparseable": 0,
+    "duplicates_after_snap": 0,
+    "conflicting_settlements": 0,
+    "in_range": 4107,
+    "off_grid": 0,
+    "coverage_gaps": 0,
+    "first": "2023-01-01 00:00:00+00:00",
+    "last": "2026-09-30 16:00:00+00:00"
+   }
+  },
+  "NEAR": {
+   "rows": 394272,
+   "non_finite": 0,
+   "non_positive": 0,
+   "ohlc_inconsistent": 0,
+   "negative_volume": 0,
+   "off_grid": 0,
+   "out_of_range_time": 0,
+   "duplicate_exact": 0,
+   "conflicting_timestamps": 0,
+   "valid_5m": 394272,
+   "first_bar": "2023-01-01 00:00:00+00:00",
+   "last_bar": "2026-09-30 23:55:00+00:00",
+   "funding": {
+    "rows": 4107,
+    "dropped_unparseable": 0,
+    "duplicates_after_snap": 0,
+    "conflicting_settlements": 0,
+    "in_range": 4107,
+    "off_grid": 0,
+    "coverage_gaps": 0,
+    "first": "2023-01-01 00:00:00+00:00",
+    "last": "2026-09-30 16:00:00+00:00"
+   }
+  },
+  "BCH": {
+   "rows": 394272,
+   "non_finite": 0,
+   "non_positive": 0,
+   "ohlc_inconsistent": 0,
+   "negative_volume": 0,
+   "off_grid": 0,
+   "out_of_range_time": 0,
+   "duplicate_exact": 0,
+   "conflicting_timestamps": 0,
+   "valid_5m": 394272,
+   "first_bar": "2023-01-01 00:00:00+00:00",
+   "last_bar": "2026-09-30 23:55:00+00:00",
+   "funding": {
+    "rows": 4107,
+    "dropped_unparseable": 0,
+    "duplicates_after_snap": 0,
+    "conflicting_settlements": 0,
+    "in_range": 4107,
+    "off_grid": 0,
+    "coverage_gaps": 0,
+    "first": "2023-01-01 00:00:00+00:00",
+    "last": "2026-09-30 16:00:00+00:00"
+   }
+  },
+  "XRP": {
+   "rows": 394272,
+   "non_finite": 0,
+   "non_positive": 0,
+   "ohlc_inconsistent": 0,
+   "negative_volume": 0,
+   "off_grid": 0,
+   "out_of_range_time": 0,
+   "duplicate_exact": 0,
+   "conflicting_timestamps": 0,
+   "valid_5m": 394272,
+   "first_bar": "2023-01-01 00:00:00+00:00",
+   "last_bar": "2026-09-30 23:55:00+00:00",
+   "funding": {
+    "rows": 4107,
+    "dropped_unparseable": 0,
+    "duplicates_after_snap": 0,
+    "conflicting_settlements": 0,
+    "in_range": 4107,
+    "off_grid": 0,
+    "coverage_gaps": 0,
+    "first": "2023-01-01 00:00:00+00:00",
+    "last": "2026-09-30 16:00:00+00:00"
+   }
+  },
+  "DOGE": {
+   "rows": 394272,
+   "non_finite": 0,
+   "non_positive": 0,
+   "ohlc_inconsistent": 0,
+   "negative_volume": 0,
+   "off_grid": 0,
+   "out_of_range_time": 0,
+   "duplicate_exact": 0,
+   "conflicting_timestamps": 0,
+   "valid_5m": 394272,
+   "first_bar": "2023-01-01 00:00:00+00:00",
+   "last_bar": "2026-09-30 23:55:00+00:00",
+   "funding": {
+    "rows": 4107,
+    "dropped_unparseable": 0,
+    "duplicates_after_snap": 0,
+    "conflicting_settlements": 0,
+    "in_range": 4107,
+    "off_grid": 0,
+    "coverage_gaps": 0,
+    "first": "2023-01-01 00:00:00+00:00",
+    "last": "2026-09-30 16:00:00+00:00"
+   }
+  },
+  "TRX": {
+   "rows": 394272,
+   "non_finite": 0,
+   "non_positive": 0,
+   "ohlc_inconsistent": 0,
+   "negative_volume": 0,
+   "off_grid": 0,
+   "out_of_range_time": 0,
+   "duplicate_exact": 0,
+   "conflicting_timestamps": 0,
+   "valid_5m": 394272,
+   "first_bar": "2023-01-01 00:00:00+00:00",
+   "last_bar": "2026-09-30 23:55:00+00:00",
+   "funding": {
+    "rows": 4107,
+    "dropped_unparseable": 0,
+    "duplicates_after_snap": 0,
+    "conflicting_settlements": 0,
+    "in_range": 4107,
+    "off_grid": 0,
+    "coverage_gaps": 0,
+    "first": "2023-01-01 00:00:00+00:00",
+    "last": "2026-09-30 16:00:00+00:00"
+   }
+  },
+  "XLM": {
+   "rows": 394272,
+   "non_finite": 0,
+   "non_positive": 0,
+   "ohlc_inconsistent": 0,
+   "negative_volume": 0,
+   "off_grid": 0,
+   "out_of_range_time": 0,
+   "duplicate_exact": 0,
+   "conflicting_timestamps": 0,
+   "valid_5m": 394272,
+   "first_bar": "2023-01-01 00:00:00+00:00",
+   "last_bar": "2026-09-30 23:55:00+00:00",
+   "funding": {
+    "rows": 4107,
+    "dropped_unparseable": 0,
+    "duplicates_after_snap": 0,
+    "conflicting_settlements": 0,
+    "in_range": 4107,
+    "off_grid": 0,
+    "coverage_gaps": 0,
+    "first": "2023-01-01 00:00:00+00:00",
+    "last": "2026-09-30 16:00:00+00:00"
+   }
+  },
+  "LTC": {
+   "rows": 394272,
+   "non_finite": 0,
+   "non_positive": 0,
+   "ohlc_inconsistent": 0,
+   "negative_volume": 0,
+   "off_grid": 0,
+   "out_of_range_time": 0,
+   "duplicate_exact": 0,
+   "conflicting_timestamps": 0,
+   "valid_5m": 394272,
+   "first_bar": "2023-01-01 00:00:00+00:00",
+   "last_bar": "2026-09-30 23:55:00+00:00",
+   "funding": {
+    "rows": 4107,
+    "dropped_unparseable": 0,
+    "duplicates_after_snap": 0,
+    "conflicting_settlements": 0,
+    "in_range": 4107,
+    "off_grid": 0,
+    "coverage_gaps": 0,
+    "first": "2023-01-01 00:00:00+00:00",
+    "last": "2026-09-30 16:00:00+00:00"
+   }
+  },
+  "ICP": {
+   "rows": 394272,
+   "non_finite": 0,
+   "non_positive": 0,
+   "ohlc_inconsistent": 0,
+   "negative_volume": 0,
+   "off_grid": 0,
+   "out_of_range_time": 0,
+   "duplicate_exact": 0,
+   "conflicting_timestamps": 0,
+   "valid_5m": 394272,
+   "first_bar": "2023-01-01 00:00:00+00:00",
+   "last_bar": "2026-09-30 23:55:00+00:00",
+   "funding": {
+    "rows": 4107,
+    "dropped_unparseable": 0,
+    "duplicates_after_snap": 0,
+    "conflicting_settlements": 0,
+    "in_range": 4107,
+    "off_grid": 0,
+    "coverage_gaps": 0,
+    "first": "2023-01-01 00:00:00+00:00",
+    "last": "2026-09-30 16:00:00+00:00"
+   }
+  },
+  "BNB": {
+   "rows": 394272,
+   "non_finite": 0,
+   "non_positive": 0,
+   "ohlc_inconsistent": 0,
+   "negative_volume": 0,
+   "off_grid": 0,
+   "out_of_range_time": 0,
+   "duplicate_exact": 0,
+   "conflicting_timestamps": 0,
+   "valid_5m": 394272,
+   "first_bar": "2023-01-01 00:00:00+00:00",
+   "last_bar": "2026-09-30 23:55:00+00:00",
+   "funding": {
+    "rows": 4107,
+    "dropped_unparseable": 0,
+    "duplicates_after_snap": 0,
+    "conflicting_settlements": 0,
+    "in_range": 4107,
+    "off_grid": 0,
+    "coverage_gaps": 0,
+    "first": "2023-01-01 00:00:00+00:00",
+    "last": "2026-09-30 16:00:00+00:00"
+   }
+  }
+ },
+ "gaps": {
+  "SOL": [],
+  "ETH": [],
+  "ADA": [],
+  "NEAR": [],
+  "BCH": [],
+  "XRP": [],
+  "DOGE": [],
+  "TRX": [],
+  "XLM": [],
+  "LTC": [],
+  "ICP": [],
+  "BNB": []
+ },
+ "source_report": {
+  "SOL": {
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "eksik_oran": -0.0017736820289380173,
+   "uygun": false
+  },
+  "ETH": {
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "eksik_oran": -0.0017736820289380173,
+   "uygun": false
+  },
+  "ADA": {
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "eksik_oran": -0.0017736820289380173,
+   "uygun": false
+  },
+  "NEAR": {
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "eksik_oran": -0.0017736820289380173,
+   "uygun": false
+  },
+  "BCH": {
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "eksik_oran": -0.0017736820289380173,
+   "uygun": false
+  },
+  "XRP": {
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "eksik_oran": -0.0017736820289380173,
+   "uygun": false
+  },
+  "DOGE": {
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "eksik_oran": -0.0017736820289380173,
+   "uygun": false
+  },
+  "TRX": {
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "eksik_oran": -0.0017736820289380173,
+   "uygun": false
+  },
+  "XLM": {
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "eksik_oran": -0.0017736820289380173,
+   "uygun": false
+  },
+  "LTC": {
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "eksik_oran": -0.0017736820289380173,
+   "uygun": false
+  },
+  "ICP": {
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "eksik_oran": -0.0017736820289380173,
+   "uygun": false
+  },
+  "BNB": {
+   "ilk": "2025-10-05 19:05:00+00:00",
+   "son": "2026-10-01 15:15:00+00:00",
+   "eksik_oran": -0.0017736820289380173,
+   "uygun": false
+  }
+ },
+ "excluded": {},
+ "level_notes": {
+  "L1": {
+   "SOL": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "ETH": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "ADA": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "NEAR": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "BCH": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "XRP": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "DOGE": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "TRX": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "XLM": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "LTC": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "ICP": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "BNB": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   }
+  },
+  "L2": {
+   "SOL": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "ETH": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "ADA": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "NEAR": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "BCH": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "XRP": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "DOGE": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "TRX": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "XLM": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "LTC": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "ICP": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "BNB": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   }
+  },
+  "L3": {
+   "SOL": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "ETH": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "ADA": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "NEAR": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "BCH": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "XRP": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "DOGE": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "TRX": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "XLM": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "LTC": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "ICP": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "BNB": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   }
+  },
+  "L4": {
+   "SOL": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "ETH": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "ADA": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "NEAR": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "BCH": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "XRP": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "DOGE": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "TRX": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "XLM": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "LTC": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "ICP": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   },
+   "BNB": {
+    "INVALID_INDICATOR": 0,
+    "DATA_INVALID_SKIP": 0,
+    "L4_INVALID_INDICATOR": 0
+   }
+  }
+ }
+}

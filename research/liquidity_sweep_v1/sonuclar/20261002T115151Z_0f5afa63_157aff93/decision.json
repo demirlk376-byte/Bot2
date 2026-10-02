@@ -1,0 +1,14 @@
+{
+ "run_id": "20261002T115151Z_0f5afa63_157aff93",
+ "manifest_hash": "157aff931031832f27c8ff4184a0fc8bf4aad37d9c13deec0e478a0b18611202",
+ "decision": "KANIT YETERSİZ",
+ "reason": "DISCOVERY_SOME_UNDETERMINED",
+ "discovery_eligible": [],
+ "discovery_status_counts": {
+  "NOT_POSITIVE": 22,
+  "SAMPLE_FLOOR": 9,
+  "SAMPLE_FLOOR_POSITIVE": 1
+ },
+ "validation_selected": [],
+ "final_selected": []
+}
