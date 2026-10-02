@@ -140,3 +140,16 @@ def test_g_filtreleri_alt_kume_ve_funding_nedensel():
     s2 = sym(a, funding=fund[:3 * 400] + [(x, 0.01) for x, _ in fund[3 * 400:]])
     g1b = E.nwk_entries({"AAA": s2}, filt="G1")["AAA"]
     assert {i: d for i, d in g1.items() if i < 398} == {i: d for i, d in g1b.items() if i < 398}
+
+
+def test_4h_mum_kirilim_ve_funding_mum_icinde():
+    H4 = 4 * C.H1
+    c = np.asarray(flat_then_trend(n_flat=1300, up=60, down=40), float)
+    o = np.r_[c[0], c[:-1]]
+    t = (T0 + np.arange(len(c)) * H4).astype("int64")
+    fund = np.array([T0 + 1350 * H4 + 1], dtype="int64")
+    s = E.Sym("AAA", t, o, np.maximum(o, c) + 1, np.minimum(o, c) - 1, c, 0.01, 1.0, 0.001, 0.001, fund, np.array([0.001]))
+    tr, bl, eq, led, op = E.simulate("N60_X3_L", (T0, int(t[-1]) + H4), {"AAA": s}, ZERO, bar_ms=H4)
+    assert tr[0]["fill_time"] == t[1301]                      # 200 gün = 1200 mum ısınma geçti; kırılım 1300'de
+    assert tr[0]["funding_cashflow"] < 0 and led.funding == pytest.approx(tr[0]["funding_cashflow"])
+    assert eq[1][0] - eq[0][0] == H4

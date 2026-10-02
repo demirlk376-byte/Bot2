@@ -134,9 +134,12 @@ def nwk_signals_c(c):
     return {int(t): int(d) for t, d in V.sigs(pd.DataFrame({"close": c}), "event", 3, 15, 1.5, 5, 1)}
 
 
-def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, entry="DONCHIAN", entry_sigs=None):
+def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, entry="DONCHIAN", entry_sigs=None,
+             bar_ms=DAY):
     """early_days: girişten bu kadar gün sonra en iyi kapanış +1R'ye ulaşmamışsa ertesi açılışta çık.
-    entry="NWK": giriş sinyali NW+KAMA 1D event_A (yön her iki taraf), çıkış X kuralıyla."""
+    entry="NWK": giriş sinyali NW+KAMA 1D event_A (yön her iki taraf), çıkış X kuralıyla.
+    bar_ms: mum uzunluğu (varsayılan 1 gün; 4h için 4 saat). N ve ATR mum sayısıdır; ısınma ve erken
+    çıkış süresi GÜN cinsinden kalır."""
     N, X, side = variant_parts(vid)
     nwk = entry_sigs if entry_sigs is not None else (
         {n: nwk_signals(s) for n, s in syms.items()} if entry == "NWK" else None)
@@ -148,6 +151,7 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, e
     ind = {n: indicators(s, N) for n, s in syms.items()}
     days = sorted({int(x) for s in syms.values() for x in s.t if start <= x < end})
     idx = {n: {int(t): i for i, t in enumerate(s.t)} for n, s in syms.items()}
+    warm = {n: int(np.searchsorted(s.t, s.t[0] + WARMUP_DAYS * DAY)) if len(s.t) else 0 for n, s in syms.items()}
     led = Ledger(C0)
     pos, pend_entry, pend_exit = {}, {}, {}
     trades, blocked, equity = [], [], []
@@ -235,7 +239,7 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, e
         for n, p in pos.items():
             s = syms[n]
             a = np.searchsorted(s.f_t, max(t, p["t"]), side="right")
-            b = np.searchsorted(s.f_t, t + DAY, side="right")
+            b = np.searchsorted(s.f_t, t + bar_ms, side="right")
             if b > a:
                 i = idx[n].get(t)
                 if i is None:            # o gün mum yok: settlement fiyatı bilinmiyor → sayılır, ücretlenmez
@@ -247,7 +251,7 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, e
         # 6) kapanış: stop güncelle, XH çıkışı, yeni sinyaller
         for n, s in syms.items():
             i = idx[n].get(t)
-            if i is None or i < WARMUP_DAYS:
+            if i is None or i < warm[n]:
                 continue
             hh, ll, llh, hhh, atr = ind[n]
             c = s.c[i]
@@ -261,7 +265,7 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, e
                     if (p["d"] > 0 and c < ll_prev_half(s, i, N)) or (p["d"] < 0 and c > hh_prev_half(s, i, N)):
                         pend_exit[n] = True
                 p["mfe_c"] = max(p.get("mfe_c", 0.0), p["d"] * (c - p["E"]))
-                if early_days and (t + DAY - p["t"]) >= early_days * DAY and p["mfe_c"] < abs(p["E"] - p["S0"]):
+                if early_days and (t + bar_ms - p["t"]) >= early_days * DAY and p["mfe_c"] < abs(p["E"] - p["S0"]):
                     pend_exit[n] = True                     # kırılım tutmadı: +1R'ye ulaşmadı
                 continue
             if not (np.isfinite(hh[i]) and np.isfinite(atr[i]) and atr[i] > 0):
@@ -280,10 +284,10 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, e
                 S0 = c - d * k_mult * atr[i]
             if not np.isfinite(S0) or (d > 0 and S0 >= c) or (d < 0 and S0 <= c):
                 continue
-            pend_entry[n] = dict(d=d, S0=float(S0), c=float(c), sig=int(t + DAY))
+            pend_entry[n] = dict(d=d, S0=float(S0), c=float(c), sig=int(t + bar_ms))
         # 7) özsermaye kesiti
         unr = sum(pp["d"] * (syms[m].c[idx[m][t]] - pp["E"]) * pp["q"] for m, pp in pos.items() if t in idx[m])
-        equity.append((t + DAY, led.wallet + unr, len(pos), sum(pp["R0"] for pp in pos.values())))
+        equity.append((t + bar_ms, led.wallet + unr, len(pos), sum(pp["R0"] for pp in pos.values())))
     led.missing_funding_settlements = missing_fund[0]
     return trades, blocked, equity, led, pos
 
