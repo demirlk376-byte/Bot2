@@ -56,3 +56,11 @@ Göstergeler nedenseldir (NW uç nokta tahmini; MAE geçmiş pencereden).
 - **İstatistik:** 4 haftalık blok bootstrap, 10.000 tekrar, seed 20261001.
 
 Sonuç görüldükten sonra hiçbir eşik, mod, zaman dilimi ya da parametre değiştirilmez.
+
+## Düzeltme 1 (2026-10-02, ilk koşudan SONRA — teknik, parametre değil)
+İlk koşu (`20261002T202306Z_331facb3_d053a78d`) 11 varyantı TECHNICAL_INVALID işaretledi:
+dönem sonu giriş yasağı sweep'ten kalan 12 saatti, oysa bu deneyde tutuş 15 TF barı (1D'de 15 gün).
+Pozisyonlar bölüm bitince açık kalıp defter uzlaşmasını bozdu (CENSORED). Şartnamenin ilkesi
+"çıkış için bir sonraki bölümün fiyatı gerekmesin" olduğundan yasak penceresi
+max(12 saat, varyantın tutuş süresi) yapıldı. Hiçbir sinyal/eşik/parametre değişmedi; ilk koşu
+INVALIDATED olarak saklandı.

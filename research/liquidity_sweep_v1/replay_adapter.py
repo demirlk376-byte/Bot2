@@ -198,7 +198,7 @@ def simulate(variant_id, phase, window, signals, universe, cost, C0, record_equi
             if t >= end:
                 _block(res, r, "CENSORED")
                 continue
-            if t >= end - C.PARTITION_TAIL_MS:
+            if t >= end - max(C.PARTITION_TAIL_MS, max_hold_ms or 0):
                 _block(res, r, "PARTITION_TAIL_BLOCKED")
                 continue
             if not sd.valid5[k]:

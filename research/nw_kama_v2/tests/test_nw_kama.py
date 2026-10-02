@@ -57,3 +57,15 @@ def test_giris_sonraki_5m_acilisi_ve_15_bar_tutus():
         assert held <= 15 * 48 * C.M5
         if t["exit_reason"] == "TIME_EXIT":
             assert held == 15 * 48 * C.M5
+
+
+def test_donem_sonunda_acik_pozisyon_kalmaz_uzun_tutus():
+    U = sentetik_evren(n_days=80, seed=4)
+    vid = "4h_state_A"
+    win = (U["g0"] + 20 * C.DAY, U["g0"] + 70 * C.DAY)
+    sig = [r for r in SG.build(U, vid) if win[0] <= r.signal_time < win[1]]
+    res = RA.simulate(vid, "T", win, sig, U, C.TWIN_MARKET_PROFILE, 10_000.0, record_equity=False,
+                      max_hold_ms=SG.max_hold_ms(vid))
+    assert res.flags["censored_open_at_end"] == 0
+    blocked = [o for o in res.outcomes if o["reason_code"] == "PARTITION_TAIL_BLOCKED"]
+    assert all(o["signal_time"] >= win[1] - SG.max_hold_ms(vid) for o in blocked)
