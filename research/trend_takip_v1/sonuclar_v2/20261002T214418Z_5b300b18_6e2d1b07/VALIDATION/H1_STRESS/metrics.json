@@ -1,0 +1,32 @@
+{
+ "phase": "VALIDATION",
+ "closed": 35,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.8654459755868146,
+ "net_USDT": 736.120888682443,
+ "win_rate": 0.6,
+ "profit_factor_usdt": 6.803831243632289,
+ "avg_hold_days": 69.25714285714285,
+ "best_trade_R": 10.680845631645807,
+ "full_weeks": 59,
+ "weeks_with_trades": 19,
+ "nominal_CI": [
+  -0.20848167023328962,
+  2.308408050549135
+ ],
+ "LCB": -0.20848167023328962,
+ "boot_reliable": true,
+ "MDD_close_pct": 3.0066176330955607,
+ "underwater_longest_d": 99.0,
+ "return_pct": 7.36120888682443,
+ "reconciliation_gap": 3.7630343285854906e-11,
+ "funding": -21.23396349955706,
+ "fees": 0.6275878180000002,
+ "years": 1.1498973305954825,
+ "variant_id": "H1",
+ "cost": "STRESS",
+ "open_at_end": 0
+}

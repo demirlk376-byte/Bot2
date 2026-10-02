@@ -1,0 +1,32 @@
+{
+ "phase": "DISCOVERY",
+ "closed": 105,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.4868563053864634,
+ "net_USDT": 1291.10322443949,
+ "win_rate": 0.3142857142857143,
+ "profit_factor_usdt": 2.1609564496722338,
+ "avg_hold_days": 43.180952380952384,
+ "best_trade_R": 15.191959223526933,
+ "full_weeks": 179,
+ "weeks_with_trades": 40,
+ "nominal_CI": [
+  -0.027314356670356036,
+  1.142933609353312
+ ],
+ "LCB": -0.027314356670356036,
+ "boot_reliable": true,
+ "MDD_close_pct": 7.539287002773241,
+ "underwater_longest_d": 979.0,
+ "return_pct": 12.9110322443949,
+ "reconciliation_gap": -1.2732925824820995e-11,
+ "funding": -452.6873866525104,
+ "fees": 2.130988907999999,
+ "years": 3.4496919917864477,
+ "variant_id": "BASE_N50_X5_L",
+ "cost": "NORMAL",
+ "open_at_end": 0
+}

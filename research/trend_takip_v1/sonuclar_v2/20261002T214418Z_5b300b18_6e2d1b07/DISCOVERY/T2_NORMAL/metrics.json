@@ -1,0 +1,32 @@
+{
+ "phase": "DISCOVERY",
+ "closed": 133,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.32056922520435405,
+ "net_USDT": 1067.9462398132196,
+ "win_rate": 0.37593984962406013,
+ "profit_factor_usdt": 1.9729713897402594,
+ "avg_hold_days": 26.81203007518797,
+ "best_trade_R": 10.124972715590152,
+ "full_weeks": 179,
+ "weeks_with_trades": 62,
+ "nominal_CI": [
+  -0.015293262071131835,
+  0.748406333112606
+ ],
+ "LCB": -0.015293262071131835,
+ "boot_reliable": true,
+ "MDD_close_pct": 6.215464963840725,
+ "underwater_longest_d": 966.0,
+ "return_pct": 10.679462398132197,
+ "reconciliation_gap": 5.9117155615240335e-12,
+ "funding": -391.51643682878074,
+ "fees": 2.6893033580000005,
+ "years": 3.4496919917864477,
+ "variant_id": "T2",
+ "cost": "NORMAL",
+ "open_at_end": 0
+}

@@ -1,0 +1,32 @@
+{
+ "phase": "DISCOVERY",
+ "closed": 183,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.13531053783533578,
+ "net_USDT": 604.4575987593298,
+ "win_rate": 0.4644808743169399,
+ "profit_factor_usdt": 1.6709372523741248,
+ "avg_hold_days": 14.174863387978142,
+ "best_trade_R": 10.05942522336984,
+ "full_weeks": 179,
+ "weeks_with_trades": 79,
+ "nominal_CI": [
+  -0.022765403827801244,
+  0.3403064678993069
+ ],
+ "LCB": -0.022765403827801244,
+ "boot_reliable": true,
+ "MDD_close_pct": 4.584791178351374,
+ "underwater_longest_d": 53.0,
+ "return_pct": 6.044575987593299,
+ "reconciliation_gap": -1.3642420526593924e-11,
+ "funding": -267.85451215967026,
+ "fees": 3.1055190809999997,
+ "years": 3.4496919917864477,
+ "variant_id": "T3",
+ "cost": "STRESS",
+ "open_at_end": 0
+}

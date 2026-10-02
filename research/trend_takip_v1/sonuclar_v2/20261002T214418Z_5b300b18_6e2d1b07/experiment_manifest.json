@@ -1,0 +1,65 @@
+{
+ "spec": "TREND_TAKIP_V2 (MANIFEST_V2.md)",
+ "commit": "5b300b18f9b12f7b93654dfa761a705cf8ffa8d0",
+ "dirty": false,
+ "code_hashes": {
+  "MANIFEST.md": "508f93c0bb92e401b425571d19e097d9a01b605cbd8685f990d4f8a32d90043f",
+  "MANIFEST_V2.md": "51e546abc695b2802effe26ede5cd9a6334f3cfb9e5077cac761ce04d34255ea",
+  "TREND_TAKIP_V1_SONUC.md": "6cd96cd2cdba8810ac72db49e5966bbf7b342d731ec1c6b67a0b634175513538",
+  "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "engine.py": "cc585cd021d797f659fc66c73c86fa351100ee14de8cccc0623ff7594ec9ea69",
+  "run.py": "305bba90f25f968c6de6de6d4349b5c8eb3a747c2f82c647f508b8f734337a0c",
+  "run_v2.py": "2e71ec4688ee76b50623165914bd09de6b134eb7b8f89415996c9d06c6cedf7b"
+ },
+ "specs": {
+  "BASE_N50_X5_L": [
+   "N50_X5_L",
+   null,
+   "DONCHIAN"
+  ],
+  "BASE_N100_X5_LS": [
+   "N100_X5_LS",
+   null,
+   "DONCHIAN"
+  ],
+  "T1": [
+   "N50_X5_L",
+   10,
+   "DONCHIAN"
+  ],
+  "T2": [
+   "N50_X5_L",
+   20,
+   "DONCHIAN"
+  ],
+  "T3": [
+   "N100_X5_LS",
+   10,
+   "DONCHIAN"
+  ],
+  "T4": [
+   "N100_X5_LS",
+   20,
+   "DONCHIAN"
+  ],
+  "H1": [
+   "N50_X5_LS",
+   null,
+   "NWK"
+  ],
+  "H2": [
+   "N50_X3_LS",
+   null,
+   "NWK"
+  ]
+ },
+ "dates": {
+  "T0": "2021-01-01 00:00:00+00:00",
+  "B1": "2024-06-14 00:00:00+00:00",
+  "B2": "2025-08-08 00:00:00+00:00",
+  "T1": "2026-10-02 00:00:00+00:00"
+ },
+ "final_opened": false,
+ "run_id": "20261002T214418Z_5b300b18_6e2d1b07",
+ "manifest_hash": "6e2d1b07aadef66c27ed09b1acfce9d433351b93b1830debc112bc2bb9792cab"
+}

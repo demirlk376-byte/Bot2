@@ -1,0 +1,32 @@
+{
+ "phase": "VALIDATION",
+ "closed": 55,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.694157092149751,
+ "net_USDT": 944.660973051016,
+ "win_rate": 0.509090909090909,
+ "profit_factor_usdt": 3.728993495866608,
+ "avg_hold_days": 23.0,
+ "best_trade_R": 13.786788992567311,
+ "full_weeks": 59,
+ "weeks_with_trades": 21,
+ "nominal_CI": [
+  -0.26635521945470864,
+  1.9694420324916722
+ ],
+ "LCB": -0.26635521945470864,
+ "boot_reliable": true,
+ "MDD_close_pct": 7.414869858417767,
+ "underwater_longest_d": 120.0,
+ "return_pct": 9.44660973051016,
+ "reconciliation_gap": 1.5802470443304628e-11,
+ "funding": -52.626265086984,
+ "fees": 1.3415018619999999,
+ "years": 1.1498973305954825,
+ "variant_id": "T2",
+ "cost": "STRESS",
+ "open_at_end": 0
+}

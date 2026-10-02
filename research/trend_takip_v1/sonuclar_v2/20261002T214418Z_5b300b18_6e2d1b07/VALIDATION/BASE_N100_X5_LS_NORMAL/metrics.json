@@ -1,0 +1,32 @@
+{
+ "phase": "VALIDATION",
+ "closed": 38,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.9998192737172942,
+ "net_USDT": 942.9809240975261,
+ "win_rate": 0.39473684210526316,
+ "profit_factor_usdt": 5.517944480158429,
+ "avg_hold_days": 46.473684210526315,
+ "best_trade_R": 13.926088754633334,
+ "full_weeks": 59,
+ "weeks_with_trades": 14,
+ "nominal_CI": [
+  -0.35838152651912414,
+  2.8301995530207185
+ ],
+ "LCB": -0.35838152651912414,
+ "boot_reliable": true,
+ "MDD_close_pct": 7.469644695890352,
+ "underwater_longest_d": 128.0,
+ "return_pct": 9.429809240975262,
+ "reconciliation_gap": 3.672084858408198e-11,
+ "funding": -44.92776473147403,
+ "fees": 0.8699011710000001,
+ "years": 1.1498973305954825,
+ "variant_id": "BASE_N100_X5_LS",
+ "cost": "NORMAL",
+ "open_at_end": 0
+}

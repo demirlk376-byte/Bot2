@@ -1,0 +1,32 @@
+{
+ "phase": "VALIDATION",
+ "closed": 52,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.7210673859143945,
+ "net_USDT": 935.0532089210969,
+ "win_rate": 0.4807692307692308,
+ "profit_factor_usdt": 4.382332590048692,
+ "avg_hold_days": 23.71153846153846,
+ "best_trade_R": 13.926088754633334,
+ "full_weeks": 59,
+ "weeks_with_trades": 24,
+ "nominal_CI": [
+  -0.23406474784282805,
+  1.8121284554902013
+ ],
+ "LCB": -0.23406474784282805,
+ "boot_reliable": true,
+ "MDD_close_pct": 7.34289698716727,
+ "underwater_longest_d": 128.0,
+ "return_pct": 9.35053208921097,
+ "reconciliation_gap": 2.0463630789890885e-11,
+ "funding": -46.64073119890328,
+ "fees": 1.11527988,
+ "years": 1.1498973305954825,
+ "variant_id": "T4",
+ "cost": "NORMAL",
+ "open_at_end": 0
+}
