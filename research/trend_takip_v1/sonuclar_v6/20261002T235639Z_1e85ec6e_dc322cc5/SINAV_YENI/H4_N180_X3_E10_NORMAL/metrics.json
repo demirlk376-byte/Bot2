@@ -1,0 +1,34 @@
+{
+ "phase": "SINAV_YENI",
+ "closed": 779,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.03840075020201905,
+ "net_USDT": 756.3631425999499,
+ "win_rate": 0.30038510911424904,
+ "profit_factor_usdt": 1.0838988254578248,
+ "avg_hold_days": 3.510483525887891,
+ "best_trade_R": 17.80682044108634,
+ "full_weeks": 239,
+ "weeks_with_trades": 154,
+ "nominal_CI": [
+  -0.12493249793036633,
+  0.21047589836319203
+ ],
+ "LCB": -0.12493249793036633,
+ "boot_reliable": true,
+ "MDD_close_pct": 20.424828645347745,
+ "underwater_longest_d": 147.83333333333334,
+ "return_pct": 7.5636314259995,
+ "reconciliation_gap": -6.343725544866174e-11,
+ "funding": -446.07113459075083,
+ "fees": 41.91705180930001,
+ "years": 4.59958932238193,
+ "variant_id": "H4_N180_X3_E10",
+ "cost": "NORMAL",
+ "blocked": {
+  "RISK_CAP_BLOCKED": 287
+ }
+}

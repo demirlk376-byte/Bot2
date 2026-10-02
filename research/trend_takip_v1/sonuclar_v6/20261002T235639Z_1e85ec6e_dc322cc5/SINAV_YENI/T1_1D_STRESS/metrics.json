@@ -1,0 +1,34 @@
+{
+ "phase": "SINAV_YENI",
+ "closed": 303,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.23900827089590562,
+ "net_USDT": 1791.5679100172008,
+ "win_rate": 0.46534653465346537,
+ "profit_factor_usdt": 2.1828612322775554,
+ "avg_hold_days": 17.06930693069307,
+ "best_trade_R": 27.18438036084017,
+ "full_weeks": 239,
+ "weeks_with_trades": 103,
+ "nominal_CI": [
+  0.025612549437061476,
+  0.5399047436383897
+ ],
+ "LCB": 0.025612549437061476,
+ "boot_reliable": true,
+ "MDD_close_pct": 7.185161558806895,
+ "underwater_longest_d": 746.0,
+ "return_pct": 17.91567910017201,
+ "reconciliation_gap": 2.660272002685815e-11,
+ "funding": -272.5239624942997,
+ "fees": 4.821134488499998,
+ "years": 4.59958932238193,
+ "variant_id": "T1_1D",
+ "cost": "STRESS",
+ "blocked": {
+  "RISK_CAP_BLOCKED": 154
+ }
+}

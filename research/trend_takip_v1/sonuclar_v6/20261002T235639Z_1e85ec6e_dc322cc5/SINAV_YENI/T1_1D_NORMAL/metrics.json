@@ -1,0 +1,34 @@
+{
+ "phase": "SINAV_YENI",
+ "closed": 300,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.2578412238043094,
+ "net_USDT": 1909.2948060642598,
+ "win_rate": 0.47,
+ "profit_factor_usdt": 2.269493616951491,
+ "avg_hold_days": 17.323333333333334,
+ "best_trade_R": 27.26940961142553,
+ "full_weeks": 239,
+ "weeks_with_trades": 101,
+ "nominal_CI": [
+  0.03637527747481382,
+  0.5598396632576257
+ ],
+ "LCB": 0.03637527747481382,
+ "boot_reliable": true,
+ "MDD_close_pct": 7.066032476268385,
+ "underwater_longest_d": 746.0,
+ "return_pct": 19.0929480606426,
+ "reconciliation_gap": 4.6838977141305804e-11,
+ "funding": -286.8697737268403,
+ "fees": 4.829145208899998,
+ "years": 4.59958932238193,
+ "variant_id": "T1_1D",
+ "cost": "NORMAL",
+ "blocked": {
+  "RISK_CAP_BLOCKED": 154
+ }
+}

@@ -1,0 +1,32 @@
+{
+ "phase": "SECIM_ESKI12",
+ "closed": 699,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.4005309975987919,
+ "net_USDT": 6983.760451613616,
+ "win_rate": 0.36337625178826893,
+ "profit_factor_usdt": 2.038732383278878,
+ "avg_hold_days": 8.50548402479733,
+ "best_trade_R": 46.837431073992114,
+ "full_weeks": 239,
+ "weeks_with_trades": 178,
+ "nominal_CI": [
+  0.059399886422386604,
+  0.8415027044876124
+ ],
+ "LCB": 0.059399886422386604,
+ "boot_reliable": true,
+ "MDD_close_pct": 9.03336316471256,
+ "underwater_longest_d": 790.1666666666666,
+ "return_pct": 69.83760451613615,
+ "reconciliation_gap": 2.546585164964199e-11,
+ "funding": -770.8005179333857,
+ "fees": 34.96288045299998,
+ "years": 4.59958932238193,
+ "variant_id": "H4_N60_X5_E10",
+ "cost": "STRESS",
+ "blocked": {}
+}
