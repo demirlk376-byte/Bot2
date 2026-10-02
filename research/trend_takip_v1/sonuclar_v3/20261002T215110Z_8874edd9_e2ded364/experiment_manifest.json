@@ -1,0 +1,36 @@
+{
+ "spec": "NWK_FILTRE_V3 (MANIFEST_V3.md)",
+ "commit": "8874edd993b0ed22f2ad0b1d616f8d4076df86b7",
+ "dirty": false,
+ "code_hashes": {
+  "MANIFEST.md": "508f93c0bb92e401b425571d19e097d9a01b605cbd8685f990d4f8a32d90043f",
+  "MANIFEST_V2.md": "51e546abc695b2802effe26ede5cd9a6334f3cfb9e5077cac761ce04d34255ea",
+  "MANIFEST_V3.md": "5eb6ccea6f98b1dad8fd885ed5aeecd0f6bb1d95cf70f961c0f62323b10d7029",
+  "TREND_TAKIP_V1_SONUC.md": "6cd96cd2cdba8810ac72db49e5966bbf7b342d731ec1c6b67a0b634175513538",
+  "TREND_TAKIP_V2_SONUC.md": "4e4ae75bc8c2ab8de2bb8d40a92443ea52b2863208370606cda720ab0272e9c0",
+  "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "engine.py": "96666dde416a2e7f6d894c16f25c10c373b2282a8bd8fd1dcfb5b16ed1342dbb",
+  "run.py": "305bba90f25f968c6de6de6d4349b5c8eb3a747c2f82c647f508b8f734337a0c",
+  "run_v2.py": "2e71ec4688ee76b50623165914bd09de6b134eb7b8f89415996c9d06c6cedf7b",
+  "run_v3.py": "9a1f09e82e3126777cf57c9ffb65b04d350a92dfc3e9f137af6003d0bdb2d305"
+ },
+ "variants": [
+  "NWK1D_F0",
+  "NWK1D_F1",
+  "NWK1D_F2",
+  "NWK1D_F3",
+  "NWK2D_F0",
+  "NWK2D_F1",
+  "NWK2D_F2",
+  "NWK2D_F3"
+ ],
+ "dates": {
+  "T0": "2021-01-01 00:00:00+00:00",
+  "B1": "2024-06-14 00:00:00+00:00",
+  "B2": "2025-08-08 00:00:00+00:00",
+  "T1": "2026-10-02 00:00:00+00:00"
+ },
+ "final_opened": false,
+ "run_id": "20261002T215110Z_8874edd9_e2ded364",
+ "manifest_hash": "e2ded364866520e17824a1ca057fa62abebeafd8c3e106108d4219d43d8f4fb9"
+}

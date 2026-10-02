@@ -1,0 +1,31 @@
+{
+ "phase": "VALIDATION",
+ "closed": 37,
+ "metrics_valid": true,
+ "data_gap_exposure": false,
+ "funding_order_ambiguous": false,
+ "funding_modeled": true,
+ "expectancy_net_R": 0.5197317825890065,
+ "net_USDT": 458.26783778581154,
+ "win_rate": 0.5945945945945946,
+ "profit_factor_usdt": 3.3655421160745433,
+ "avg_hold_days": 29.054054054054053,
+ "best_trade_R": 10.102408528096522,
+ "full_weeks": 59,
+ "weeks_with_trades": 26,
+ "nominal_CI": [
+  -0.1960644962125836,
+  1.3495947466255627
+ ],
+ "LCB": -0.1960644962125836,
+ "boot_reliable": true,
+ "MDD_close_pct": 2.5333217006882505,
+ "underwater_longest_d": 94.0,
+ "return_pct": 4.582678377858116,
+ "reconciliation_gap": -8.697043085703626e-12,
+ "funding": -23.93083167518841,
+ "fees": 1.0099605390000002,
+ "years": 1.1498973305954825,
+ "variant_id": "NWK2D_F0",
+ "cost": "STRESS"
+}

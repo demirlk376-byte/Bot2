@@ -1,0 +1,841 @@
+{
+ "run_id": "20261002T215110Z_8874edd9_e2ded364",
+ "manifest_hash": "e2ded364866520e17824a1ca057fa62abebeafd8c3e106108d4219d43d8f4fb9",
+ "table": {
+  "DISCOVERY": {
+   "NWK1D_F0": {
+    "NORMAL": {
+     "closed": 174,
+     "expectancy_net_R": 0.07964600008154106,
+     "return_pct": 3.4483101167413457,
+     "MDD_close_pct": 2.8756853839631074,
+     "win_rate": 0.40229885057471265,
+     "LCB": -0.11704126046089024,
+     "years": 3.4496919917864477
+    },
+    "STRESS": {
+     "closed": 174,
+     "expectancy_net_R": 0.07104534107398187,
+     "return_pct": 3.033747837242655,
+     "MDD_close_pct": 2.946538975991855,
+     "win_rate": 0.40229885057471265,
+     "LCB": -0.12445075256456826,
+     "years": 3.4496919917864477
+    }
+   },
+   "NWK1D_F1": {
+    "NORMAL": {
+     "closed": 114,
+     "expectancy_net_R": 0.21140901685512434,
+     "return_pct": 5.962837303443598,
+     "MDD_close_pct": 2.657659144841288,
+     "win_rate": 0.43859649122807015,
+     "LCB": -0.08785409617292722,
+     "years": 3.4496919917864477
+    },
+    "STRESS": {
+     "closed": 114,
+     "expectancy_net_R": 0.20224254947241216,
+     "return_pct": 5.665807109977195,
+     "MDD_close_pct": 2.7311160315847625,
+     "win_rate": 0.43859649122807015,
+     "LCB": -0.09544539515142081,
+     "years": 3.4496919917864477
+    }
+   },
+   "NWK1D_F2": {
+    "NORMAL": {
+     "closed": 100,
+     "expectancy_net_R": 0.1727779116195653,
+     "return_pct": 4.272517117448464,
+     "MDD_close_pct": 3.797407742708062,
+     "win_rate": 0.41,
+     "LCB": -0.17703971190955664,
+     "years": 3.4496919917864477
+    },
+    "STRESS": {
+     "closed": 100,
+     "expectancy_net_R": 0.16381187495027227,
+     "return_pct": 4.00322446679313,
+     "MDD_close_pct": 3.918820304860741,
+     "win_rate": 0.41,
+     "LCB": -0.18386583766680284,
+     "years": 3.4496919917864477
+    }
+   },
+   "NWK1D_F3": {
+    "NORMAL": {
+     "closed": 127,
+     "expectancy_net_R": 0.19892550845291826,
+     "return_pct": 6.267342997756129,
+     "MDD_close_pct": 2.5744107511776733,
+     "win_rate": 0.4094488188976378,
+     "LCB": -0.06296810265867293,
+     "years": 3.4496919917864477
+    },
+    "STRESS": {
+     "closed": 127,
+     "expectancy_net_R": 0.1899836098007853,
+     "return_pct": 5.95315036258293,
+     "MDD_close_pct": 2.619820473734848,
+     "win_rate": 0.4094488188976378,
+     "LCB": -0.07004906220469408,
+     "years": 3.4496919917864477
+    }
+   },
+   "NWK2D_F0": {
+    "NORMAL": {
+     "closed": 115,
+     "expectancy_net_R": 0.00694515699290437,
+     "return_pct": -0.053480368299895144,
+     "MDD_close_pct": 4.8324632735758595,
+     "win_rate": 0.3391304347826087,
+     "LCB": -0.2988435209454774,
+     "years": 3.4496919917864477
+    },
+    "STRESS": {
+     "closed": 115,
+     "expectancy_net_R": -0.0009121804203215337,
+     "return_pct": -0.26952864713807834,
+     "MDD_close_pct": 5.023163744192998,
+     "win_rate": 0.33043478260869563,
+     "LCB": -0.3049891221404612,
+     "years": 3.4496919917864477
+    }
+   },
+   "NWK2D_F1": {
+    "NORMAL": {
+     "closed": 64,
+     "expectancy_net_R": 0.21079826663283432,
+     "return_pct": 3.1398810597888374,
+     "MDD_close_pct": 2.5578603507379283,
+     "win_rate": 0.40625,
+     "LCB": -0.25115344554434854,
+     "years": 3.4496919917864477
+    },
+    "STRESS": {
+     "closed": 64,
+     "expectancy_net_R": 0.20173796881316247,
+     "return_pct": 3.001049609471566,
+     "MDD_close_pct": 2.638496207215155,
+     "win_rate": 0.390625,
+     "LCB": -0.25722567244476097,
+     "years": 3.4496919917864477
+    }
+   },
+   "NWK2D_F2": {
+    "NORMAL": {
+     "closed": 54,
+     "expectancy_net_R": 0.2775110932165944,
+     "return_pct": 3.475018459606881,
+     "MDD_close_pct": 2.182938867278342,
+     "win_rate": 0.42592592592592593,
+     "LCB": -0.2557917051530862,
+     "years": 3.4496919917864477
+    },
+    "STRESS": {
+     "closed": 54,
+     "expectancy_net_R": 0.2680319062467212,
+     "return_pct": 3.3531712808305465,
+     "MDD_close_pct": 2.2392691394651063,
+     "win_rate": 0.4074074074074074,
+     "LCB": -0.26174472082246814,
+     "years": 3.4496919917864477
+    }
+   },
+   "NWK2D_F3": {
+    "NORMAL": {
+     "closed": 80,
+     "expectancy_net_R": -0.17084496013143569,
+     "return_pct": -3.499247545044212,
+     "MDD_close_pct": 4.344425072917491,
+     "win_rate": 0.3125,
+     "LCB": -0.3764937209502655,
+     "years": 3.4496919917864477
+    },
+    "STRESS": {
+     "closed": 80,
+     "expectancy_net_R": -0.17680009093962443,
+     "return_pct": -3.6189861267880623,
+     "MDD_close_pct": 4.410399925419455,
+     "win_rate": 0.3,
+     "LCB": -0.38147440315509573,
+     "years": 3.4496919917864477
+    }
+   },
+   "T1": {
+    "NORMAL": {
+     "closed": 163,
+     "expectancy_net_R": 0.2719183910210066,
+     "return_pct": 10.931447294424878,
+     "MDD_close_pct": 4.092725320597279,
+     "win_rate": 0.4723926380368098,
+     "LCB": 0.028737810087069094,
+     "years": 3.4496919917864477
+    },
+    "STRESS": {
+     "closed": 163,
+     "expectancy_net_R": 0.2684870212498755,
+     "return_pct": 10.829440373040933,
+     "MDD_close_pct": 3.9630545954906173,
+     "win_rate": 0.4601226993865031,
+     "LCB": 0.02733621253403578,
+     "years": 3.4496919917864477
+    }
+   }
+  },
+  "VALIDATION": {
+   "NWK1D_F0": {
+    "NORMAL": {
+     "closed": 47,
+     "expectancy_net_R": 0.3523170520654318,
+     "return_pct": 4.0269296187095245,
+     "MDD_close_pct": 1.6951932415009943,
+     "win_rate": 0.5319148936170213,
+     "LCB": -0.12436313860919879,
+     "years": 1.1498973305954825
+    },
+    "STRESS": {
+     "closed": 47,
+     "expectancy_net_R": 0.3388285104480669,
+     "return_pct": 3.92859519787217,
+     "MDD_close_pct": 1.6782312914440702,
+     "win_rate": 0.5106382978723404,
+     "LCB": -0.13333709893905363,
+     "years": 1.1498973305954825
+    }
+   },
+   "NWK1D_F1": {
+    "NORMAL": {
+     "closed": 28,
+     "expectancy_net_R": -0.07546512335370782,
+     "return_pct": -0.5068520815523748,
+     "MDD_close_pct": 1.3932040620219768,
+     "win_rate": 0.42857142857142855,
+     "LCB": -0.4074008251294294,
+     "years": 1.1498973305954825
+    },
+    "STRESS": {
+     "closed": 28,
+     "expectancy_net_R": -0.08488662297287607,
+     "return_pct": -0.5444156854008189,
+     "MDD_close_pct": 1.3856599594903527,
+     "win_rate": 0.39285714285714285,
+     "LCB": -0.41300929971664496,
+     "years": 1.1498973305954825
+    }
+   },
+   "NWK1D_F2": {
+    "NORMAL": {
+     "closed": 24,
+     "expectancy_net_R": -0.16300964506636098,
+     "return_pct": -0.945272948369606,
+     "MDD_close_pct": 1.6289521036886454,
+     "win_rate": 0.3333333333333333,
+     "LCB": -0.5767124972016413,
+     "years": 1.1498973305954825
+    },
+    "STRESS": {
+     "closed": 24,
+     "expectancy_net_R": -0.16987581132949536,
+     "return_pct": -0.9493619604411487,
+     "MDD_close_pct": 1.6099210323388162,
+     "win_rate": 0.2916666666666667,
+     "LCB": -0.5808700587991927,
+     "years": 1.1498973305954825
+    }
+   },
+   "NWK1D_F3": {
+    "NORMAL": {
+     "closed": 38,
+     "expectancy_net_R": 0.1941645677717033,
+     "return_pct": 1.8325296885776183,
+     "MDD_close_pct": 1.7028126465696547,
+     "win_rate": 0.4473684210526316,
+     "LCB": -0.22316768111957866,
+     "years": 1.1498973305954825
+    },
+    "STRESS": {
+     "closed": 38,
+     "expectancy_net_R": 0.182775193019515,
+     "return_pct": 1.7736699515310448,
+     "MDD_close_pct": 1.6880530907190114,
+     "win_rate": 0.42105263157894735,
+     "LCB": -0.23130534155072677,
+     "years": 1.1498973305954825
+    }
+   },
+   "NWK2D_F0": {
+    "NORMAL": {
+     "closed": 37,
+     "expectancy_net_R": 0.5340026748444379,
+     "return_pct": 4.685445980320742,
+     "MDD_close_pct": 2.555953181071324,
+     "win_rate": 0.5945945945945946,
+     "LCB": -0.18993042449533787,
+     "years": 1.1498973305954825
+    },
+    "STRESS": {
+     "closed": 37,
+     "expectancy_net_R": 0.5197317825890065,
+     "return_pct": 4.582678377858116,
+     "MDD_close_pct": 2.5333217006882505,
+     "win_rate": 0.5945945945945946,
+     "LCB": -0.1960644962125836,
+     "years": 1.1498973305954825
+    }
+   },
+   "NWK2D_F1": {
+    "NORMAL": {
+     "closed": 19,
+     "expectancy_net_R": -0.08114450294117387,
+     "return_pct": -0.38110791111534975,
+     "MDD_close_pct": 0.9438752922365581,
+     "win_rate": 0.3684210526315789,
+     "LCB": -0.39041539736061665,
+     "years": 1.1498973305954825
+    },
+    "STRESS": {
+     "closed": 19,
+     "expectancy_net_R": -0.08962649500747699,
+     "return_pct": -0.4087812168078442,
+     "MDD_close_pct": 0.9647088179436153,
+     "win_rate": 0.3684210526315789,
+     "LCB": -0.3958507852814219,
+     "years": 1.1498973305954825
+    }
+   },
+   "NWK2D_F2": {
+    "NORMAL": {
+     "closed": 14,
+     "expectancy_net_R": -0.3583927710862392,
+     "return_pct": -1.23210942724608,
+     "MDD_close_pct": 1.365540471406271,
+     "win_rate": 0.14285714285714285,
+     "LCB": -0.5545537265585101,
+     "years": 1.1498973305954825
+    },
+    "STRESS": {
+     "closed": 14,
+     "expectancy_net_R": -0.36352259406366183,
+     "return_pct": -1.2401994112011803,
+     "MDD_close_pct": 1.3718858430544276,
+     "win_rate": 0.14285714285714285,
+     "LCB": -0.559024127767781,
+     "years": 1.1498973305954825
+    }
+   },
+   "NWK2D_F3": {
+    "NORMAL": {
+     "closed": 26,
+     "expectancy_net_R": 0.01948813885899907,
+     "return_pct": 0.09530033837644973,
+     "MDD_close_pct": 1.0860998398362298,
+     "win_rate": 0.5384615384615384,
+     "LCB": -0.4036484012728639,
+     "years": 1.1498973305954825
+    },
+    "STRESS": {
+     "closed": 26,
+     "expectancy_net_R": 0.011751798420537805,
+     "return_pct": 0.05283828394952534,
+     "MDD_close_pct": 1.1099966594449229,
+     "win_rate": 0.5384615384615384,
+     "LCB": -0.40846682295918013,
+     "years": 1.1498973305954825
+    }
+   },
+   "T1": {
+    "NORMAL": {
+     "closed": 67,
+     "expectancy_net_R": 0.4454767163768089,
+     "return_pct": 7.374493787706851,
+     "MDD_close_pct": 5.44736552039106,
+     "win_rate": 0.47761194029850745,
+     "LCB": -0.12650754604584,
+     "years": 1.1498973305954825
+    },
+    "STRESS": {
+     "closed": 67,
+     "expectancy_net_R": 0.4340947841127112,
+     "return_pct": 7.1948567233635545,
+     "MDD_close_pct": 5.451252863173623,
+     "win_rate": 0.4626865671641791,
+     "LCB": -0.1332248837639658,
+     "years": 1.1498973305954825
+    }
+   }
+  }
+ },
+ "decisions": {
+  "NWK1D_F1_vs_F0": {
+   "improves": false,
+   "checks": {
+    "DISCOVERY": {
+     "meanR": true,
+     "mdd": true,
+     "total": true,
+     "stress": true
+    },
+    "VALIDATION": {
+     "meanR": false,
+     "mdd": true,
+     "total": false,
+     "stress": false
+    }
+   }
+  },
+  "NWK1D_F2_vs_F0": {
+   "improves": false,
+   "checks": {
+    "DISCOVERY": {
+     "meanR": true,
+     "mdd": false,
+     "total": true,
+     "stress": true
+    },
+    "VALIDATION": {
+     "meanR": false,
+     "mdd": true,
+     "total": false,
+     "stress": false
+    }
+   }
+  },
+  "NWK1D_F3_vs_F0": {
+   "improves": false,
+   "checks": {
+    "DISCOVERY": {
+     "meanR": true,
+     "mdd": true,
+     "total": true,
+     "stress": true
+    },
+    "VALIDATION": {
+     "meanR": false,
+     "mdd": false,
+     "total": false,
+     "stress": true
+    }
+   }
+  },
+  "NWK2D_F1_vs_F0": {
+   "improves": false,
+   "checks": {
+    "DISCOVERY": {
+     "meanR": true,
+     "mdd": true,
+     "total": true,
+     "stress": true
+    },
+    "VALIDATION": {
+     "meanR": false,
+     "mdd": true,
+     "total": false,
+     "stress": false
+    }
+   }
+  },
+  "NWK2D_F2_vs_F0": {
+   "improves": false,
+   "checks": {
+    "DISCOVERY": {
+     "meanR": true,
+     "mdd": true,
+     "total": true,
+     "stress": true
+    },
+    "VALIDATION": {
+     "meanR": false,
+     "mdd": true,
+     "total": false,
+     "stress": false
+    }
+   }
+  },
+  "NWK2D_F3_vs_F0": {
+   "improves": false,
+   "checks": {
+    "DISCOVERY": {
+     "meanR": false,
+     "mdd": true,
+     "total": false,
+     "stress": false
+    },
+    "VALIDATION": {
+     "meanR": false,
+     "mdd": true,
+     "total": false,
+     "stress": true
+    }
+   }
+  },
+  "2D_F0_vs_1D": {
+   "improves": false,
+   "checks": {
+    "DISCOVERY": {
+     "meanR": false,
+     "mdd": false,
+     "total": false,
+     "stress": false
+    },
+    "VALIDATION": {
+     "meanR": true,
+     "mdd": false,
+     "total": true,
+     "stress": true
+    }
+   }
+  },
+  "2D_F1_vs_1D": {
+   "improves": false,
+   "checks": {
+    "DISCOVERY": {
+     "meanR": false,
+     "mdd": true,
+     "total": false,
+     "stress": true
+    },
+    "VALIDATION": {
+     "meanR": false,
+     "mdd": true,
+     "total": false,
+     "stress": false
+    }
+   }
+  },
+  "2D_F2_vs_1D": {
+   "improves": false,
+   "checks": {
+    "DISCOVERY": {
+     "meanR": true,
+     "mdd": true,
+     "total": true,
+     "stress": true
+    },
+    "VALIDATION": {
+     "meanR": false,
+     "mdd": true,
+     "total": false,
+     "stress": false
+    }
+   }
+  },
+  "2D_F3_vs_1D": {
+   "improves": false,
+   "checks": {
+    "DISCOVERY": {
+     "meanR": false,
+     "mdd": false,
+     "total": false,
+     "stress": false
+    },
+    "VALIDATION": {
+     "meanR": false,
+     "mdd": true,
+     "total": false,
+     "stress": true
+    }
+   }
+  }
+ },
+ "best": "NWK1D_F3",
+ "combined_T1_best": {
+  "DISCOVERY": {
+   "return_pct": 17.19879029218104,
+   "MDD_pct": 4.020687583606802
+  },
+  "VALIDATION": {
+   "return_pct": 9.207023476284812,
+   "MDD_pct": 5.393402032932315
+  }
+ },
+ "selection": {
+  "DISCOVERY": {
+   "selected": [
+    "NWK1D_F3",
+    "NWK1D_F1",
+    "NWK1D_F0"
+   ],
+   "rows": [
+    {
+     "variant_id": "NWK1D_F0",
+     "eligible": true,
+     "status": "ELIGIBLE",
+     "reason": "OK",
+     "normal_LCB": -0.11704126046089024,
+     "stress_LCB": -0.12445075256456826,
+     "normal_MDD": 2.8756853839631074,
+     "normal_exp_R": 0.07964600008154106,
+     "stress_exp_R": 0.07104534107398187,
+     "normal_net_USDT": 344.8310116741346,
+     "stress_net_USDT": 303.3747837242655,
+     "normal_closed": 174,
+     "stress_closed": 174,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK1D_F1",
+     "eligible": true,
+     "status": "ELIGIBLE",
+     "reason": "OK",
+     "normal_LCB": -0.08785409617292722,
+     "stress_LCB": -0.09544539515142081,
+     "normal_MDD": 2.657659144841288,
+     "normal_exp_R": 0.21140901685512434,
+     "stress_exp_R": 0.20224254947241216,
+     "normal_net_USDT": 596.2837303443598,
+     "stress_net_USDT": 566.5807109977195,
+     "normal_closed": 114,
+     "stress_closed": 114,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK1D_F2",
+     "eligible": true,
+     "status": "ELIGIBLE",
+     "reason": "OK",
+     "normal_LCB": -0.17703971190955664,
+     "stress_LCB": -0.18386583766680284,
+     "normal_MDD": 3.797407742708062,
+     "normal_exp_R": 0.1727779116195653,
+     "stress_exp_R": 0.16381187495027227,
+     "normal_net_USDT": 427.2517117448464,
+     "stress_net_USDT": 400.32244667931303,
+     "normal_closed": 100,
+     "stress_closed": 100,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK1D_F3",
+     "eligible": true,
+     "status": "ELIGIBLE",
+     "reason": "OK",
+     "normal_LCB": -0.06296810265867293,
+     "stress_LCB": -0.07004906220469408,
+     "normal_MDD": 2.5744107511776733,
+     "normal_exp_R": 0.19892550845291826,
+     "stress_exp_R": 0.1899836098007853,
+     "normal_net_USDT": 626.7342997756128,
+     "stress_net_USDT": 595.3150362582929,
+     "normal_closed": 127,
+     "stress_closed": 127,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK2D_F0",
+     "eligible": false,
+     "status": "ELENDİ",
+     "reason": "NOT_POSITIVE",
+     "normal_LCB": -0.2988435209454774,
+     "stress_LCB": -0.3049891221404612,
+     "normal_MDD": 4.8324632735758595,
+     "normal_exp_R": 0.00694515699290437,
+     "stress_exp_R": -0.0009121804203215337,
+     "normal_net_USDT": -5.348036829989514,
+     "stress_net_USDT": -26.952864713807834,
+     "normal_closed": 115,
+     "stress_closed": 115,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK2D_F1",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR_POSITIVE",
+     "normal_LCB": -0.25115344554434854,
+     "stress_LCB": -0.25722567244476097,
+     "normal_MDD": 2.5578603507379283,
+     "normal_exp_R": 0.21079826663283432,
+     "stress_exp_R": 0.20173796881316247,
+     "normal_net_USDT": 313.9881059788837,
+     "stress_net_USDT": 300.1049609471566,
+     "normal_closed": 64,
+     "stress_closed": 64,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK2D_F2",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR_POSITIVE",
+     "normal_LCB": -0.2557917051530862,
+     "stress_LCB": -0.26174472082246814,
+     "normal_MDD": 2.182938867278342,
+     "normal_exp_R": 0.2775110932165944,
+     "stress_exp_R": 0.2680319062467212,
+     "normal_net_USDT": 347.50184596068806,
+     "stress_net_USDT": 335.3171280830546,
+     "normal_closed": 54,
+     "stress_closed": 54,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK2D_F3",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR",
+     "normal_LCB": -0.3764937209502655,
+     "stress_LCB": -0.38147440315509573,
+     "normal_MDD": 4.344425072917491,
+     "normal_exp_R": -0.17084496013143569,
+     "stress_exp_R": -0.17680009093962443,
+     "normal_net_USDT": -349.92475450442123,
+     "stress_net_USDT": -361.8986126788062,
+     "normal_closed": 80,
+     "stress_closed": 80,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    }
+   ]
+  },
+  "VALIDATION": {
+   "selected": [],
+   "rows": [
+    {
+     "variant_id": "NWK1D_F0",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR_POSITIVE",
+     "normal_LCB": -0.12436313860919879,
+     "stress_LCB": -0.13333709893905363,
+     "normal_MDD": 1.6951932415009943,
+     "normal_exp_R": 0.3523170520654318,
+     "stress_exp_R": 0.3388285104480669,
+     "normal_net_USDT": 402.69296187095244,
+     "stress_net_USDT": 392.859519787217,
+     "normal_closed": 47,
+     "stress_closed": 47,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK1D_F1",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR",
+     "normal_LCB": -0.4074008251294294,
+     "stress_LCB": -0.41300929971664496,
+     "normal_MDD": 1.3932040620219768,
+     "normal_exp_R": -0.07546512335370782,
+     "stress_exp_R": -0.08488662297287607,
+     "normal_net_USDT": -50.68520815523749,
+     "stress_net_USDT": -54.44156854008189,
+     "normal_closed": 28,
+     "stress_closed": 28,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK1D_F2",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR",
+     "normal_LCB": -0.5767124972016413,
+     "stress_LCB": -0.5808700587991927,
+     "normal_MDD": 1.6289521036886454,
+     "normal_exp_R": -0.16300964506636098,
+     "stress_exp_R": -0.16987581132949536,
+     "normal_net_USDT": -94.52729483696059,
+     "stress_net_USDT": -94.93619604411488,
+     "normal_closed": 24,
+     "stress_closed": 24,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK1D_F3",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR_POSITIVE",
+     "normal_LCB": -0.22316768111957866,
+     "stress_LCB": -0.23130534155072677,
+     "normal_MDD": 1.7028126465696547,
+     "normal_exp_R": 0.1941645677717033,
+     "stress_exp_R": 0.182775193019515,
+     "normal_net_USDT": 183.25296885776183,
+     "stress_net_USDT": 177.36699515310448,
+     "normal_closed": 38,
+     "stress_closed": 38,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK2D_F0",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR_POSITIVE",
+     "normal_LCB": -0.18993042449533787,
+     "stress_LCB": -0.1960644962125836,
+     "normal_MDD": 2.555953181071324,
+     "normal_exp_R": 0.5340026748444379,
+     "stress_exp_R": 0.5197317825890065,
+     "normal_net_USDT": 468.5445980320743,
+     "stress_net_USDT": 458.26783778581154,
+     "normal_closed": 37,
+     "stress_closed": 37,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK2D_F1",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR",
+     "normal_LCB": -0.39041539736061665,
+     "stress_LCB": -0.3958507852814219,
+     "normal_MDD": 0.9438752922365581,
+     "normal_exp_R": -0.08114450294117387,
+     "stress_exp_R": -0.08962649500747699,
+     "normal_net_USDT": -38.11079111153497,
+     "stress_net_USDT": -40.87812168078442,
+     "normal_closed": 19,
+     "stress_closed": 19,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK2D_F2",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR",
+     "normal_LCB": -0.5545537265585101,
+     "stress_LCB": -0.559024127767781,
+     "normal_MDD": 1.365540471406271,
+     "normal_exp_R": -0.3583927710862392,
+     "stress_exp_R": -0.36352259406366183,
+     "normal_net_USDT": -123.210942724608,
+     "stress_net_USDT": -124.01994112011803,
+     "normal_closed": 14,
+     "stress_closed": 14,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    },
+    {
+     "variant_id": "NWK2D_F3",
+     "eligible": false,
+     "status": "KANIT YETERSİZ",
+     "reason": "SAMPLE_FLOOR_POSITIVE",
+     "normal_LCB": -0.4036484012728639,
+     "stress_LCB": -0.40846682295918013,
+     "normal_MDD": 1.0860998398362298,
+     "normal_exp_R": 0.01948813885899907,
+     "stress_exp_R": 0.011751798420537805,
+     "normal_net_USDT": 9.530033837644973,
+     "stress_net_USDT": 5.283828394952534,
+     "normal_closed": 26,
+     "stress_closed": 26,
+     "normal_boot_reliable": true,
+     "normal_boot_invalid_frac": null
+    }
+   ]
+  }
+ }
+}
