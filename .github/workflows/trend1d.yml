@@ -1,0 +1,19 @@
+name: Trend 1d veri (tek seferlik)
+on:
+  push:
+    branches: [veri/trend1d]
+permissions:
+  contents: write
+jobs:
+  indir:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install --quiet pandas requests
+      - run: python indir_1d.py
+      - run: |
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git add veri && git commit -m "veri: 1d + funding [skip ci]" && git push
