@@ -87,6 +87,7 @@ def run_phase(syms, d, vids, phase, out):
             tr, bl, eq, led, openp = E.simulate(vid, d[phase], syms, cost)
             m = metrics(tr, eq, d[phase], phase, led)
             m.update(variant_id=vid, cost=cost.name, open_at_end=len(openp),
+                     missing_funding=getattr(led, "missing_funding_settlements", 0),
                      blocked=pd.Series([b["reason"] for b in bl]).value_counts().to_dict() if bl else {})
             if openp:
                 m["metrics_valid"] = False

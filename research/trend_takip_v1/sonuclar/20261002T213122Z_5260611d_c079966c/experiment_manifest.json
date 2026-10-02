@@ -1,0 +1,68 @@
+{
+ "spec": "TREND_TAKIP_V1 (MANIFEST.md)",
+ "commit": "5260611d5956a9a44799c0e4b8accbdb3b290714",
+ "dirty": true,
+ "data_hashes": {
+  "ADA_1d.csv": "74d0b8f6cb7577e50f43ff9b72d43937de5d7668ac2497cbf4abe6af3d3a76f0",
+  "ADA_funding.csv": "1595ee2b804b2da021ffa6250163ee4ed88a8fd9b0a4e160779ad15ae10f8e18",
+  "BCH_1d.csv": "8992e7283979a1a3398f8f683f6593ec2466e3c3b75e77c500d9dc77a50f4144",
+  "BCH_funding.csv": "1446799bf2b66b1aaeb5776c8b379db2c54c0353832cb0d2e8f055dae97849f5",
+  "BNB_1d.csv": "64b2f39d8d223de159daeb1af44ca0850f9470cc428b374f210601391a389a01",
+  "BNB_funding.csv": "e949bf004d8155911e731f5d8f5dfa68b7e581b053edbe6c6e6d01253ae79132",
+  "DOGE_1d.csv": "209dedb3ba2c357e7aa8c442f88c3773a2785c522b880acf5a8fac113257376a",
+  "DOGE_funding.csv": "11e8a845852a72fb596c6104b969c42a1c48693d22bd63edd0ce63a391cb5756",
+  "ETH_1d.csv": "ab13be42f099af091b29242cec1b204bd5d771966eeee6af442a474bcd55c4dd",
+  "ETH_funding.csv": "fe22ce4a4985ffa421dc16e2ed459448e105eab75aa8d9cf36d077eb8849f33f",
+  "ICP_1d.csv": "3e51b09ee8ec7a9350d5d476b19224d63c5f552375e8a9d4bb699f5726ccca93",
+  "ICP_funding.csv": "c2277318eee66a29f6bdc62ee66025dbf01c7914640c6eb6f365a5ab5996e81c",
+  "LTC_1d.csv": "164bd8f5484e9097f8e96943e1ddd4e4befc362467544695a7fe9ec0124d9134",
+  "LTC_funding.csv": "b13d8a51a0ab1020c543b417a563f28c9e0cb1f046329fc100464276cce8fcc1",
+  "NEAR_1d.csv": "33cf138ef1d2b76e876df8252e0ad9b2e1c172b466dac516025fc285780b1ff7",
+  "NEAR_funding.csv": "02dc9d8c9f9377a2f2f8aa1c1cb338d342adbe82d3bbbe30dd11c020f42d6ac3",
+  "SOL_1d.csv": "ebc61df01e0147ba038d511b911e65bf37fe10ca8ec7c5538d2ae3076d7a9299",
+  "SOL_funding.csv": "648e48670521c752f57252ee71b93c93bdab9c3600346c2a2ffd72500ac86b8c",
+  "TRX_1d.csv": "eac7fee7c08a4585fa0e900fba0ee44d50d17972308e35b19f1c81b531f15df8",
+  "TRX_funding.csv": "850edfbf84b0ef92e4d5ccf02d08d75eaf7dadfe0994701b4d88096a1bbbc8fb",
+  "XLM_1d.csv": "8510b7def04d4829947dd0609583838b89f864246392af80a408cb8f4059c5bf",
+  "XLM_funding.csv": "1d6806a3deefe9351c982102a6ae41278b708caaf73daadcef452442d7e91ab2",
+  "XRP_1d.csv": "033bfb44f4a645c6904f9ad2889414b8366887eef2d5e77b3942de73ec5cbd16",
+  "XRP_funding.csv": "8e4eaf22fe2ecf6f671e1e74c7f3fe54e04fe9fea4a317d2fe621bad81c9804d",
+  "ozet.json": "02de4045536307a2005be37a5cd6233fb011198b5c986bf7f14b57630422d070"
+ },
+ "code_hashes": {
+  "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "engine.py": "2aec726a1818a549d5f0de7bea07d31ed8fab85f37c053166af48e9a8b293d51",
+  "run.py": "305bba90f25f968c6de6de6d4349b5c8eb3a747c2f82c647f508b8f734337a0c"
+ },
+ "variants": [
+  "N50_X3_L",
+  "N50_X3_LS",
+  "N50_X5_L",
+  "N50_X5_LS",
+  "N50_XH_L",
+  "N50_XH_LS",
+  "N100_X3_L",
+  "N100_X3_LS",
+  "N100_X5_L",
+  "N100_X5_LS",
+  "N100_XH_L",
+  "N100_XH_LS"
+ ],
+ "dates": {
+  "T0": "2021-01-01 00:00:00+00:00",
+  "B1": "2024-06-14 00:00:00+00:00",
+  "B2": "2025-08-08 00:00:00+00:00",
+  "T1": "2026-10-02 00:00:00+00:00"
+ },
+ "cost": {
+  "name": "NORMAL",
+  "entry_fee_rate": 0.0001,
+  "exit_fee_rate": 0.0001,
+  "entry_slip_bp": 15.85,
+  "exit_slip_bp": 0.24,
+  "source": "ikiz/kos.py 936 referansı: PAPER_SLIP_GIRIS_BP=15.85, PAPER_SLIP_CIKIS_BP=0.24, exchange.PaperExchange.FEE_RATE=0.0001 (taker); ölçüm kaynağı: canlı Donchian/çıkış denetimleri"
+ },
+ "previous_data_use": "previously_examined",
+ "run_id": "20261002T213122Z_5260611d_c079966c",
+ "manifest_hash": "c079966c6240eedd789ad101aa96164cdc70eb490fe8b6b95760550fa285d7f4"
+}

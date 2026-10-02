@@ -76,6 +76,7 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK):
     pos, pend_entry, pend_exit = {}, {}, {}
     trades, blocked, equity = [], [], []
     tid = 0
+    missing_fund = [0]
     last_day = days[-1] if days else None
 
     def close(n, ref, reason, t_ev, phase):
@@ -160,7 +161,10 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK):
             a = np.searchsorted(s.f_t, max(t, p["t"]), side="right")
             b = np.searchsorted(s.f_t, t + DAY, side="right")
             if b > a:
-                i = idx[n][t]
+                i = idx[n].get(t)
+                if i is None:            # o gün mum yok: settlement fiyatı bilinmiyor → sayılır, ücretlenmez
+                    missing_fund[0] += b - a
+                    continue
                 cf = sum(funding_cashflow(p["d"], p["q"], s.o[i], r) for r in s.f_r[a:b])
                 p["fund"] += cf
                 led.fund(cf)
@@ -196,6 +200,7 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK):
         # 7) özsermaye kesiti
         unr = sum(pp["d"] * (syms[m].c[idx[m][t]] - pp["E"]) * pp["q"] for m, pp in pos.items() if t in idx[m])
         equity.append((t + DAY, led.wallet + unr, len(pos), sum(pp["R0"] for pp in pos.values())))
+    led.missing_funding_settlements = missing_fund[0]
     return trades, blocked, equity, led, pos
 
 

@@ -1,0 +1,16 @@
+{
+ "run_id": "20261002T213122Z_5260611d_c079966c",
+ "decision": "KANIT YETERSİZ",
+ "reason": "VALIDATION_UNCERTAIN",
+ "discovery_selected": [
+  "N50_X5_L",
+  "N100_X5_LS",
+  "N50_X5_LS"
+ ],
+ "final_selected": [],
+ "final": null,
+ "status_counts": {
+  "OK": 8,
+  "SAMPLE_FLOOR_POSITIVE": 4
+ }
+}
