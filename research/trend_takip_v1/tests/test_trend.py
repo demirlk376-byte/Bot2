@@ -78,3 +78,27 @@ def test_funding_isareti_ve_tek_kez():
     tr, bl, eq, led, op = E.simulate("N50_X3_L", (T0, T0 + 360 * DAY), {"AAA": s}, ZERO)
     t = tr[0]
     assert t["funding_cashflow"] < 0 and led.funding == pytest.approx(t["funding_cashflow"])
+
+
+def test_erken_cikis_tutmayan_kirilimi_keser():
+    # kırılım sonrası yatay: +1R görülmez → E10 ile ~10 gün sonra EXIT_SIGNAL, tabanda daha uzun tutulur
+    c = [100.0] * 260 + [103.0] + [103.0] * 60
+    s = sym(c, spread=0.5)
+    base = E.simulate("N50_X5_L", (T0, T0 + 320 * DAY), {"AAA": s}, ZERO)[0]
+    e10 = E.simulate("N50_X5_L", (T0, T0 + 320 * DAY), {"AAA": s}, ZERO, early_days=10)[0]
+    assert e10[0]["exit_reason"] == "EXIT_SIGNAL" and e10[0]["hold_days"] == pytest.approx(10)
+    assert base[0]["hold_days"] > e10[0]["hold_days"]
+
+
+def test_erken_cikis_kazanani_kesmez():
+    s = sym(flat_then_trend())
+    a = E.simulate("N50_X5_L", (T0, T0 + 360 * DAY), {"AAA": s}, ZERO)[0]
+    b = E.simulate("N50_X5_L", (T0, T0 + 360 * DAY), {"AAA": s}, ZERO, early_days=10)[0]
+    assert a[0]["net_R"] == pytest.approx(b[0]["net_R"]) and b[0]["exit_reason"] != "EXIT_SIGNAL"
+
+
+def test_nwk_giris_sinyalleri_kullanir(monkeypatch):
+    s = sym(flat_then_trend())
+    monkeypatch.setattr(E, "nwk_signals", lambda x: {270: 1})
+    tr = E.simulate("N50_X5_LS", (T0, T0 + 360 * DAY), {"AAA": s}, ZERO, entry="NWK")[0]
+    assert tr[0]["signal_time"] == s.t[271] and tr[0]["fill_time"] == s.t[271]

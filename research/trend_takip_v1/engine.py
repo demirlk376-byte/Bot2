@@ -62,8 +62,21 @@ def indicators(s: Sym, N):
     return hh, ll, ll_half, hh_half, atr
 
 
-def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK):
+def nwk_signals(s: Sym):
+    """NW+KAMA 1D event_A girişleri (validate_nw_kama.sigs, kod aynen): gün indeksi → yön."""
+    import sys, os
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    import validate_nw_kama as V
+    return {int(t): int(d) for t, d in V.sigs(pd.DataFrame({"close": s.c}), "event", 3, 15, 1.5, 5, 1)}
+
+
+def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, entry="DONCHIAN"):
+    """early_days: girişten bu kadar gün sonra en iyi kapanış +1R'ye ulaşmamışsa ertesi açılışta çık.
+    entry="NWK": giriş sinyali NW+KAMA 1D event_A (yön her iki taraf), çıkış X kuralıyla."""
     N, X, side = variant_parts(vid)
+    nwk = {n: nwk_signals(s) for n, s in syms.items()} if entry == "NWK" else None
     start, end = window
     k_mult = {"X3": 3.0, "X5": 5.0}.get(X)
     risk_per = C.PER_TRADE_RISK_FRAC * C0
@@ -184,10 +197,18 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK):
                 elif X == "XH":
                     if (p["d"] > 0 and c < ll_prev_half(s, i, N)) or (p["d"] < 0 and c > hh_prev_half(s, i, N)):
                         pend_exit[n] = True
+                p["mfe_c"] = max(p.get("mfe_c", 0.0), p["d"] * (c - p["E"]))
+                if early_days and (t + DAY - p["t"]) >= early_days * DAY and p["mfe_c"] < abs(p["E"] - p["S0"]):
+                    pend_exit[n] = True                     # kırılım tutmadı: +1R'ye ulaşmadı
                 continue
             if not (np.isfinite(hh[i]) and np.isfinite(atr[i]) and atr[i] > 0):
                 continue
-            d = 1 if c > hh[i] else (-1 if (side == "LS" and c < ll[i]) else 0)
+            if nwk is not None:
+                d = nwk[n].get(i, 0)
+                if side == "L" and d < 0:
+                    d = 0
+            else:
+                d = 1 if c > hh[i] else (-1 if (side == "LS" and c < ll[i]) else 0)
             if not d:
                 continue
             if X == "XH":
