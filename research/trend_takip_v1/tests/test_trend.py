@@ -102,3 +102,27 @@ def test_nwk_giris_sinyalleri_kullanir(monkeypatch):
     monkeypatch.setattr(E, "nwk_signals", lambda x: {270: 1})
     tr = E.simulate("N50_X5_LS", (T0, T0 + 360 * DAY), {"AAA": s}, ZERO, entry="NWK")[0]
     assert tr[0]["signal_time"] == s.t[271] and tr[0]["fill_time"] == s.t[271]
+
+
+def _dalgali(n=700, seed=3):
+    r = np.random.default_rng(seed)
+    return list(100 * np.exp(np.cumsum(r.normal(0, 0.03, n))))
+
+
+def test_nwk_2g_sinyali_blok_sonunda_ve_nedensel():
+    a = _dalgali()
+    s = sym(a)
+    e = E.nwk_entries({"AAA": s}, tf_days=2)["AAA"]
+    assert e and all((s.t[i] // DAY) % 2 == 1 for i in e)
+    b = list(a); b[500:] = [x * 1.5 for x in b[500:]]
+    e2 = E.nwk_entries({"AAA": sym(b)}, tf_days=2)["AAA"]
+    assert {i: d for i, d in e.items() if i < 499} == {i: d for i, d in e2.items() if i < 499}
+
+
+def test_nwk_1g_eski_fonksiyonla_ayni_ve_filtre_alt_kume():
+    s = sym(_dalgali())
+    f0 = E.nwk_entries({"AAA": s, "ETH": s})["AAA"]
+    assert f0 == E.nwk_signals(s)
+    for f in ("F1", "F2", "F3"):
+        fx = E.nwk_entries({"AAA": s, "ETH": s}, filt=f)["AAA"]
+        assert set(fx.items()) <= set(f0.items())

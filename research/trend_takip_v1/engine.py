@@ -72,11 +72,61 @@ def nwk_signals(s: Sym):
     return {int(t): int(d) for t, d in V.sigs(pd.DataFrame({"close": s.c}), "event", 3, 15, 1.5, 5, 1)}
 
 
-def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, entry="DONCHIAN"):
+def adx(h, l, c, n=14):
+    """Wilder ADX (nedensel)."""
+    up, dn = np.diff(h, prepend=np.nan), -np.diff(l, prepend=np.nan)
+    pdm = np.where((up > dn) & (up > 0), up, 0.0)
+    mdm = np.where((dn > up) & (dn > 0), dn, 0.0)
+    tr = np.maximum(h - l, np.maximum(abs(h - np.r_[np.nan, c[:-1]]), abs(l - np.r_[np.nan, c[:-1]])))
+    w = lambda x: pd.Series(x).ewm(alpha=1 / n, adjust=False, min_periods=n).mean().to_numpy()
+    atr_w = w(np.nan_to_num(tr))
+    pdi, mdi = 100 * w(pdm) / atr_w, 100 * w(mdm) / atr_w
+    dx = 100 * abs(pdi - mdi) / np.where(pdi + mdi > 0, pdi + mdi, np.nan)
+    return w(np.nan_to_num(dx))
+
+
+def nwk_entries(syms: dict, tf_days=1, filt="F0", market="ETH"):
+    """NW+KAMA event_A girişleri, tf_days günlük mumda (2D: UTC epoch'tan 2 günlük blokların son günü
+    kapanışı), sinyal o blok-son günün indeksine yazılır. filt: F0 yok, F1 coin SMA200 yönü,
+    F2 piyasa (ETH) SMA200 yönü, F3 ADX14 > 20."""
+    sma = {n: pd.Series(s.c).rolling(200).mean().to_numpy() for n, s in syms.items()}
+    mk = syms.get(market)
+    mk_up = {int(t): (c > m) for t, c, m in zip(mk.t, mk.c, sma[market])} if mk is not None else {}
+    mk_ok = {int(t) for t, m in zip(mk.t, sma[market]) if np.isfinite(m)} if mk is not None else set()
+    out = {}
+    for n, s in syms.items():
+        ix = np.arange(len(s.c)) if tf_days == 1 else np.flatnonzero((s.t // DAY) % tf_days == tf_days - 1)
+        raw = nwk_signals_c(s.c[ix])
+        ax = adx(s.h, s.l, s.c) if filt == "F3" else None
+        o = {}
+        for j, d in raw.items():
+            i = int(ix[j])
+            if filt == "F1" and not (np.isfinite(sma[n][i]) and (s.c[i] > sma[n][i]) == (d > 0)):
+                continue
+            if filt == "F2" and not (int(s.t[i]) in mk_ok and mk_up[int(s.t[i])] == (d > 0)):
+                continue
+            if filt == "F3" and not (np.isfinite(ax[i]) and ax[i] > 20):
+                continue
+            o[i] = d
+        out[n] = o
+    return out
+
+
+def nwk_signals_c(c):
+    import sys, os
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    import validate_nw_kama as V
+    return {int(t): int(d) for t, d in V.sigs(pd.DataFrame({"close": c}), "event", 3, 15, 1.5, 5, 1)}
+
+
+def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, entry="DONCHIAN", entry_sigs=None):
     """early_days: girişten bu kadar gün sonra en iyi kapanış +1R'ye ulaşmamışsa ertesi açılışta çık.
     entry="NWK": giriş sinyali NW+KAMA 1D event_A (yön her iki taraf), çıkış X kuralıyla."""
     N, X, side = variant_parts(vid)
-    nwk = {n: nwk_signals(s) for n, s in syms.items()} if entry == "NWK" else None
+    nwk = entry_sigs if entry_sigs is not None else (
+        {n: nwk_signals(s) for n, s in syms.items()} if entry == "NWK" else None)
     start, end = window
     k_mult = {"X3": 3.0, "X5": 5.0}.get(X)
     risk_per = C.PER_TRADE_RISK_FRAC * C0
