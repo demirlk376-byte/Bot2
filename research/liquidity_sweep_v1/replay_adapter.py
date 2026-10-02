@@ -37,7 +37,7 @@ class RunResult:
         self.counters = {}
 
 
-def simulate(variant_id, phase, window, signals, universe, cost, C0, record_equity=True):
+def simulate(variant_id, phase, window, signals, universe, cost, C0, record_equity=True, max_hold_ms=None):
     """signals: bu varyant/bölüm için SetupRecord listesi (terminal SIGNAL olanlar; F zaten
     uygulanmış). Döner RunResult."""
     syms = universe["symbols"]
@@ -185,7 +185,7 @@ def simulate(variant_id, phase, window, signals, universe, cost, C0, record_equi
                 close_pos(p, O, "STOP", k, "OPEN")
             elif (O >= p.T) if p.d > 0 else (O <= p.T):
                 close_pos(p, O, "TARGET", k, "OPEN")
-            elif t - p.entry_time >= C.MAX_HOLD_MS:
+            elif t - p.entry_time >= (max_hold_ms or C.MAX_HOLD_MS):
                 close_pos(p, O, "TIME_EXIT", k, "OPEN")
         # 8–10) yeni girişler
         cands = by_time.get(t, [])
