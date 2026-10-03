@@ -115,3 +115,21 @@ D3, ilk testteki sonuç. Gerektirdikleri:
 4. Trend kollarını botun MAX_POSITIONS ve aynı-yön kapılarından muaf tutmak.
 
 Trend kısmı bu coinlerde seçildiği için D3 rakamı iyimser.
+
+## Canlı hesap bulguları (2026-10-03, `trend_hazirlik/mexc_hedge_kontrol.py` VPS çıktısı)
+
+- **Pozisyon modu = 1 → HEDGE (çift yönlü).** MEXC belgesine göre 1 = hedge, 2 = tek yönlü. Mod değiştirmeye
+  gerek yok. Hedge modda long ve short bacakların kaldıraçları birbirinden bağımsız.
+- **Bot .env:** izole, 10x. O an açık pozisyon 0. USDT toplamı ≈ 309.
+- **ccxt 4.5.84 notu:** `hedged=True` yolunda kapanış yön kodları ters eşleniyor
+  (buy+reduceOnly → 4, oysa MEXC'te 4 = long kapat). Bot bu yolu kullanmıyor; açık yön kodlu varsayılan yol
+  (1/2/3/4 doğru) hedge hesapta da çalışıyor. Trend kodu da `hedged=True` KULLANMAMALI.
+- **Küçük hesapta minimum emir** (`kucuk_hesap_min_emir.py`): 309 USDT, trend riski %1. Bugünkü
+  MEXC minimum emir tutarları, tipik trend notional'ının altında:
+  - 1D modülü 36 coinin 35'inde, 4H modülü 36'sının 36'sında açılabilir; yalnız ETH 1D açılamaz.
+  - 2021-01 → 2025-08 motor koşusunda botun 12 coininde getiri 10.000 USDT hesapla aynı
+    (+%389 / +%381, basit, %1).
+  - Diğer 24 coinde adım yuvarlaması getiriyi düşürüyor (+%174 / +%227).
+
+**Adım 2 (minik gerçek emirle borsa davranışı denemesi)** yazılmadı. Gerçek emir gönderen betik yazmak
+oturumun güvenlik denetimince engellendi; kullanıcının açık izni gerekiyor.
