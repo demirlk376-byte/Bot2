@@ -36,3 +36,26 @@ gerçekleşmiş bakiyeden hesaplanır.
 
 Trend kısmı seçim kümesinde (iyimser). 2026'daki trend ayları eski 12 coinin FİNAL dönemine düşüyor
 (bkz. FINAL_IHLAL_NOTU.md). İkiz verisi 2026-07-18'de bitiyor.
+
+## ⚠ Netted kısıtı: önceki birleşik tahmin iyimserdi (2026-10-03)
+
+RESEARCH_LEDGER (2026-09-14) ölçmüştü: MEXC'te bir sembol = bir net pozisyon (execution.py). Trend
+kolu botun coinlerini haftalarca tutarsa botun o coindeki işlemleri engellenir. Ledger ölçümüne göre
+botun işlemlerinin %12.5'i, getirisinin %19.6'sı. Yukarıdaki "botun 12 coini" satırları bunu
+modellemiyor; gerçekte o kurulum net NEGATİF olabilir.
+
+**Çakışmasız kurulum:** trend yalnız botun İŞLEM YAPMADIĞI 24 coinde. Coin başına tek pozisyon
+(1D ve 4H modülleri arasında ilk açılan kazanır). Giriş-anı bileşik, 2023-04 → 2025-08-08,
+FİNAL dışı (`birlesik_ayri_coin.py`):
+
+| | aylık geo | maxDD | en kötü ay |
+|---|---|---|---|
+| bot %3.5 | %13.5 | %35.2 | −16.4 |
+| + trend %1.0 (24 ayrı coin) | %14.5 | %40.2 | −21.4 |
+| + trend %1.5 | %14.6 | %43.9 | −25.2 |
+| + trend %2.0 | %14.6 | %47.5 | −30.8 |
+
+**Sonuç:**
+- Bu pencerede trend eklemek, riski artırmaya denk. Getiri/MDD oranı 0.38'den 0.36'ya iniyor.
+- Pencerede 2021 tipi güçlü altcoin boğası yok; trendin asıl değeri orada olurdu. Ama botun ikizi
+  2023-04'ten önceye gitmediği için o dönem birlikte ölçülemiyor.
