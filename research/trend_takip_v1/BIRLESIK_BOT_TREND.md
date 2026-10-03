@@ -84,3 +84,34 @@ hesabında çalıştırmak. Ama o zaman sermaye bölünür ve trend kendi hesab�
 Aynı hesapta, botun kullanmadığı 24 coinde ayrı süreç (çakışmasız) en verimli kurulum:
 aylık %13.5 → %14.5, maxDD +5 puan. Modellenmeyen ek maliyet: trend pozisyonlarının teminatı
 botun teminat ön-kontrolünü (%95 serbest teminat) daraltıp bazı bot girişlerini engelleyebilir.
+
+## Çakışma türleri ve çözüm tasarımlarının değeri (`birlesik_cakisma.py`, 2026-10-03)
+
+Botun canlı kodunda ONE_PER_SYMBOL kuralı (execution.py) iki sebeple var:
+- (a) MEXC'te pozisyon başına tek "ekli" stop olur; ikinci kolun girişi birincinin stopunu ezer.
+- (b) Tek yönlü modda long ve short aynı anda tutulamaz.
+
+Botta çoklu-kol stop yeniden kurma (`resync_symbol_stops`) ve hedge-farkında mutabakat
+(`HEDGE_AWARE_RECON`, varsayılan kapalı) altyapısı zaten var.
+
+**Çakışma sayımı:** 2023-04 → 2025-08-08, botun 684 işlemi. Trend (botun 12 coini) açıkken açılan
+bot işlemi: aynı yön (long) 85, ters yön (short) 30.
+
+Trend %1, giriş-anı bileşik:
+
+| tasarım | bot işlem | trend işlem | aylık | maxDD |
+|---|---|---|---|---|
+| bot tek | 684 | — | %13.5 | %35.2 |
+| D0 bugünkü kural (coin başına tek, ilk gelen) | 611 | 103 | %14.4 | %41.5 |
+| D1 hedge modu (yalnız ters yön serbest) | 640 | 104 | %15.4 | %39.2 |
+| D3 hedge + aynı bacakta ayrı stoplu çoklu kol | 684 | 140 | %17.7 | %35.5 |
+
+D3, ilk testteki sonuç. Gerektirdikleri:
+1. Hesabı hedge moduna almak.
+2. Aynı bacaktaki kollar için miktara özel plan-emir stopları. Bunlar 24 saat/7 gün geçerli;
+   yenileme gerekir.
+3. Trendin geniş stopu için teminat düzeni (izole 10x tasfiye mesafesi ~%9.5 < trend stopu).
+   Çapraz teminat ya da ek teminat.
+4. Trend kollarını botun MAX_POSITIONS ve aynı-yön kapılarından muaf tutmak.
+
+Trend kısmı bu coinlerde seçildiği için D3 rakamı iyimser.
