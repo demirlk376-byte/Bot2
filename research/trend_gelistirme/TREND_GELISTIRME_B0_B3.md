@@ -168,3 +168,12 @@ düşüyor. Getiri/MDD düştüğü için C sayıldı.
   PYTHONPATH=. python3 -m research.trend_gelistirme.birlesik --ikiz-db <ikiz_trades.db>
   ```
   `ikiz_trades.db`: canlı-birebir ikizin `ikiz_tam.py` çıktısı (937 işlem).
+
+## Ek (2026-10-04): canlı kodun düzeltilmesi
+B0'daki üç düzeltme canlı trend koduna (2. aşama, henüz gönderilmedi) taşındı:
+- `Defter.zaman_sirali_isle`: iki modül kapanış zamanına göre birlikte işleniyor.
+- Rejim bilinmiyorsa giriş yok.
+- ETH geçmişi = sembol geçmişi + 200 + 25 gün.
+
+Testler: 18/18. Yeni testler: toplu = parça parça + her adımda kaydet/yükle; ilk gelen modül kazanır;
+rejim bilinmezse giriş yok. Araştırma motoruyla eşdeğerlik yeniden 441/441.
