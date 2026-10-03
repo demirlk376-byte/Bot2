@@ -75,6 +75,10 @@ async def main() -> None:
         pm = await cagir(ex, "contractPrivateGetPositionPositionMode")
         rapor["pozisyon_modu_ham"] = pm
         kod = veri(pm)
+        try:
+            kod = int(kod)          # MEXC bazen "1" (metin) döndürüyor
+        except (TypeError, ValueError):
+            pass
         rapor["pozisyon_modu"] = {1: "HEDGE (çift yönlü)", 2: "TEK YÖNLÜ"}.get(kod, f"bilinmiyor ({kod})")
 
         # 2) Açık pozisyonlar (ham MEXC alanları)
