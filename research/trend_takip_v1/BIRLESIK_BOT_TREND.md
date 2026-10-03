@@ -59,3 +59,28 @@ FİNAL dışı (`birlesik_ayri_coin.py`):
 - Bu pencerede trend eklemek, riski artırmaya denk. Getiri/MDD oranı 0.38'den 0.36'ya iniyor.
 - Pencerede 2021 tipi güçlü altcoin boğası yok; trendin asıl değeri orada olurdu. Ama botun ikizi
   2023-04'ten önceye gitmediği için o dönem birlikte ölçülemiyor.
+
+## "Kısıtı kaldır": ayrı alt hesap senaryosu (2026-10-03)
+
+Netted kısıtı borsa kuralı; kodla kapatılamaz. Tam kaldırmanın yolu, trendi ayrı bir MEXC alt
+hesabında çalıştırmak. Ama o zaman sermaye bölünür ve trend kendi hesabının bakiyesine göre risk alır.
+- **Pencere:** 2023-04 → 2025-08-08.
+- **Trend:** 36 coin, coin başına tek pozisyon.
+- **Betikler:** `birlesik_kisitsiz.py` (tek bakiye varsayımı, ulaşılamaz üst sınır) ve
+  `birlesik_iki_hesap.py` (gerçekçi iki hesap).
+
+| kurulum | aylık geo | maxDD |
+|---|---|---|
+| bot tek, %100 sermaye | %13.5 | %35.2 |
+| tek bakiye + trend 36 coin %1 (üst sınır; aynı hesapta netted yüzünden ULAŞILAMAZ) | %17.6 | %40.5 |
+| alt hesap %20 (hesap içi risk %5), dengelemesiz | %12.8 | %33.9 |
+| alt hesap %30 (hesap içi risk %3.3), dengelemesiz | %12.5 | %32.9 |
+| alt hesap %20, AYLIK dengeleme (elle transfer) | %15.2 | — |
+| alt hesap %30, AYLIK dengeleme | %14.2 | — |
+
+- Trend alt hesabının kendi düşüşü %69–85 (hesap içi risk %3.3–5).
+- Dengelemesiz kurulum, bot tek başına kalmaktan KÖTÜ.
+
+Aynı hesapta, botun kullanmadığı 24 coinde ayrı süreç (çakışmasız) en verimli kurulum:
+aylık %13.5 → %14.5, maxDD +5 puan. Modellenmeyen ek maliyet: trend pozisyonlarının teminatı
+botun teminat ön-kontrolünü (%95 serbest teminat) daraltıp bazı bot girişlerini engelleyebilir.
