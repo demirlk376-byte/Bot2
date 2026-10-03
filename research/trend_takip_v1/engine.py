@@ -125,6 +125,25 @@ def nwk_entries(syms: dict, tf_days=1, filt="F0", market="ETH"):
     return out
 
 
+def regime_ma(ref: Sym, n=200):
+    """R1: referans (ETH) günlük kapanışı SMA200 üstünde mi; {gün_başı: bool}, SMA yoksa anahtar yok."""
+    m = pd.Series(ref.c).rolling(n).mean().to_numpy()
+    return {int(t): bool(c > x) for t, c, x in zip(ref.t, ref.c, m) if np.isfinite(x)}
+
+
+def regime_breadth(syms_1d: dict, n=200, thr=0.5):
+    """R2: o gün SMA200'ü hesaplanabilen coinlerin en az %50'si SMA200 üstünde mi."""
+    up, tot = {}, {}
+    for s in syms_1d.values():
+        m = pd.Series(s.c).rolling(n).mean().to_numpy()
+        for t, c, x in zip(s.t, s.c, m):
+            if np.isfinite(x):
+                t = int(t)
+                tot[t] = tot.get(t, 0) + 1
+                up[t] = up.get(t, 0) + (c > x)
+    return {t: up[t] / tot[t] >= thr for t in tot}
+
+
 def nwk_signals_c(c):
     import sys, os
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -135,11 +154,13 @@ def nwk_signals_c(c):
 
 
 def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, entry="DONCHIAN", entry_sigs=None,
-             bar_ms=DAY):
+             bar_ms=DAY, regime=None):
     """early_days: girişten bu kadar gün sonra en iyi kapanış +1R'ye ulaşmamışsa ertesi açılışta çık.
     entry="NWK": giriş sinyali NW+KAMA 1D event_A (yön her iki taraf), çıkış X kuralıyla.
     bar_ms: mum uzunluğu (varsayılan 1 gün; 4h için 4 saat). N ve ATR mum sayısıdır; ısınma ve erken
-    çıkış süresi GÜN cinsinden kalır."""
+    çıkış süresi GÜN cinsinden kalır.
+    regime: {gün_başı_ms: bool}; mum kapanışında SON TAMAMLANMIŞ günün değeri False ise yeni LONG açılmaz
+    (açık pozisyonlar etkilenmez). Sözlükte olmayan gün: serbest."""
     N, X, side = variant_parts(vid)
     nwk = entry_sigs if entry_sigs is not None else (
         {n: nwk_signals(s) for n, s in syms.items()} if entry == "NWK" else None)
@@ -276,6 +297,8 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, e
                     d = 0
             else:
                 d = 1 if c > hh[i] else (-1 if (side == "LS" and c < ll[i]) else 0)
+            if d > 0 and regime is not None and not regime.get(((t + bar_ms) // DAY) * DAY - DAY, True):
+                d = 0
             if not d:
                 continue
             if X == "XH":

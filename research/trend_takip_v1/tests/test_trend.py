@@ -153,3 +153,23 @@ def test_4h_mum_kirilim_ve_funding_mum_icinde():
     assert tr[0]["fill_time"] == t[1301]                      # 200 gün = 1200 mum ısınma geçti; kırılım 1300'de
     assert tr[0]["funding_cashflow"] < 0 and led.funding == pytest.approx(tr[0]["funding_cashflow"])
     assert eq[1][0] - eq[0][0] == H4
+
+
+def test_rejim_kapaliyken_long_acilmaz_acik_pozisyon_surer():
+    s = sym(flat_then_trend())
+    kapali = {int(t): False for t in s.t}
+    tr = E.simulate("N50_X3_L", (T0, T0 + 360 * DAY), {"AAA": s}, ZERO, regime=kapali)[0]
+    assert tr == []
+    # rejim sinyal gününden SONRA kapanırsa açık pozisyon etkilenmez
+    gec = {int(t): (i <= 261) for i, t in enumerate(s.t)}
+    a = E.simulate("N50_X3_L", (T0, T0 + 360 * DAY), {"AAA": s}, ZERO)[0]
+    b = E.simulate("N50_X3_L", (T0, T0 + 360 * DAY), {"AAA": s}, ZERO, regime=gec)[0]
+    assert a[0]["net_R"] == pytest.approx(b[0]["net_R"])
+
+
+def test_rejim_son_tamamlanan_gunu_kullanir_4h():
+    H4 = 4 * C.H1
+    t_bar = T0 + 10 * DAY + 20 * C.H1          # günün son 4h mumu; kapanışı ertesi gün 00:00
+    assert ((t_bar + H4) // DAY) * DAY - DAY == T0 + 10 * DAY
+    t_bar = T0 + 10 * DAY                       # günün ilk mumu; kapanışta tamamlanan gün bir önceki
+    assert ((t_bar + H4) // DAY) * DAY - DAY == T0 + 9 * DAY
