@@ -381,11 +381,28 @@ class ExecutionEngine:
                 w.writerow(header)
             w.writerow(row)
 
+    # ── TREND KOLU (2026-10-03) ────────────────────────────────────────────────
+    # Trend pozisyonları (strategy == "trend", slot "SYM:trend...") botun kendi
+    # kapılarında (MAX_POSITIONS, korele grup, aynı yön, coin başına tek pozisyon)
+    # SAYILMAZ; trend girişleri de o kapılardan geçmez. Trend pozisyonu yokken
+    # (TREND_MODE != canli) bu yardımcılar eski sayımları BİT BİT aynı verir.
+    @staticmethod
+    def _trend_poz_mu(p) -> bool:
+        return (getattr(p, "strategy_scores", None) or {}).get("strategy") == "trend_kolu"
+
+    @staticmethod
+    def _trend_slot_mu(slot: str) -> bool:
+        return ":trend" in (slot or "")
+
+    def _bot_acik(self) -> list:
+        return [p for p in self._portfolio.get_open_positions() if not self._trend_poz_mu(p)]
+
     async def _execute_signal_guarded(
         self, signal: CombinedSignal, atr: float
     ) -> ExecutionResult:
         if signal.direction == 0:
             return ExecutionResult(False, error="No signal")
+        trend_giris = signal.dominant_strategy == "trend_kolu"
 
         # Multi-coin: the signal carries its own symbol; fall back to the
         # configured primary symbol for single-coin operation.
@@ -407,7 +424,7 @@ class ExecutionEngine:
             # Per-(strategy:symbol) cooldown — only this sleeve is paused after its
             # own loss streak; other coins/strategies keep trading.
             cd_key = f"{signal.dominant_strategy}:{symbol}"
-            cd_until = self._cooldown_until.get(cd_key)
+            cd_until = None if trend_giris else self._cooldown_until.get(cd_key)
             if cd_until is not None:
                 if datetime.now(timezone.utc) < cd_until:
                     remaining = (cd_until - datetime.now(timezone.utc)).total_seconds() / 60
@@ -420,8 +437,9 @@ class ExecutionEngine:
             # burst of N simultaneous signals can't all sneak past the cap before
             # any one of them completes and registers in the portfolio.
             max_pos = getattr(self._config.risk, "max_positions", 4)
-            total_open = self._portfolio.get_open_position_count() + len(self._executing)
-            if total_open >= max_pos:
+            total_open = len(self._bot_acik()) + sum(
+                1 for sl in self._executing if not self._trend_slot_mu(sl))
+            if not trend_giris and total_open >= max_pos:
                 return ExecutionResult(False, error=f"Max positions ({max_pos}) reached")
 
             # Correlation cap: prevent piling into the same direction across coins
@@ -429,16 +447,16 @@ class ExecutionEngine:
             # portfolio positions AND in-flight reservations for the same direction
             # so three simultaneous ORB signals can't all pass when the cap is 2.
             max_corr = getattr(self._config.risk, "max_correlated_direction", 2)
-            if max_corr > 0 and signal.direction != 0:
+            if not trend_giris and max_corr > 0 and signal.direction != 0:
                 for grp in _CORRELATED_GROUPS:
                     if symbol in grp:
                         same_dir = sum(
-                            1 for p in self._portfolio.get_open_positions()
+                            1 for p in self._bot_acik()
                             if p.symbol in grp and p.direction == signal.direction
                         )
                         same_dir += sum(
                             1 for slot, d in self._inflight_direction.items()
-                            if d == signal.direction
+                            if d == signal.direction and not self._trend_slot_mu(slot)
                             and self._inflight_symbol.get(slot) in grp
                         )
                         if same_dir >= max_corr:
@@ -467,11 +485,11 @@ class ExecutionEngine:
             # (-0.1718; TRAIN -0.1228 / TEST -0.2286, ikisi de kendi yarisinin
             # tabaninin ALTINDA). Varsayilan 0 = KAPALI.
             max_ayni = getattr(self._config.risk, "max_same_direction", 0)
-            if max_ayni > 0 and signal.direction != 0:
-                ayni = sum(1 for p in self._portfolio.get_open_positions()
+            if not trend_giris and max_ayni > 0 and signal.direction != 0:
+                ayni = sum(1 for p in self._bot_acik()
                            if p.direction == signal.direction)
-                ayni += sum(1 for d in self._inflight_direction.values()
-                            if d == signal.direction)
+                ayni += sum(1 for sl, d in self._inflight_direction.items()
+                            if d == signal.direction and not self._trend_slot_mu(sl))
                 if ayni >= max_ayni:
                     side = "long" if signal.direction == 1 else "short"
                     return ExecutionResult(
@@ -503,13 +521,14 @@ class ExecutionEngine:
             _ops = getattr(self._config.risk, "one_per_symbol", "auto")
             _uygula = (not self._config.exchange.paper_mode if _ops == "auto"
                        else _ops == "true")
-            if _uygula:
-                if any(p.symbol == symbol for p in self._portfolio.get_open_positions()):
+            if _uygula and not trend_giris:
+                if any(p.symbol == symbol for p in self._bot_acik()):
                     return ExecutionResult(
                         False,
                         error=f"{symbol} already holds a position (one-per-symbol in netted mode)",
                     )
-                if any(s == symbol for s in self._inflight_symbol.values()):
+                if any(s == symbol for sl, s in self._inflight_symbol.items()
+                       if not self._trend_slot_mu(sl)):
                     return ExecutionResult(
                         False,
                         error=f"{symbol} entry already in flight (one-per-symbol in netted mode)",
@@ -615,6 +634,9 @@ class ExecutionEngine:
             elif signal.dominant_strategy == "donchian":
                 risk_override = getattr(self._config.risk, "donchian_risk_pct",
                                         getattr(self._config.risk, "day_risk_pct", 0.0))
+            elif signal.dominant_strategy == "trend_kolu":
+                import os as _os
+                risk_override = float(_os.getenv("TREND_RISK_PCT", "0.01") or 0.01)
             elif signal.dominant_strategy == "squeeze":
                 # Squeeze validated at 2% (audit v3 #1). Without this it fell to
                 # the else-branch and inherited max_risk_per_trade (MAX_RISK_PCT,
@@ -651,7 +673,7 @@ class ExecutionEngine:
             return ExecutionResult(False, error="Could not build trade setup")
 
         ok, reason = self._risk.validate_new_trade(
-            setup, self._portfolio.get_open_position_count()
+            setup, 0 if signal.dominant_strategy == "trend_kolu" else len(self._bot_acik())
         )
         if not ok:
             logger.warning("[%s] validate_new_trade failed: %s", symbol, reason)
@@ -832,7 +854,17 @@ class ExecutionEngine:
                 protected = None
                 for _ in range(3):
                     await asyncio.sleep(1)
-                    protected = await self._exchange.has_sltp_orders(setup.symbol)
+                    _paylasimli = (signal.dominant_strategy == "trend_kolu" or any(
+                        p.symbol == setup.symbol for p in self._portfolio.get_open_positions()))
+                    if _paylasimli and hasattr(self._exchange, "list_attached_stops"):
+                        # Sembolde başka bir kolun stopu varken "en az bir stop var" yanıltır →
+                        # YALNIZ bu girişin kendi ekli stopu aranır (stoporder.orderId == emir kimliği).
+                        # Tek kollu sembolde (bugünkü canlı durum) eski kontrol aynen kalır.
+                        _st = await self._exchange.list_attached_stops(setup.symbol)
+                        protected = (None if _st is None else
+                                     any(str(o.get("orderId")) == str(order.order_id) for o in _st))
+                    else:
+                        protected = await self._exchange.has_sltp_orders(setup.symbol)
                     if protected:
                         break
                 if protected is True:
@@ -939,6 +971,10 @@ class ExecutionEngine:
                 # DONCHIAN_MAX_HOLD (varsayilan 120 = bugunku davranis) -- IKIZ taramasi icin
                 import os as _os
                 scores["max_hold"] = int(_os.getenv("DONCHIAN_MAX_HOLD", "120"))
+            elif signal.dominant_strategy == "trend_kolu":
+                # Trend haftalarca tutar; max-hold ile ASLA kapanmaz (çıkış: stop / erken çıkış).
+                scores["max_hold"] = 10_000_000
+                scores.update(getattr(signal, "trend_bilgi", None) or {})
 
             position = self._portfolio.create_position(
                 symbol=setup.symbol,
@@ -1190,6 +1226,12 @@ class ExecutionEngine:
             # entry/trailing/reconciliation on the same netted symbol can't
             # interleave (e.g. cancel a stop we are about to re-place).
             async with self._symbol_lock(symbol):
+                # Kilit beklenirken mutabakat bu kolu zaten kapatmış olabilir: kapanmış bir
+                # kol için reduce-only emir göndermek, AYNI BACAKTAKİ başka bir kolun
+                # sözleşmelerini satar (trend + bot paylaşılan long bacağı). Kapalıysa dokunma.
+                if self._portfolio.get_position_by_id(pos.id) is None:
+                    logger.warning("close_position: %s zaten kapalı — emir gönderilmedi", pos.id)
+                    return False
                 if hasattr(self._exchange, "close_position"):
                     order = await self._exchange.close_position(
                         pos.symbol, pos.side, pos.quantity, reason
@@ -1198,6 +1240,19 @@ class ExecutionEngine:
                 else:
                     exit_price = current_price
                 await self._close_position_internal(pos, exit_price, reason)
+                # Paylaşılan bacakta (sembolde başka açık kol varsa) kapanan kolun KENDİ ekli
+                # stopu borsada kalmasın: ileride tetiklenip öbür kolun sözleşmelerini kapatır.
+                # Tek kollu sembolde (bugünkü canlı durum) bacak boşalır, MEXC stopu kendisi siler.
+                if (not self._config.exchange.paper_mode
+                        and hasattr(self._exchange, "cancel_attached_stop_for_order")
+                        and any(p.symbol == symbol for p in self._portfolio.get_open_positions())):
+                    try:
+                        r = await self._exchange.cancel_attached_stop_for_order(symbol, pos.id)
+                        if r is not True:
+                            await self._alert(f"⚠️ {symbol}: kapanan kolun stopu iptal edilemedi "
+                                              f"(kimlik {pos.id}) — MEXC'te kontrol et", "WARNING")
+                    except Exception as ce:
+                        logger.error("kapanan kol stop iptali %s: %s", symbol, ce)
                 # Live: clear this sleeve's leftover SL/TP and re-assert any
                 # sibling sleeve's stops still open on the same (netted) symbol.
                 if not self._config.exchange.paper_mode:

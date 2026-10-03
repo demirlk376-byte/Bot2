@@ -55,7 +55,7 @@ class _FakeLive:
         self.results = list(results)
         self.calls = []
 
-    async def move_stop_loss(self, symbol, position_side, new_sl, amount):
+    async def move_stop_loss(self, symbol, position_side, new_sl, amount, order_id=None, tp_yedek=None):
         self.calls.append((symbol, position_side, new_sl, amount))
         return self.results.pop(0) if self.results else True
 

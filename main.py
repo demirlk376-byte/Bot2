@@ -202,7 +202,7 @@ def make_on_candle_close(ctx: "SymbolContext"):
                     else:
                         logger.info(metin)
                 trend_canli.tetikle(df.index[-1], exchange, config.exchange.symbols,
-                                    _trend_gonder, executor.current_equity)
+                                    _trend_gonder, executor.current_equity, executor)
 
             current_price = await ctx.data_mgr.get_current_price()
             # Per-coin price: a shared single price would be wrong across coins.
@@ -1495,8 +1495,10 @@ async def _update_trailing_stops(symbol: str, current_price: float, atr_val: flo
                     # stray reduce-only trigger for a position that no longer
                     # exists. The executor's lock serializes all of these.
                     async with executor._symbol_lock(pos.symbol):
+                        # order_id: aynı sembolde trend kolu da varsa YALNIZ bu kolun
+                        # ekli stopu taşınır (tek kollu sembolde davranış aynı).
                         moved = await exchange.move_stop_loss(
-                            pos.symbol, pos_side, new_sl, pos.quantity)
+                            pos.symbol, pos_side, new_sl, pos.quantity, order_id=pos.id)
                 except Exception as e:
                     logger.warning("[%s] move_stop_loss error: %s", symbol, e)
                     moved = False
@@ -2065,7 +2067,10 @@ async def position_reconciliation_loop() -> None:
                                     "shortfall %.6f — partial external close; "
                                     "adjusting sleeve qty to %.6f",
                                     symbol, pos.quantity, to_close, exch_qty)
-                                pos.quantity = exch_qty
+                                # Kolun KENDİ payı küçültülür (paylaşılan bacakta bacak
+                                # toplamını tek kola yazmak sonraki kapanışta öbür kolu satardı).
+                                # Tek kollu sembolde pos.quantity − to_close == exch_qty → aynı.
+                                pos.quantity = max(pos.quantity - to_close, 0.0)
                                 break
                             if pos.side == "short":
                                 sl_hit = pos.sl_price > 0 and current_price >= pos.sl_price * 0.99

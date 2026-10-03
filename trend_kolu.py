@@ -132,11 +132,12 @@ class Defter:
         self.bekleyen: dict[str, dict] = {}      # sembol → {"tur": giris|cikis|ek, ...}
         self.son_bar: dict[str, int] = {}        # "SEMBOL|MODUL" → son işlenen mum açılışı
         self.kapanan: list[dict] = []            # tamamlanan sanal işlemler (rapor)
+        self.meta: dict = {}                     # bağlantı katmanının notları (ör. yalnız sanal izlenenler)
 
     # ── kalıcılık ────────────────────────────────────────────────────────────
     def durum(self) -> dict:
         return {"poz": {k: asdict(v) for k, v in self.poz.items()}, "bekleyen": self.bekleyen,
-                "son_bar": self.son_bar, "kapanan": self.kapanan[-500:]}
+                "son_bar": self.son_bar, "kapanan": self.kapanan[-500:], "meta": self.meta}
 
     @classmethod
     def yukle(cls, d: dict) -> "Defter":
@@ -145,6 +146,7 @@ class Defter:
         x.bekleyen = d.get("bekleyen") or {}
         x.son_bar = {k: int(v) for k, v in (d.get("son_bar") or {}).items()}
         x.kapanan = d.get("kapanan") or []
+        x.meta = d.get("meta") or {}
         return x
 
     # ── çekirdek ─────────────────────────────────────────────────────────────
@@ -173,6 +175,32 @@ class Defter:
         for i in range(bas, len(t)):
             self._bir_mum(sembol, modul, i, t, o, h, l, c, hh, atr, kk, bar_ms, rejim, olaylar)
             self.son_bar[anahtar] = int(t[i])
+        return olaylar
+
+    def zaman_sirali_isle(self, sembol: str, mumlar: dict, rejim: dict) -> list[Olay]:
+        """İki modülün mumlarını KAPANIŞ ZAMANINA göre birlikte işler (aynı kapanışta önce 1D, sonra 4H).
+        Önce tüm 1D sonra tüm 4H geçmişini yürütmek, coin başına tek pozisyon kuralını yanlış sırada
+        uygular (geçmiş yükleme ↔ mum mum ilerleme farklı durum üretirdi). Toplu yükleme, mum mum ilerleme
+        ve kaydet/yükle aynı durumu üretir (testli)."""
+        olaylar: list[Olay] = []
+        hazir, sira = {}, []
+        for oncelik, modul in enumerate(("1D", "4H")):
+            bars = mumlar.get(modul)
+            if bars is None or len(bars) < 2:
+                continue
+            bar_ms, N, kk = MODULLER[modul]
+            t = bars["t"].to_numpy("int64")
+            o, h, l, c = (bars[x].to_numpy(float) for x in ("open", "high", "low", "close"))
+            hh = pd.Series(h).shift(1).rolling(N).max().to_numpy()
+            atr = atr_wilder(h, l, c)
+            hazir[modul] = (t, o, h, l, c, hh, atr, kk, bar_ms)
+            son = self.son_bar.get(f"{sembol}|{modul}")
+            bas = 0 if son is None else int(np.searchsorted(t, son, side="right"))
+            sira += [(int(t[i]) + bar_ms, oncelik, modul, i) for i in range(bas, len(t))]
+        for _, _, modul, i in sorted(sira):
+            t, o, h, l, c, hh, atr, kk, bar_ms = hazir[modul]
+            self._bir_mum(sembol, modul, i, t, o, h, l, c, hh, atr, kk, bar_ms, rejim, olaylar)
+            self.son_bar[f"{sembol}|{modul}"] = int(t[i])
         return olaylar
 
     def _bir_mum(self, s, modul, i, t, o, h, l, c, hh, atr, kk, bar_ms, rejim, olaylar):
@@ -233,7 +261,7 @@ class Defter:
         if not c[i] > hh[i]:
             return
         rv = rejim.get(((int(t[i]) + bar_ms) // DAY_MS) * DAY_MS - DAY_MS)
-        if rv is not None and not rv:
+        if rv is not True:          # rejim kapalı ya da BİLİNMİYOR (ETH geçmişi yetersiz) → giriş yok
             return
         S0 = float(c[i]) - kk * float(atr[i])
         if not (S0 < c[i]):

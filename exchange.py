@@ -1461,10 +1461,24 @@ class LiveExchange:
                 "TP placement FAILED for %s after 3 attempts (SL IS in place) — "
                 "position will exit via max-hold/trailing", symbol)
 
-    async def _get_attached_stop(self, symbol: str) -> Optional[dict]:
+    async def _get_attached_stop(self, symbol: str, order_id: Optional[str] = None) -> Optional[dict]:
         """Return the position-attached SL/TP stop order (MEXC stoporder family)
         for this symbol, or None. Live entries attach SL/TP on the entry order —
-        that protection rests in stoporder/open_orders, NOT the plan-order list."""
+        that protection rests in stoporder/open_orders, NOT the plan-order list.
+
+        order_id (TREND KOLU, 2026-10-03): aynı sembolde birden fazla kol varsa her girişin
+        KENDİ ekli stopu olur (VPS DOT denemesi: stoporder.orderId == giriş emri kimliği).
+        order_id verilirse YALNIZ ona ait stop döner; liste okunduysa ve eşleşme yoksa None
+        (başka kolun — belki ters bacağın — stopuna ASLA düşülmez; çağıran plan-emir yoluna geçer).
+        Liste okunamazsa eski davranış (ilk aktif stop). Tek kollu sembolde ekli stopun orderId'si
+        pozisyon kimliğidir → davranış aynı."""
+        if order_id is not None:
+            stops = await self.list_attached_stops(symbol)
+            if stops is not None:
+                for o in stops:
+                    if str(o.get("orderId")) == str(order_id):
+                        return o
+                return None
         inner = self._exchange
         mexc_sym = symbol.split(":")[0].replace("/", "_")
         for method in ("contractPrivateGetStoporderOpenOrders",
@@ -1484,8 +1498,84 @@ class LiveExchange:
                 logger.debug("_get_attached_stop %s %s: %s", symbol, method, e)
         return None
 
+    async def list_attached_stops(self, symbol: str) -> Optional[list]:
+        """Bu sembolün TÜM aktif ekli stopları (stoporder/open_orders). Okuma hatası → None
+        (çağıran 'bilinmiyor' saymalı; boş liste 'stop yok' demektir)."""
+        inner = self._exchange
+        mexc_sym = symbol.split(":")[0].replace("/", "_")
+        if not hasattr(inner, "contractPrivateGetStoporderOpenOrders"):
+            return None
+        try:
+            resp = await inner.contractPrivateGetStoporderOpenOrders({"symbol": mexc_sym})
+            if not (isinstance(resp, dict) and (resp.get("success") is True or resp.get("code") in (0, "0"))):
+                return None
+            data = resp.get("data") if isinstance(resp, dict) else resp
+            if isinstance(data, dict):
+                data = data.get("resultList") or data.get("list") or []
+            return [o for o in (data or []) if isinstance(o, dict)
+                    and o.get("symbol", mexc_sym) == mexc_sym
+                    and str(o.get("state", "1")) in ("1", "active", "")]
+        except Exception as e:
+            logger.debug("list_attached_stops %s: %s", symbol, e)
+            return None
+
+    async def cancel_attached_stop_for_order(self, symbol: str, order_id: str) -> Optional[bool]:
+        """Bir kolun KENDİ ekli stopunu (stoporder.orderId == giriş emri kimliği) kimliğiyle iptal eder.
+        Bacak açık kalırken kapanan kolun stopu borsada kalmasın diye (paylaşılan bacak).
+        True: iptal edildi / zaten yok · False: iptal başarısız · None: okunamadı."""
+        stops = await self.list_attached_stops(symbol)
+        if stops is None:
+            return None
+        hedef = [str(o.get("id")) for o in stops if str(o.get("orderId")) == str(order_id) and o.get("id")]
+        if not hedef:
+            return True
+        try:
+            resp = await self._exchange.contractPrivatePostStoporderCancel([{"stopPlanOrderId": i} for i in hedef])
+            return not (isinstance(resp, dict) and resp.get("success") is False)
+        except Exception as e:
+            logger.warning("cancel_attached_stop_for_order %s: %s", symbol, e)
+            return False
+
+    async def get_position_mode(self) -> Optional[int]:
+        """MEXC pozisyon modu: 1 = hedge, 2 = tek yönlü; okunamazsa None."""
+        try:
+            resp = await self._exchange.contractPrivateGetPositionPositionMode({})
+            return int(resp.get("data"))
+        except Exception as e:
+            logger.debug("get_position_mode: %s", e)
+            return None
+
+    async def get_leg(self, symbol: str, side: str = "long") -> Optional[dict]:
+        """Hedge modda bir bacağın ham MEXC kaydı (positionId, holdVol, liquidatePrice...). Yoksa None."""
+        inner = self._exchange
+        mexc_sym = symbol.split(":")[0].replace("/", "_")
+        want = 1 if side == "long" else 2
+        try:
+            resp = await inner.contractPrivateGetPositionOpenPositions({"symbol": mexc_sym})
+            for p in (resp.get("data") or []):
+                if p.get("symbol", mexc_sym) == mexc_sym and int(p.get("positionType") or 0) == want \
+                        and float(p.get("holdVol") or 0) > 0:
+                    return p
+        except Exception as e:
+            logger.debug("get_leg %s: %s", symbol, e)
+        return None
+
+    async def add_leg_margin(self, symbol: str, side: str, amount: float) -> bool:
+        """İzole bacağa ek teminat (position/change_margin ADD). VPS denemesi: tasfiye fiyatını uzaklaştırıyor."""
+        leg = await self.get_leg(symbol, side)
+        if not leg or amount <= 0:
+            return False
+        try:
+            resp = await self._exchange.contractPrivatePostPositionChangeMargin(
+                {"positionId": leg.get("positionId"), "amount": round(float(amount), 4), "type": "ADD"})
+            return not (isinstance(resp, dict) and resp.get("success") is False)
+        except Exception as e:
+            logger.warning("add_leg_margin %s: %s", symbol, e)
+            return False
+
     async def move_stop_loss(
-        self, symbol: str, position_side: str, new_sl: float, amount: float
+        self, symbol: str, position_side: str, new_sl: float, amount: float,
+        order_id: Optional[str] = None, tp_yedek: Optional[float] = None,
     ) -> bool:
         """Fail-safe mid-life SL move (BE/trailing).
 
@@ -1509,14 +1599,14 @@ class LiveExchange:
         Returns True only when the exchange CONFIRMED the new stop (caller may
         then update its internal sl_price)."""
         async with self._stop_order_lock:
-            attached = await self._get_attached_stop(symbol)
+            attached = await self._get_attached_stop(symbol, order_id)
             if attached is not None:
-                return await self._change_attached_sl(symbol, attached, new_sl)
+                return await self._change_attached_sl(symbol, attached, new_sl, tp_yedek)
             return await self._move_sl_via_plan_orders(
                 symbol, position_side, new_sl, amount)
 
     async def _change_attached_sl(
-        self, symbol: str, attached: dict, new_sl: float
+        self, symbol: str, attached: dict, new_sl: float, tp_yedek: Optional[float] = None
     ) -> bool:
         """Modify the position-attached stop's SL price in place, keeping the
         existing TP untouched (a 0 price means 'cancel that side', so the
@@ -1539,6 +1629,10 @@ class LiveExchange:
                            symbol, attached)
             return False
         cur_tp = float(attached.get("takeProfitPrice") or 0)
+        # TP'siz ekli stopta takeProfitPrice=0 ile değiştirme MEXC'te 5003 ile reddediliyor
+        # (VPS denemesi adım 4). Trend kolu uzak bir TP ile açılır; okunamazsa yedeği gönder.
+        if cur_tp <= 0 and tp_yedek:
+            cur_tp = float(tp_yedek)
         try:
             new_sl = float(inner.price_to_precision(symbol, new_sl))
         except Exception:
@@ -1577,7 +1671,7 @@ class LiveExchange:
             break
         if not ok:
             return False
-        check = await self._get_attached_stop(symbol)
+        check = await self._get_attached_stop(symbol, attached.get("orderId"))
         if check is not None:
             got = float(check.get("stopLossPrice") or 0)
             if got > 0 and abs(got - new_sl) / new_sl > 0.001:
