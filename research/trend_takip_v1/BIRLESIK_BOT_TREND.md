@@ -133,3 +133,22 @@ Trend kısmı bu coinlerde seçildiği için D3 rakamı iyimser.
 
 **Adım 2 (minik gerçek emirle borsa davranışı denemesi)** yazılmadı. Gerçek emir gönderen betik yazmak
 oturumun güvenlik denetimince engellendi; kullanıcının açık izni gerekiyor.
+
+## Adım 2 sonucu: minik gerçek emirle MEXC davranışı (2026-10-03, VPS, DOT, `trend_hazirlik/mexc_hedge_deneme.py`)
+
+- **A) Aynı coinde iki long giriş, her biri ekli stopla:** long bacağı 2 adım oldu. Ekli stoplar AYRI
+  kaldı: 1.0549 (1 adım) ve 1.0788 (1 adım), aynı positionId. **İkinci giriş birincinin stopunu EZMEDİ.**
+  Botun execution.py'deki ONE_PER_SYMBOL gerekçesinin (a) maddesi ("2. kolun girişi 1.'nin stopunu ezer")
+  bu hesapta geçerli değil. Her girişin kendi miktarlı ekli stopu var.
+- **B) Aynı coinde short:** long 2 ve short 1, ayrı bacaklar (farklı positionId), short'un kendi
+  stopu 1.3425. **Hedge modu çalışıyor.**
+- **C) Kısmi plan stop:** 1 adımlık, executeCycle=2 → borsada 168 (saat = 7 gün) olarak kabul edildi.
+  Kimlikle iptal başarılı.
+- **Temizlik:** TAMAM, coin boş.
+
+**Sonuç: D3 (tam çözüm) teknik olarak mümkün.** Kalan iş:
+- Kol bazında stop taşıma: botun `_get_attached_stop` fonksiyonu İLK stopu döndürüyor. Doğru stopu giriş
+  emrinin kimliğiyle (stoporder.orderId) seçmek gerekir.
+- Trend geniş stopunda izole 10x tasfiye mesafesi (~%9.5): bacak kaldıracı kollar arasında ortak.
+- Mutabakatın bacak bazında yapılması (HEDGE_AWARE_RECON).
+- Trend kolunun bot kapılarından (MAX_POSITIONS, aynı yön) muaf tutulması.
