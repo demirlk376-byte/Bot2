@@ -33,6 +33,7 @@ from strategies.signal_combiner import SignalCombiner, CombinedSignal
 from ntfy_notifier import NtfyNotifier
 from telegram_bot import TelegramNotifier
 from web_dashboard import WebDashboard
+import trend_canli   # TREND_MODE=kapali (varsayılan) iken hiçbir şey yapmaz
 
 logging.basicConfig(
     level=logging.INFO,
@@ -191,6 +192,17 @@ def make_on_candle_close(ctx: "SymbolContext"):
             df = await ctx.data_mgr.get_candles(config.strategy.primary_tf, 120)
             if len(df) < config.strategy.bb_period + 5:
                 return
+
+            # TREND KOLU — 1. aşama, yalnız sinyal modu (emir yok). TREND_MODE=kapali iken
+            # bu blok hiçbir şey yapmaz; açıkken 4h kapanışında arka planda bir kez çalışır.
+            if trend_canli.AKTIF:
+                async def _trend_gonder(metin: str) -> None:
+                    if telegram:
+                        await telegram.send_alert(metin, "INFO")
+                    else:
+                        logger.info(metin)
+                trend_canli.tetikle(df.index[-1], exchange, config.exchange.symbols,
+                                    _trend_gonder, executor.current_equity)
 
             current_price = await ctx.data_mgr.get_current_price()
             # Per-coin price: a shared single price would be wrong across coins.

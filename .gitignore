@@ -38,3 +38,5 @@ KARAR.txt
 # tarama kilidi (ayni anda tek tarama)
 .ikiz_kilit
 trend_hazirlik/*_cikti.json
+trend_durum.json
+trend_durum.json.tmp
