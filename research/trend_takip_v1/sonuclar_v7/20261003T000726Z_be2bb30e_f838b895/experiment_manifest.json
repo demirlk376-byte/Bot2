@@ -1,0 +1,91 @@
+{
+ "spec": "REJIM_V7 (MANIFEST_V7.md)",
+ "commit": "be2bb30edde53e93f510d438fa3c06cda5e02f80",
+ "dirty": false,
+ "code_hashes": {
+  "H4_KIRILIM_V6_SONUC.md": "3935099d396d0cd2aabd3b09a2f596153f493e65d53f725200f84d9357e8c469",
+  "MANIFEST.md": "508f93c0bb92e401b425571d19e097d9a01b605cbd8685f990d4f8a32d90043f",
+  "MANIFEST_V2.md": "51e546abc695b2802effe26ede5cd9a6334f3cfb9e5077cac761ce04d34255ea",
+  "MANIFEST_V3.md": "5eb6ccea6f98b1dad8fd885ed5aeecd0f6bb1d95cf70f961c0f62323b10d7029",
+  "MANIFEST_V4.md": "9fc9aa174a41d395c7a7c088aba7866da99de0d1def0741abbf7d008876cc7d3",
+  "MANIFEST_V5.md": "f847f89cb6cdd922f066bca8d22b01048c6f30ae732a38eeab46af755dcd8085",
+  "MANIFEST_V6.md": "c4e58de93f20fc72ac11a7c1406e167957842d32b7a0c351cae45f8bcd19b709",
+  "MANIFEST_V7.md": "f0f4fc2f37ad7bf9efbee175402685570959e0271c185fe6dff6e4022de08811",
+  "NWK_FILTRE_V3_SONUC.md": "4afe2432a13a4f1038bc6d1c732340d3220a42ca20569a4cdb3f6526a7ccf741",
+  "NWK_FILTRE_V4_SONUC.md": "f5f5cdf1f6970db47a5dda094ad1f4e34cc082449da44beebaec0660818d05ee",
+  "TREND_TAKIP_V1_SONUC.md": "6cd96cd2cdba8810ac72db49e5966bbf7b342d731ec1c6b67a0b634175513538",
+  "TREND_TAKIP_V2_SONUC.md": "4e4ae75bc8c2ab8de2bb8d40a92443ea52b2863208370606cda720ab0272e9c0",
+  "YENI_COIN_V5_SONUC.md": "e7b2f9ba4c202e1b9c35e099468c6d51ff4bb7c154a59602ec0c153720bc302d",
+  "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "engine.py": "dc29ab2200413af5899ec0ebf60f7c9752c13cc2583b461e20376e54c13595aa",
+  "run.py": "f8fce9629eff0fc01994f4d0a888720dd2537dcf7796faefe66d023aa0f398e8",
+  "run_v2.py": "2e71ec4688ee76b50623165914bd09de6b134eb7b8f89415996c9d06c6cedf7b",
+  "run_v3.py": "9a1f09e82e3126777cf57c9ffb65b04d350a92dfc3e9f137af6003d0bdb2d305",
+  "run_v4.py": "369e2dab2d253c7b7b043af5f39ea63659749b55d62c437f44261fb47dcd7b3c",
+  "run_v5.py": "bdc6e66a7f2ce26417900438ff39c673f4ae0506c1b0d198bff2083d554b3099",
+  "run_v6.py": "c2b3425d1318fd6a3bdfc45f669d76c0f4ddbba6794e297550cd9503b291c864",
+  "run_v7.py": "e252b864bf5820cc20e52b412fadd8b4fb3bc67bb7932facfbd41a12094ae942"
+ },
+ "window": [
+  "2021-01-01 00:00:00+00:00",
+  "2025-08-08 00:00:00+00:00"
+ ],
+ "sets": {
+  "ESKI12": [
+   "ADA",
+   "BCH",
+   "BNB",
+   "DOGE",
+   "ETH",
+   "ICP",
+   "LTC",
+   "NEAR",
+   "SOL",
+   "TRX",
+   "XLM",
+   "XRP"
+  ],
+  "YENI24": [
+   "AAVE",
+   "ALGO",
+   "APT",
+   "ARB",
+   "ATOM",
+   "AVAX",
+   "AXS",
+   "CRV",
+   "DOT",
+   "EGLD",
+   "ETC",
+   "GRT",
+   "HBAR",
+   "INJ",
+   "LINK",
+   "MANA",
+   "OP",
+   "RUNE",
+   "SAND",
+   "SUI",
+   "THETA",
+   "UNI",
+   "VET",
+   "XTZ"
+  ]
+ },
+ "regime_days_off": {
+  "R0": {
+   "ESKI12": 0,
+   "YENI24": 0
+  },
+  "R1": {
+   "ESKI12": 992,
+   "YENI24": 992
+  },
+  "R2": {
+   "ESKI12": 1121,
+   "YENI24": 1440
+  }
+ },
+ "run_id": "20261003T000726Z_be2bb30e_f838b895",
+ "manifest_hash": "f838b895f899c20d06820ab666ab42e6ef3b1722a6eee1d14341d25528ea26c1"
+}
