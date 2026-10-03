@@ -180,3 +180,19 @@ TP her zaman var, bu yüzden sorun görülmemişti.
 - ek teminatla tasfiye stopun çok altına iniyor,
 - geniş stop (girişte ya da TP'li taşımayla) kabul ediliyor,
 - kısmi, 7 günlük plan stop kabul ediliyor.
+
+## 2. aşama uçtan uca DOT denemesi (2026-10-04, VPS, `trend_hazirlik/mexc_trend_uctan_uca.py`)
+Yeni canlı kod yolları (LiveExchange yöntemleri + trend_canli._teminat_ayarla) gerçek borsada:
+1. Trend girişi kendi ekli stopuyla, kimlikle bulundu ✅
+2. Ek teminat: tasfiye 0.5914'e indi ✅
+3. Aynı bacağa bot girişi, iki ayrı stop ✅
+4. Trend stopu kimlikle (TP yedekli) taşındı, bot stopu yerinde ✅
+5. Bot stopu kimlikle taşındı, trend stopu yerinde ✅
+6. Bot kolu kapatıldı:
+   - **MEXC kapanan kolun stopunu KENDİSİ SİLMEDİ** ❗ (inceleme bulgusu #2 doğrulandı; düzeltme şart);
+   - kimlikle iptal başarılı;
+   - trend stopu ve miktarı kaldı ✅
+7. Bot kolu kapandıktan sonra tasfiye fiyatı 0.5914'ten 0.8304'e YÜKSELDİ (izole teminat oransal serbest
+   kaldı). Hâlâ trend stopunun (0.9487) altında ✅. Her 4 saatlik senkron teminat kontrolü bu yüzden gerekli.
+
+Temizlik: TAMAM.
