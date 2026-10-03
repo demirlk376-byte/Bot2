@@ -152,3 +152,31 @@ oturumun güvenlik denetimince engellendi; kullanıcının açık izni gerekiyor
 - Trend geniş stopunda izole 10x tasfiye mesafesi (~%9.5): bacak kaldıracı kollar arasında ortak.
 - Mutabakatın bacak bazında yapılması (HEDGE_AWARE_RECON).
 - Trend kolunun bot kapılarından (MAX_POSITIONS, aynı yön) muaf tutulması.
+
+## Adım 3–4 sonuçları: teminat ve geniş stop (2026-10-03, VPS, DOT)
+
+**Adım 3** (`mexc_teminat_deneme.py`):
+- İzole 10x tasfiye fiyatı, fiyatın ~%90'ı.
+- 0.10 USDT ek teminat (position/change_margin ADD) sonrası tasfiye fiyatın ~%7'sine indi.
+- Açık pozisyonda kaldıracı 10x'ten 3x'e düşürmek (positionId ile) kabul edildi.
+- Ekli stopu %25 aşağıya taşıma (change_plan_price, takeProfitPrice=0) reddedildi: 5003.
+
+**Adım 4** (`mexc_stop_mesafe_deneme.py`):
+- **takeProfitPrice=0 ile taşıma:** %15/%20/%25 reddedildi; stop yerinde kaldı.
+- **Aynı taşıma, takeProfitPrice = fiyat×3 ile:** %25 KABUL. Stop 0.8985, TP 3.594.
+- **change_price (giriş emri kimliğiyle) %25:** KABUL.
+- **Girişte doğrudan %25 aşağıda ekli stop:** KABUL. İki giriş, iki ayrı stop.
+- **Ayrı plan stop %25 aşağıda, 1 adım, 7 gün (168 saat):** KABUL.
+
+**Sonuç:** Kısıt mesafe değil. Kâr al (TP) olmayan bir ekli stopu değiştirirken takeProfitPrice=0 göndermek
+reddediliyor. Trend kolu için ekli stopa çok uzak bir TP konmalı (örn. fiyat×10) ve her stop taşımada aynı
+TP geri gönderilmeli. Botun `_change_attached_sl` fonksiyonu mevcut TP'yi geri gönderiyor; bot kollarında
+TP her zaman var, bu yüzden sorun görülmemişti.
+
+**Tüm ön koşullar doğrulandı:**
+- hesap hedge modunda,
+- giriş başına ayrı ekli stop,
+- long ve short bacakları ayrı,
+- ek teminatla tasfiye stopun çok altına iniyor,
+- geniş stop (girişte ya da TP'li taşımayla) kabul ediliyor,
+- kısmi, 7 günlük plan stop kabul ediliyor.
