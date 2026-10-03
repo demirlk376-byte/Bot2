@@ -154,13 +154,16 @@ def nwk_signals_c(c):
 
 
 def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, entry="DONCHIAN", entry_sigs=None,
-             bar_ms=DAY, regime=None):
+             bar_ms=DAY, regime=None, short_in_bear=False, pyr_adds=0, pyr_step_R=2.0):
     """early_days: girişten bu kadar gün sonra en iyi kapanış +1R'ye ulaşmamışsa ertesi açılışta çık.
     entry="NWK": giriş sinyali NW+KAMA 1D event_A (yön her iki taraf), çıkış X kuralıyla.
     bar_ms: mum uzunluğu (varsayılan 1 gün; 4h için 4 saat). N ve ATR mum sayısıdır; ısınma ve erken
     çıkış süresi GÜN cinsinden kalır.
     regime: {gün_başı_ms: bool}; mum kapanışında SON TAMAMLANMIŞ günün değeri False ise yeni LONG açılmaz
-    (açık pozisyonlar etkilenmez). Sözlükte olmayan gün: serbest."""
+    (açık pozisyonlar etkilenmez). Sözlükte olmayan gün: serbest.
+    short_in_bear: (LS varyantta) short girişi yalnız rejim değeri açıkça False iken.
+    pyr_adds/pyr_step_R: kapanış ilk girişten k×pyr_step_R×R0 lehe gidince (k=1..pyr_adds) sonraki açılışta,
+    GÜNCEL stopa göre yine %0.25 riskle ek lot; ortak stop, ağırlıklı ortalama giriş, tek işlem kaydı."""
     N, X, side = variant_parts(vid)
     nwk = entry_sigs if entry_sigs is not None else (
         {n: nwk_signals(s) for n, s in syms.items()} if entry == "NWK" else None)
@@ -174,7 +177,7 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, e
     idx = {n: {int(t): i for i, t in enumerate(s.t)} for n, s in syms.items()}
     warm = {n: int(np.searchsorted(s.t, s.t[0] + WARMUP_DAYS * DAY)) if len(s.t) else 0 for n, s in syms.items()}
     led = Ledger(C0)
-    pos, pend_entry, pend_exit = {}, {}, {}
+    pos, pend_entry, pend_exit, pend_add = {}, {}, {}, {}
     trades, blocked, equity = [], [], []
     tid = 0
     missing_fund = [0]
@@ -209,6 +212,38 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, e
             elif t == last_day:
                 close(n, O, "PARTITION_END", t, "OPEN")
         pend_exit.clear()
+        # 2b) piramit ekleri (açık pozisyona, güncel stopa göre risk)
+        for n in sorted(pend_add):
+            p = pos.get(n)
+            i = idx[n].get(t)
+            if p is None or i is None or t == last_day or p["stop"] is None:
+                continue
+            s, d = syms[n], p["d"]
+            Ea = entry_fill(s.o[i], d, cost.entry_slip_bp, s.tick)
+            dist = d * (Ea - p["stop"])
+            if dist <= 0:
+                continue
+            eq_now = led.wallet + sum(pp["d"] * (syms[m].o[idx[m][t]] - pp["E"]) * pp["q"]
+                                      for m, pp in pos.items() if t in idx[m])
+            n_risk = floor_step(risk_per / dist / s.cs, s.vu)
+            n_not = floor_step(max(0.0, C.LIVE_GATES["POSITION_CAP_FRACTION"] * eq_now / (Ea * s.cs) - p["q"] / s.cs), s.vu)
+            need = Ea * s.cs / lev + Ea * s.cs * (cost.entry_fee_rate + cost.exit_fee_rate)
+            n_mar = floor_step(max(0.0, C.LIVE_GATES["MARGIN_PREFLIGHT_FRAC"] * led.free_collateral) / need, s.vu)
+            nq = min(n_risk, n_not, n_mar)
+            if nq < s.mv - 1e-12 or sum(pp["R0"] for pp in pos.values()) + nq * s.cs * dist > risk_cap + 1e-6:
+                blocked.append(dict(symbol=n, signal_time=int(t), reason="PYR_BLOCKED"))
+                continue
+            qa = nq * s.cs
+            fee = abs(Ea * qa) * cost.entry_fee_rate
+            margin = Ea * qa / lev
+            led.open(margin, fee)
+            p["E"] = (p["E"] * p["q"] + Ea * qa) / (p["q"] + qa)
+            p["q"] += qa
+            p["fee_in"] += fee
+            p["margin"] += margin
+            p["R0"] += dist * qa
+            p["adds"] += 1
+        pend_add.clear()
         # 3) girişler
         for n in sorted(pend_entry):
             sig = pend_entry[n]
@@ -245,7 +280,7 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, e
             tid += 1
             pos[n] = dict(id=f"{vid}|{cost.name}|{tid}", d=d, E=E, q=q, S0=S0, stop=S0 if X != "XH" else None,
                           xh_stop=S0 if X == "XH" else None, best=sig["c"], fee_in=fee, margin=margin,
-                          R0=dist * q, fund=0.0, t=t, sig=sig["sig"])
+                          R0=dist * q, fund=0.0, t=t, sig=sig["sig"], E0=E, D0=dist, adds=0)
         pend_entry.clear()
         # 4) gün içi stop (X3/X5)
         for n in sorted(list(pos)):
@@ -285,9 +320,12 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, e
                 elif X == "XH":
                     if (p["d"] > 0 and c < ll_prev_half(s, i, N)) or (p["d"] < 0 and c > hh_prev_half(s, i, N)):
                         pend_exit[n] = True
-                p["mfe_c"] = max(p.get("mfe_c", 0.0), p["d"] * (c - p["E"]))
-                if early_days and (t + bar_ms - p["t"]) >= early_days * DAY and p["mfe_c"] < abs(p["E"] - p["S0"]):
+                p["mfe_c"] = max(p.get("mfe_c", 0.0), p["d"] * (c - p["E0"]))
+                if early_days and (t + bar_ms - p["t"]) >= early_days * DAY and p["mfe_c"] < p["D0"]:
                     pend_exit[n] = True                     # kırılım tutmadı: +1R'ye ulaşmadı
+                if (pyr_adds and p["adds"] < pyr_adds and not pend_exit.get(n)
+                        and p["d"] * (c - p["E0"]) >= (p["adds"] + 1) * pyr_step_R * p["D0"]):
+                    pend_add[n] = True
                 continue
             if not (np.isfinite(hh[i]) and np.isfinite(atr[i]) and atr[i] > 0):
                 continue
@@ -297,8 +335,13 @@ def simulate(vid, window, syms: dict, cost, C0=C.C0_FALLBACK, early_days=None, e
                     d = 0
             else:
                 d = 1 if c > hh[i] else (-1 if (side == "LS" and c < ll[i]) else 0)
-            if d > 0 and regime is not None and not regime.get(((t + bar_ms) // DAY) * DAY - DAY, True):
-                d = 0
+            if regime is not None:
+                rv = regime.get(((t + bar_ms) // DAY) * DAY - DAY)
+                off = rv is not None and not bool(rv)
+                if d > 0 and off:
+                    d = 0
+                elif d < 0 and short_in_bear and not off:
+                    d = 0
             if not d:
                 continue
             if X == "XH":

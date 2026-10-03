@@ -173,3 +173,25 @@ def test_rejim_son_tamamlanan_gunu_kullanir_4h():
     assert ((t_bar + H4) // DAY) * DAY - DAY == T0 + 10 * DAY
     t_bar = T0 + 10 * DAY                       # günün ilk mumu; kapanışta tamamlanan gün bir önceki
     assert ((t_bar + H4) // DAY) * DAY - DAY == T0 + 9 * DAY
+
+
+def test_piramit_ekler_ve_muhasebe_tutar():
+    s = sym(flat_then_trend(up=80))
+    a = E.simulate("N50_X5_L", (T0, T0 + 380 * DAY), {"AAA": s}, ZERO)
+    b = E.simulate("N50_X5_L", (T0, T0 + 380 * DAY), {"AAA": s}, ZERO, pyr_adds=2)
+    ta, tb = a[0][0], b[0][0]
+    assert tb["quantity_base"] > ta["quantity_base"] and tb["E_fill"] > ta["E_fill"]
+    assert tb["R0_USDT"] > ta["R0_USDT"] and tb["net_PnL"] > ta["net_PnL"]
+    assert abs((b[3].wallet - 10_000) - sum(x["net_PnL"] for x in b[0])) < 1e-6
+    assert b[3].margin_used == pytest.approx(0) if hasattr(b[3], "margin_used") else True
+
+
+def test_ayida_short_yalniz_rejim_kapaliyken():
+    c = [100.0] * 260 + [100 - 1.5 * i for i in range(1, 50)] + [26.5] * 20
+    s = sym(c)
+    acik = {int(t): True for t in s.t}
+    kapali = {int(t): False for t in s.t}
+    tr_on = E.simulate("N50_X5_LS", (T0, T0 + 330 * DAY), {"AAA": s}, ZERO, regime=acik, short_in_bear=True)[0]
+    tr_off = E.simulate("N50_X5_LS", (T0, T0 + 330 * DAY), {"AAA": s}, ZERO, regime=kapali, short_in_bear=True)[0]
+    assert not [t for t in tr_on if t["side"] == "SHORT"]
+    assert tr_off and tr_off[0]["side"] == "SHORT" and tr_off[0]["net_R"] > 0
