@@ -26,7 +26,17 @@
     },
     "BNB": {
       "balance": 10258.39283159346,
-      "position": null,
+      "position": {
+        "direction": -1,
+        "entry": 780.6,
+        "sl": 790.351259330799,
+        "tp": 764.3479011153349,
+        "qty": 6.570838349726787,
+        "atr": 3.2504197769330148,
+        "entry_ts": "2026-10-03T16:00:00+00:00",
+        "fng_at_entry": 67,
+        "funding_at_entry": 9e-05
+      },
       "n_trades": 40,
       "n_wins": 21,
       "total_pnl": 258.3928315934638,
