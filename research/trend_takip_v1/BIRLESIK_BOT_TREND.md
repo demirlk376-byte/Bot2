@@ -18,3 +18,21 @@
 
 Trend tek başına bu 29 ayda zayıf bir dönem geçirdi (2021 boğası pencerede yok): diğer 24 coinde
 %0.25 riskle aylık %0.5.
+
+## Düzeltme: giriş anı bakiyesiyle bileşik (`birlesik_aylik_giris_bazli.py`)
+
+Yukarıdaki "kapanış sırasıyla bileşik" yöntemi, aynı anda açık işlemler birlikte kapandığında kârı
+şişiriyordu: bir işlemin kârı, kendisinden sonra açılmamış ama ondan önce kapanmış işlemlerin
+kârıyla büyümüş bakiyeye uygulanıyordu. Doğru yöntem: risk tutarı işlemin AÇILDIĞI andaki
+gerçekleşmiş bakiyeden hesaplanır.
+
+**Kalibrasyon:** bot tek başına bu yöntemle aylık %12.5, maxDD %45.1. Resmi ikiz ölçümü aylık
+%10–13, DD %37–46. Yöntem resmi ölçümle uyumlu.
+
+| | aylık geo | maxDD | 2023 (Nis–Ara) | 2024 | 2025 | 2026 (Oca–18 Tem) |
+|---|---|---|---|---|---|---|
+| bot %3.5 | %12.5 | %45.1 | +604% | +163% | +354% | +33% |
+| bot %3.5 + trend %1 (botun 12 coini) | %16.0 | %45.1 | +674% | +641% | +404% | +33% |
+
+Trend kısmı seçim kümesinde (iyimser). 2026'daki trend ayları eski 12 coinin FİNAL dönemine düşüyor
+(bkz. FINAL_IHLAL_NOTU.md). İkiz verisi 2026-07-18'de bitiyor.
