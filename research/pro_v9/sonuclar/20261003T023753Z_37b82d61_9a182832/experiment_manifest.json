@@ -1,0 +1,32 @@
+{
+ "spec": "PRO_V9 (MANIFEST.md)",
+ "commit": "37b82d6106e1560fb19d8e34110fd7a22a5f3e65",
+ "dirty": false,
+ "code_hashes": {
+  "MANIFEST.md": "0913abc931c4af223d3e12bd10dc0336f14dfa5b34981954b4c447cba7757ac5",
+  "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "run.py": "b5e467c216e8b4391da7d96a46e2989dfd12d06a412e016f5ae87a406218febe",
+  "strat.py": "115115c545c9aa5a3638201cce6422bbcf64e8295271a7f9e9993b3c94e98d90"
+ },
+ "window": [
+  "2021-01-01 00:00:00+00:00",
+  "2025-08-08 00:00:00+00:00"
+ ],
+ "XS": [
+  "XS_L28_LS",
+  "XS_L28_L",
+  "XS_L56_LS",
+  "XS_L56_L"
+ ],
+ "FC": {
+  "FC_T1": 0.0001,
+  "FC_T2": 0.0002,
+  "FC_T3": 0.0003
+ },
+ "excluded_new": {
+  "FIL": "MEXC_METADATA_YOK",
+  "EOS": "MEXC_METADATA_YOK"
+ },
+ "run_id": "20261003T023753Z_37b82d61_9a182832",
+ "manifest_hash": "9a18283224630d8dca49e974e7672604a87ac1f0f2b90dd7ccf217a42d190e5a"
+}
