@@ -38,6 +38,8 @@ class OrderResult:
     # place_limit_order falls back to a market (taker) fill on rejection or
     # timeout, and booking those at 0% overstated PnL (audit finding).
     was_maker: bool = False
+    # True when filled_price is NOT a real fill (e.g. mark-price fallback on close).
+    fill_estimated: bool = False
 
 
 @dataclass
@@ -547,12 +549,27 @@ def _mexc_yon(f: dict) -> Optional[str]:
     Eski süzgeç yalnız 'buy'/'sell' arıyordu, yani KAPANIŞ dolumlarının çoğunu
     (kod 4 = 'long kapat') eliyordu — tam da aradığımız dolumları.
     """
+    ham = _mexc_ham_kod(f)
+    if ham is not None:
+        return _MEXC_YON[ham]
     v = str(f.get("side") or "").strip().lower()
     if v in ("buy", "sell"):
         return v
-    if v in _MEXC_YON:
-        return _MEXC_YON[v]
-    return _MEXC_YON.get(str((f.get("info") or {}).get("side") or "").strip())
+    return None
+
+
+def _mexc_ham_kod(f: dict) -> Optional[str]:
+    """MEXC vadeli HAM yön kodu ('1' long aç, '2' short kapat, '3' short aç, '4' long kapat).
+
+    ⚠ ccxt (4.5.x) swap dolumlarında `side`'ı parse_order_side ile çeviriyor:
+    '1'→'buy', '2'→'sell' (!), '3'/'4' aynen. Yani normalize 'sell' aslında
+    'short KAPAT' (bir ALIŞ) olabilir. Kesin bilgi `info.side`'daki ham koddadır;
+    o yoksa yalnız `side` ham kod ise kullanılır. Belirlenemezse None."""
+    for v in ((f.get("info") or {}).get("side"), f.get("side")):
+        k = str(v if v is not None else "").strip()
+        if k in _MEXC_YON:
+            return k
+    return None
 
 
 def _mexc_miktar(f: dict, px: float) -> Optional[float]:
@@ -905,7 +922,8 @@ class LiveExchange:
         gerçek ~2.5bp (DURUM 2d). İki hata da defteri borsadan uzaklaştırıyor
         ve günlük zarar freni bu defteri okuyor.
 
-        Döner: (vwap_fiyat, toplam_ucret_usdt, dolum_sayisi) ya da None.
+        Döner: (vwap_fiyat, toplam_ucret_usdt | None, dolum_sayisi) ya da None.
+        toplam_ucret_usdt None = dolum var ama ücret doğrulanamadı (0 DEĞİL).
         None = okunamadı; çağıran ESKİ davranışa düşmeli ve kaydı 'tahmin'
         diye işaretlemeli. Sessizce 0 saymak YASAK (defter_gercek.py dersi).
         """
@@ -924,10 +942,15 @@ class LiveExchange:
         tutar = 0.0
         adet = 0.0
         ucret = 0.0
+        ucret_bilinmiyor = False
         n = 0
         birimsiz = 0
+        # Yalnız HAM KAPANIŞ kodu kabul edilir: long kapanışı '4' (sell), short
+        # kapanışı '2' (buy). Normalize 'buy'/'sell' açılış mı kapanış mı belli
+        # etmez (bkz. _mexc_ham_kod) → ham kodu olmayan dolum doğrulanamaz, atlanır.
+        kapanis_kodu = "4" if kapanis_side.lower() == "sell" else "2"
         for f in sorted(fills, key=lambda x: x.get("timestamp") or 0, reverse=True):
-            if _mexc_yon(f) != kapanis_side.lower():
+            if _mexc_ham_kod(f) != kapanis_kodu:
                 continue
             try:
                 px = float(f.get("price") or 0.0)
@@ -943,12 +966,22 @@ class LiveExchange:
             tutar += px * al
             adet += al
             n += 1
-            try:
-                fee = f.get("fee") or {}
-                c = float(fee.get("cost") or 0.0)
+            # Ücret: alan YOKSA / sayı değilse / USDT dışı bir para birimindeyse
+            # BİLİNMİYOR sayılır (eskiden sessizce 0 yazılıyordu). Gerçek 0.0
+            # geçerli bir değerdir ve korunur.
+            c = None
+            fee = f.get("fee")
+            if isinstance(fee, dict) and fee.get("cost") is not None:
+                cur = fee.get("currency")
+                if cur is None or str(cur).upper() == "USDT":
+                    try:
+                        c = float(fee["cost"])
+                    except (TypeError, ValueError):
+                        c = None
+            if c is None or c != c or c in (float("inf"), float("-inf")):
+                ucret_bilinmiyor = True
+            else:
                 ucret += c * (al / am)          # kısmi kullanıldıysa ücreti de oranla
-            except (TypeError, ValueError):
-                pass
             kalan -= al
             if kalan <= 1e-12:
                 break
@@ -964,7 +997,14 @@ class LiveExchange:
                 "yoktu) — GERÇEK DOLUM OKUNAMADI, seviyeye düşülüyor",
                 symbol, adet, abs(quantity), birimsiz)
             return None
-        return (tutar / adet, ucret, n)
+        # %90-100 eşleşmede fiyat (VWAP) kullanılabilir ama ücret yalnız eşleşen kısmın
+        # ücretidir → tamamı için DOĞRULANMIŞ değil.
+        if adet < abs(quantity) * (1 - 1e-9):
+            ucret_bilinmiyor = True
+        if ucret_bilinmiyor:
+            logger.warning("fetch_close_fill(%s): dolum bulundu ama çıkış ücreti okunamadı "
+                           "(alan yok / USDT değil) — ücret BİLİNMİYOR, tahmine düşülecek", symbol)
+        return (tutar / adet, None if ucret_bilinmiyor else ucret, n)
 
     async def get_positions_by_side(self, symbol: str) -> dict:
         """{"long": Position|None, "short": Position|None} — TEK fetch ile.
@@ -1311,6 +1351,7 @@ class LiveExchange:
                 order.get("info", {}).get("dealAvgPrice") or
                 order.get("info", {}).get("avgPrice") or 0
             )
+        fiyat_tahmini = filled_price == 0
         if filled_price == 0:
             try:
                 filled_price = await self.get_current_price(symbol)
@@ -1333,6 +1374,7 @@ class LiveExchange:
             quantity=self._to_base(symbol, contracts),
             timestamp=int(time.time() * 1000),
             is_paper=False,
+            fill_estimated=fiyat_tahmini,
         )
 
     async def _place_trigger_order(
