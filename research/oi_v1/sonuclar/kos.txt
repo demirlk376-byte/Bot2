@@ -1,0 +1,44 @@
+ETH: OI eşleşme (kapanış) 84.6%  (açılış) 84.6%
+LINK: OI eşleşme (kapanış) 84.6%  (açılış) 84.6%
+
+===== AİLE TC — SEÇİM (eski 12)
+  TC_k2_t3_H3_L          n   226  NORMAL +0.044R  STRESS +0.009R
+  TC_k2_t3_H3_LS         n   282  NORMAL -0.007R  STRESS -0.042R
+  TC_k2_t3_H6_L          n   221  NORMAL +0.018R  STRESS -0.017R
+  TC_k2_t3_H6_LS         n   277  NORMAL +0.002R  STRESS -0.034R
+  TC_k2_t6_H3_L          n   135  NORMAL +0.143R  STRESS +0.111R
+  TC_k2_t6_H3_LS         n   163  NORMAL +0.087R  STRESS +0.055R
+  TC_k2_t6_H6_L          n   132  NORMAL +0.059R  STRESS +0.027R
+  TC_k2_t6_H6_LS         n   160  NORMAL +0.033R  STRESS +0.001R
+  TC_k3_t3_H3_L          n    52  NORMAL +0.224R  STRESS +0.188R
+  TC_k3_t3_H3_LS         n    68  NORMAL +0.132R  STRESS +0.095R
+  TC_k3_t3_H6_L          n    52  NORMAL +0.149R  STRESS +0.112R
+  TC_k3_t3_H6_LS         n    68  NORMAL +0.130R  STRESS +0.092R
+  TC_k3_t6_H3_L          n    33  NORMAL +0.180R  STRESS +0.147R
+  TC_k3_t6_H3_LS         n    45  NORMAL +0.113R  STRESS +0.077R
+  TC_k3_t6_H6_L          n    33  NORMAL -0.031R  STRESS -0.065R
+  TC_k3_t6_H6_LS         n    45  NORMAL +0.020R  STRESS -0.016R
+  → seçilen: TC_k2_t6_H3_L
+===== AİLE TC — SINAV (yeni 26) TC_k2_t6_H3_L
+  n 271  NORMAL +0.160R  STRESS +0.135R  LCB(%1.25) +0.002R  → TUTTU
+  yıl: 2022 -0.035(55) · 2023 +0.202(132) · 2024 +0.115(75) · 2025 +1.093(9)
+  long +0.160(271) · short +nan(0)
+
+===== AİLE OD — SEÇİM (eski 12)
+  OD_N20_p0_H6_S         n  1648  NORMAL -0.124R  STRESS -0.168R
+  OD_N20_p0_H6_LS        n  3914  NORMAL -0.088R  STRESS -0.128R
+  OD_N20_p0_H12_S        n  1473  NORMAL -0.123R  STRESS -0.167R
+  OD_N20_p0_H12_LS       n  3260  NORMAL -0.118R  STRESS -0.159R
+  OD_N20_p5_H6_S         n   690  NORMAL -0.111R  STRESS -0.152R
+  OD_N20_p5_H6_LS        n  1919  NORMAL -0.058R  STRESS -0.094R
+  OD_N20_p5_H12_S        n   632  NORMAL -0.143R  STRESS -0.184R
+  OD_N20_p5_H12_LS       n  1666  NORMAL -0.093R  STRESS -0.129R
+  OD_N40_p0_H6_S         n   896  NORMAL -0.105R  STRESS -0.151R
+  OD_N40_p0_H6_LS        n  2386  NORMAL -0.075R  STRESS -0.115R
+  OD_N40_p0_H12_S        n   803  NORMAL -0.151R  STRESS -0.197R
+  OD_N40_p0_H12_LS       n  2057  NORMAL -0.118R  STRESS -0.159R
+  OD_N40_p5_H6_S         n   472  NORMAL -0.090R  STRESS -0.134R
+  OD_N40_p5_H6_LS        n  1393  NORMAL -0.057R  STRESS -0.096R
+  OD_N40_p5_H12_S        n   432  NORMAL -0.139R  STRESS -0.183R
+  OD_N40_p5_H12_LS       n  1215  NORMAL -0.101R  STRESS -0.140R
+  → OD ELENDİ (seçimde uygun varyant yok)
