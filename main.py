@@ -2086,7 +2086,6 @@ async def position_reconciliation_loop() -> None:
                                 exit_price, reason = current_price, "external_close"
 
                             direction = pos.direction
-                            entry_fee = pos.strategy_scores.get("entry_fee_rate", 0.0001)
 
                             # ⚠ ESKİ HATA: çıkış SEVİYE fiyatından (sl_price/tp_price)
                             # defterlere yazılıyordu — GERÇEK dolumdan değil. Stop-market
@@ -2107,33 +2106,36 @@ async def position_reconciliation_loop() -> None:
                                 except Exception as _fe:
                                     logger.debug("fetch_close_fill hatası: %s", _fe)
                                     gercek = None
+                            # Gerçek çıkış ücreti ücret hesabını yapan tek yere
+                            # (_close_position_internal) AÇIKÇA aktarılır. None =
+                            # bilinmiyor (1bp tahmin + kalıcı işaret); 0.0 = gerçek sıfır.
+                            gercek_ucret = None
+                            fiyat_tahmini = gercek is None
                             if gercek is not None:
                                 gercek_px, gercek_ucret, _nf = gercek
                                 logger.info(
                                     "Reconciliation: %s GERÇEK dolum $%.6f (seviye "
-                                    "$%.6f, fark %+.1fbp) · gerçek ücret $%.4f",
+                                    "$%.6f, fark %+.1fbp) · gerçek ücret %s",
                                     symbol, gercek_px, exit_price,
                                     (gercek_px - exit_price) / exit_price * 1e4
-                                    if exit_price > 0 else 0.0, gercek_ucret)
+                                    if exit_price > 0 else 0.0,
+                                    f"${gercek_ucret:.4f}" if gercek_ucret is not None
+                                    else "BİLİNMİYOR (tahmin)")
                                 exit_price = gercek_px
-                                fees = pos.entry_price * pos.quantity * entry_fee + gercek_ucret
-                            else:
-                                pos.strategy_scores["exit_price_estimated"] = True
-                                fees = (pos.entry_price * pos.quantity * entry_fee
-                                        + exit_price * pos.quantity * 0.0001)
-                            raw_pnl = direction * (exit_price - pos.entry_price) * pos.quantity
-                            net_pnl = raw_pnl - fees
-
-                            logger.warning(
-                                "Reconciliation: %s %s externally closed on MEXC "
-                                "(reason=%s exit=%.6f pnl=%.2f) — syncing state",
-                                pos.side.upper(), symbol, reason, exit_price, net_pnl,
-                            )
                             # _close_position_internal records the close, computes the
                             # authoritative net_pnl AND fires the notify callbacks, so
                             # we must NOT call on_position_closed again here (would
                             # double-notify and double-count the loss streak).
-                            await executor._close_position_internal(pos, exit_price, reason)
+                            net_pnl = await executor._close_position_internal(
+                                pos, exit_price, reason,
+                                exit_fee_usdt=gercek_ucret,
+                                exit_price_estimated=fiyat_tahmini)
+                            logger.warning(
+                                "Reconciliation: %s %s externally closed on MEXC "
+                                "(reason=%s exit=%.6f pnl=%s) — syncing state",
+                                pos.side.upper(), symbol, reason, exit_price,
+                                f"{net_pnl:.2f}" if net_pnl is not None else "zaten kapalı",
+                            )
                             to_close -= pos.quantity
 
                         # Clear the closed sleeve's leftover plan orders and re-assert

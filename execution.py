@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Callable, Awaitable
@@ -827,7 +828,8 @@ class ExecutionEngine:
                             sl_price=setup.sl_price, tp_price=setup.tp_price,
                             entry_time=now_iso, is_paper=order.is_paper,
                             strategy_scores={"strategy": signal.dominant_strategy,
-                                             "note": "halted_entry"})
+                                             "note": "halted_entry",
+                                             "exit_fee_source": "estimate_taker_1bp"})
                         await self._db.log_trade_open(rec)
                         d_h = 1 if signal.direction == 1 else -1
                         fees_h = (order.filled_price * (0.0 if order.was_maker else 0.0001)
@@ -898,7 +900,8 @@ class ExecutionEngine:
                                 sl_price=setup.sl_price, tp_price=setup.tp_price,
                                 entry_time=now_iso, is_paper=False,
                                 strategy_scores={"strategy": signal.dominant_strategy,
-                                                 "note": "no_stop_safety"},
+                                                 "note": "no_stop_safety",
+                                                 "exit_fee_source": "estimate_taker_1bp"},
                             )
                             await self._db.log_trade_open(rec)
                             d = 1 if pos_side == "long" else -1
@@ -1191,13 +1194,16 @@ class ExecutionEngine:
                 for pos in list(portfolio_positions):
                     try:
                         exit_px = pos.entry_price
+                        px_tahmini = True
                         if hasattr(self._exchange, "close_position"):
                             order = await self._exchange.close_position(
                                 pos.symbol, pos.side, pos.quantity, "no_stop_safety"
                             )
                             if order and getattr(order, "filled_price", 0):
                                 exit_px = order.filled_price
-                        await self._close_position_internal(pos, exit_px, "no_stop_safety")
+                                px_tahmini = bool(getattr(order, "fill_estimated", False))
+                        await self._close_position_internal(
+                            pos, exit_px, "no_stop_safety", exit_price_estimated=px_tahmini)
                         logger.critical(
                             "resync %s: re-protection FAILED and position confirmed "
                             "naked — force-closed %s sleeve for safety",
@@ -1237,9 +1243,14 @@ class ExecutionEngine:
                         pos.symbol, pos.side, pos.quantity, reason
                     )
                     exit_price = order.filled_price if order else current_price
+                    fiyat_tahmini = (not order) or bool(getattr(order, "fill_estimated", False))
                 else:
                     exit_price = current_price
-                await self._close_position_internal(pos, exit_price, reason)
+                    fiyat_tahmini = True
+                # Market kapanışta gerçek çıkış ücreti okunmuyor → None (1bp tahmin,
+                # kayıtta 'estimate_taker_1bp' olarak işaretlenir).
+                await self._close_position_internal(
+                    pos, exit_price, reason, exit_price_estimated=fiyat_tahmini)
                 # Paylaşılan bacakta (sembolde başka açık kol varsa) kapanan kolun KENDİ ekli
                 # stopu borsada kalmasın: ileride tetiklenip öbür kolun sözleşmelerini kapatır.
                 # Tek kollu sembolde (bugünkü canlı durum) bacak boşalır, MEXC stopu kendisi siler.
@@ -1299,8 +1310,18 @@ class ExecutionEngine:
                 logger.error("Emergency close failed for %s: %s", pos.id, e)
 
     async def _close_position_internal(
-        self, pos: Position, exit_price: float, reason: str
-    ) -> None:
+        self, pos: Position, exit_price: float, reason: str,
+        exit_fee_usdt: Optional[float] = None,
+        exit_price_estimated: bool = False,
+    ) -> Optional[float]:
+        """Kapanışı defterlere yaz; net PnL'yi döndür (mükerrer çağrıda None).
+
+        exit_fee_usdt: borsadan DOĞRULANMIŞ gerçek çıkış komisyonu (USDT).
+          None  → bilinmiyor: eski tahmin (çıkış × 0.0001) kullanılır ve kayıt
+                  'estimate_taker_1bp' diye İŞARETLENİR.
+          0.0   → GERÇEK sıfır komisyon; tahminle DEĞİŞTİRİLMEZ.
+        exit_price_estimated: çıkış fiyatı gerçek dolum değil (seviye/mark/giriş).
+        Aynı net PnL; DB'ye, işlem sonucu serisine ve kapanış bildirimlerine gider."""
         # Idempotency guard: several independent tasks can race to close the same
         # position (max-hold force-close, the 2-min reconciliation loop, a Telegram
         # /close, emergency_close_all). Without this guard the trade would be
@@ -1317,14 +1338,27 @@ class ExecutionEngine:
                 pos.id, pos.entry_price,
             )
             exit_price = pos.entry_price
+            exit_price_estimated = True
         direction = pos.direction
         raw_pnl = direction * (exit_price - pos.entry_price) * pos.quantity
         entry_fee_rate = pos.strategy_scores.get("entry_fee_rate", 0.0001)
-        fees = (
-            pos.entry_price * pos.quantity * entry_fee_rate
-            + exit_price * pos.quantity * 0.0001
-        )
+        # GERÇEK çıkış komisyonu verildiyse (0.0 dahil) o kullanılır; yoksa ya da
+        # sayı değilse eski 1bp tahmine düşülür ve bu durum kalıcı kayda yazılır.
+        # (Önceki hata: mutabakat gerçek ücreti alıyor ama buraya aktarmıyordu;
+        # burada her zaman 1bp yeniden hesaplanıyordu.)
+        gercek_ucret = exit_fee_usdt is not None and math.isfinite(exit_fee_usdt)
+        if exit_fee_usdt is not None and not gercek_ucret:
+            logger.warning("Close of %s: invalid exit fee %r — using 1bp estimate",
+                           pos.id, exit_fee_usdt)
+        exit_fee = (float(exit_fee_usdt) if gercek_ucret
+                    else exit_price * pos.quantity * 0.0001)
+        fees = pos.entry_price * pos.quantity * entry_fee_rate + exit_fee
         net_pnl = raw_pnl - fees
+        # Kalıcı kayıt: çıkış ücretinin ve fiyatının kaynağı (trades.strategy_scores).
+        pos.strategy_scores["exit_fee_usdt"] = exit_fee
+        pos.strategy_scores["exit_fee_source"] = "exchange" if gercek_ucret else "estimate_taker_1bp"
+        if exit_price_estimated:
+            pos.strategy_scores["exit_price_estimated"] = True
         # pnl_pct is return on the MARGIN actually deployed (notional / leverage),
         # not on full notional — that is what the trader put up. On 10x leverage a
         # 1% notional move is a 10% return on capital; reporting it on notional
@@ -1344,6 +1378,7 @@ class ExecutionEngine:
             pnl_pct=pnl_pct,
             exit_reason=reason,
             fees_usdt=fees,
+            strategy_scores=pos.strategy_scores,
         )
         # Fire close callbacks (dashboard + Telegram/ntfy) so LIVE bot-initiated
         # closes (max-hold, manual /close, emergency, reconciliation) notify

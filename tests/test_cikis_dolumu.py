@@ -50,7 +50,10 @@ def test_gercek_dolum_vwap_ve_ucret():
     fills = [
         {"timestamp": 200, "side": "4", "price": 99.0, "amount": 60.0,
          "cost": 99.0 * 0.6, "fee": {"cost": 0.03}},
-        {"timestamp": 100, "side": "sell", "price": 98.0, "amount": 40.0,
+        # 2026-09-28 düzeltme: eski fixture burada normalize 'sell' kullanıyordu. ccxt
+        # 4.5.x swap'ta '2' (short KAPAT = alış) → 'sell' çevirir; yani normalize 'sell'
+        # long kapanışı DEĞİLDİR. Gerçek long kapanışı: side '4' + info.side 4.
+        {"timestamp": 100, "side": "4", "info": {"side": 4}, "price": 98.0, "amount": 40.0,
          "cost": 98.0 * 0.4, "fee": {"cost": 0.02}},
     ]
     r = asyncio.run(_borsa(fills).fetch_close_fill("X/USDT:USDT", "sell", 1.0, 0))
@@ -102,8 +105,8 @@ def test_dolum_yoksa_None():
 
 def test_ucret_kismi_kullanimda_oranlanir():
     """Dolumun bir KISMI kullanıldıysa ücreti de o oranda sayılmalı."""
-    fills = [{"timestamp": 200, "side": "sell", "price": 100.0, "amount": 200.0,
-              "cost": 200.0, "fee": {"cost": 0.20}}]
+    fills = [{"timestamp": 200, "side": "4", "info": {"side": 4}, "price": 100.0,
+              "amount": 200.0, "cost": 200.0, "fee": {"cost": 0.20}}]
     px, ucret, n = asyncio.run(
         _borsa(fills).fetch_close_fill("X/USDT:USDT", "sell", 1.0, 0))
     assert abs(px - 100.0) < 1e-9
@@ -119,10 +122,15 @@ def test_main_gercek_dolumu_kullaniyor():
     assert "fetch_close_fill" in blok, "mutabakat gerçek dolumu sormuyor"
     assert "exit_price_estimated" in blok, \
         "gerçek dolum okunamayınca kayıt 'tahmin' diye işaretlenmiyor"
-    # eski sabit ücret satırı yalnız YEDEK yolda kalmalı
-    assert blok.count("exit_price * pos.quantity * 0.0001") == 1, \
-        "sabit 1bp çıkış ücreti hâlâ ana yolda"
-    print("  main.py gerçek dolumu kullanıyor + yedeği işaretliyor ✓")
+    # 2026-09-28: ücret TEK yerde (_close_position_internal) hesaplanır. main.py gerçek
+    # ücreti AÇIKÇA aktarmalı, 1bp'yi kendisi yeniden hesaplamamalı (hesaplayıp aktarmamak
+    # tam olarak düzeltilen hataydı). Davranış testi: tests/test_cikis_komisyonu.py.
+    j = src.index("_close_position_internal(", i - 3000)
+    cagri = src[j:j + 300]
+    assert "exit_fee_usdt=gercek_ucret" in cagri, "gerçek çıkış ücreti aktarılmıyor"
+    assert "exit_price * pos.quantity * 0.0001" not in blok, \
+        "main.py 1bp çıkış ücretini hâlâ kendisi hesaplıyor"
+    print("  main.py gerçek dolumu kullanıyor, gerçek ücreti aktarıyor, yedeği işaretliyor ✓")
 
 
 if __name__ == "__main__":

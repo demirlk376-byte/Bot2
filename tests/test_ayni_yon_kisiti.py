@@ -71,5 +71,6 @@ def test_execution_kodu_bu_mantigi_ICERIYOR():
     # sayim hem acik pozisyonlari hem ucustaki emirleri kapsamali
     i = kaynak.index("max_ayni = getattr")
     blok = kaynak[i:i + 900]
-    assert "get_open_positions()" in blok
+    # trend kolu eklendiğinden beri sayım _bot_acik() üzerinden (trend pozisyonları hariç açıklar)
+    assert "get_open_positions()" in blok or "_bot_acik()" in blok
     assert "_inflight_direction" in blok

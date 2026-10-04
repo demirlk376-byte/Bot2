@@ -229,15 +229,28 @@ class Database:
         pnl_pct: float,
         exit_reason: str,
         fees_usdt: float = 0.0,
+        strategy_scores: dict | None = None,
     ) -> None:
+        """strategy_scores verilirse kapanışta o da yazılır (ör. çıkış ücretinin
+        kaynağı 'exchange' / 'estimate_taker_1bp'); verilmezse sütun DEĞİŞMEZ."""
         async with self._wlock:
-            await self._db.execute(
-                """UPDATE trades
-                   SET exit_price=?, exit_time=?, pnl_usdt=?, pnl_pct=?,
-                       exit_reason=?, fees_usdt=?
-                   WHERE id=?""",
-                (exit_price, exit_time, pnl_usdt, pnl_pct, exit_reason, fees_usdt, trade_id),
-            )
+            if strategy_scores is None:
+                await self._db.execute(
+                    """UPDATE trades
+                       SET exit_price=?, exit_time=?, pnl_usdt=?, pnl_pct=?,
+                           exit_reason=?, fees_usdt=?
+                       WHERE id=?""",
+                    (exit_price, exit_time, pnl_usdt, pnl_pct, exit_reason, fees_usdt, trade_id),
+                )
+            else:
+                await self._db.execute(
+                    """UPDATE trades
+                       SET exit_price=?, exit_time=?, pnl_usdt=?, pnl_pct=?,
+                           exit_reason=?, fees_usdt=?, strategy_scores=?
+                       WHERE id=?""",
+                    (exit_price, exit_time, pnl_usdt, pnl_pct, exit_reason, fees_usdt,
+                     json.dumps(strategy_scores), trade_id),
+                )
             await self._db.commit()
 
     async def get_daily_pnl(self, day: str, is_paper: bool | None = None) -> float:

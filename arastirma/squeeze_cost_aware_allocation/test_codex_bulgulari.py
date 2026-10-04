@@ -5,7 +5,7 @@ VAR olduğunu belgeler ve araştırma düzeltmesinin etkisini gösterir).
   #1 exchange._simdi_ts fonksiyon içinde `from datetime import datetime` yapıyor → ikizin sanal
      saat yaması (modül attribute'u `datetime`) ona ulaşmıyor → paper funding penceresi DUVAR
      saatinden ölçülüyor (~0 sn) → ikizde funding fiilen SIFIR.
-  #2 Canlı mutabakat (main.py) gerçek çıkış komisyonunu (fetch_close_fill → gercek_ucret) `fees`
+  #2 [2026-09-28 geliştirme kopyasında düzeltildi] Canlı mutabakat (main.py) gerçek çıkış komisyonunu (fetch_close_fill → gercek_ucret) `fees`
      değişkenine koyuyor ama _close_position_internal'a AKTARMIYOR; içeride çıkış ücreti yeniden
      exit × 0.0001 olarak hesaplanıyor. Paper ikiz bu yola girmez (mutabakat döngüsü paper'da döner).
   #3 (bu çalışmada bulundu) exchange._funding_toplami zaman damgasını astype("int64")/1e9 ile saniyeye
@@ -90,19 +90,15 @@ def test_1_funding_ikizde_sifir_duzeltmeyle_degil():
 
 
 def test_2_mutabakat_gercek_ucreti_aktarmiyor():
+    """2026-09-28: hata geliştirme kopyasında DÜZELTİLDİ (dağıtılmadı). Davranış testi:
+    tests/test_cikis_komisyonu.py. Bu test artık düzeltmenin yerinde olduğunu belgeler."""
     src = open(os.path.join(KOK, "main.py"), encoding="utf-8").read()
-    assert "gercek_ucret" in src
     agac = ast.parse(src)
-    cagri_arg = None
+    kw = None
     for n in ast.walk(agac):
         if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "_close_position_internal":
-            cagri_arg = len(n.args) + len(n.keywords)
-    assert cagri_arg == 3                       # (pos, exit_price, reason) — ücret aktarılmıyor
-    ex = open(os.path.join(KOK, "execution.py"), encoding="utf-8").read()
-    i = ex.index("async def _close_position_internal")
-    govde = ex[i:i + 1500]
-    assert "exit_price * pos.quantity * 0.0001" in govde   # içeride 1bp yeniden hesaplanıyor
-    assert "fees" not in govde.split(")")[0]               # imzada ücret parametresi yok
+            kw = {k.arg for k in n.keywords}
+    assert kw is not None and "exit_fee_usdt" in kw        # gerçek ücret açıkça aktarılıyor
 
 
 def test_3_funding_zaman_birimi():
