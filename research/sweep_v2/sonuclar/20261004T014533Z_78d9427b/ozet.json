@@ -1,0 +1,635 @@
+{
+ "run_id": "20261004T014533Z_78d9427b",
+ "commit": "78d9427b4305ae72f588d56c756726c97080a44f",
+ "kesif_secilen": [],
+ "kesif_satir": [
+  {
+   "variant_id": "HACIM",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.3068781118950637,
+   "stress_LCB": -0.4282145256825528,
+   "normal_MDD": 99.99951913245553,
+   "normal_exp_R": -0.2669433245809526,
+   "stress_exp_R": -0.38177558309665266,
+   "normal_net_USDT": -9999.95168264384,
+   "stress_net_USDT": -9999.979874986884,
+   "normal_closed": 3135,
+   "stress_closed": 2238,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "HEPSI",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.4658656247339684,
+   "stress_LCB": -0.5651608667671595,
+   "normal_MDD": 19.143543110122874,
+   "normal_exp_R": -0.33964317406889305,
+   "stress_exp_R": -0.4584812656790346,
+   "normal_net_USDT": -1890.3130167714608,
+   "stress_net_USDT": -2551.3184576738313,
+   "normal_closed": 223,
+   "stress_closed": 223,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "KALABALIK",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.31824908453210815,
+   "stress_LCB": -0.4556827269294043,
+   "normal_MDD": 99.99634906513842,
+   "normal_exp_R": -0.27058270653043615,
+   "stress_exp_R": -0.40619372247190233,
+   "normal_net_USDT": -9999.56974742741,
+   "stress_net_USDT": -9999.935209764624,
+   "normal_closed": 3077,
+   "stress_closed": 2146,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "MTF",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.337525689036977,
+   "stress_LCB": -0.44983542198712756,
+   "normal_MDD": 99.99822369461516,
+   "normal_exp_R": -0.2993451650211795,
+   "stress_exp_R": -0.40990160198658343,
+   "normal_net_USDT": -9999.8129653016,
+   "stress_net_USDT": -9999.952337817389,
+   "normal_closed": 2446,
+   "stress_closed": 1903,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "OI",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.34495885952802935,
+   "stress_LCB": -0.4509272079397346,
+   "normal_MDD": 99.99885165625113,
+   "normal_exp_R": -0.3029324625244586,
+   "stress_exp_R": -0.41086091864062463,
+   "normal_net_USDT": -9999.88453179394,
+   "stress_net_USDT": -9999.962947993256,
+   "normal_closed": 2566,
+   "stress_closed": 1934,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "ORDERBOOK",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.3822868932134632,
+   "stress_LCB": -0.524246555207821,
+   "normal_MDD": 99.99916419709936,
+   "normal_exp_R": -0.3391368103810723,
+   "stress_exp_R": -0.48136266218583296,
+   "normal_net_USDT": -9999.916400752949,
+   "stress_net_USDT": -9999.977594794655,
+   "normal_closed": 2472,
+   "stress_closed": 1795,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "RETEST",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.3613224938832453,
+   "stress_LCB": -0.48397538357006475,
+   "normal_MDD": 99.9990223400243,
+   "normal_exp_R": -0.31388407708297184,
+   "stress_exp_R": -0.43203675011901826,
+   "normal_net_USDT": -9999.900724269002,
+   "stress_net_USDT": -9999.969314360527,
+   "normal_closed": 3212,
+   "stress_closed": 2141,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "SEANS",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.35987216609890754,
+   "stress_LCB": -0.4758708665590593,
+   "normal_MDD": 99.99963542020167,
+   "normal_exp_R": -0.3253853421359836,
+   "stress_exp_R": -0.44262180134841334,
+   "normal_net_USDT": -9999.963533751079,
+   "stress_net_USDT": -9999.97982295028,
+   "normal_closed": 2657,
+   "stress_closed": 1889,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "TABAN",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.35012050156745844,
+   "stress_LCB": -0.47347465890861307,
+   "normal_MDD": 99.99978793211626,
+   "normal_exp_R": -0.30231859826083507,
+   "stress_exp_R": -0.41692294477509084,
+   "normal_net_USDT": -9999.978649664432,
+   "stress_net_USDT": -9999.980713318884,
+   "normal_closed": 3269,
+   "stress_closed": 2139,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  }
+ ],
+ "dogrulama_secilen": [],
+ "dogrulama_satir": [
+  {
+   "variant_id": "HACIM",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.34744300883816887,
+   "stress_LCB": -0.45614150394019937,
+   "normal_MDD": 99.88823284434199,
+   "normal_exp_R": -0.28616511760462265,
+   "stress_exp_R": -0.4028513616037149,
+   "normal_net_USDT": -9985.138691598475,
+   "stress_net_USDT": -9999.603472475277,
+   "normal_closed": 1940,
+   "stress_closed": 1616,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "HEPSI",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.6126874728740214,
+   "stress_LCB": -0.6721000024592383,
+   "normal_MDD": 7.0199558865152785,
+   "normal_exp_R": -0.291552292909018,
+   "stress_exp_R": -0.4079954395162336,
+   "normal_net_USDT": -444.0613122150791,
+   "stress_net_USDT": -620.6590589822797,
+   "normal_closed": 61,
+   "stress_closed": 61,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "KALABALIK",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.34847310238829526,
+   "stress_LCB": -0.4636520163735499,
+   "normal_MDD": 90.22589880472546,
+   "normal_exp_R": -0.28316088731246175,
+   "stress_exp_R": -0.4026403486112909,
+   "normal_net_USDT": -8950.798175899346,
+   "stress_net_USDT": -9989.965643207288,
+   "normal_closed": 1323,
+   "stress_closed": 1323,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "MTF",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.3297840763221838,
+   "stress_LCB": -0.438502338009521,
+   "normal_MDD": 84.06522912898376,
+   "normal_exp_R": -0.27368078529214696,
+   "stress_exp_R": -0.38949695553369845,
+   "normal_net_USDT": -8287.30788773768,
+   "stress_net_USDT": -9911.427397327621,
+   "normal_closed": 1236,
+   "stress_closed": 1238,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "OI",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.30756276845962544,
+   "stress_LCB": -0.41914682709118967,
+   "normal_MDD": 87.16639068395934,
+   "normal_exp_R": -0.24568753392660794,
+   "stress_exp_R": -0.3656040360703928,
+   "normal_net_USDT": -8517.290101236607,
+   "stress_net_USDT": -9961.935639276364,
+   "normal_closed": 1425,
+   "stress_closed": 1427,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "ORDERBOOK",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.3486953260538135,
+   "stress_LCB": -0.45887356864975976,
+   "normal_MDD": 92.69180539154507,
+   "normal_exp_R": -0.2789410240704121,
+   "stress_exp_R": -0.39477182942060696,
+   "normal_net_USDT": -9198.886993463353,
+   "stress_net_USDT": -9990.379961239516,
+   "normal_closed": 1391,
+   "stress_closed": 1395,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "RETEST",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.37412741248023607,
+   "stress_LCB": -0.49966507749698064,
+   "normal_MDD": 99.90213138964792,
+   "normal_exp_R": -0.32403378407964567,
+   "stress_exp_R": -0.4505515565152025,
+   "normal_net_USDT": -9989.317002012522,
+   "stress_net_USDT": -9999.548158314592,
+   "normal_closed": 1827,
+   "stress_closed": 1591,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "SEANS",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.3331287303075031,
+   "stress_LCB": -0.446140486902558,
+   "normal_MDD": 94.58921317427487,
+   "normal_exp_R": -0.2581916845144392,
+   "stress_exp_R": -0.37844679822066885,
+   "normal_net_USDT": -9287.723734397652,
+   "stress_net_USDT": -9995.467307010047,
+   "normal_closed": 1551,
+   "stress_closed": 1537,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  },
+  {
+   "variant_id": "TABAN",
+   "eligible": false,
+   "status": "ELENDİ",
+   "reason": "NOT_POSITIVE",
+   "normal_LCB": -0.362565442418256,
+   "stress_LCB": -0.465196605871446,
+   "normal_MDD": 99.99407621015317,
+   "normal_exp_R": -0.312967144167819,
+   "stress_exp_R": -0.42755139379691876,
+   "normal_net_USDT": -9999.343594238986,
+   "stress_net_USDT": -9999.904887702305,
+   "normal_closed": 2276,
+   "stress_closed": 1687,
+   "normal_boot_reliable": true,
+   "normal_boot_invalid_frac": 0.0
+  }
+ ],
+ "karar": {
+  "TABAN": "ELENDİ",
+  "MTF": "ELENDİ",
+  "SEANS": "ELENDİ",
+  "HACIM": "ELENDİ",
+  "RETEST": "ELENDİ",
+  "ORDERBOOK": "ELENDİ",
+  "OI": "ELENDİ",
+  "KALABALIK": "ELENDİ",
+  "HEPSI": "ELENDİ"
+ },
+ "sonuc": {
+  "DISCOVERY|TABAN": {
+   "NORMAL": {
+    "signals": 8190,
+    "closed": 3269,
+    "expectancy_net_R": -0.30231859826083507,
+    "LCB": -0.35012050156745844,
+    "alt_sinir_bonferroni": -0.3730006691437978,
+    "net_USDT": -9999.978649664432,
+    "kapsam_disi": 0,
+    "MDD_close_pct": 99.99978793211626,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.41692294477509084,
+    "net_USDT": -9999.980713318884
+   }
+  },
+  "DISCOVERY|MTF": {
+   "NORMAL": {
+    "signals": 3718,
+    "closed": 2446,
+    "expectancy_net_R": -0.2993451650211795,
+    "LCB": -0.337525689036977,
+    "alt_sinir_bonferroni": -0.35139502643417664,
+    "net_USDT": -9999.8129653016,
+    "kapsam_disi": 0,
+    "MDD_close_pct": 99.99822369461516,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.40990160198658343,
+    "net_USDT": -9999.952337817389
+   }
+  },
+  "DISCOVERY|SEANS": {
+   "NORMAL": {
+    "signals": 4874,
+    "closed": 2657,
+    "expectancy_net_R": -0.3253853421359836,
+    "LCB": -0.35987216609890754,
+    "alt_sinir_bonferroni": -0.37602295696537186,
+    "net_USDT": -9999.963533751079,
+    "kapsam_disi": 0,
+    "MDD_close_pct": 99.99963542020167,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.44262180134841334,
+    "net_USDT": -9999.97982295028
+   }
+  },
+  "DISCOVERY|HACIM": {
+   "NORMAL": {
+    "signals": 6008,
+    "closed": 3135,
+    "expectancy_net_R": -0.2669433245809526,
+    "LCB": -0.3068781118950637,
+    "alt_sinir_bonferroni": -0.3249328841340025,
+    "net_USDT": -9999.95168264384,
+    "kapsam_disi": 0,
+    "MDD_close_pct": 99.99951913245553,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.38177558309665266,
+    "net_USDT": -9999.979874986884
+   }
+  },
+  "DISCOVERY|RETEST": {
+   "NORMAL": {
+    "signals": 5593,
+    "closed": 3212,
+    "expectancy_net_R": -0.31388407708297184,
+    "LCB": -0.3613224938832453,
+    "alt_sinir_bonferroni": -0.38363787133286115,
+    "net_USDT": -9999.900724269002,
+    "kapsam_disi": 0,
+    "MDD_close_pct": 99.9990223400243,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.43203675011901826,
+    "net_USDT": -9999.969314360527
+   }
+  },
+  "DISCOVERY|ORDERBOOK": {
+   "NORMAL": {
+    "signals": 3807,
+    "closed": 2472,
+    "expectancy_net_R": -0.3391368103810723,
+    "LCB": -0.3822868932134632,
+    "alt_sinir_bonferroni": -0.40267432519311913,
+    "net_USDT": -9999.916400752949,
+    "kapsam_disi": 47,
+    "MDD_close_pct": 99.99916419709936,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.48136266218583296,
+    "net_USDT": -9999.977594794655
+   }
+  },
+  "DISCOVERY|OI": {
+   "NORMAL": {
+    "signals": 4270,
+    "closed": 2566,
+    "expectancy_net_R": -0.3029324625244586,
+    "LCB": -0.34495885952802935,
+    "alt_sinir_bonferroni": -0.3634863353308635,
+    "net_USDT": -9999.88453179394,
+    "kapsam_disi": 7,
+    "MDD_close_pct": 99.99885165625113,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.41086091864062463,
+    "net_USDT": -9999.962947993256
+   }
+  },
+  "DISCOVERY|KALABALIK": {
+   "NORMAL": {
+    "signals": 3782,
+    "closed": 3077,
+    "expectancy_net_R": -0.27058270653043615,
+    "LCB": -0.31824908453210815,
+    "alt_sinir_bonferroni": -0.3372928915842886,
+    "net_USDT": -9999.56974742741,
+    "kapsam_disi": 5,
+    "MDD_close_pct": 99.99634906513842,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.40619372247190233,
+    "net_USDT": -9999.935209764624
+   }
+  },
+  "DISCOVERY|HEPSI": {
+   "NORMAL": {
+    "signals": 223,
+    "closed": 223,
+    "expectancy_net_R": -0.33964317406889305,
+    "LCB": -0.4658656247339684,
+    "alt_sinir_bonferroni": -0.51581609219166,
+    "net_USDT": -1890.3130167714608,
+    "kapsam_disi": 8,
+    "MDD_close_pct": 19.143543110122874,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.4584812656790346,
+    "net_USDT": -2551.3184576738313
+   }
+  },
+  "VALIDATION|TABAN": {
+   "NORMAL": {
+    "signals": 2865,
+    "closed": 2276,
+    "expectancy_net_R": -0.312967144167819,
+    "LCB": -0.362565442418256,
+    "alt_sinir_bonferroni": -0.38275444763619776,
+    "net_USDT": -9999.343594238986,
+    "kapsam_disi": 0,
+    "MDD_close_pct": 99.99407621015317,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.42755139379691876,
+    "net_USDT": -9999.904887702305
+   }
+  },
+  "VALIDATION|MTF": {
+   "NORMAL": {
+    "signals": 1283,
+    "closed": 1236,
+    "expectancy_net_R": -0.27368078529214696,
+    "LCB": -0.3297840763221838,
+    "alt_sinir_bonferroni": -0.35232062811472187,
+    "net_USDT": -8287.30788773768,
+    "kapsam_disi": 0,
+    "MDD_close_pct": 84.06522912898376,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.38949695553369845,
+    "net_USDT": -9911.427397327621
+   }
+  },
+  "VALIDATION|SEANS": {
+   "NORMAL": {
+    "signals": 1688,
+    "closed": 1551,
+    "expectancy_net_R": -0.2581916845144392,
+    "LCB": -0.3331287303075031,
+    "alt_sinir_bonferroni": -0.36567089793164953,
+    "net_USDT": -9287.723734397652,
+    "kapsam_disi": 0,
+    "MDD_close_pct": 94.58921317427487,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.37844679822066885,
+    "net_USDT": -9995.467307010047
+   }
+  },
+  "VALIDATION|HACIM": {
+   "NORMAL": {
+    "signals": 2106,
+    "closed": 1940,
+    "expectancy_net_R": -0.28616511760462265,
+    "LCB": -0.34744300883816887,
+    "alt_sinir_bonferroni": -0.36776711201284984,
+    "net_USDT": -9985.138691598475,
+    "kapsam_disi": 0,
+    "MDD_close_pct": 99.88823284434199,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.4028513616037149,
+    "net_USDT": -9999.603472475277
+   }
+  },
+  "VALIDATION|RETEST": {
+   "NORMAL": {
+    "signals": 1925,
+    "closed": 1827,
+    "expectancy_net_R": -0.32403378407964567,
+    "LCB": -0.37412741248023607,
+    "alt_sinir_bonferroni": -0.3921177713798187,
+    "net_USDT": -9989.317002012522,
+    "kapsam_disi": 0,
+    "MDD_close_pct": 99.90213138964792,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.4505515565152025,
+    "net_USDT": -9999.548158314592
+   }
+  },
+  "VALIDATION|ORDERBOOK": {
+   "NORMAL": {
+    "signals": 1464,
+    "closed": 1391,
+    "expectancy_net_R": -0.2789410240704121,
+    "LCB": -0.3486953260538135,
+    "alt_sinir_bonferroni": -0.37774776191493775,
+    "net_USDT": -9198.886993463353,
+    "kapsam_disi": 0,
+    "MDD_close_pct": 92.69180539154507,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.39477182942060696,
+    "net_USDT": -9990.379961239516
+   }
+  },
+  "VALIDATION|OI": {
+   "NORMAL": {
+    "signals": 1495,
+    "closed": 1425,
+    "expectancy_net_R": -0.24568753392660794,
+    "LCB": -0.30756276845962544,
+    "alt_sinir_bonferroni": -0.33153863734652605,
+    "net_USDT": -8517.290101236607,
+    "kapsam_disi": 0,
+    "MDD_close_pct": 87.16639068395934,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.3656040360703928,
+    "net_USDT": -9961.935639276364
+   }
+  },
+  "VALIDATION|KALABALIK": {
+   "NORMAL": {
+    "signals": 1354,
+    "closed": 1323,
+    "expectancy_net_R": -0.28316088731246175,
+    "LCB": -0.34847310238829526,
+    "alt_sinir_bonferroni": -0.3782122952364262,
+    "net_USDT": -8950.798175899346,
+    "kapsam_disi": 0,
+    "MDD_close_pct": 90.22589880472546,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.4026403486112909,
+    "net_USDT": -9989.965643207288
+   }
+  },
+  "VALIDATION|HEPSI": {
+   "NORMAL": {
+    "signals": 62,
+    "closed": 61,
+    "expectancy_net_R": -0.291552292909018,
+    "LCB": -0.6126874728740214,
+    "alt_sinir_bonferroni": -0.729898397277828,
+    "net_USDT": -444.0613122150791,
+    "kapsam_disi": 0,
+    "MDD_close_pct": 7.0199558865152785,
+    "expectancy_gross_R": null
+   },
+   "STRESS": {
+    "expectancy_net_R": -0.4079954395162336,
+    "net_USDT": -620.6590589822797
+   }
+  }
+ }
+}
