@@ -162,7 +162,7 @@ async def main():
         risk = abs(t["entry_price"] - sl) * t["quantity"]
         kol = EU.kol_adi(t.get("strategy_scores"))
         if not aday or min(aday)[0] > 3 * 3_600_000:
-            satirlar.append(dict(kol=kol, eslesti=False, defter=t["pnl_usdt"]))
+            satirlar.append(dict(kol=kol, eslesti=False, defter=t["pnl_usdt"], cikis=ms(t["exit_time"])))
             eslesmeyen.append((t, min(aday)[0] if aday else None))
             continue
         _, i = min(aday)
@@ -174,7 +174,7 @@ async def main():
         net = brut - tr["ucret"] + funding
         satirlar.append(dict(kol=kol, eslesti=True, defter=t["pnl_usdt"], gercek=net, ucret=tr["ucret"],
                              funding=funding, R=net / risk if risk > 0 else None,
-                             giris_fark_dk=(tr["ilk"] - g) / 60_000))
+                             giris_fark_dk=(tr["ilk"] - g) / 60_000, cikis=tr["son"]))
 
     print("=" * 100)
     print(f"  GERÇEK KOL KARNESİ — borsanın dolum, ücret ve funding kayıtlarından · {len(islemler)} canlı işlem")
@@ -202,6 +202,23 @@ async def main():
     print(f"{'TOPLAM':<12}{sum(x['eslesti'] for x in satirlar):>4}/{len(satirlar):<3}{top_d:>13.2f}{top_g:>13.2f}"
           f"{top_g - top_d:>9.2f}")
     print(f"(borsadan kurulan gidiş-dönüş: {sum(len(v) for v in turlar.values())})")
+    # SON 7 GÜN — çıkışı (borsadaki son dolum) son 7 günde olan işlemler, kol kol
+    sinir = int(datetime.now().timestamp() * 1000) - 7 * 86_400_000
+    yakin = [x for x in satirlar if x.get("cikis", 0) >= sinir]
+    print(f"\nSON 7 GÜN (kapanan işlem: {len(yakin)})")
+    if yakin:
+        print(f"{'kol':<12}{'işlem':>6}{'GERÇEK USDT':>13}{'defter USDT':>13}")
+        g7 = defaultdict(list)
+        for x in yakin:
+            g7[x["kol"]].append(x)
+        for kol, xs in sorted(g7.items(), key=lambda kv: -sum(x.get("gercek", 0) for x in kv[1])):
+            e = [x for x in xs if x["eslesti"]]
+            esl = "" if len(e) == len(xs) else f"  ({len(xs) - len(e)} eşleşmedi)"
+            print(f"{kol:<12}{len(xs):>6}{sum(x['gercek'] for x in e):>13.2f}{sum(x['defter'] for x in xs):>13.2f}{esl}")
+        print(f"{'TOPLAM':<12}{len(yakin):>6}{sum(x.get('gercek', 0) for x in yakin):>13.2f}"
+              f"{sum(x['defter'] for x in yakin):>13.2f}")
+    else:
+        print("  bu hafta kapanan işlem yok")
     if not any(turlar.values()) and any(dolum.values()):
         x = next(d for ds in dolum.values() for d in ds)
         print(f"(uyarı: dolumlarda yön kodu okunamadı; info alanları: {sorted((x.get('info') or {}).keys())})")
