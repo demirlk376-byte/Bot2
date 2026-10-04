@@ -378,7 +378,7 @@ async def _calistir(exchange, bot_semboller, gonder, ozsermaye, executor=None) -
         _kaydet(defter)
     if ilk_kurulum:
         acik = ", ".join(f"{k}({p.modul})" for k, p in defter.poz.items()) or "yok"
-        await gonder(f"TREND (sinyal modu) başladı. Geçmişten kurulan sanal açık pozisyonlar: {acik}")
+        await gonder(f"TREND ({'canlı' if CANLI else 'sinyal'} modu) başladı. Geçmişten kurulan sanal açık pozisyonlar: {acik}")
         return
     if not olaylar:
         return
