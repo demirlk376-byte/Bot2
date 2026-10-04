@@ -118,7 +118,8 @@ async def main():
         await ex.close()
 
     # 1) Borsa dolumlarından GİDİŞ-DÖNÜŞLERİ kur: (sembol, bacak) başına pozisyon sıfırdan açılıp sıfıra dönene kadar.
-    #    MEXC order_deals 'side': 1 long aç, 2 short kapat, 3 short aç, 4 long kapat (bacak ve yön buradan).
+    #    MEXC order_deals 'side': 1 long aç, 2 short kapat, 3 short aç, 4 long kapat (bacak ve yön buradan;
+    #    alış = 1/2, satış = 3/4).
     turlar = defaultdict(list)
     for s, ds in dolum.items():
         acik = {}
@@ -129,7 +130,7 @@ async def main():
             bacak = "long" if kod in ("1", "4") else "short"
             ac = kod in ("1", "3")
             v = float(x["amount"])
-            tutar = float(x.get("cost") or float(x["price"]) * v * x["_cs"])
+            tutar = float(x["price"]) * v * x["_cs"]    # ccxt 'cost' alanına güvenme
             ucr = float((x.get("fee") or {}).get("cost") or 0) \
                 if ((x.get("fee") or {}).get("currency") or "USDT").upper() == "USDT" else 0.0
             tr = acik.get(bacak)
@@ -140,7 +141,7 @@ async def main():
                                         alis=0.0, satis=0.0, ucret=0.0)
             tr["poz"] += v if ac else -v
             tr["son"] = int(x["timestamp"])
-            if x["side"] == "buy":
+            if kod in ("1", "2"):                      # ccxt 'side' alanı yanlış (2→sell, 3/4 çevrilmez)
                 tr["alis"] += tutar
             else:
                 tr["satis"] += tutar
