@@ -34,6 +34,12 @@ def al(url):
     return None
 
 
+def ms_zaman(seri):
+    """Sürümden bağımsız UTC milisaniye (pandas ns/us/ms çözünürlüğü fark etmez)."""
+    ts = pd.to_datetime(seri, utc=True)
+    return ((ts - pd.Timestamp("1970-01-01", tz="UTC")) // pd.Timedelta(milliseconds=1)).astype("int64")
+
+
 def gunler(bas):
     return [d.strftime("%Y-%m-%d") for d in pd.date_range(bas, BIT - pd.Timedelta(days=1))]
 
@@ -48,7 +54,7 @@ def metrics(coin):
     if coin == "ETH":
         ozet["ornek"]["metrics"] = parcalar[0][:400]
     df = pd.concat([pd.read_csv(io.StringIO(p)) for p in parcalar], ignore_index=True)
-    df["t"] = pd.to_datetime(df["create_time"], utc=True).astype("int64") // 10**6
+    df["t"] = ms_zaman(df["create_time"])
     kol = ["sum_open_interest", "count_toptrader_long_short_ratio", "sum_toptrader_long_short_ratio",
            "count_long_short_ratio", "sum_taker_long_short_vol_ratio"]
     df = df[["t"] + [k for k in kol if k in df.columns]].drop_duplicates("t").sort_values("t")
@@ -57,6 +63,7 @@ def metrics(coin):
             continue
         g = df.assign(b=(df.t // ms) * ms + ms).groupby("b").last().drop(columns="t").reset_index().rename(columns={"b": "t_kapanis"})
         g.round(6).to_csv(f"{OUT}/{coin}_metrics_{ad}.csv.gz", index=False, compression="gzip")
+    assert df.t.min() > 1_600_000_000_000, "zaman ms değil"
     ozet["metrics"][coin] = dict(satir=len(df), ilk=str(pd.to_datetime(df.t.min(), unit="ms")),
                                  son=str(pd.to_datetime(df.t.max(), unit="ms")))
     print("metrics", coin, ozet["metrics"][coin], flush=True)
@@ -74,7 +81,7 @@ def bookdepth(coin):
         d = pd.read_csv(io.StringIO(p))
         if "percentage" not in d.columns:
             return ("BICIM", list(d.columns))
-        d["t"] = pd.to_datetime(d["timestamp"], utc=True).astype("int64") // 10**6
+        d["t"] = ms_zaman(d["timestamp"])
         d["b"] = (d.t // 300_000) * 300_000 + 300_000
         son_t = d.groupby("b").t.max().rename("st")
         d = d.join(son_t, on="b")
