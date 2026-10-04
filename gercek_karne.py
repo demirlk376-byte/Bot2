@@ -117,31 +117,63 @@ async def main():
     finally:
         await ex.close()
 
+    # 1) Borsa dolumlarından GİDİŞ-DÖNÜŞLERİ kur: (sembol, bacak) başına pozisyon sıfırdan açılıp sıfıra dönene kadar.
+    #    MEXC order_deals 'side': 1 long aç, 2 short kapat, 3 short aç, 4 long kapat (bacak ve yön buradan).
+    turlar = defaultdict(list)
+    for s, ds in dolum.items():
+        acik = {}
+        for x in ds:
+            kod = str((x.get("info") or {}).get("side") or "")
+            if kod not in ("1", "2", "3", "4"):
+                continue
+            bacak = "long" if kod in ("1", "4") else "short"
+            ac = kod in ("1", "3")
+            v = float(x["amount"])
+            tutar = float(x.get("cost") or float(x["price"]) * v * x["_cs"])
+            ucr = float((x.get("fee") or {}).get("cost") or 0) \
+                if ((x.get("fee") or {}).get("currency") or "USDT").upper() == "USDT" else 0.0
+            tr = acik.get(bacak)
+            if tr is None:
+                if not ac:
+                    continue                       # pencere başında yarım kalmış kapanış
+                tr = acik[bacak] = dict(bacak=bacak, ilk=int(x["timestamp"]), son=int(x["timestamp"]), poz=0.0,
+                                        alis=0.0, satis=0.0, ucret=0.0)
+            tr["poz"] += v if ac else -v
+            tr["son"] = int(x["timestamp"])
+            if x["side"] == "buy":
+                tr["alis"] += tutar
+            else:
+                tr["satis"] += tutar
+            tr["ucret"] += ucr
+            if abs(tr["poz"]) < 1e-9:
+                turlar[s].append(tr)
+                del acik[bacak]
+    # 2) Defter işlemlerini en yakın girişli tura eşle (aynı sembol ve bacak, giriş farkı ≤ 3 saat)
     kullanildi = set()
-    satirlar = []
+    satirlar, eslesmeyen = [], []
     for t in sorted(islemler, key=lambda x: x["entry_time"]):
         s = t["symbol"]
-        a, b = ms(t["entry_time"]) - PENCERE_ONCE, ms(t["exit_time"]) + PENCERE_SONRA
-        ds = [x for x in dolum.get(s, []) if a <= x["timestamp"] <= b and id(x) not in kullanildi]
-        alis = sum(float(x["amount"]) for x in ds if x["side"] == "buy")
-        satis = sum(float(x["amount"]) for x in ds if x["side"] == "sell")
-        risk = None
+        bacak = "long" if str(t["side"]).lower() in ("long", "buy") else "short"
+        g = ms(t["entry_time"])
+        aday = [(abs(tr["ilk"] - g), i) for i, tr in enumerate(turlar.get(s, []))
+                if tr["bacak"] == bacak and (s, i) not in kullanildi]
         sl = EU._skor(t).get("sl0") or t["sl_price"]
         risk = abs(t["entry_price"] - sl) * t["quantity"]
-        if not ds or abs(alis - satis) > 1e-9 * max(alis, 1) + 1e-12:
-            satirlar.append(dict(kol=EU.kol_adi(t.get("strategy_scores")), eslesti=False, defter=t["pnl_usdt"]))
+        kol = EU.kol_adi(t.get("strategy_scores"))
+        if not aday or min(aday)[0] > 3 * 3_600_000:
+            satirlar.append(dict(kol=kol, eslesti=False, defter=t["pnl_usdt"]))
+            eslesmeyen.append((t, min(aday)[0] if aday else None))
             continue
-        for x in ds:
-            kullanildi.add(id(x))
-        tutar = lambda x: float(x.get("cost") or float(x["price"]) * float(x["amount"]) * x["_cs"])
-        brut = sum(tutar(x) for x in ds if x["side"] == "sell") - sum(tutar(x) for x in ds if x["side"] == "buy")
-        ucret = sum(float((x.get("fee") or {}).get("cost") or 0) for x in ds
-                    if ((x.get("fee") or {}).get("currency") or "USDT").upper() == "USDT")
-        g0, g1 = ms(t["entry_time"]), ms(t["exit_time"]) + PENCERE_SONRA
-        funding = sum(float(f.get("amount") or 0) for f in fon.get(s, []) if g0 < int(f.get("timestamp") or 0) <= g1)
-        net = brut - ucret + funding
-        satirlar.append(dict(kol=EU.kol_adi(t.get("strategy_scores")), eslesti=True, defter=t["pnl_usdt"], gercek=net,
-                             ucret=ucret, funding=funding, R=net / risk if risk and risk > 0 else None))
+        _, i = min(aday)
+        kullanildi.add((s, i))
+        tr = turlar[s][i]
+        brut = tr["satis"] - tr["alis"]
+        funding = sum(float(f.get("amount") or 0) for f in fon.get(s, [])
+                      if tr["ilk"] < int(f.get("timestamp") or 0) <= tr["son"])
+        net = brut - tr["ucret"] + funding
+        satirlar.append(dict(kol=kol, eslesti=True, defter=t["pnl_usdt"], gercek=net, ucret=tr["ucret"],
+                             funding=funding, R=net / risk if risk > 0 else None,
+                             giris_fark_dk=(tr["ilk"] - g) / 60_000))
 
     print("=" * 100)
     print(f"  GERÇEK KOL KARNESİ — borsanın dolum, ücret ve funding kayıtlarından · {len(islemler)} canlı işlem")
@@ -168,6 +200,19 @@ async def main():
     print(f"(okunan dolum: {sum(len(v) for v in dolum.values())}, funding kaydı: {sum(len(v) for v in fon.values())})")
     print(f"{'TOPLAM':<12}{sum(x['eslesti'] for x in satirlar):>4}/{len(satirlar):<3}{top_d:>13.2f}{top_g:>13.2f}"
           f"{top_g - top_d:>9.2f}")
+    print(f"(borsadan kurulan gidiş-dönüş: {sum(len(v) for v in turlar.values())})")
+    if not any(turlar.values()) and any(dolum.values()):
+        x = next(d for ds in dolum.values() for d in ds)
+        print(f"(uyarı: dolumlarda yön kodu okunamadı; info alanları: {sorted((x.get('info') or {}).keys())})")
+    fk = [x["giris_fark_dk"] for x in satirlar if x["eslesti"]]
+    if fk:
+        print(f"(defter girişi ile borsa ilk dolumu arasındaki fark, dakika: medyan {np.median(fk):+.1f}, "
+              f"en büyük {max(fk, key=abs):+.1f})")
+    if eslesmeyen:
+        print("\nEşleşmeyenlerden örnekler (defter giriş → en yakın borsa turu farkı):")
+        for t, f in eslesmeyen[:5]:
+            print(f"  {t['symbol']:<16}{t['side']:<6}giriş {t['entry_time'][:19]}  "
+                  f"{'tur yok' if f is None else f'{f / 60_000:+.0f} dk'}")
     if hata:
         print("\n⚠ Bazı sembollerde okuma hatası (o sembolün işlemleri eşleşmemiş olabilir):")
         for s, (e1, e2) in hata.items():
