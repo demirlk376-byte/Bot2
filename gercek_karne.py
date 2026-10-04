@@ -34,25 +34,47 @@ def ms(iso: str) -> int:
     return int(datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp() * 1000)
 
 
-async def hepsini_cek(fn, sym, since, limit=100, sayfa=40):
-    out, gorulen = [], set()
-    for _ in range(sayfa):
+async def dolumlar(ex, sym, bas, bit, gun=7, sayfa_boyu=100):
+    """Tüm dolumlar: 7 günlük pencereler × sayfa numarası (MEXC order_deals sırası ve 100 sınırı yüzünden
+    'son zamandan devam' yöntemi kayıp verir). Kimliğe göre tekilleştirilir."""
+    out, gorulen, hata = [], set(), None
+    w = bas
+    while w < bit:
+        w2 = min(w + gun * 86_400_000, bit)
+        for sayfa in range(1, 60):
+            try:
+                r = await ex.fetch_my_trades(sym, w, sayfa_boyu, {"end_time": w2, "page_num": sayfa})
+            except Exception as e:
+                hata = str(e)
+                break
+            yeni = [x for x in (r or []) if x.get("id") not in gorulen]
+            for x in yeni:
+                gorulen.add(x.get("id"))
+            out += yeni
+            await asyncio.sleep(0.2)
+            if len(r or []) < sayfa_boyu or not yeni:
+                break
+        w = w2
+    return out, hata
+
+
+async def fundingler(ex, sym, bas, sayfa_boyu=100):
+    """Funding kayıtları: sayfa numarasıyla geriye doğru, bas'tan eski kayda ulaşınca dur."""
+    out, gorulen, hata = [], set(), None
+    for sayfa in range(1, 200):
         try:
-            r = await fn(sym, since, limit)
+            r = await ex.fetch_funding_history(sym, None, sayfa_boyu, {"page_num": sayfa})
         except Exception as e:
-            return out, str(e)
-        yeni = [x for x in (r or []) if (x.get("id"), x.get("timestamp")) not in gorulen]
-        if not yeni:
+            hata = str(e)
             break
+        yeni = [x for x in (r or []) if (x.get("id"), x.get("timestamp")) not in gorulen]
         for x in yeni:
             gorulen.add((x.get("id"), x.get("timestamp")))
         out += yeni
-        son = max(int(x.get("timestamp") or 0) for x in yeni)
-        if son <= since or len(r) < limit:
+        await asyncio.sleep(0.2)
+        if len(r or []) < sayfa_boyu or not yeni or min(int(x.get("timestamp") or 0) for x in yeni) < bas:
             break
-        since = son + 1
-        await asyncio.sleep(0.25)
-    return out, None
+    return out, hata
 
 
 def guven(rs):
@@ -82,10 +104,10 @@ async def main():
         bas = min(ms(t["entry_time"]) for t in islemler) - 86_400_000
         semboller = sorted({t["symbol"] for t in islemler})
         dolum, fon, hata = {}, {}, {}
+        bit = max(ms(t["exit_time"]) for t in islemler) + 86_400_000
         for s in semboller:
-            d, e1 = await hepsini_cek(ex.fetch_my_trades, s, bas)
-            f, e2 = await hepsini_cek(ex.fetch_funding_history, s, bas) if hasattr(ex, "fetch_funding_history") \
-                else ([], "yok")
+            d, e1 = await dolumlar(ex, s, bas, bit)
+            f, e2 = await fundingler(ex, s, bas) if hasattr(ex, "fetch_funding_history") else ([], "yok")
             dolum[s], fon[s] = sorted(d, key=lambda x: x["timestamp"]), f
             if e1 or e2:
                 hata[s] = (e1, e2)
@@ -143,6 +165,7 @@ async def main():
               f"{(np.mean(rs) if rs else float('nan')):>+14.2f}{ar:>18}"
               f"{sum(x['ucret'] for x in e):>8.2f}{sum(x['funding'] for x in e):>9.2f}")
     print("-" * 100)
+    print(f"(okunan dolum: {sum(len(v) for v in dolum.values())}, funding kaydı: {sum(len(v) for v in fon.values())})")
     print(f"{'TOPLAM':<12}{sum(x['eslesti'] for x in satirlar):>4}/{len(satirlar):<3}{top_d:>13.2f}{top_g:>13.2f}"
           f"{top_g - top_d:>9.2f}")
     if hata:
