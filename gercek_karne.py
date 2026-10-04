@@ -222,5 +222,45 @@ async def main():
     print("işlemler toplama katılmaz. Borsa equity − yatırılan ile kıyaslarken açık pozisyonun uPnL'ini ekleyin.")
 
 
+async def telegram_gonder(metin: str) -> None:
+    """Çıktıyı Telegram'a eş genişlikli yazıyla gönderir (haftalık zamanlanmış görev için: --telegram)."""
+    import html
+    import aiohttp
+    tg = load_config().telegram
+    if not (tg.token and tg.chat_id):
+        print("Telegram ayarı yok (TELEGRAM_TOKEN / TELEGRAM_CHAT_ID) — gönderilmedi.")
+        return
+    satirlar, parca, parcalar = metin.splitlines(), "", []
+    for sat in satirlar:                       # Telegram sınırı 4096 karakter (kaçışlı metin üzerinden)
+        sat = html.escape(sat)[:3500]
+        if len(parca) + len(sat) + 1 > 3500:
+            parcalar.append(parca)
+            parca = ""
+        parca += sat + "\n"
+    if parca.strip():
+        parcalar.append(parca)
+    url = f"https://api.telegram.org/bot{tg.token}/sendMessage"
+    async with aiohttp.ClientSession() as oturum:
+        for pr in parcalar:
+            async with oturum.post(url, json={"chat_id": tg.chat_id, "parse_mode": "HTML",
+                                              "text": f"<pre>{pr}</pre>"}) as r:
+                if r.status != 200:
+                    print(f"Telegram gönderimi başarısız: HTTP {r.status}")
+
+
+async def _telegramli() -> None:
+    import contextlib
+    import io
+    tampon = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(tampon):
+            await main()
+    except Exception as e:                     # karne hata verirse bunu da bildir
+        tampon.write(f"\n⚠ Gerçek karne çalışırken hata: {type(e).__name__}: {e}\n")
+    metin = tampon.getvalue()
+    print(metin)
+    await telegram_gonder("📊 HAFTALIK GERÇEK KARNE\n" + metin)
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(_telegramli() if "--telegram" in sys.argv else main())
