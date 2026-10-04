@@ -35,3 +35,12 @@ Binance USDⓈ-M aggTrades (kamu arşivi), ikizin 413 donchian sinyali (`sinyall
 - **KAPAT**: TABAN'da ortalama Δ ≤ 0.
 - Arada kalırsa: **KAPAT** (sadelik; kanıt yetersiz).
 - Ek rapor (karar dışı): dolum oranı, coin kırılımı, yıl kırılımı, hesaba yıllık etki tahmini.
+
+---
+## SONUÇ (2026-10-04, veri: veri/maker1 dbe7dfb, 413/413 sinyal, 2.39M aggTrade) — `sonuc.txt`
+- Akıl kontrolü: Binance kapanışı ile L farkı medyan 1.1 bp → sinyal fiyatları doğru eşleşiyor.
+- TABAN: Δ ort **−0.98 bp** [%95 −3.00, +0.98]; limitte dolum yalnız **%17** (72/413), post-only reddi
+  138, 45 sn yedek 203. Piyasa maliyeti ort +10.3 bp (canlı ölçülen +15.3 bp ile tutarlı).
+- MUHAFAZAKÂR: Δ ort +0.63 bp [−1.35, +2.81], dolum %16.
+- **ÖN KAYITLI KARAR: KAPAT.** Kırılımda fiyat limite nadiren geri dönüyor; dönmediğinde 45 sn bekleme
+  kazancı geri yiyor. Net etki sıfır civarı (±2 bp ≈ ±0.005 R/işlem), işaret belirsiz.

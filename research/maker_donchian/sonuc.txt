@@ -1,0 +1,20 @@
+sinyal 413 · verili 413 · verisiz 0
+akıl kontrolü |Binance kapanış − L|: medyan 1.1 bp, %90 7.0 bp
+
+=== TABAN {'G': 75000, 'Y': 1.0, 'e': 0.0}
+  piyasa maliyeti ort +10.29 bp · maker ort +11.27 bp
+  Δ (piyasa − maker) ort -0.98 bp  %95 [-3.00, +0.98]  medyan +0.00
+  durum: limitte doldu 72 · post-only reddi 138 · 45sn yedek 203  (dolum oranı 17%)
+  Δ R cinsinden ort -0.0033 R/işlem
+  coin: ADA -2.1(63) · BCH +1.7(55) · BNB -0.7(72) · ETH -2.1(69) · ICP -4.4(57) · NEAR +1.3(56) · SOL +0.3(41)
+  yil: 2023 -1.9(107) · 2024 +1.2(128) · 2025 -1.9(109) · 2026 -2.1(69)
+
+=== MUHAFAZAKAR {'G': 120000, 'Y': 0.5, 'e': 0.5}
+  piyasa maliyeti ort +10.71 bp · maker ort +10.08 bp
+  Δ (piyasa − maker) ort +0.63 bp  %95 [-1.35, +2.81]  medyan +0.00
+  durum: limitte doldu 65 · post-only reddi 149 · 45sn yedek 199  (dolum oranı 16%)
+  Δ R cinsinden ort -0.0005 R/işlem
+  coin: ADA +2.5(63) · BCH -1.0(55) · BNB -0.9(72) · ETH +0.9(69) · ICP +3.3(57) · NEAR -1.6(56) · SOL +1.6(41)
+  yil: 2023 -3.1(107) · 2024 -0.0(128) · 2025 +2.8(109) · 2026 +4.2(69)
+
+ÖN KAYITLI KARAR: KAPAT
