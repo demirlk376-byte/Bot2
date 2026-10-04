@@ -18,7 +18,7 @@ Hepsi sinyal anında bilinen veriyle; gelecek yok.
 |---|---|
 | **MTF** | LONG yalnız 4h kapanış > 4h EMA200 VE 1D kapanış > 1D EMA50 iken; SHORT tersi. Sinyalden önceki son tamamlanmış 4h/1D mumları; 5m'den kurulur. |
 | **SEANS** | sinyal saati UTC [07:00, 21:00) içindeyse (Londra + New York). |
-| **HACIM** | ihlal mumunun (sweep_open) 5m hacmi ≥ 1.5 × önceki 48 adet 5m mumunun medyan hacmi. |
+| **HACIM** | ihlal mumunun hacmi ≥ 1.5 × önceki 48 mumun medyan hacmi. **Düzeltme (2026-10-04, kod yazılırken, sonuçtan ÖNCE):** V1'de ihlal 15m mumunda tanımlı (`j15`); bu yüzden 15m ihlal mumu ve önceki 48 adet 15m mum kullanılır (5m değil). |
 | **RETEST** | K2 sinyalinden sonra en fazla 12 adet 5m mum içinde fiyat süpürülen seviyeye geri dokunur ve doğru tarafta kapatırsa o mumun kapanışında yeni sinyal. Long: low ≤ seviye + 0.10×ATR15 VE close > seviye. Stop aynı kural (ihlal ucu − 0.10×ATR15), hedef 2R yeni girişten. Retest olmazsa işlem yok. |
 | **ORDERBOOK** | sinyal anındaki SON 5m emir defteri dengesizliği (±%1 bant): LONG için imb1 > 0, SHORT için < 0. Veri yoksa işlem yok. |
 | **OI** | sinyalden önceki 1 saatte açık pozisyon (15m metrics) AZALMIŞ olmalı: zorla kapanan pozisyonların süpürdüğü hareket. |
