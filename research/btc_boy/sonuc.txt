@@ -1,0 +1,77 @@
+veri: 2017-08-17 → 2026-08-20 · keşif 2328 gün, doğrulama 963 gün
+temel oran (boy günü payı): keşif 23.3% · doğrulama 8.3%
+
+OLAY BAŞLANGIÇLARI (45):
+  2017-08-18  +18%  ret30 +nan%  zirveden +nan%  sma200 +nan%  fund7 +nanbp  dom14 +nan%
+  2017-09-14  +31%  ret30 +nan%  zirveden +nan%  sma200 +nan%  fund7 +nanbp  dom14 +nan%
+  2018-02-03  +20%  ret30 -39%  zirveden +nan%  sma200 +nan%  fund7 +nanbp  dom14 +nan%
+  2018-03-30  +16%  ret30 -34%  zirveden -64%  sma200 -27%  fund7 +nanbp  dom14 +nan%
+  2018-06-28  +15%  ret30 -22%  zirveden -69%  sma200 -40%  fund7 +nanbp  dom14 +nan%
+  2018-08-20  +17%  ret30 -15%  zirveden -67%  sma200 -21%  fund7 +nanbp  dom14 +nan%
+  2018-12-06  +15%  ret30 -46%  zirveden -82%  sma200 -46%  fund7 +nanbp  dom14 +nan%
+  2019-02-06  +17%  ret30 -14%  zirveden -70%  sma200 -38%  fund7 +nanbp  dom14 +nan%
+  2019-03-19  +21%  ret30 +9%  zirveden -59%  sma200 -17%  fund7 +nanbp  dom14 +nan%
+  2019-04-25  +19%  ret30 +32%  zirveden -47%  sma200 +16%  fund7 +nanbp  dom14 +nan%
+  2019-06-04  +21%  ret30 +33%  zirveden -12%  sma200 +66%  fund7 +nanbp  dom14 +nan%
+  2019-07-23  +20%  ret30 -10%  zirveden -25%  sma200 +59%  fund7 +nanbp  dom14 +nan%
+  2019-10-13  +15%  ret30 -20%  zirveden -37%  sma200 -5%  fund7 +nanbp  dom14 +nan%
+  2019-12-31  +22%  ret30 -3%  zirveden -45%  sma200 -22%  fund7 +nanbp  dom14 +nan%
+  2020-01-23  +16%  ret30 +16%  zirveden -36%  sma200 -6%  fund7 +2.7bp  dom14 +nan%
+  2020-03-12  +41%  ret30 -53%  zirveden -63%  sma200 -44%  fund7 +1.9bp  dom14 +nan%
+  2020-04-15  +33%  ret30 +32%  zirveden -49%  sma200 -18%  fund7 -0.0bp  dom14 +nan%
+  2020-05-24  +17%  ret30 +16%  zirveden -33%  sma200 +8%  fund7 +0.5bp  dom14 +nan%
+  2020-07-13  +19%  ret30 -2%  zirveden -23%  sma200 +9%  fund7 +1.0bp  dom14 +nan%
+  2020-10-07  +20%  ret30 +3%  zirveden -13%  sma200 +12%  fund7 +0.2bp  dom14 +nan%
+  2020-12-03  +17%  ret30 +38%  zirveden -1%  sma200 +68%  fund7 +1.5bp  dom14 +nan%
+  2021-01-21  +22%  ret30 +30%  zirveden -24%  sma200 +91%  fund7 +6.3bp  dom14 +nan%
+  2021-03-25  +15%  ret30 +5%  zirveden -16%  sma200 +85%  fund7 +3.1bp  dom14 +nan%
+  2021-04-24  +18%  ret30 -2%  zirveden -21%  sma200 +44%  fund7 +1.7bp  dom14 +nan%
+  2021-06-07  +21%  ret30 -43%  zirveden -47%  sma200 -20%  fund7 +1.0bp  dom14 +nan%
+  2021-07-13  +21%  ret30 -16%  zirveden -49%  sma200 -26%  fund7 -0.1bp  dom14 +3.0%
+  2021-09-21  +26%  ret30 -17%  zirveden -36%  sma200 -11%  fund7 +1.0bp  dom14 +10.6%
+  2022-01-22  +19%  ret30 -31%  zirveden -48%  sma200 -28%  fund7 +0.7bp  dom14 +7.6%
+  2022-02-20  +16%  ret30 +5%  zirveden -43%  sma200 -22%  fund7 +0.5bp  dom14 +4.8%
+  2022-07-05  +16%  ret30 -33%  zirveden -70%  sma200 -46%  fund7 +0.1bp  dom14 -2.5%
+  2022-09-06  +19%  ret30 -19%  zirveden -72%  sma200 -39%  fund7 +0.4bp  dom14 -5.2%
+  2022-12-30  +20%  ret30 -3%  zirveden -65%  sma200 -16%  fund7 +0.5bp  dom14 -0.9%
+  2023-03-03  +23%  ret30 -6%  zirveden -53%  sma200 +13%  fund7 +0.4bp  dom14 -0.1%
+  2023-06-09  +16%  ret30 -4%  zirveden -13%  sma200 +13%  fund7 +0.6bp  dom14 +2.1%
+  2023-10-09  +20%  ret30 +7%  zirveden -12%  sma200 -2%  fund7 +0.2bp  dom14 +5.4%
+  2023-11-21  +23%  ret30 +19%  zirveden -6%  sma200 +23%  fund7 +1.0bp  dom14 +2.4%
+  2024-01-29  +15%  ret30 +3%  zirveden -8%  sma200 +28%  fund7 +1.0bp  dom14 +7.2%
+  2024-03-19  +15%  ret30 +19%  zirveden -15%  sma200 +52%  fund7 +2.8bp  dom14 +3.0%
+  2024-05-08  +17%  ret30 -15%  zirveden -16%  sma200 +21%  fund7 +0.4bp  dom14 -0.2%
+  2024-07-05  +18%  ret30 -20%  zirveden -23%  sma200 -3%  fund7 +0.9bp  dom14 +1.6%
+  2024-09-06  +17%  ret30 -2%  zirveden -26%  sma200 -15%  fund7 +0.2bp  dom14 +3.1%
+  2024-10-27  +18%  ret30 +3%  zirveden -7%  sma200 +8%  fund7 +1.0bp  dom14 +4.9%
+  2025-04-08  +22%  ret30 -5%  zirveden -28%  sma200 -12%  fund7 +0.4bp  dom14 +16.1%
+  2026-04-03  +15%  ret30 -8%  zirveden -46%  sma200 -25%  fund7 -0.1bp  dom14 +1.1%
+  2026-08-07  +21%  ret30 +4%  zirveden -48%  sma200 -8%  fund7 +0.5bp  dom14 +0.1%
+
+KEŞİF — lift tabloları (dilim 0 = en düşük değerler)
+  F1_ret30               0.99(106/460) | 0.67(72/459) | 0.83(89/460) | 1.12(120/459) | 1.39(149/460)
+  F2_ret7                1.08(116/465) | 0.79(85/464) | 0.71(76/464) | 1.01(108/464) | 1.42(152/464)
+  F3_zirveden            0.44(38/426) | 1.28(111/426) | 0.83(72/425) | 1.07(93/426) | 1.38(120/426)
+  F4_sma200              0.86(75/426) | 0.97(84/426) | 0.81(70/425) | 0.82(71/426) | 1.54(134/426)
+  F5_oynaklik_yuzdelik   0.76(66/424) | 0.77(67/424) | 1.28(112/428) | 1.09(93/416) | 1.11(96/423)
+  F6_hacim               0.85(84/448) | 0.89(88/448) | 0.90(89/447) | 0.92(91/448) | 1.43(141/448)
+  F7_rsi                 0.92(100/466) | 0.82(89/465) | 0.87(94/465) | 0.96(104/465) | 1.43(156/466)
+  F8_funding7            1.27(78/292) | 0.88(54/291) | 0.81(50/292) | 1.11(68/291) | 0.93(57/292)
+  F9_oi7                 0.89(17/151) | 1.10(21/151) | 1.11(21/150) | 1.10(21/151) | 0.79(15/151)
+  F10_toptrader_z        0.85(8/64) | 1.38(13/64) | 0.43(4/64) | 0.53(5/64) | 1.81(17/64)
+  F11_perakende_z        1.02(16/136) | 1.03(16/135) | 0.51(8/135) | 0.90(14/135) | 1.54(24/135)
+  F12_taker7             1.07(15/125) | 0.93(13/125) | 0.72(10/124) | 1.07(15/125) | 1.21(17/125)
+  F13_btcdom14           0.45(13/182) | 0.66(19/182) | 0.66(19/182) | 1.12(32/182) | 2.10(60/182)
+  F14_btcdom_sma50       0.16(4/177) | 0.67(17/177) | 1.07(27/177) | 1.51(38/177) | 1.59(40/177)
+  F15_ethbtc14           1.49(91/290) | 1.02(62/289) | 0.82(50/289) | 0.85(52/289) | 0.82(50/290)
+
+DOĞRULAMAYA TAŞINAN — en yüksek lift: [('F13_btcdom14', 4, 2.1), ('F10_toptrader_z', 4, 1.81), ('F14_btcdom_sma50', 4, 1.59)]
+DOĞRULAMAYA TAŞINAN — en düşük lift (kaçınılacak): [('F3_zirveden', 0, 0.44), ('F13_btcdom14', 1, 0.66), ('F13_btcdom14', 2, 0.66)]
+
+DOĞRULAMA (2024-01-01 → 2026-08-20, temel oran 8.3%)
+  F13_btcdom14           dilim 4  keşif lift 2.10 → doğrulama 1.10 (14/153)  Bonferroni %95 [0.00, 2.56]  → doğrulanmadı
+  F10_toptrader_z        dilim 4  keşif lift 1.81 → doğrulama 0.53 (11/249)  Bonferroni %95 [0.00, 1.84]  → doğrulanmadı
+  F14_btcdom_sma50       dilim 4  keşif lift 1.59 → doğrulama 0.77 (11/171)  Bonferroni %95 [0.00, 2.51]  → doğrulanmadı
+  F3_zirveden            dilim 0  keşif lift 0.44 → doğrulama nan (0/0)  Bonferroni %95 [nan, nan]  → doğrulanmadı
+  F13_btcdom14           dilim 1  keşif lift 0.66 → doğrulama 0.92 (15/196)  Bonferroni %95 [0.00, 1.79]  → doğrulanmadı
+  F13_btcdom14           dilim 2  keşif lift 0.66 → doğrulama 1.46 (28/231)  Bonferroni %95 [0.70, 2.37]  → doğrulanmadı
