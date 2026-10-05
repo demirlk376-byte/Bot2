@@ -43,8 +43,8 @@ def test_1_simdi_ts_sanal_saati_atliyor():
             del EX.datetime
         else:
             EX.datetime = eski
-    # HATA: sanal saat 2024-03-01 iken _simdi_ts duvar saatini döndürüyor
-    assert abs(gercek - t0.timestamp()) > 86400 * 30
+    # 2026-10-05 DÜZELTİLDİ: _simdi_ts modül düzeyi datetime kullanıyor → ikizin yaması ulaşıyor
+    assert abs(gercek - t0.timestamp()) < 1
 
 
 def test_1_funding_ikizde_sifir_duzeltmeyle_degil():
@@ -56,7 +56,10 @@ def test_1_funding_ikizde_sifir_duzeltmeyle_degil():
 
     async def tur(duzelt):
         orj = EX._simdi_ts
+        eski_dt = EX.datetime
         EX._FUNDING_ONBELLEK.clear()
+        if not duzelt:
+            EX.datetime = SD                     # ikiz/kos.py'nin yaptığı yama (düzeltmeden sonra yeterli)
         if duzelt:
             EX._simdi_ts = lambda: saat.simdi.timestamp()
             sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -79,12 +82,14 @@ def test_1_funding_ikizde_sifir_duzeltmeyle_degil():
             return ts0, fr
         finally:
             EX._simdi_ts = orj
+            EX.datetime = eski_dt
             EX._FUNDING_ONBELLEK.clear()
 
     ts_bug, fr_bug = asyncio.run(tur(False))
     saat.ayarla(saat.simdi + timedelta(seconds=1))
     ts_fix, fr_fix = asyncio.run(tur(True))
-    assert abs(fr_bug) < 1e-12                  # hata: 8 günlük tutuşta funding toplamı 0
+    # 2026-10-05 DÜZELTİLDİ (exchange.py modül düzeyi datetime): yamasız tur da artık sanal saati görüyor
+    assert abs(fr_bug) > 0
     assert abs(ts_fix - t0.timestamp()) < 86400 * 9
     assert abs(fr_fix) > 0                      # düzeltmeyle gerçek oranlar toplanıyor
 
@@ -107,7 +112,8 @@ def test_3_funding_zaman_birimi():
     EX._FUNDING_ONBELLEK.clear()
     bas = pd.Timestamp("2024-03-01", tz="UTC").timestamp()
     bit = pd.Timestamp("2024-03-09", tz="UTC").timestamp()
-    assert EX._funding_toplami("ADA/USDT:USDT", bas, bit) == 0.0      # HATA: 8 günde 24 oran var, toplam 0
+    # 2026-10-05 DÜZELTİLDİ: zaman damgası sürümden bağımsız saniyeye çevriliyor
+    assert EX._funding_toplami("ADA/USDT:USDT", bas, bit) != 0.0      # 8 günde 24 oran toplanıyor
     ts = EX._FUNDING_ONBELLEK["ADA"][0]
-    assert ts[0] < 1e8                                                # saniye değil (1000 kat küçük)
+    assert 1.5e9 < ts[0] < 2.5e9                                      # saniye
     EX._FUNDING_ONBELLEK.clear()

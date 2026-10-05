@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Callable, Awaitable
@@ -12,6 +13,10 @@ from database import Database, TradeRecord
 from exchange import PaperExchange, LiveExchange, OrderResult, HEDGE_AWARE_RECON
 from portfolio import Portfolio, Position
 from risk import RiskManager, TradeSetup
+
+# Taker komisyon oranı (defter hesabı). Varsayılan 1bp = bugünkü davranış BİREBİR.
+# İkiz gerçek maliyetle koşarken TAKER_FEE_RATE ile ölçülen orana (≈2.5bp) çekilir.
+_TAKER = float(os.getenv("TAKER_FEE_RATE", "0.0001"))
 from strategies.signal_combiner import CombinedSignal
 
 logger = logging.getLogger(__name__)
@@ -832,8 +837,8 @@ class ExecutionEngine:
                                              "exit_fee_source": "estimate_taker_1bp"})
                         await self._db.log_trade_open(rec)
                         d_h = 1 if signal.direction == 1 else -1
-                        fees_h = (order.filled_price * (0.0 if order.was_maker else 0.0001)
-                                  + close_res_h.filled_price * 0.0001) * order.quantity
+                        fees_h = (order.filled_price * (0.0 if order.was_maker else _TAKER)
+                                  + close_res_h.filled_price * _TAKER) * order.quantity
                         pnl_h = (d_h * (close_res_h.filled_price - order.filled_price)
                                  * order.quantity) - fees_h
                         denom_h = order.filled_price * order.quantity
@@ -905,9 +910,9 @@ class ExecutionEngine:
                             )
                             await self._db.log_trade_open(rec)
                             d = 1 if pos_side == "long" else -1
-                            entry_fee = 0.0 if order.was_maker else 0.0001
+                            entry_fee = 0.0 if order.was_maker else _TAKER
                             fees = (order.filled_price * entry_fee
-                                    + close_res.filled_price * 0.0001) * order.quantity
+                                    + close_res.filled_price * _TAKER) * order.quantity
                             pnl = (d * (close_res.filled_price - order.filled_price)
                                    * order.quantity) - fees
                             denom = order.filled_price * order.quantity
@@ -942,7 +947,7 @@ class ExecutionEngine:
                 # Keyed off the ACTUAL fill type, not the maker attempt: a
                 # rejected/timed-out post-only limit falls back to a market
                 # (taker) fill, which must be booked at the taker rate.
-                "entry_fee_rate": 0.0 if getattr(order, "was_maker", False) else 0.0001,
+                "entry_fee_rate": 0.0 if getattr(order, "was_maker", False) else _TAKER,
                 # Intended entry (the signal's level/price BEFORE the fill) so the
                 # live report can measure realized entry slippage = actual fill vs
                 # this. Critical for validating the live-vs-backtest discount on the
@@ -1341,7 +1346,7 @@ class ExecutionEngine:
             exit_price_estimated = True
         direction = pos.direction
         raw_pnl = direction * (exit_price - pos.entry_price) * pos.quantity
-        entry_fee_rate = pos.strategy_scores.get("entry_fee_rate", 0.0001)
+        entry_fee_rate = pos.strategy_scores.get("entry_fee_rate", _TAKER)
         # GERÇEK çıkış komisyonu verildiyse (0.0 dahil) o kullanılır; yoksa ya da
         # sayı değilse eski 1bp tahmine düşülür ve bu durum kalıcı kayda yazılır.
         # (Önceki hata: mutabakat gerçek ücreti alıyor ama buraya aktarmıyordu;
@@ -1351,7 +1356,7 @@ class ExecutionEngine:
             logger.warning("Close of %s: invalid exit fee %r — using 1bp estimate",
                            pos.id, exit_fee_usdt)
         exit_fee = (float(exit_fee_usdt) if gercek_ucret
-                    else exit_price * pos.quantity * 0.0001)
+                    else exit_price * pos.quantity * _TAKER)
         fees = pos.entry_price * pos.quantity * entry_fee_rate + exit_fee
         net_pnl = raw_pnl - fees
         # Kalıcı kayıt: çıkış ücretinin ve fiyatının kaynağı (trades.strategy_scores).

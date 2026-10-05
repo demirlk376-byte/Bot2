@@ -6,6 +6,7 @@ import os
 import time
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Optional, Protocol
 
 logger = logging.getLogger(__name__)
@@ -97,7 +98,8 @@ def _funding_toplami(symbol: str, bas_ts: float, bit_ts: float) -> float:
             d = _pd.read_csv(y)
             k = "dt" if "dt" in d.columns else d.columns[0]
             t = _pd.to_datetime(d[k], utc=True, format="mixed")
-            yeni = (t.astype("int64").to_numpy() / 1e9,
+            # sürümden bağımsız saniye (pandas ns/us/ms çözünürlüğü fark etmez; #3)
+            yeni = (((t - _pd.Timestamp("1970-01-01", tz="UTC")) / _pd.Timedelta(seconds=1)).to_numpy(dtype="float64"),
                     d["rate"].to_numpy(dtype="float64"))
             if seri is None or len(yeni[0]) > len(seri[0]):
                 seri = yeni
@@ -114,8 +116,10 @@ def _funding_toplami(symbol: str, bas_ts: float, bit_ts: float) -> float:
 
 def _simdi_ts() -> float:
     """Simdiki zaman (epoch sn). ⚠ datetime.now KULLANILIR, time.time DEGIL:
-    replay'de sanal saat datetime'i yamaliyor, time modulunu yamalamiyor."""
-    from datetime import datetime, timezone
+    replay'de sanal saat datetime'i yamaliyor, time modulunu yamalamiyor.
+    ⚠ datetime MODÜL düzeyinde import edilir: fonksiyon içi import ikizin sanal saat
+    yamasına (modül attribute'u) ulaşmıyor ve paper funding penceresi duvar saatinden
+    ölçülüyordu (≈0 sn → ikizde funding fiilen SIFIR; test_codex_bulgulari #1)."""
     return datetime.now(timezone.utc).timestamp()
 
 @dataclass
@@ -139,7 +143,7 @@ class _PaperPosition:
 
 
 class PaperExchange:
-    FEE_RATE = 0.0001       # taker fee (market orders)
+    FEE_RATE = float(os.getenv("TAKER_FEE_RATE", "0.0001"))   # taker fee (market orders); ikiz gerçek oranla koşabilsin
     FEE_MAKER = 0.0         # maker fee (limit/post-only orders) — MEXC futures maker = 0%
     SLIPPAGE = 0.0005
 
