@@ -1,0 +1,13 @@
+donchian işlemi 412 · ort R +0.221
+küme büyüklüğüne göre:
+  1: işlem 280 · ayrı an 280 · ort R +0.270 · ΣR +75.5 · long/short 188/92
+  2: işlem  60 · ayrı an  30 · ort R +0.297 · ΣR +17.8 · long/short 23/37
+  3: işlem  15 · ayrı an   5 · ort R -0.422 · ΣR -6.3 · long/short 6/9
+  4+: işlem  57 · ayrı an  11 · ort R +0.071 · ΣR +4.1 · long/short 0/57
+
+varyant  işlem   ort R      ΣR  ΣR 1.yarı  ΣR 2.yarı   çarpan  maxDD%  karar
+TABAN      412  +0.221   +91.1      +60.6      +30.5    14.27    34.4  
+K3          72  -0.032    -2.3       +4.2       -6.5     0.86    47.7  ELENDİ
+K4          57  +0.071    +4.1       +8.9       -4.8     1.09    44.5  ELENDİ
+K3_B2       72  -0.032    -2.3       +4.2       -6.5     0.86    47.7  ELENDİ
+K4_B2       57  +0.071    +4.1       +8.9       -4.8     1.09    44.5  ELENDİ

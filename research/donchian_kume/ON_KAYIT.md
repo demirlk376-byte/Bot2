@@ -21,3 +21,12 @@ Bir varyant TABAN'dan İYİ sayılır ancak:
 2. Her iki yarıda da (2023-04→2024-12, 2025-01→2026-07) toplam R TABAN'dan yüksek, VE
 3. Hesap etkisi: işlem başı %3.5 risk, bileşik, ay sonu değerleriyle en büyük düşüş TABAN'dan kötü değil.
 Aksi halde ELENDİ.
+
+---
+## SONUÇ (sonuc.txt) — 4/4 varyant ELENDİ
+- Tek başına gelen sinyaller (küme 1: 280 işlem) ort **+0.270R**; küme 2: +0.297R; küme 3: −0.422R
+  (15 işlem, 5 an); küme 4+: +0.071R (57 işlem, 11 an — hepsi SHORT, piyasa çapında çöküş anları).
+- K3: 72 işlem, ΣR −2.3 (taban +91.1), maxDD %47.7 (taban %34.4). K4: ΣR +4.1, maxDD %44.5.
+  2 gün bekleme kuralı sonucu değiştirmiyor (kümeler zaten 48 saatten seyrek).
+- Hüküm: kümeye göre girmek kârın ~%95'ini atıyor ve düşüşü büyütüyor. Kenar tek başına gelen
+  kırılımlarda.
