@@ -1,0 +1,10 @@
+test dönemi 2020-02-05 → 2023-04-04 · donchian işlemi 444 · ort R +0.138
+  küme 1: işlem 241 · ayrı an 241 · ort R +0.224 · ΣR +54.0 · long/short 180/61
+  küme 2: işlem  94 · ayrı an  47 · ort R +0.247 · ΣR +23.3 · long/short 44/50
+  küme 3: işlem  48 · ayrı an  16 · ort R +0.024 · ΣR +1.2 · long/short 9/39
+  küme 4+: işlem  61 · ayrı an  13 · ort R -0.284 · ΣR -17.3 · long/short 18/43
+
+varyant işlem      ΣR   çarpan  maxDD% atlanan  atl.ortR  atl.üst95  karar
+TABAN     444   +61.1     4.98    48.5
+ATLA3     335   +77.3     9.55    38.7     109    -0.148     +0.190  ELENDİ
+ATLA4     383   +78.4     9.49    37.7      61    -0.284     +0.100  İYİ
