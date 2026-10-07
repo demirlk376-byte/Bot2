@@ -35,3 +35,23 @@ Hesap: işlem başı %3.5 risk, çıkış sırasına göre bileşik; ay sonu de�
 ## Sınırlama
 İkiz işlemlerinden sonradan süzme: atlanan işlemin boşalttığı koltuğa girebilecek başka sinyaller
 modellenmez (koltuk tavanı 7; donchian nadiren takılıyor).
+
+---
+## SONUÇ (2026-10-07) — 4/4 ELENDİ
+İki bağımsız uygulama (vektörel / döngülü) aynı sonucu verdi (tek fark: 3 ICP işleminde "özellik yok"
+sayımı, karara etkisiz); iki ters-denetçi (gelecek veri / tanım-aritmetik) hata bulmadı, biri testi
+sıfırdan yeniden kurup 6 basamağa kadar aynı sayıları buldu. Son betik: `analiz.py`.
+
+| filtre | dönem | atlanan | ΣR taban → filtreli | maxDD taban → filtreli | atlananların ort R |
+|---|---|---|---|---|---|
+| L1a (LQ<1.00) | keşif | 211/412 | 91.1 → 47.0 | %34.4 → %23.6 | +0.21 |
+| L1a | bağımsız | 236/444 | 61.1 → −0.3 | %48.5 → %37.4 | +0.26 |
+| L1b (LQ<0.75) | keşif | 135 | 91.1 → 63.0 | %34.4 → %24.4 | +0.21 |
+| L1b | bağımsız | 127 | 61.1 → 14.9 | %48.5 → %47.1 | +0.36 |
+| L2a (s<0) | 2023-04→2026-01 | 172/346 | 80.6 → 23.6 | %20.4 → %37.6 | +0.33 |
+| L2b (s<−0.10) | 2023-04→2026-01 | 79 | 80.6 → 67.0 | %20.4 → %22.0 | +0.17 |
+
+Teşhis: LQ en düşük beşte birlik dilim ort R keşif **+0.34**, bağımsız **+0.47** (en yüksek ya da ona
+yakın) — hipotezin TERSİ: sakin/ince piyasadaki kırılımlar donchian'ın en iyi işlemleri. Emir defteri
+dengesi (s) ile R arasında tekdüze ilişki yok.
+Hüküm: likidite (hacim ya da emir defteri) donchian'a filtre olarak eklenmez.
