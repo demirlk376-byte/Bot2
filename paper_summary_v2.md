@@ -1,16 +1,16 @@
 # 📊 Paper Demo V2 — Teknik + Makro Filtre
 
-Son güncelleme: **2026-10-14 09:59 UTC** · Fear & Greed: **62 (Açgözlülük)**
+Son güncelleme: **2026-10-14 14:56 UTC** · Fear & Greed: **62 (Açgözlülük)**
 
 V1 (saf teknik) ile karşılaştırma: makro filtre sinyali ONAYLAMAK için gerekli.
 
 | Coin | Bakiye | Getiri | Trade | Kazanma % | Atlanan | Aday? |
 |------|--------|--------|-------|-----------|---------|-------|
-| BTC | $10,036 | +0.4% | 44 | 48% | 35 | ✅ |
-| ETH | $9,626 | -3.7% | 35 | 51% | 37 | ❌ |
-| SOL | $9,643 | -3.6% | 37 | 43% | 21 | ❌ |
-| BNB | $10,220 | +2.2% | 43 | 53% | 18 | ✅ |
-| XRP | $8,938 | -10.6% | 42 | 45% | 25 | ❌ |
+| BTC | $10,036 | +0.4% | 44 | 48% | 36 | ✅ |
+| ETH | $9,626 | -3.7% | 35 | 51% | 38 | ❌ |
+| SOL | $9,643 | -3.6% | 37 | 43% | 22 | ❌ |
+| BNB | $10,220 | +2.2% | 43 | 53% | 19 | ✅ |
+| XRP | $8,938 | -10.6% | 42 | 45% | 26 | ❌ |
 
 **Atlanan:** makro filtre sinyali reddettiğinde artar. Eğer V2 daha az trade ama daha yüksek WR gösterirse filtre işe yarıyor.
 

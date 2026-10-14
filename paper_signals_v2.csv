@@ -336,3 +336,8 @@ ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
 2026-10-12T13:00:00+00:00,BNB,LONG,748.7,3.3169,69,0.0,False,çelişki: F&G=69 (açgözlülük ortamında long riskli)
 2026-10-12T13:00:00+00:00,XRP,LONG,1.3906,0.0094,69,2.1e-05,False,çelişki: F&G=69 (açgözlülük ortamında long riskli)
 2026-10-12T21:00:00+00:00,ETH,LONG,2489.61,16.7913,69,3.1e-05,False,çelişki: F&G=69 (açgözlülük ortamında long riskli)
+2026-10-14T13:00:00+00:00,BTC,LONG,82282.0,481.6799,62,3e-06,False,çelişki: F&G=62 (açgözlülük ortamında long riskli)
+2026-10-14T13:00:00+00:00,ETH,LONG,2451.03,19.4433,62,-4.1e-05,False,çelişki: F&G=62 (açgözlülük ortamında long riskli)
+2026-10-14T13:00:00+00:00,SOL,LONG,104.81,1.106,62,2.2e-05,False,çelişki: F&G=62 (açgözlülük ortamında long riskli)
+2026-10-14T13:00:00+00:00,BNB,LONG,736.8,3.6028,62,0.0,False,çelişki: F&G=62 (açgözlülük ortamında long riskli)
+2026-10-14T13:00:00+00:00,XRP,LONG,1.349,0.012,62,4.4e-05,False,çelişki: F&G=62 (açgözlülük ortamında long riskli)
