@@ -29,3 +29,20 @@ Bonferroni alt sınır = %0.83 persentil.
 Bir hipotez **KAZANDI** ⇔ (1) keşif VE doğrulamada STRESS net ort > 0, (2) doğrulamada NORMAL net için
 Bonferroni alt sınır > 0, (3) doğrulamada NORMAL net ort > 0 olan coin sayısı ≥ 8/12.
 Aksi halde ELENDİ. Rapor: brüt ort bp, işlem sayısı, yıl yıl, coin coin, uzun/kısa ayrımı.
+
+---
+## SONUÇ (2026-10-17) — 3/3 ELENDİ
+İki bağımsız uygulama işlem işlem aynı (tek fark: borsa kesintisi sırasındaki 24 sıfır hacimli mum; karar
+değişmiyor). Gelecek-veri denetimi hata bulmadı (f_önceki gerçekten T−8s'deki oran). Betik: `analiz.py`.
+
+| hipotez | dönem | işlem | brüt bp | net NORMAL | net STRESS | Bonf. alt | + coin |
+|---|---|---|---|---|---|---|---|
+| F1 | keşif | 2184 | +2.6 | −7.4 | −18.4 | −19.9 | 2/12 |
+| F1 | doğrulama | 461 | +10.3 | +0.3 | −10.7 | −10.5 | 6/12 |
+| F2 | keşif | 2184 | +6.0 | −4.0 | −15.0 | −23.4 | 5/12 |
+| F2 | doğrulama | 461 | +4.2 | −5.8 | −16.8 | −19.1 | 6/12 |
+| C1 | keşif | 8864 | +2.4 | −7.6 | −18.6 | −12.1 | 1/12 |
+| C1 | doğrulama | 7446 | −2.1 | −12.1 | −23.1 | −17.3 | 1/12 |
+
+Brüt kenar her hipotezde 10 bp maliyetin altında (C1 için anlamlı biçimde). F sonuçları yıldan yıla işaret
+değiştiriyor (gürültü). Maliyet duvarı bir kez daha doğrulandı.
