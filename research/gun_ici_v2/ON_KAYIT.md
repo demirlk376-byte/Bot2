@@ -33,3 +33,19 @@ Giriş ve TP: 0 (maker). Stop ve süre çıkışı: NORMAL 2.5 komisyon + 3 kaym
 Bir varyant **KAZANDI** ⇔ (1) keşif VE doğrulamada STRESS net ort > 0, (2) doğrulamada NORMAL net Bonferroni
 alt > 0, (3) doğrulamada NORMAL net ort > 0 olan coin ≥ 8/12, (4) doğrulamada işlem ≥ 300. Aksi halde ELENDİ.
 Rapor: dolum oranı, çıkış türü dağılımı (TP/stop/süre), yıl yıl, coin coin, uzun/kısa.
+
+---
+## SONUÇ (2026-10-17) — M1 ve M2 ELENDİ · GÜN İÇİ KONUSU KAPANDI
+İki bağımsız uygulama + üçüncü denetim motoru; tek fark std/ATR tanımı (ddof, Wilder) — her tanımda sonuç aynı.
+Gelecek veri yok, dolum modeli doğru. Son betik: `analiz.py`.
+
+| varyant | dönem | işlem | brüt bp | net NORMAL | net STRESS | Bonf. alt | + coin |
+|---|---|---|---|---|---|---|---|
+| M1 (2.5σ) | keşif | 14876 | −24.4 | −27.6 | −31.8 | −36.5 | 0/12 |
+| M1 | doğrulama | 12329 | −21.2 | −24.5 | −28.8 | −36.1 | 0/12 |
+| M2 (3σ) | keşif | 10785 | −10.1 | −13.5 | −17.8 | −22.2 | 0/12 |
+| M2 | doğrulama | 8601 | −11.2 | −14.6 | −18.9 | −27.4 | 0/12 |
+
+Maliyet sıfıra yakınken bile BRÜT getiri negatif: limit emirler çoğunlukla fiyat aynı yönde akmaya devam
+ederken doluyor (ters seçilim) — stop payı %51, kâr alma %39. Gün içi ortalamaya dönüş bu piyasada çalışmıyor.
+Gün içi: v1 (3 hipotez) + v2 (2 varyant) + önceki ~15 aile = hepsi elendi. Konu kapandı.
