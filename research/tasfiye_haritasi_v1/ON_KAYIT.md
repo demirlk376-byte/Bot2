@@ -36,3 +36,18 @@ Haftalık blok bootstrap (10 000, seed 20261018).
 **TUTTU** ⇔ (1) SEÇİM NORMAL ort R > 0, (2) SINAV NORMAL ve STRESS ort R > 0, (3) SINAV %2.5 persentil > 0,
 (4) SINAV n ≥ 100. Rapor: kârlı ay oranı, aylık R toplamları, long/short, yıl yıl, coin coin; TUTARSA donchian
 ikiziyle korelasyon.
+
+---
+## SONUÇ (2026-10-18) — TUTMADI
+İki bağımsız uygulama (numpy / düz liste) işlem işlem aynı (502 işlem). Harita denetimi: eklenen kütle = ΔOI·P
+birebir, gelecek veri yok (kesme testi 0 fark).
+
+| evren | n | ort R NORMAL | ort R STRESS | %2.5 / %97.5 | kârlı ay |
+|---|---|---|---|---|---|
+| eski 12 (seçim) | 141 | −0.029 | −0.062 | −0.21 / +0.15 | 21/42 |
+| yeni 26 (sınav) | 361 | −0.010 | −0.044 | −0.15 / +0.14 | 18/42 |
+
+Sinyallerin %85'i short (taker oranı çoğunlukla > 1 → aşağıda daha çok long tasfiyesi) ve short taraf kaybediyor;
+küçük long tarafı pozitif (eski12 +0.15, yeni26 +0.14, n=22/58) ama seçimde de istatistik gücü yok. Yıl yıl işaret
+değişiyor. OI=0 veri deliklerini ham sayan duyarlılıkta da hüküm aynı. Tasfiye haritası mıknatısı bu modelle kenar
+vermiyor.
