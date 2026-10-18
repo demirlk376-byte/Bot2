@@ -37,3 +37,24 @@ R = (çıkış − giriş)·yön / |giriş − stop| − maliyet/|giriş − sto
 Bir formasyon×TF **TUTTU** ⇔ (1) SEÇİM evreninde NORMAL ort R > 0, (2) SINAV evreninde NORMAL ort R > 0 ve
 STRESS ort R > 0, (3) SINAV Bonferroni alt sınır > 0, (4) SINAV n ≥ 100.
 TUTAN olursa ek (karar dışı) rapor: donchian ikiziyle haftalık korelasyon, olay kümelenmesi (aynı mumda kaç coin).
+
+---
+## SONUÇ (2026-10-18) — 12/12 TUTMADI
+İki bağımsız uygulama + denetçinin üçüncü motoru 87.961 işlemde birebir aynı (tek fark: EOS veri sonunda 2 işlem).
+Gelecek veri yok (kesme testi 22.417 mum, 0 fark). Betik: `analiz.py`.
+
+| formasyon | TF | SEÇİM ort R | SINAV ort R (NORMAL / STRESS) | SINAV Bonf. alt | SINAV n |
+|---|---|---|---|---|---|
+| yutan | 4h / 1D | −0.09 / −0.06 | −0.10 / −0.02 | <0 | 15227 / 2423 |
+| pin bar | 4h / 1D | −0.19 / −0.01 | −0.15 / −0.07 | <0 | 16626 / 2555 |
+| iç mum | 4h / 1D | −0.02 / +0.05 | −0.04 / −0.06 | <0 | 11160 / 1881 |
+| yıldız | 4h / 1D | −0.10 / +0.06 | −0.05 / +0.05 | <0 | 2541 / 425 |
+| **üç asker/karga** | **4h** | **+0.093** | **+0.090 / +0.068** | **−0.002** (kıl payı) | 2583 |
+| üç asker/karga | 1D | +0.16 | +0.04 / +0.03 | −0.18 | 410 |
+| **marubozu** | **4h** | +0.053 | **+0.150 / +0.122** | −0.040 | 1472 |
+| marubozu | 1D | +0.07 | +0.08 / +0.07 | −0.22 | 212 |
+
+Örüntü: DÖNÜŞ formasyonları (pin bar, yutan, yıldız) zarar; DEVAM formasyonları (üç asker, marubozu) pozitif —
+"momentum piyasası" bulgusuyla tutarlı. Üç asker 4h ve marubozu 4h yeni 26'da her yıl pozitif, kazanç ağırlıkla
+long tarafta. Ön kayıtlı Bonferroni eşiğini geçemedikleri için TUTMADI; aday olarak ayrı ön kayıtla FİNAL
+dönemde (2025-08-08 →) tek seferlik doğrulamaya alınabilir.
