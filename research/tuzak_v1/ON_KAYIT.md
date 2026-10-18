@@ -27,3 +27,14 @@ Bonferroni alt sınır = %0.625 persentil.
 Bir test **TUTTU** ⇔ (1) SEÇİM NORMAL ort R > 0, (2) SINAV NORMAL ve STRESS ort R > 0, (3) SINAV Bonferroni
 alt > 0, (4) SINAV n ≥ 100. Rapor: long/short, yıl yıl, çıkış dağılımı, tetiklenme oranı; TUTAN olursa donchian
 ikiziyle haftalık korelasyon.
+
+---
+## SONUÇ (2026-10-18) — 4/4 TUTMADI
+| test | TF | SEÇİM ort R | SINAV ort R (NORMAL / STRESS) | SINAV n | yıl yıl (SINAV) |
+|---|---|---|---|---|---|
+| yutan tuzağı | 4h | −0.17 | −0.18 / −0.23 | ~6000 | her yıl negatif |
+| yutan tuzağı | 1D | −0.11 | −0.06 / −0.08 | ~900 | karışık |
+| pin bar tuzağı | 4h | −0.27 | −0.28 / −0.34 | ~8100 | her yıl negatif |
+| pin bar tuzağı | 1D | −0.18 | −0.22 / −0.24 | ~1160 | her yıl negatif |
+Maliyetten önce bile negatif. Hem formasyon hem tuzağı kaybediyor: formasyon uçları etrafındaki hareket kısa vadeli
+gürültü; dar stoplu her iki yön de stoplanıyor. Kalabalığın formasyonunu tersine çevirmek kenar yaratmıyor.
