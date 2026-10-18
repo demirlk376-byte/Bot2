@@ -24,3 +24,16 @@ Haftalık blok bootstrap (10 000, seed 20261018).
    coininde) birlikte, 2023-04 → 2026-07: çarpan ve aylık maxDD, yalnız bot ile karşılaştırma.
 Eklemeye ancak (1) korelasyon < 0.5 ve (2) çarpan artarken maxDD en fazla 3 puan kötüleşirse aday denir;
 canlıya alma ayrıca kullanıcı onayı ve ikiz testiyle yapılır.
+
+---
+## SONUÇ (2026-10-18) — İKİSİ DE ÇÜRÜDÜ (FİNAL bir kez kullanıldı)
+İki bağımsız uygulama işlem işlem aynı (1849/1849); kod v1 referansını 5932 işlemde birebir üretiyor.
+
+| formasyon | FİNAL n (37 coin) | ort R NORMAL | ort R STRESS | maliyetsiz brüt R | %1.25 alt |
+|---|---|---|---|---|---|
+| üç asker/karga 4h | 1113 | −0.037 | −0.069 | −0.001 | −0.177 |
+| marubozu 4h | 736 | −0.119 | −0.158 | −0.076 | −0.298 |
+
+2020–2025'teki +0.09 / +0.15R kenar yeni dönemde yok (maliyetten önce bile ~0 / negatif). Bot coinlerinde
+donchian ile haftalık korelasyon +0.41 / +0.19 — örtüşen işlemler en iyileri (yani kenarın bir kısmı zaten donchian'da).
+Hüküm: bota eklenmez.
