@@ -28,3 +28,15 @@ Funding kolu **İŞE YARAR** ⇔ HER İKİ dönemde de (1) NORMAL yıllık net g
 (USDT faiz getirisinin üstü), (2) STRESS yıllık net > 0, (3) kârlı ay oranı ≥ %75. Aksi halde DEĞMEZ.
 Rapor: aylık getiri tablosu, en kötü ay, yıl yıl, ortalama kaç coin tutulduğu, işlem (rotasyon) sayısı,
 donchian ikizinin aylık getirisiyle korelasyon (B, 2023-04→2026-07).
+
+---
+## SONUÇ (2026-10-18) — DEĞMEZ (iki uygulama aynı hüküm; fark yalnız ay sayımı tanımı)
+| dönem | maliyet | yıllık net (ayrılan sermayeye) | kârlı ay | ortalama tutulan coin |
+|---|---|---|---|---|
+| A MEXC 2025-04→2026-09 | NORMAL | −%0.06 | 0/17 | 0.08 (76 haftanın 72'sinde pozisyon yok) |
+| A | STRESS | −%0.22 | 0/17 | |
+| B Binance 2023→2026-09 | NORMAL | +%1.7 | 22/44 | 2.3 |
+| B | STRESS | −%1.4 | 16/44 | |
+Yıl yıl (B NORMAL): 2023 +1.1 · 2024 +4.4 · 2025 +0.06 · 2026 +0.7. MEXC'de son 1.5 yılda funding neredeyse hiç
+1 bp/8s eşiğini aşmıyor (taban oran tam 1 bp'de sabit). Donchian ile aylık korelasyon +0.36 (çeşitlendirme de
+sağlamıyor; yalnız boğa aylarında kazanıyor). USDT faizinin altında → eklenmez.
