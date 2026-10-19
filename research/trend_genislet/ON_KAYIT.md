@@ -19,3 +19,20 @@ Bir varyant **İYİ** ⇔ HER İKİ dönemde de (1) oran T12'den yüksek, (2) ç
 en fazla 3 puan kötü. İkisi de İYİ ise oranı yüksek olan seçilir. Aksi halde canlı düzen (T12) kalır.
 Rapor: aylık tablo, ortalama/en fazla eşzamanlı trend pozisyonu, tavana takılan giriş sayısı, coin bazında trend PnL.
 Sınırlama: küçük hesapta MEXC minimum emir büyüklüğü ve teminat sınırları modellenmez.
+
+---
+## SONUÇ (2026-10-19) — İYİ VARYANT YOK, canlı düzen (T12) kalır
+Uygulama + bağımsız yeniden hesap 6 satırda birebir aynı. Not: EOS ve FIL'in MEXC sözleşme bilgisi yok → "T38" fiilen 36 coin.
+
+| varyant | dönem | çarpan | maxDD | CAGR/maxDD |
+|---|---|---|---|---|
+| T12 (12 coin, %1.5) | keşif | 116.5 | %28.9 | 10.94 |
+| T38 (36 coin, %1.5) | keşif | 68.9 | %38.8 | 6.59 |
+| T38_R1 (36 coin, %1) | keşif | 69.2 | %29.7 | 8.62 |
+| T12 | bağımsız | 42.2 | %58.7 | 3.70 |
+| T38 | bağımsız | 76.5 | %62.8 | 4.47 |
+| T38_R1 | bağımsız | 45.0 | %59.5 | 3.76 |
+
+Daha çok coin 2021 boğasında daha çok kazandırıyor (bağımsız), ama 2023–2024'te eşzamanlı pozisyonlar artınca
+(ortalama 1.3 → 3.8, en fazla 12 → 33–36) sert geri çekilmeler büyüyor ve risk tavanı piramitleri kesiyor; sonuç
+keşifte belirgin şekilde kötü. Ön kayıtlı kural: iki dönemde de iyi değil → eklenmez.
