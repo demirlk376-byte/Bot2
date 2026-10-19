@@ -31,3 +31,20 @@ Bir varyant **KAZANDI** ⇔ HER İKİ dönemde de (1) NORMAL ort R > 0 ve STRESS
 Bonferroni alt > 0, (3) beta düzeltmeli ort R > 0, (4) n ≥ 50. Aksi halde ELENDİ.
 Rapor: kârlı ay oranı, yıl yıl, delist edilenlerin payı ve katkısı, en kötü 10 işlem (short sıkışmaları),
 eşzamanlı açık pozisyon sayısı.
+
+---
+## SONUÇ (2026-10-19) — S30 ve S14 ELENDİ (S30 zayıf pozitif)
+İki bağımsız uygulama + denetçi motoru 1514 işlemde aynı. Denetçinin bulduğu delist sonrası "hayalet satır" sorunu
+(hacim 0, düz fiyat) düzeltildi; yalnız 1 işlem değişti, hüküm aynı.
+
+| varyant | dönem | n | ort R NORMAL / STRESS | piyasadan arındırılmış R | Bonf. alt |
+|---|---|---|---|---|---|
+| S30 (30 gün, %40 stop) | keşif 2021–23 | 182 | +0.048 / +0.033 | +0.136 | −0.130 |
+| S30 | doğrulama 2024–26 | 575 | +0.043 / +0.028 | +0.087 | −0.106 |
+| S14 (14 gün, %25 stop) | keşif | 182 | −0.073 / −0.097 | −0.019 | −0.233 |
+| S14 | doğrulama | 575 | +0.039 / +0.015 | +0.063 | −0.102 |
+
+S30 her iki dönemde pozitif ama kenar küçük ve istatistik olarak sıfırdan ayırt edilemiyor (en iyi 5 işlem çıkınca
+keşif +0.002). Eşzamanlı açık pozisyon doğrulamada ortalama 14, en fazla 67 (2026'da tokenize hisse/ETF/emtia
+perpleri listelemelerin büyük kısmı). Funding etkisi küçük; işlemlerin ~%32'si net funding ödüyor. Canlıya alınmaz;
+istenirse yalnız sinyal (kâğıt) modunda ileriye dönük izlenebilir.
