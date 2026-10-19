@@ -1,0 +1,5372 @@
+{
+ "0GUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 379,
+  "funding": 13
+ },
+ "1000000BOBUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 483,
+  "funding": 16
+ },
+ "1000000MOGUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 693,
+  "funding": 23
+ },
+ "1000BONKUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1044,
+  "funding": 35
+ },
+ "1000BTTCUSDT": {
+  "ilk_ay": "2022-01",
+  "son_ay": "2022-04",
+  "gun": 76,
+  "funding": 4
+ },
+ "1000CATUSDT": {
+  "ilk_ay": "2024-10",
+  "son_ay": "2026-09",
+  "gun": 710,
+  "funding": 24
+ },
+ "1000CHEEMSUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 675,
+  "funding": 23
+ },
+ "1000FLOKIUSDT": {
+  "ilk_ay": "2023-05",
+  "son_ay": "2026-09",
+  "gun": 1244,
+  "funding": 41
+ },
+ "1000LUNCUSDT": {
+  "ilk_ay": "2022-09",
+  "son_ay": "2026-09",
+  "gun": 1483,
+  "funding": 49
+ },
+ "1000PEPEUSDT": {
+  "ilk_ay": "2023-05",
+  "son_ay": "2026-09",
+  "gun": 1245,
+  "funding": 41
+ },
+ "1000RATSUSDT": {
+  "ilk_ay": "2023-12",
+  "son_ay": "2026-09",
+  "gun": 1021,
+  "funding": 34
+ },
+ "1000SATSUSDT": {
+  "ilk_ay": "2023-12",
+  "son_ay": "2026-09",
+  "gun": 1024,
+  "funding": 34
+ },
+ "1000SHIBUSDT": {
+  "ilk_ay": "2021-05",
+  "son_ay": "2026-09",
+  "gun": 1970,
+  "funding": 65
+ },
+ "1000WHYUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 675,
+  "funding": 17
+ },
+ "1000XECUSDT": {
+  "ilk_ay": "2021-09",
+  "son_ay": "2026-09",
+  "gun": 1840,
+  "funding": 61
+ },
+ "1000XUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 687,
+  "funding": 13
+ },
+ "1INCHUSDT": {
+  "ilk_ay": "2020-12",
+  "son_ay": "2026-09",
+  "gun": 2106,
+  "funding": 70
+ },
+ "1MBABYDOGEUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 745,
+  "funding": 25
+ },
+ "2ZUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 364,
+  "funding": 12
+ },
+ "42USDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 339,
+  "funding": 4
+ },
+ "4USDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 358,
+  "funding": 12
+ },
+ "A2ZUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 428,
+  "funding": 9
+ },
+ "AAOIUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 115,
+  "funding": 4
+ },
+ "AAPLUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 178,
+  "funding": 6
+ },
+ "AAVEUSDT": {
+  "ilk_ay": "2020-10",
+  "son_ay": "2026-09",
+  "gun": 2176,
+  "funding": 72
+ },
+ "ACEUSDT": {
+  "ilk_ay": "2023-12",
+  "son_ay": "2026-09",
+  "gun": 1018,
+  "funding": 34
+ },
+ "ACHUSDT": {
+  "ilk_ay": "2023-02",
+  "son_ay": "2026-09",
+  "gun": 1317,
+  "funding": 44
+ },
+ "ACNUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 2,
+  "funding": 1
+ },
+ "ACTUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 689,
+  "funding": 23
+ },
+ "ACUUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 253,
+  "funding": 9
+ },
+ "ACXUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 664,
+  "funding": 21
+ },
+ "ADAUSDT": {
+  "ilk_ay": "2020-01",
+  "son_ay": "2026-09",
+  "gun": 2435,
+  "funding": 81
+ },
+ "ADBEUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 112,
+  "funding": 4
+ },
+ "AERGOUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-06",
+  "gun": 659,
+  "funding": 22
+ },
+ "AEROUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 666,
+  "funding": 22
+ },
+ "AEVOUSDT": {
+  "ilk_ay": "2024-03",
+  "son_ay": "2026-09",
+  "gun": 932,
+  "funding": 31
+ },
+ "AGIXUSDT": {
+  "ilk_ay": "2023-02",
+  "son_ay": "2026-09",
+  "gun": 1323,
+  "funding": 29
+ },
+ "AGLDUSDT": {
+  "ilk_ay": "2023-07",
+  "son_ay": "2026-09",
+  "gun": 1160,
+  "funding": 39
+ },
+ "AGPUUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 13,
+  "funding": 1
+ },
+ "AGTUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 499,
+  "funding": 17
+ },
+ "AI16ZUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 637,
+  "funding": 11
+ },
+ "AIAUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 378,
+  "funding": 13
+ },
+ "AIGENSYNUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 155,
+  "funding": 6
+ },
+ "AINUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 448,
+  "funding": 15
+ },
+ "AIOTUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 519,
+  "funding": 18
+ },
+ "AIOUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 414,
+  "funding": 14
+ },
+ "AIUSDT": {
+  "ilk_ay": "2024-01",
+  "son_ay": "2026-09",
+  "gun": 997,
+  "funding": 28
+ },
+ "AIXBTUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 650,
+  "funding": 22
+ },
+ "AKEUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 370,
+  "funding": 13
+ },
+ "AKROUSDT": {
+  "ilk_ay": "2021-01",
+  "son_ay": "2022-05",
+  "gun": 494,
+  "funding": 17
+ },
+ "AKTUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 682,
+  "funding": 23
+ },
+ "ALABUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 101,
+  "funding": 4
+ },
+ "ALCHUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 632,
+  "funding": 21
+ },
+ "ALGOUSDT": {
+  "ilk_ay": "2020-06",
+  "son_ay": "2026-09",
+  "gun": 2298,
+  "funding": 76
+ },
+ "ALICEUSDT": {
+  "ilk_ay": "2021-03",
+  "son_ay": "2026-09",
+  "gun": 2025,
+  "funding": 67
+ },
+ "ALLOUSDT": {
+  "ilk_ay": "2025-11",
+  "son_ay": "2026-09",
+  "gun": 324,
+  "funding": 11
+ },
+ "ALLUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 421,
+  "funding": 14
+ },
+ "ALPACAUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 770,
+  "funding": 11
+ },
+ "ALPHAUSDT": {
+  "ilk_ay": "2020-11",
+  "son_ay": "2026-09",
+  "gun": 2138,
+  "funding": 59
+ },
+ "ALPINEUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 513,
+  "funding": 17
+ },
+ "ALTUSDT": {
+  "ilk_ay": "2024-01",
+  "son_ay": "2026-09",
+  "gun": 980,
+  "funding": 33
+ },
+ "AMATUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 115,
+  "funding": 4
+ },
+ "AMBUSDT": {
+  "ilk_ay": "2023-03",
+  "son_ay": "2026-09",
+  "gun": 1281,
+  "funding": 28
+ },
+ "AMCUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 13,
+  "funding": 1
+ },
+ "AMDUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 148,
+  "funding": 5
+ },
+ "AMZNUSDT": {
+  "ilk_ay": "2026-02",
+  "son_ay": "2026-09",
+  "gun": 234,
+  "funding": 8
+ },
+ "ANCUSDT": {
+  "ilk_ay": "2022-03",
+  "son_ay": "2022-05",
+  "gun": 67,
+  "funding": 3
+ },
+ "ANETUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 13,
+  "funding": 1
+ },
+ "ANIMEUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 616,
+  "funding": 21
+ },
+ "ANKRUSDT": {
+  "ilk_ay": "2021-01",
+  "son_ay": "2026-09",
+  "gun": 2074,
+  "funding": 69
+ },
+ "ANTHROPICUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 121,
+  "funding": 4
+ },
+ "ANTUSDT": {
+  "ilk_ay": "2021-12",
+  "son_ay": "2024-05",
+  "gun": 884,
+  "funding": 32
+ },
+ "APEUSDT": {
+  "ilk_ay": "2022-03",
+  "son_ay": "2026-09",
+  "gun": 1659,
+  "funding": 55
+ },
+ "API3USDT": {
+  "ilk_ay": "2022-02",
+  "son_ay": "2026-09",
+  "gun": 1682,
+  "funding": 56
+ },
+ "APLDUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 13,
+  "funding": 1
+ },
+ "APPUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 83,
+  "funding": 3
+ },
+ "APRUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 343,
+  "funding": 12
+ },
+ "APTUSDT": {
+  "ilk_ay": "2022-10",
+  "son_ay": "2026-09",
+  "gun": 1443,
+  "funding": 48
+ },
+ "ARBUSDT": {
+  "ilk_ay": "2023-03",
+  "son_ay": "2026-09",
+  "gun": 1288,
+  "funding": 43
+ },
+ "ARCUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 622,
+  "funding": 21
+ },
+ "ARIAUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 393,
+  "funding": 13
+ },
+ "ARKMUSDT": {
+  "ilk_ay": "2023-07",
+  "son_ay": "2026-09",
+  "gun": 1161,
+  "funding": 39
+ },
+ "ARKUSDT": {
+  "ilk_ay": "2023-09",
+  "son_ay": "2026-09",
+  "gun": 1108,
+  "funding": 37
+ },
+ "ARMUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 128,
+  "funding": 5
+ },
+ "ARPAUSDT": {
+  "ilk_ay": "2021-10",
+  "son_ay": "2026-09",
+  "gun": 1808,
+  "funding": 60
+ },
+ "ARUSDT": {
+  "ilk_ay": "2021-09",
+  "son_ay": "2026-09",
+  "gun": 1829,
+  "funding": 61
+ },
+ "ARXUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 100,
+  "funding": 4
+ },
+ "ASMLUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 112,
+  "funding": 4
+ },
+ "ASRUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 513,
+  "funding": 17
+ },
+ "ASTERUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 377,
+  "funding": 13
+ },
+ "ASTRUSDT": {
+  "ilk_ay": "2023-02",
+  "son_ay": "2026-09",
+  "gun": 1325,
+  "funding": 44
+ },
+ "ASTSUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 122,
+  "funding": 4
+ },
+ "ATAUSDT": {
+  "ilk_ay": "2021-08",
+  "son_ay": "2026-09",
+  "gun": 1857,
+  "funding": 58
+ },
+ "ATHUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 547,
+  "funding": 18
+ },
+ "ATOMUSDT": {
+  "ilk_ay": "2020-02",
+  "son_ay": "2026-09",
+  "gun": 2428,
+  "funding": 80
+ },
+ "ATUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 337,
+  "funding": 12
+ },
+ "AUCTIONUSDT": {
+  "ilk_ay": "2023-12",
+  "son_ay": "2026-09",
+  "gun": 1021,
+  "funding": 34
+ },
+ "AUDIOUSDT": {
+  "ilk_ay": "2021-08",
+  "son_ay": "2024-05",
+  "gun": 1014,
+  "funding": 36
+ },
+ "AUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 491,
+  "funding": 17
+ },
+ "AVAAIUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 622,
+  "funding": 21
+ },
+ "AVAUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 657,
+  "funding": 22
+ },
+ "AVAXUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2199,
+  "funding": 73
+ },
+ "AVGOUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 164,
+  "funding": 6
+ },
+ "AVNTUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 387,
+  "funding": 13
+ },
+ "AWEUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 498,
+  "funding": 17
+ },
+ "AXLUSDT": {
+  "ilk_ay": "2024-03",
+  "son_ay": "2026-09",
+  "gun": 944,
+  "funding": 31
+ },
+ "AXSUSDT": {
+  "ilk_ay": "2020-11",
+  "son_ay": "2026-09",
+  "gun": 2141,
+  "funding": 71
+ },
+ "AXTIUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 115,
+  "funding": 4
+ },
+ "AZTECUSDT": {
+  "ilk_ay": "2026-02",
+  "son_ay": "2026-09",
+  "gun": 232,
+  "funding": 8
+ },
+ "B2USDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 513,
+  "funding": 17
+ },
+ "B3USDT": {
+  "ilk_ay": "2025-02",
+  "son_ay": "2026-09",
+  "gun": 595,
+  "funding": 15
+ },
+ "BABAUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 164,
+  "funding": 6
+ },
+ "BABYUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 544,
+  "funding": 18
+ },
+ "BADGERUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1057,
+  "funding": 20
+ },
+ "BAKEUSDT": {
+  "ilk_ay": "2021-05",
+  "son_ay": "2026-09",
+  "gun": 1961,
+  "funding": 54
+ },
+ "BALUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2221,
+  "funding": 58
+ },
+ "BANANAS31USDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 558,
+  "funding": 19
+ },
+ "BANANAUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 777,
+  "funding": 26
+ },
+ "BANDUSDT": {
+  "ilk_ay": "2020-07",
+  "son_ay": "2026-09",
+  "gun": 2255,
+  "funding": 75
+ },
+ "BANKUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 531,
+  "funding": 18
+ },
+ "BANUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 682,
+  "funding": 23
+ },
+ "BARDUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 378,
+  "funding": 13
+ },
+ "BASEDUSDT": {
+  "ilk_ay": "2026-03",
+  "son_ay": "2026-09",
+  "gun": 185,
+  "funding": 7
+ },
+ "BASUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 401,
+  "funding": 14
+ },
+ "BATUSDT": {
+  "ilk_ay": "2020-02",
+  "son_ay": "2026-09",
+  "gun": 2422,
+  "funding": 80
+ },
+ "BBUSDT": {
+  "ilk_ay": "2024-05",
+  "son_ay": "2026-09",
+  "gun": 871,
+  "funding": 29
+ },
+ "BBXUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 122,
+  "funding": 4
+ },
+ "BCHUSDT": {
+  "ilk_ay": "2020-01",
+  "son_ay": "2026-09",
+  "gun": 2465,
+  "funding": 81
+ },
+ "BDXNUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-03",
+  "gun": 302,
+  "funding": 10
+ },
+ "BEAMXUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1049,
+  "funding": 35
+ },
+ "BEATUSDT": {
+  "ilk_ay": "2025-11",
+  "son_ay": "2026-09",
+  "gun": 323,
+  "funding": 11
+ },
+ "BELUSDT": {
+  "ilk_ay": "2020-11",
+  "son_ay": "2026-09",
+  "gun": 2143,
+  "funding": 71
+ },
+ "BERAUSDT": {
+  "ilk_ay": "2025-02",
+  "son_ay": "2026-09",
+  "gun": 602,
+  "funding": 20
+ },
+ "BEUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 128,
+  "funding": 5
+ },
+ "BICOUSDT": {
+  "ilk_ay": "2023-09",
+  "son_ay": "2026-09",
+  "gun": 1099,
+  "funding": 37
+ },
+ "BIDUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 560,
+  "funding": 11
+ },
+ "BIGTIMEUSDT": {
+  "ilk_ay": "2023-10",
+  "son_ay": "2026-09",
+  "gun": 1085,
+  "funding": 36
+ },
+ "BILLUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 147,
+  "funding": 5
+ },
+ "BIOUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 636,
+  "funding": 21
+ },
+ "BIRBUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 245,
+  "funding": 9
+ },
+ "BITOUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 66,
+  "funding": 3
+ },
+ "BLESSUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 373,
+  "funding": 13
+ },
+ "BLUAIUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 345,
+  "funding": 12
+ },
+ "BLUEBIRDUSDT": {
+  "ilk_ay": "2022-11",
+  "son_ay": "2024-05",
+  "gun": 574,
+  "funding": 21
+ },
+ "BLURUSDT": {
+  "ilk_ay": "2023-04",
+  "son_ay": "2026-09",
+  "gun": 1252,
+  "funding": 42
+ },
+ "BLZUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2205,
+  "funding": 58
+ },
+ "BMNRUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 112,
+  "funding": 4
+ },
+ "BMTUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 563,
+  "funding": 19
+ },
+ "BNBUSDT": {
+  "ilk_ay": "2020-02",
+  "son_ay": "2026-09",
+  "gun": 2425,
+  "funding": 80
+ },
+ "BNCUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 84,
+  "funding": 3
+ },
+ "BNTUSDT": {
+  "ilk_ay": "2023-08",
+  "son_ay": "2026-09",
+  "gun": 1148,
+  "funding": 42
+ },
+ "BNXUSDT": {
+  "ilk_ay": "2022-04",
+  "son_ay": "2026-09",
+  "gun": 1618,
+  "funding": 29
+ },
+ "BOBUSDT": {
+  "ilk_ay": "2025-11",
+  "son_ay": "2026-09",
+  "gun": 314,
+  "funding": 6
+ },
+ "BOMEUSDT": {
+  "ilk_ay": "2024-03",
+  "son_ay": "2026-09",
+  "gun": 929,
+  "funding": 31
+ },
+ "BONDUSDT": {
+  "ilk_ay": "2023-10",
+  "son_ay": "2026-09",
+  "gun": 1082,
+  "funding": 21
+ },
+ "BOTUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 84,
+  "funding": 3
+ },
+ "BRETTUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 772,
+  "funding": 26
+ },
+ "BREVUSDT": {
+  "ilk_ay": "2025-12",
+  "son_ay": "2026-09",
+  "gun": 275,
+  "funding": 10
+ },
+ "BRKBUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 136,
+  "funding": 5
+ },
+ "BROCCOLI714USDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 559,
+  "funding": 19
+ },
+ "BROCCOLIF3BUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 559,
+  "funding": 19
+ },
+ "BRUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 559,
+  "funding": 19
+ },
+ "BSBUSDT": {
+  "ilk_ay": "2026-03",
+  "son_ay": "2026-09",
+  "gun": 190,
+  "funding": 7
+ },
+ "BSPUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 91,
+  "funding": 3
+ },
+ "BSVUSDT": {
+  "ilk_ay": "2023-10",
+  "son_ay": "2026-09",
+  "gun": 1077,
+  "funding": 36
+ },
+ "BSWUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 756,
+  "funding": 13
+ },
+ "BTCDOMUSDT": {
+  "ilk_ay": "2021-06",
+  "son_ay": "2026-09",
+  "gun": 1928,
+  "funding": 64
+ },
+ "BTCSTUSDT": {
+  "ilk_ay": "2021-03",
+  "son_ay": "2026-06",
+  "gun": 1945,
+  "funding": 63
+ },
+ "BTCUSDT": {
+  "ilk_ay": "2020-01",
+  "son_ay": "2026-09",
+  "gun": 2465,
+  "funding": 81
+ },
+ "BTRUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 400,
+  "funding": 14
+ },
+ "BTSUSDT": {
+  "ilk_ay": "2021-02",
+  "son_ay": "2024-05",
+  "gun": 1213,
+  "funding": 43
+ },
+ "BTTUSDT": {
+  "ilk_ay": "2021-04",
+  "son_ay": "2022-01",
+  "gun": 296,
+  "funding": 10
+ },
+ "BTWUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 119,
+  "funding": 4
+ },
+ "BULLAUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 454,
+  "funding": 15
+ },
+ "BUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 497,
+  "funding": 17
+ },
+ "BWETUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 2,
+  "funding": 1
+ },
+ "BXUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 115,
+  "funding": 4
+ },
+ "BYDUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 24,
+  "funding": 1
+ },
+ "BZRXUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2021-12",
+  "gun": 471,
+  "funding": 16
+ },
+ "BZUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 183,
+  "funding": 7
+ },
+ "C98USDT": {
+  "ilk_ay": "2021-08",
+  "son_ay": "2026-09",
+  "gun": 1864,
+  "funding": 62
+ },
+ "CAKEUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1064,
+  "funding": 35
+ },
+ "CAPUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 96,
+  "funding": 4
+ },
+ "CARVUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 420,
+  "funding": 14
+ },
+ "CATIUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 741,
+  "funding": 25
+ },
+ "CATUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 91,
+  "funding": 3
+ },
+ "CBRSUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 135,
+  "funding": 5
+ },
+ "CCUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 335,
+  "funding": 12
+ },
+ "CELOUSDT": {
+  "ilk_ay": "2021-09",
+  "son_ay": "2026-09",
+  "gun": 1830,
+  "funding": 61
+ },
+ "CELRUSDT": {
+  "ilk_ay": "2021-03",
+  "son_ay": "2026-09",
+  "gun": 2012,
+  "funding": 67
+ },
+ "CETUSUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 694,
+  "funding": 23
+ },
+ "CFGUSDT": {
+  "ilk_ay": "2026-03",
+  "son_ay": "2026-09",
+  "gun": 199,
+  "funding": 7
+ },
+ "CFXUSDT": {
+  "ilk_ay": "2023-02",
+  "son_ay": "2026-09",
+  "gun": 1319,
+  "funding": 44
+ },
+ "CGPTUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 650,
+  "funding": 22
+ },
+ "CHESSUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 763,
+  "funding": 19
+ },
+ "CHILLGUYUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 673,
+  "funding": 23
+ },
+ "CHIPUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 168,
+  "funding": 6
+ },
+ "CHRUSDT": {
+  "ilk_ay": "2021-03",
+  "son_ay": "2026-09",
+  "gun": 2029,
+  "funding": 67
+ },
+ "CHZUSDT": {
+  "ilk_ay": "2021-01",
+  "son_ay": "2026-09",
+  "gun": 2079,
+  "funding": 69
+ },
+ "CIENUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 101,
+  "funding": 4
+ },
+ "CKBUSDT": {
+  "ilk_ay": "2023-02",
+  "son_ay": "2026-09",
+  "gun": 1311,
+  "funding": 44
+ },
+ "CLANKERUSDT": {
+  "ilk_ay": "2025-11",
+  "son_ay": "2026-09",
+  "gun": 323,
+  "funding": 11
+ },
+ "CLOUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 352,
+  "funding": 12
+ },
+ "CLUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 183,
+  "funding": 7
+ },
+ "COAIUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 371,
+  "funding": 13
+ },
+ "COCOSUSDT": {
+  "ilk_ay": "2023-02",
+  "son_ay": "2024-05",
+  "gun": 463,
+  "funding": 18
+ },
+ "COHRUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 128,
+  "funding": 5
+ },
+ "COINUSDT": {
+  "ilk_ay": "2026-02",
+  "son_ay": "2026-09",
+  "gun": 234,
+  "funding": 8
+ },
+ "COLLECTUSDT": {
+  "ilk_ay": "2025-12",
+  "son_ay": "2026-09",
+  "gun": 274,
+  "funding": 10
+ },
+ "COMBOUSDT": {
+  "ilk_ay": "2023-06",
+  "son_ay": "2026-09",
+  "gun": 1217,
+  "funding": 25
+ },
+ "COMMONUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 339,
+  "funding": 4
+ },
+ "COMPUSDT": {
+  "ilk_ay": "2020-06",
+  "son_ay": "2026-09",
+  "gun": 2284,
+  "funding": 76
+ },
+ "COOKIEUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 632,
+  "funding": 21
+ },
+ "COPPERUSDT": {
+  "ilk_ay": "2026-03",
+  "son_ay": "2026-09",
+  "gun": 209,
+  "funding": 7
+ },
+ "COSTUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 114,
+  "funding": 4
+ },
+ "COSUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 731,
+  "funding": 22
+ },
+ "COTIUSDT": {
+  "ilk_ay": "2021-03",
+  "son_ay": "2026-09",
+  "gun": 2031,
+  "funding": 67
+ },
+ "COWUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 694,
+  "funding": 23
+ },
+ "CRCLUSDT": {
+  "ilk_ay": "2026-02",
+  "son_ay": "2026-09",
+  "gun": 234,
+  "funding": 8
+ },
+ "CRDOUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 115,
+  "funding": 4
+ },
+ "CRMLUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 2,
+  "funding": 1
+ },
+ "CRMUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 120,
+  "funding": 4
+ },
+ "CROSSUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 448,
+  "funding": 15
+ },
+ "CRVUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2221,
+  "funding": 73
+ },
+ "CRWDUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 115,
+  "funding": 4
+ },
+ "CRWVUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 136,
+  "funding": 5
+ },
+ "CSCOUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 139,
+  "funding": 5
+ },
+ "CSOPSAMSUNG2LUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 51,
+  "funding": 2
+ },
+ "CSOPSKHYNIX2LUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 51,
+  "funding": 2
+ },
+ "CTKUSDT": {
+  "ilk_ay": "2020-11",
+  "son_ay": "2026-09",
+  "gun": 2142,
+  "funding": 71
+ },
+ "CTRUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 126,
+  "funding": 5
+ },
+ "CTSIUSDT": {
+  "ilk_ay": "2021-10",
+  "son_ay": "2026-09",
+  "gun": 1801,
+  "funding": 60
+ },
+ "CUDISUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 407,
+  "funding": 6
+ },
+ "CUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 443,
+  "funding": 15
+ },
+ "CVCUSDT": {
+  "ilk_ay": "2020-11",
+  "son_ay": "2026-09",
+  "gun": 2150,
+  "funding": 71
+ },
+ "CVNAUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 3,
+  "funding": 1
+ },
+ "CVXUSDT": {
+  "ilk_ay": "2022-09",
+  "son_ay": "2026-09",
+  "gun": 1470,
+  "funding": 49
+ },
+ "CXMTUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 44,
+  "funding": 2
+ },
+ "CYBERUSDT": {
+  "ilk_ay": "2023-08",
+  "son_ay": "2026-09",
+  "gun": 1137,
+  "funding": 38
+ },
+ "CYPHUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 13,
+  "funding": 1
+ },
+ "CYSUSDT": {
+  "ilk_ay": "2025-12",
+  "son_ay": "2026-09",
+  "gun": 293,
+  "funding": 10
+ },
+ "DAMUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 409,
+  "funding": 9
+ },
+ "DARUSDT": {
+  "ilk_ay": "2022-04",
+  "son_ay": "2026-09",
+  "gun": 1616,
+  "funding": 39
+ },
+ "DASHUSDT": {
+  "ilk_ay": "2020-02",
+  "son_ay": "2026-09",
+  "gun": 2431,
+  "funding": 80
+ },
+ "DATAIPUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 90,
+  "funding": 3
+ },
+ "DDOGUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 29,
+  "funding": 1
+ },
+ "DEEPUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 527,
+  "funding": 18
+ },
+ "DEFIUSDT": {
+  "ilk_ay": "2020-08",
+  "son_ay": "2026-09",
+  "gun": 2225,
+  "funding": 61
+ },
+ "DEGENUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 685,
+  "funding": 18
+ },
+ "DEGOUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 657,
+  "funding": 17
+ },
+ "DELLUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 120,
+  "funding": 4
+ },
+ "DENTUSDT": {
+  "ilk_ay": "2021-03",
+  "son_ay": "2026-09",
+  "gun": 2017,
+  "funding": 62
+ },
+ "DEXEUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 646,
+  "funding": 22
+ },
+ "DFUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 640,
+  "funding": 15
+ },
+ "DGBUSDT": {
+  "ilk_ay": "2021-04",
+  "son_ay": "2026-09",
+  "gun": 1989,
+  "funding": 51
+ },
+ "DIAUSDT": {
+  "ilk_ay": "2024-10",
+  "son_ay": "2026-09",
+  "gun": 729,
+  "funding": 24
+ },
+ "DISUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 139,
+  "funding": 5
+ },
+ "DJTUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 37,
+  "funding": 2
+ },
+ "DKNGUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 113,
+  "funding": 4
+ },
+ "DMCUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 464,
+  "funding": 8
+ },
+ "DODOUSDT": {
+  "ilk_ay": "2021-02",
+  "son_ay": "2022-05",
+  "gun": 463,
+  "funding": 16
+ },
+ "DODOXUSDT": {
+  "ilk_ay": "2023-08",
+  "son_ay": "2026-09",
+  "gun": 1150,
+  "funding": 38
+ },
+ "DOGEUSDT": {
+  "ilk_ay": "2020-07",
+  "son_ay": "2026-09",
+  "gun": 2274,
+  "funding": 75
+ },
+ "DOGSUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 766,
+  "funding": 26
+ },
+ "DOLOUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 518,
+  "funding": 17
+ },
+ "DOODUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 510,
+  "funding": 17
+ },
+ "DOSUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 51,
+  "funding": 2
+ },
+ "DOTECOUSDT": {
+  "ilk_ay": "2021-01",
+  "son_ay": "2021-02",
+  "gun": 31,
+  "funding": 3
+ },
+ "DOTUSDT": {
+  "ilk_ay": "2020-08",
+  "son_ay": "2026-09",
+  "gun": 2231,
+  "funding": 74
+ },
+ "DRAMUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 136,
+  "funding": 5
+ },
+ "DRIFTUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 692,
+  "funding": 23
+ },
+ "DUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 630,
+  "funding": 18
+ },
+ "DUSKUSDT": {
+  "ilk_ay": "2022-01",
+  "son_ay": "2026-09",
+  "gun": 1728,
+  "funding": 57
+ },
+ "DYDXUSDT": {
+  "ilk_ay": "2021-09",
+  "son_ay": "2026-09",
+  "gun": 1847,
+  "funding": 61
+ },
+ "DYMUSDT": {
+  "ilk_ay": "2024-02",
+  "son_ay": "2026-09",
+  "gun": 967,
+  "funding": 32
+ },
+ "EBAYUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 114,
+  "funding": 4
+ },
+ "EDENUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 366,
+  "funding": 13
+ },
+ "EDGEUSDT": {
+  "ilk_ay": "2026-03",
+  "son_ay": "2026-09",
+  "gun": 196,
+  "funding": 7
+ },
+ "EDUUSDT": {
+  "ilk_ay": "2023-04",
+  "son_ay": "2026-09",
+  "gun": 1250,
+  "funding": 42
+ },
+ "EGLDUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2208,
+  "funding": 73
+ },
+ "EIGENUSDT": {
+  "ilk_ay": "2024-10",
+  "son_ay": "2026-09",
+  "gun": 730,
+  "funding": 24
+ },
+ "ELSAUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 252,
+  "funding": 9
+ },
+ "ENAUSDT": {
+  "ilk_ay": "2024-04",
+  "son_ay": "2026-09",
+  "gun": 912,
+  "funding": 30
+ },
+ "ENJUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2193,
+  "funding": 73
+ },
+ "ENSOUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 352,
+  "funding": 12
+ },
+ "ENSUSDT": {
+  "ilk_ay": "2021-11",
+  "son_ay": "2026-09",
+  "gun": 1766,
+  "funding": 59
+ },
+ "EOSUSDT": {
+  "ilk_ay": "2020-01",
+  "son_ay": "2025-05",
+  "gun": 1961,
+  "funding": 81
+ },
+ "EPICUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 567,
+  "funding": 19
+ },
+ "EPTUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 528,
+  "funding": 10
+ },
+ "ERAUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 441,
+  "funding": 15
+ },
+ "ESPORTSUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 429,
+  "funding": 15
+ },
+ "ESPUSDT": {
+  "ilk_ay": "2026-02",
+  "son_ay": "2026-09",
+  "gun": 233,
+  "funding": 8
+ },
+ "ETCUSDT": {
+  "ilk_ay": "2020-01",
+  "son_ay": "2026-09",
+  "gun": 2450,
+  "funding": 81
+ },
+ "ETHFIUSDT": {
+  "ilk_ay": "2024-03",
+  "son_ay": "2026-09",
+  "gun": 927,
+  "funding": 31
+ },
+ "ETHUSDT": {
+  "ilk_ay": "2020-01",
+  "son_ay": "2026-09",
+  "gun": 2465,
+  "funding": 81
+ },
+ "ETHWUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1038,
+  "funding": 35
+ },
+ "EULUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 353,
+  "funding": 12
+ },
+ "EVAAUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 363,
+  "funding": 12
+ },
+ "EWJUSDT": {
+  "ilk_ay": "2026-03",
+  "son_ay": "2026-09",
+  "gun": 196,
+  "funding": 7
+ },
+ "EWTUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 122,
+  "funding": 4
+ },
+ "EWYUSDT": {
+  "ilk_ay": "2026-03",
+  "son_ay": "2026-09",
+  "gun": 199,
+  "funding": 7
+ },
+ "EWZUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 113,
+  "funding": 4
+ },
+ "FARTCOINUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 650,
+  "funding": 22
+ },
+ "FETUSDT": {
+  "ilk_ay": "2023-01",
+  "son_ay": "2026-09",
+  "gun": 1353,
+  "funding": 45
+ },
+ "FFUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 367,
+  "funding": 13
+ },
+ "FHEUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 537,
+  "funding": 18
+ },
+ "FIDAUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 742,
+  "funding": 25
+ },
+ "FIGHTUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 251,
+  "funding": 9
+ },
+ "FILUSDT": {
+  "ilk_ay": "2020-10",
+  "son_ay": "2026-09",
+  "gun": 2171,
+  "funding": 72
+ },
+ "FIOUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 741,
+  "funding": 20
+ },
+ "FISUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 524,
+  "funding": 9
+ },
+ "FLEXUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 91,
+  "funding": 3
+ },
+ "FLMUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2188,
+  "funding": 63
+ },
+ "FLNCUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 136,
+  "funding": 5
+ },
+ "FLOCKUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 387,
+  "funding": 13
+ },
+ "FLOWUSDT": {
+  "ilk_ay": "2022-02",
+  "son_ay": "2026-09",
+  "gun": 1689,
+  "funding": 56
+ },
+ "FLUIDUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 372,
+  "funding": 13
+ },
+ "FLUXUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 758,
+  "funding": 25
+ },
+ "FOGOUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 264,
+  "funding": 9
+ },
+ "FOLKSUSDT": {
+  "ilk_ay": "2025-11",
+  "son_ay": "2026-09",
+  "gun": 329,
+  "funding": 11
+ },
+ "FOOTBALLUSDT": {
+  "ilk_ay": "2022-09",
+  "son_ay": "2024-05",
+  "gun": 636,
+  "funding": 24
+ },
+ "FORMUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 561,
+  "funding": 19
+ },
+ "FORTHUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 541,
+  "funding": 12
+ },
+ "FRAXUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 259,
+  "funding": 9
+ },
+ "FRONTUSDT": {
+  "ilk_ay": "2023-09",
+  "son_ay": "2024-09",
+  "gun": 356,
+  "funding": 37
+ },
+ "FTMUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2193,
+  "funding": 58
+ },
+ "FTTUSDT": {
+  "ilk_ay": "2022-04",
+  "son_ay": "2026-09",
+  "gun": 1630,
+  "funding": 39
+ },
+ "FUNUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 549,
+  "funding": 14
+ },
+ "FUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 470,
+  "funding": 16
+ },
+ "FWDIUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 84,
+  "funding": 3
+ },
+ "FXSUSDT": {
+  "ilk_ay": "2023-01",
+  "son_ay": "2026-09",
+  "gun": 1350,
+  "funding": 37
+ },
+ "GALAUSDT": {
+  "ilk_ay": "2021-09",
+  "son_ay": "2026-09",
+  "gun": 1839,
+  "funding": 61
+ },
+ "GALUSDT": {
+  "ilk_ay": "2022-05",
+  "son_ay": "2024-07",
+  "gun": 818,
+  "funding": 28
+ },
+ "GASUSDT": {
+  "ilk_ay": "2023-10",
+  "son_ay": "2026-09",
+  "gun": 1072,
+  "funding": 36
+ },
+ "GDXUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 45,
+  "funding": 2
+ },
+ "GENIUSUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 168,
+  "funding": 6
+ },
+ "GEVUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 83,
+  "funding": 3
+ },
+ "GHSTUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 738,
+  "funding": 18
+ },
+ "GIGADEVUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 59,
+  "funding": 2
+ },
+ "GIGGLEUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 357,
+  "funding": 12
+ },
+ "GLMRUSDT": {
+  "ilk_ay": "2023-09",
+  "son_ay": "2026-09",
+  "gun": 1101,
+  "funding": 22
+ },
+ "GLMUSDT": {
+  "ilk_ay": "2024-02",
+  "son_ay": "2026-09",
+  "gun": 952,
+  "funding": 32
+ },
+ "GLWUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 112,
+  "funding": 4
+ },
+ "GMEUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 113,
+  "funding": 4
+ },
+ "GMTUSDT": {
+  "ilk_ay": "2022-03",
+  "son_ay": "2026-09",
+  "gun": 1659,
+  "funding": 55
+ },
+ "GMXUSDT": {
+  "ilk_ay": "2023-02",
+  "son_ay": "2026-09",
+  "gun": 1322,
+  "funding": 44
+ },
+ "GOATUSDT": {
+  "ilk_ay": "2024-10",
+  "son_ay": "2026-09",
+  "gun": 707,
+  "funding": 24
+ },
+ "GOOGLUSDT": {
+  "ilk_ay": "2026-03",
+  "son_ay": "2026-09",
+  "gun": 189,
+  "funding": 7
+ },
+ "GPROUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 28,
+  "funding": 1
+ },
+ "GPSUSDT": {
+  "ilk_ay": "2025-02",
+  "son_ay": "2026-09",
+  "gun": 591,
+  "funding": 20
+ },
+ "GRAMUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 91,
+  "funding": 3
+ },
+ "GRASSUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 692,
+  "funding": 23
+ },
+ "GRIFFAINUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 637,
+  "funding": 21
+ },
+ "GRTUSDT": {
+  "ilk_ay": "2020-12",
+  "son_ay": "2026-09",
+  "gun": 2107,
+  "funding": 70
+ },
+ "GRVTUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 62,
+  "funding": 3
+ },
+ "GSUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 64,
+  "funding": 3
+ },
+ "GTCUSDT": {
+  "ilk_ay": "2021-06",
+  "son_ay": "2026-09",
+  "gun": 1933,
+  "funding": 64
+ },
+ "GTLBUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 29,
+  "funding": 1
+ },
+ "GUAUSDT": {
+  "ilk_ay": "2025-12",
+  "son_ay": "2026-09",
+  "gun": 284,
+  "funding": 10
+ },
+ "GUNUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 549,
+  "funding": 19
+ },
+ "GUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 777,
+  "funding": 26
+ },
+ "GWEIUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 245,
+  "funding": 9
+ },
+ "HAEDALUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 518,
+  "funding": 17
+ },
+ "HANAUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 370,
+  "funding": 13
+ },
+ "HANMIUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 48,
+  "funding": 2
+ },
+ "HBARUSDT": {
+  "ilk_ay": "2021-03",
+  "son_ay": "2026-09",
+  "gun": 2019,
+  "funding": 67
+ },
+ "HDUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 139,
+  "funding": 5
+ },
+ "HEIUSDT": {
+  "ilk_ay": "2025-02",
+  "son_ay": "2026-09",
+  "gun": 595,
+  "funding": 20
+ },
+ "HEMIUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 398,
+  "funding": 14
+ },
+ "HFTUSDT": {
+  "ilk_ay": "2023-04",
+  "son_ay": "2026-09",
+  "gun": 1274,
+  "funding": 41
+ },
+ "HIFIUSDT": {
+  "ilk_ay": "2023-09",
+  "son_ay": "2026-09",
+  "gun": 1111,
+  "funding": 26
+ },
+ "HIGHUSDT": {
+  "ilk_ay": "2023-02",
+  "son_ay": "2026-09",
+  "gun": 1332,
+  "funding": 41
+ },
+ "HIMSUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 114,
+  "funding": 4
+ },
+ "HIPPOUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 687,
+  "funding": 18
+ },
+ "HIVEUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 647,
+  "funding": 22
+ },
+ "HK0625USDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 30,
+  "funding": 1
+ },
+ "HK0700USDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 71,
+  "funding": 3
+ },
+ "HK0992USDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 24,
+  "funding": 1
+ },
+ "HK1810USDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 71,
+  "funding": 3
+ },
+ "HMSTRUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 735,
+  "funding": 25
+ },
+ "HNTUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2024-05",
+  "gun": 1339,
+  "funding": 48
+ },
+ "HOLOUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 385,
+  "funding": 13
+ },
+ "HOMEUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 478,
+  "funding": 16
+ },
+ "HOODUSDT": {
+  "ilk_ay": "2026-02",
+  "son_ay": "2026-09",
+  "gun": 241,
+  "funding": 8
+ },
+ "HOOKUSDT": {
+  "ilk_ay": "2023-01",
+  "son_ay": "2026-09",
+  "gun": 1347,
+  "funding": 39
+ },
+ "HOTUSDT": {
+  "ilk_ay": "2021-03",
+  "son_ay": "2026-09",
+  "gun": 2006,
+  "funding": 67
+ },
+ "HPEUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 115,
+  "funding": 4
+ },
+ "HUMAUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 493,
+  "funding": 17
+ },
+ "HUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 463,
+  "funding": 16
+ },
+ "HUTUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 13,
+  "funding": 1
+ },
+ "HYPERUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 527,
+  "funding": 18
+ },
+ "HYPEUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 489,
+  "funding": 17
+ },
+ "HYUNDAIUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 121,
+  "funding": 4
+ },
+ "IBMUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 120,
+  "funding": 4
+ },
+ "ICNTUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 455,
+  "funding": 15
+ },
+ "ICPUSDT": {
+  "ilk_ay": "2021-05",
+  "son_ay": "2026-09",
+  "gun": 1943,
+  "funding": 49
+ },
+ "ICXUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2207,
+  "funding": 72
+ },
+ "IDEXUSDT": {
+  "ilk_ay": "2023-05",
+  "son_ay": "2026-09",
+  "gun": 1247,
+  "funding": 26
+ },
+ "IDOLUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 454,
+  "funding": 15
+ },
+ "IDUSDT": {
+  "ilk_ay": "2023-03",
+  "son_ay": "2026-09",
+  "gun": 1288,
+  "funding": 43
+ },
+ "ILVUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1056,
+  "funding": 35
+ },
+ "IMXUSDT": {
+  "ilk_ay": "2022-02",
+  "son_ay": "2026-09",
+  "gun": 1688,
+  "funding": 56
+ },
+ "INITUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 533,
+  "funding": 18
+ },
+ "INJUSDT": {
+  "ilk_ay": "2022-08",
+  "son_ay": "2026-09",
+  "gun": 1506,
+  "funding": 50
+ },
+ "INTCUSDT": {
+  "ilk_ay": "2026-02",
+  "son_ay": "2026-09",
+  "gun": 241,
+  "funding": 8
+ },
+ "INTWUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 84,
+  "funding": 3
+ },
+ "INUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 420,
+  "funding": 14
+ },
+ "INXUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 244,
+  "funding": 9
+ },
+ "IONQUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 34,
+  "funding": 2
+ },
+ "IOSTUSDT": {
+  "ilk_ay": "2020-02",
+  "son_ay": "2026-09",
+  "gun": 2414,
+  "funding": 80
+ },
+ "IOTAUSDT": {
+  "ilk_ay": "2020-02",
+  "son_ay": "2026-09",
+  "gun": 2418,
+  "funding": 80
+ },
+ "IOTXUSDT": {
+  "ilk_ay": "2021-08",
+  "son_ay": "2026-09",
+  "gun": 1876,
+  "funding": 62
+ },
+ "IOUSDT": {
+  "ilk_ay": "2024-06",
+  "son_ay": "2026-09",
+  "gun": 842,
+  "funding": 28
+ },
+ "IPUSDT": {
+  "ilk_ay": "2025-02",
+  "son_ay": "2026-09",
+  "gun": 595,
+  "funding": 17
+ },
+ "IRENUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 120,
+  "funding": 4
+ },
+ "IRUSDT": {
+  "ilk_ay": "2025-12",
+  "son_ay": "2026-09",
+  "gun": 284,
+  "funding": 5
+ },
+ "IRYSUSDT": {
+  "ilk_ay": "2025-11",
+  "son_ay": "2026-09",
+  "gun": 309,
+  "funding": 11
+ },
+ "IWMUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 115,
+  "funding": 4
+ },
+ "JASMYUSDT": {
+  "ilk_ay": "2022-04",
+  "son_ay": "2026-09",
+  "gun": 1625,
+  "funding": 54
+ },
+ "JCTUSDT": {
+  "ilk_ay": "2025-11",
+  "son_ay": "2026-09",
+  "gun": 325,
+  "funding": 11
+ },
+ "JELLYJELLYUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 554,
+  "funding": 19
+ },
+ "JOEUSDT": {
+  "ilk_ay": "2023-03",
+  "son_ay": "2026-09",
+  "gun": 1282,
+  "funding": 43
+ },
+ "JPMUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 136,
+  "funding": 5
+ },
+ "JSTUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 521,
+  "funding": 18
+ },
+ "JTOUSDT": {
+  "ilk_ay": "2023-12",
+  "son_ay": "2026-09",
+  "gun": 1028,
+  "funding": 34
+ },
+ "JUPUSDT": {
+  "ilk_ay": "2024-01",
+  "son_ay": "2026-09",
+  "gun": 974,
+  "funding": 32
+ },
+ "KAIAUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 666,
+  "funding": 22
+ },
+ "KAITOUSDT": {
+  "ilk_ay": "2025-02",
+  "son_ay": "2026-09",
+  "gun": 588,
+  "funding": 20
+ },
+ "KASUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1049,
+  "funding": 35
+ },
+ "KATUSDT": {
+  "ilk_ay": "2026-03",
+  "son_ay": "2026-09",
+  "gun": 213,
+  "funding": 7
+ },
+ "KAVAUSDT": {
+  "ilk_ay": "2020-07",
+  "son_ay": "2026-09",
+  "gun": 2256,
+  "funding": 75
+ },
+ "KDAUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 743,
+  "funding": 15
+ },
+ "KEEPUSDT": {
+  "ilk_ay": "2021-06",
+  "son_ay": "2022-02",
+  "gun": 239,
+  "funding": 9
+ },
+ "KERNELUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 535,
+  "funding": 18
+ },
+ "KEYUSDT": {
+  "ilk_ay": "2023-05",
+  "son_ay": "2026-09",
+  "gun": 1226,
+  "funding": 26
+ },
+ "KGENUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 359,
+  "funding": 12
+ },
+ "KITEUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 337,
+  "funding": 12
+ },
+ "KLACUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 101,
+  "funding": 4
+ },
+ "KLAYUSDT": {
+  "ilk_ay": "2021-10",
+  "son_ay": "2026-09",
+  "gun": 1815,
+  "funding": 45
+ },
+ "KMNOUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 650,
+  "funding": 22
+ },
+ "KNCUSDT": {
+  "ilk_ay": "2020-06",
+  "son_ay": "2026-09",
+  "gun": 2287,
+  "funding": 76
+ },
+ "KODEX200USDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 48,
+  "funding": 2
+ },
+ "KOMAUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 660,
+  "funding": 22
+ },
+ "KORUUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 101,
+  "funding": 4
+ },
+ "KOUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 56,
+  "funding": 2
+ },
+ "KSMUSDT": {
+  "ilk_ay": "2020-10",
+  "son_ay": "2026-09",
+  "gun": 2173,
+  "funding": 72
+ },
+ "KSTRUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 91,
+  "funding": 3
+ },
+ "KUAISHOUUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 51,
+  "funding": 2
+ },
+ "LABUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 349,
+  "funding": 12
+ },
+ "LAUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 483,
+  "funding": 16
+ },
+ "LAYERUSDT": {
+  "ilk_ay": "2025-02",
+  "son_ay": "2026-09",
+  "gun": 597,
+  "funding": 20
+ },
+ "LDOUSDT": {
+  "ilk_ay": "2022-09",
+  "son_ay": "2026-09",
+  "gun": 1470,
+  "funding": 49
+ },
+ "LENDUSDT": {
+  "ilk_ay": "2020-07",
+  "son_ay": "2020-11",
+  "gun": 111,
+  "funding": 4
+ },
+ "LEVERUSDT": {
+  "ilk_ay": "2023-03",
+  "son_ay": "2026-09",
+  "gun": 1281,
+  "funding": 31
+ },
+ "LGELECTRONICSUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 48,
+  "funding": 2
+ },
+ "LIGHTUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 369,
+  "funding": 13
+ },
+ "LINAUSDT": {
+  "ilk_ay": "2021-03",
+  "son_ay": "2026-09",
+  "gun": 2017,
+  "funding": 52
+ },
+ "LINEAUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 395,
+  "funding": 13
+ },
+ "LINKUSDT": {
+  "ilk_ay": "2020-01",
+  "son_ay": "2026-09",
+  "gun": 2449,
+  "funding": 81
+ },
+ "LISTAUSDT": {
+  "ilk_ay": "2024-06",
+  "son_ay": "2026-09",
+  "gun": 833,
+  "funding": 28
+ },
+ "LITEUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 139,
+  "funding": 5
+ },
+ "LITUSDT": {
+  "ilk_ay": "2021-02",
+  "son_ay": "2026-09",
+  "gun": 2046,
+  "funding": 63
+ },
+ "LLYUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 122,
+  "funding": 4
+ },
+ "LOKAUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 737,
+  "funding": 11
+ },
+ "LOOMUSDT": {
+  "ilk_ay": "2023-10",
+  "son_ay": "2026-09",
+  "gun": 1086,
+  "funding": 21
+ },
+ "LPTUSDT": {
+  "ilk_ay": "2021-11",
+  "son_ay": "2026-09",
+  "gun": 1785,
+  "funding": 59
+ },
+ "LQTYUSDT": {
+  "ilk_ay": "2023-03",
+  "son_ay": "2026-09",
+  "gun": 1301,
+  "funding": 43
+ },
+ "LRCUSDT": {
+  "ilk_ay": "2020-10",
+  "son_ay": "2026-09",
+  "gun": 2168,
+  "funding": 66
+ },
+ "LRCXUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 101,
+  "funding": 4
+ },
+ "LSKUSDT": {
+  "ilk_ay": "2024-01",
+  "son_ay": "2026-09",
+  "gun": 980,
+  "funding": 33
+ },
+ "LTCUSDT": {
+  "ilk_ay": "2020-01",
+  "son_ay": "2026-09",
+  "gun": 2452,
+  "funding": 81
+ },
+ "LUMIAUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 652,
+  "funding": 22
+ },
+ "LUNA2USDT": {
+  "ilk_ay": "2022-09",
+  "son_ay": "2026-09",
+  "gun": 1482,
+  "funding": 49
+ },
+ "LUNAUSDT": {
+  "ilk_ay": "2021-01",
+  "son_ay": "2022-05",
+  "gun": 466,
+  "funding": 17
+ },
+ "LYNUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 360,
+  "funding": 12
+ },
+ "LYTEUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 45,
+  "funding": 2
+ },
+ "MAGICUSDT": {
+  "ilk_ay": "2023-01",
+  "son_ay": "2026-09",
+  "gun": 1345,
+  "funding": 45
+ },
+ "MAGMAUSDT": {
+  "ilk_ay": "2025-12",
+  "son_ay": "2026-09",
+  "gun": 274,
+  "funding": 10
+ },
+ "MANAUSDT": {
+  "ilk_ay": "2021-03",
+  "son_ay": "2026-09",
+  "gun": 2021,
+  "funding": 67
+ },
+ "MANTAUSDT": {
+  "ilk_ay": "2024-01",
+  "son_ay": "2026-09",
+  "gun": 987,
+  "funding": 33
+ },
+ "MANTRAUSDT": {
+  "ilk_ay": "2026-03",
+  "son_ay": "2026-09",
+  "gun": 211,
+  "funding": 7
+ },
+ "MARAUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 34,
+  "funding": 2
+ },
+ "MARSCOINUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 30,
+  "funding": 1
+ },
+ "MASKUSDT": {
+  "ilk_ay": "2021-08",
+  "son_ay": "2026-09",
+  "gun": 1856,
+  "funding": 62
+ },
+ "MATICUSDT": {
+  "ilk_ay": "2020-10",
+  "son_ay": "2024-09",
+  "gun": 1421,
+  "funding": 72
+ },
+ "MAVIAUSDT": {
+  "ilk_ay": "2024-02",
+  "son_ay": "2026-09",
+  "gun": 953,
+  "funding": 32
+ },
+ "MAVUSDT": {
+  "ilk_ay": "2023-06",
+  "son_ay": "2026-09",
+  "gun": 1190,
+  "funding": 40
+ },
+ "MBLUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2024-05",
+  "gun": 197,
+  "funding": 9
+ },
+ "MBOXUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 764,
+  "funding": 23
+ },
+ "MDBUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 29,
+  "funding": 1
+ },
+ "MDTUSDT": {
+  "ilk_ay": "2023-06",
+  "son_ay": "2026-09",
+  "gun": 1189,
+  "funding": 25
+ },
+ "MEGAUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 244,
+  "funding": 9
+ },
+ "MEITUANUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 51,
+  "funding": 2
+ },
+ "MELANIAUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 619,
+  "funding": 21
+ },
+ "MEMEFIUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 524,
+  "funding": 5
+ },
+ "MEMEUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1063,
+  "funding": 35
+ },
+ "MERLUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 490,
+  "funding": 17
+ },
+ "METAUSDT": {
+  "ilk_ay": "2026-03",
+  "son_ay": "2026-09",
+  "gun": 189,
+  "funding": 7
+ },
+ "METISUSDT": {
+  "ilk_ay": "2024-03",
+  "son_ay": "2026-09",
+  "gun": 933,
+  "funding": 31
+ },
+ "METUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 355,
+  "funding": 12
+ },
+ "MEUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 660,
+  "funding": 22
+ },
+ "MEWUSDT": {
+  "ilk_ay": "2024-06",
+  "son_ay": "2026-09",
+  "gun": 836,
+  "funding": 28
+ },
+ "MILKUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 513,
+  "funding": 8
+ },
+ "MINAUSDT": {
+  "ilk_ay": "2023-02",
+  "son_ay": "2026-09",
+  "gun": 1332,
+  "funding": 44
+ },
+ "MINIMAXUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 76,
+  "funding": 3
+ },
+ "MIRAUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 370,
+  "funding": 13
+ },
+ "MITOUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 399,
+  "funding": 14
+ },
+ "MKRUSDT": {
+  "ilk_ay": "2020-08",
+  "son_ay": "2026-09",
+  "gun": 2235,
+  "funding": 62
+ },
+ "MLNUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 549,
+  "funding": 15
+ },
+ "MMTUSDT": {
+  "ilk_ay": "2025-11",
+  "son_ay": "2026-09",
+  "gun": 331,
+  "funding": 11
+ },
+ "MOCAUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 654,
+  "funding": 22
+ },
+ "MONUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 356,
+  "funding": 12
+ },
+ "MOODENGUSDT": {
+  "ilk_ay": "2024-10",
+  "son_ay": "2026-09",
+  "gun": 706,
+  "funding": 24
+ },
+ "MOONSHOTUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 9,
+  "funding": 1
+ },
+ "MORPHOUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 673,
+  "funding": 23
+ },
+ "MOVEUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 661,
+  "funding": 22
+ },
+ "MOVRUSDT": {
+  "ilk_ay": "2023-12",
+  "son_ay": "2026-09",
+  "gun": 1010,
+  "funding": 34
+ },
+ "MPUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 2,
+  "funding": 1
+ },
+ "MRKUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 34,
+  "funding": 2
+ },
+ "MRNAUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 37,
+  "funding": 2
+ },
+ "MRVLUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 139,
+  "funding": 5
+ },
+ "MSFTUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 164,
+  "funding": 6
+ },
+ "MSTRUSDT": {
+  "ilk_ay": "2026-02",
+  "son_ay": "2026-09",
+  "gun": 234,
+  "funding": 8
+ },
+ "MTLUSDT": {
+  "ilk_ay": "2021-03",
+  "son_ay": "2026-09",
+  "gun": 2010,
+  "funding": 67
+ },
+ "MUBARAKUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 563,
+  "funding": 19
+ },
+ "MUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 451,
+  "funding": 15
+ },
+ "MUUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 177,
+  "funding": 6
+ },
+ "MUUUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 77,
+  "funding": 3
+ },
+ "MVLLUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 94,
+  "funding": 4
+ },
+ "MYROUSDT": {
+  "ilk_ay": "2024-03",
+  "son_ay": "2026-09",
+  "gun": 940,
+  "funding": 21
+ },
+ "MYXUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 470,
+  "funding": 16
+ },
+ "NAORISUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 427,
+  "funding": 15
+ },
+ "NATGASUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 183,
+  "funding": 7
+ },
+ "NAVERUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 48,
+  "funding": 2
+ },
+ "NBISUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 128,
+  "funding": 5
+ },
+ "NEARUSDT": {
+  "ilk_ay": "2020-10",
+  "son_ay": "2026-09",
+  "gun": 2172,
+  "funding": 72
+ },
+ "NEIROETHUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 755,
+  "funding": 13
+ },
+ "NEIROUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 745,
+  "funding": 25
+ },
+ "NEOUSDT": {
+  "ilk_ay": "2020-02",
+  "son_ay": "2026-09",
+  "gun": 2418,
+  "funding": 80
+ },
+ "NETUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 45,
+  "funding": 2
+ },
+ "NEWTUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 469,
+  "funding": 16
+ },
+ "NFLXUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 114,
+  "funding": 4
+ },
+ "NFPUSDT": {
+  "ilk_ay": "2023-12",
+  "son_ay": "2026-09",
+  "gun": 1009,
+  "funding": 32
+ },
+ "NIGHTUSDT": {
+  "ilk_ay": "2025-12",
+  "son_ay": "2026-09",
+  "gun": 295,
+  "funding": 10
+ },
+ "NILUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 556,
+  "funding": 19
+ },
+ "NKEUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 2,
+  "funding": 1
+ },
+ "NKNUSDT": {
+  "ilk_ay": "2021-04",
+  "son_ay": "2026-09",
+  "gun": 2001,
+  "funding": 59
+ },
+ "NMRUSDT": {
+  "ilk_ay": "2023-06",
+  "son_ay": "2026-09",
+  "gun": 1197,
+  "funding": 40
+ },
+ "NOKUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 122,
+  "funding": 4
+ },
+ "NOMUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 365,
+  "funding": 12
+ },
+ "NOTUSDT": {
+  "ilk_ay": "2024-05",
+  "son_ay": "2026-09",
+  "gun": 868,
+  "funding": 29
+ },
+ "NOWUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 120,
+  "funding": 4
+ },
+ "NTRNUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1052,
+  "funding": 29
+ },
+ "NULSUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 766,
+  "funding": 11
+ },
+ "NUUSDT": {
+  "ilk_ay": "2021-10",
+  "son_ay": "2022-02",
+  "gun": 118,
+  "funding": 5
+ },
+ "NVDAUSDT": {
+  "ilk_ay": "2026-03",
+  "son_ay": "2026-09",
+  "gun": 189,
+  "funding": 7
+ },
+ "NVDLUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 29,
+  "funding": 1
+ },
+ "NVOUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 122,
+  "funding": 4
+ },
+ "NXPCUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 504,
+  "funding": 17
+ },
+ "OBOLUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 512,
+  "funding": 8
+ },
+ "OCEANUSDT": {
+  "ilk_ay": "2020-11",
+  "son_ay": "2026-09",
+  "gun": 2153,
+  "funding": 56
+ },
+ "OGNUSDT": {
+  "ilk_ay": "2021-04",
+  "son_ay": "2026-09",
+  "gun": 2004,
+  "funding": 66
+ },
+ "OGUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 507,
+  "funding": 17
+ },
+ "OKLOUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 3,
+  "funding": 1
+ },
+ "OLUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 463,
+  "funding": 11
+ },
+ "OMGUSDT": {
+  "ilk_ay": "2020-07",
+  "son_ay": "2026-09",
+  "gun": 2277,
+  "funding": 60
+ },
+ "OMNIUSDT": {
+  "ilk_ay": "2024-04",
+  "son_ay": "2026-09",
+  "gun": 897,
+  "funding": 18
+ },
+ "OMUSDT": {
+  "ilk_ay": "2024-02",
+  "son_ay": "2026-09",
+  "gun": 961,
+  "funding": 25
+ },
+ "ONDOUSDT": {
+  "ilk_ay": "2024-01",
+  "son_ay": "2026-09",
+  "gun": 985,
+  "funding": 33
+ },
+ "ONDSUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 120,
+  "funding": 4
+ },
+ "ONEUSDT": {
+  "ilk_ay": "2021-03",
+  "son_ay": "2026-09",
+  "gun": 2018,
+  "funding": 67
+ },
+ "ONGUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1039,
+  "funding": 35
+ },
+ "ONTUSDT": {
+  "ilk_ay": "2020-02",
+  "son_ay": "2026-09",
+  "gun": 2424,
+  "funding": 80
+ },
+ "ONUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 342,
+  "funding": 12
+ },
+ "OPENAIUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 128,
+  "funding": 5
+ },
+ "OPENUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 388,
+  "funding": 13
+ },
+ "OPGUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 162,
+  "funding": 6
+ },
+ "OPNUSDT": {
+  "ilk_ay": "2026-02",
+  "son_ay": "2026-09",
+  "gun": 222,
+  "funding": 8
+ },
+ "OPUSDT": {
+  "ilk_ay": "2022-06",
+  "son_ay": "2026-09",
+  "gun": 1583,
+  "funding": 52
+ },
+ "ORBSUSDT": {
+  "ilk_ay": "2023-10",
+  "son_ay": "2026-09",
+  "gun": 1080,
+  "funding": 21
+ },
+ "ORCAUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 664,
+  "funding": 22
+ },
+ "ORCLUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 139,
+  "funding": 5
+ },
+ "ORDERUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 370,
+  "funding": 13
+ },
+ "ORDIUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1059,
+  "funding": 35
+ },
+ "OURAUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 8,
+  "funding": 1
+ },
+ "OUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 99,
+  "funding": 4
+ },
+ "OXTUSDT": {
+  "ilk_ay": "2023-08",
+  "son_ay": "2026-09",
+  "gun": 1147,
+  "funding": 33
+ },
+ "PANWUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 72,
+  "funding": 3
+ },
+ "PARTIUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 555,
+  "funding": 19
+ },
+ "PATHUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 13,
+  "funding": 1
+ },
+ "PAXGUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 553,
+  "funding": 19
+ },
+ "PAYPUSDT": {
+  "ilk_ay": "2026-03",
+  "son_ay": "2026-09",
+  "gun": 192,
+  "funding": 7
+ },
+ "PDDUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 34,
+  "funding": 2
+ },
+ "PENDLEUSDT": {
+  "ilk_ay": "2023-07",
+  "son_ay": "2026-09",
+  "gun": 1161,
+  "funding": 39
+ },
+ "PENGUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 72,
+  "funding": 3
+ },
+ "PENGUUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 653,
+  "funding": 22
+ },
+ "PEOPLEUSDT": {
+  "ilk_ay": "2021-12",
+  "son_ay": "2026-09",
+  "gun": 1737,
+  "funding": 58
+ },
+ "PERPUSDT": {
+  "ilk_ay": "2023-03",
+  "son_ay": "2026-09",
+  "gun": 1305,
+  "funding": 33
+ },
+ "PHAROSUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 140,
+  "funding": 5
+ },
+ "PHAUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 640,
+  "funding": 22
+ },
+ "PHBUSDT": {
+  "ilk_ay": "2023-02",
+  "son_ay": "2026-09",
+  "gun": 1323,
+  "funding": 40
+ },
+ "PIEVERSEUSDT": {
+  "ilk_ay": "2025-11",
+  "son_ay": "2026-09",
+  "gun": 321,
+  "funding": 11
+ },
+ "PIPPINUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 615,
+  "funding": 21
+ },
+ "PIXELUSDT": {
+  "ilk_ay": "2024-02",
+  "son_ay": "2026-09",
+  "gun": 955,
+  "funding": 32
+ },
+ "PLAYUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 427,
+  "funding": 15
+ },
+ "PLTRUSDT": {
+  "ilk_ay": "2026-02",
+  "son_ay": "2026-09",
+  "gun": 234,
+  "funding": 8
+ },
+ "PLUMEUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 559,
+  "funding": 19
+ },
+ "PNUTUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 689,
+  "funding": 23
+ },
+ "POLUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 748,
+  "funding": 25
+ },
+ "POLYXUSDT": {
+  "ilk_ay": "2023-10",
+  "son_ay": "2026-09",
+  "gun": 1072,
+  "funding": 36
+ },
+ "PONKEUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 696,
+  "funding": 13
+ },
+ "PONSUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 25,
+  "funding": 1
+ },
+ "POPCATUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 770,
+  "funding": 26
+ },
+ "POPMARTUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 70,
+  "funding": 3
+ },
+ "PORT3USDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 484,
+  "funding": 6
+ },
+ "PORTALUSDT": {
+  "ilk_ay": "2024-02",
+  "son_ay": "2026-09",
+  "gun": 945,
+  "funding": 32
+ },
+ "POWERUSDT": {
+  "ilk_ay": "2025-12",
+  "son_ay": "2026-09",
+  "gun": 299,
+  "funding": 10
+ },
+ "POWRUSDT": {
+  "ilk_ay": "2023-10",
+  "son_ay": "2026-09",
+  "gun": 1070,
+  "funding": 36
+ },
+ "PRLUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 183,
+  "funding": 6
+ },
+ "PROMPTUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 538,
+  "funding": 18
+ },
+ "PROMUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 624,
+  "funding": 21
+ },
+ "PROVEUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 422,
+  "funding": 14
+ },
+ "PTBUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 393,
+  "funding": 13
+ },
+ "PUFFERUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 484,
+  "funding": 11
+ },
+ "PUMPBTCUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 475,
+  "funding": 16
+ },
+ "PUMPUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 537,
+  "funding": 18
+ },
+ "PUNDIXUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 519,
+  "funding": 18
+ },
+ "PYPLUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 64,
+  "funding": 3
+ },
+ "PYTHUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1044,
+  "funding": 35
+ },
+ "QCOMUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 148,
+  "funding": 5
+ },
+ "QNTUSDT": {
+  "ilk_ay": "2022-10",
+  "son_ay": "2026-09",
+  "gun": 1442,
+  "funding": 48
+ },
+ "QNTXUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 125,
+  "funding": 5
+ },
+ "QQQUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 178,
+  "funding": 6
+ },
+ "QTUMUSDT": {
+  "ilk_ay": "2020-02",
+  "son_ay": "2026-09",
+  "gun": 2415,
+  "funding": 79
+ },
+ "QUICKUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 755,
+  "funding": 15
+ },
+ "QUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 394,
+  "funding": 13
+ },
+ "RADUSDT": {
+  "ilk_ay": "2023-05",
+  "son_ay": "2026-09",
+  "gun": 1240,
+  "funding": 26
+ },
+ "RAMUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 37,
+  "funding": 2
+ },
+ "RAREUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 777,
+  "funding": 26
+ },
+ "RAVEUSDT": {
+  "ilk_ay": "2025-12",
+  "son_ay": "2026-09",
+  "gun": 291,
+  "funding": 10
+ },
+ "RAYSOLUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 660,
+  "funding": 22
+ },
+ "RAYUSDT": {
+  "ilk_ay": "2021-08",
+  "son_ay": "2026-09",
+  "gun": 1868,
+  "funding": 47
+ },
+ "RDDTUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 56,
+  "funding": 2
+ },
+ "RDNTUSDT": {
+  "ilk_ay": "2023-04",
+  "son_ay": "2026-09",
+  "gun": 1275,
+  "funding": 36
+ },
+ "RECALLUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 351,
+  "funding": 12
+ },
+ "REDUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 574,
+  "funding": 19
+ },
+ "REEFUSDT": {
+  "ilk_ay": "2021-02",
+  "son_ay": "2026-09",
+  "gun": 2047,
+  "funding": 53
+ },
+ "REIUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 734,
+  "funding": 16
+ },
+ "RENDERUSDT": {
+  "ilk_ay": "2024-07",
+  "son_ay": "2026-09",
+  "gun": 797,
+  "funding": 27
+ },
+ "RENUSDT": {
+  "ilk_ay": "2020-10",
+  "son_ay": "2026-09",
+  "gun": 2179,
+  "funding": 57
+ },
+ "RESOLVUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 478,
+  "funding": 16
+ },
+ "REUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 105,
+  "funding": 4
+ },
+ "REZUSDT": {
+  "ilk_ay": "2024-04",
+  "son_ay": "2026-09",
+  "gun": 884,
+  "funding": 30
+ },
+ "RIFUSDT": {
+  "ilk_ay": "2023-10",
+  "son_ay": "2026-09",
+  "gun": 1076,
+  "funding": 36
+ },
+ "RIVERUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 349,
+  "funding": 12
+ },
+ "RIVNUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 113,
+  "funding": 4
+ },
+ "RKLBUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 136,
+  "funding": 5
+ },
+ "RLCUSDT": {
+  "ilk_ay": "2020-07",
+  "son_ay": "2026-09",
+  "gun": 2248,
+  "funding": 75
+ },
+ "RLSUSDT": {
+  "ilk_ay": "2025-12",
+  "son_ay": "2026-09",
+  "gun": 303,
+  "funding": 5
+ },
+ "RNDRUSDT": {
+  "ilk_ay": "2023-02",
+  "son_ay": "2024-07",
+  "gun": 544,
+  "funding": 19
+ },
+ "ROBOUSDT": {
+  "ilk_ay": "2026-02",
+  "son_ay": "2026-09",
+  "gun": 216,
+  "funding": 8
+ },
+ "RONINUSDT": {
+  "ilk_ay": "2024-02",
+  "son_ay": "2026-09",
+  "gun": 968,
+  "funding": 32
+ },
+ "ROSEUSDT": {
+  "ilk_ay": "2021-12",
+  "son_ay": "2026-09",
+  "gun": 1730,
+  "funding": 58
+ },
+ "RPLUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 752,
+  "funding": 25
+ },
+ "RSRUSDT": {
+  "ilk_ay": "2020-10",
+  "son_ay": "2026-09",
+  "gun": 2168,
+  "funding": 72
+ },
+ "RUMUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 3,
+  "funding": 1
+ },
+ "RUNEUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2218,
+  "funding": 73
+ },
+ "RVNUSDT": {
+  "ilk_ay": "2021-02",
+  "son_ay": "2026-09",
+  "gun": 2041,
+  "funding": 68
+ },
+ "RVVUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 348,
+  "funding": 5
+ },
+ "SAFEUSDT": {
+  "ilk_ay": "2024-10",
+  "son_ay": "2026-09",
+  "gun": 706,
+  "funding": 24
+ },
+ "SAGAUSDT": {
+  "ilk_ay": "2024-04",
+  "son_ay": "2026-09",
+  "gun": 905,
+  "funding": 30
+ },
+ "SAHARAUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 462,
+  "funding": 16
+ },
+ "SAMSUNGEMUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 48,
+  "funding": 2
+ },
+ "SAMSUNGUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 121,
+  "funding": 4
+ },
+ "SANDUSDT": {
+  "ilk_ay": "2021-01",
+  "son_ay": "2026-09",
+  "gun": 2070,
+  "funding": 69
+ },
+ "SANTOSUSDT": {
+  "ilk_ay": "2024-10",
+  "son_ay": "2026-09",
+  "gun": 703,
+  "funding": 24
+ },
+ "SAPIENUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 407,
+  "funding": 14
+ },
+ "SCRTUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 679,
+  "funding": 22
+ },
+ "SCRUSDT": {
+  "ilk_ay": "2024-10",
+  "son_ay": "2026-09",
+  "gun": 709,
+  "funding": 24
+ },
+ "SCUSDT": {
+  "ilk_ay": "2021-04",
+  "son_ay": "2026-09",
+  "gun": 1998,
+  "funding": 51
+ },
+ "SECZUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 2,
+  "funding": 1
+ },
+ "SEIUSDT": {
+  "ilk_ay": "2023-08",
+  "son_ay": "2026-09",
+  "gun": 1141,
+  "funding": 38
+ },
+ "SENTUSDT": {
+  "ilk_ay": "2025-11",
+  "son_ay": "2026-09",
+  "gun": 321,
+  "funding": 11
+ },
+ "SFPUSDT": {
+  "ilk_ay": "2021-02",
+  "son_ay": "2026-09",
+  "gun": 2045,
+  "funding": 68
+ },
+ "SHAZUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 72,
+  "funding": 3
+ },
+ "SHELLUSDT": {
+  "ilk_ay": "2025-02",
+  "son_ay": "2026-09",
+  "gun": 591,
+  "funding": 20
+ },
+ "SHOPUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 45,
+  "funding": 2
+ },
+ "SIGNUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 521,
+  "funding": 18
+ },
+ "SIRENUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 558,
+  "funding": 19
+ },
+ "SKATEUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 479,
+  "funding": 7
+ },
+ "SKDDUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 37,
+  "funding": 2
+ },
+ "SKHYNIXUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 121,
+  "funding": 4
+ },
+ "SKHYUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 83,
+  "funding": 3
+ },
+ "SKLUSDT": {
+  "ilk_ay": "2020-12",
+  "son_ay": "2026-09",
+  "gun": 2118,
+  "funding": 70
+ },
+ "SKRUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 252,
+  "funding": 9
+ },
+ "SKUUUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 37,
+  "funding": 2
+ },
+ "SKYAIUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 506,
+  "funding": 17
+ },
+ "SKYUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 387,
+  "funding": 13
+ },
+ "SLERFUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 679,
+  "funding": 12
+ },
+ "SLPUSDT": {
+  "ilk_ay": "2023-10",
+  "son_ay": "2026-09",
+  "gun": 1066,
+  "funding": 36
+ },
+ "SLXUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 122,
+  "funding": 4
+ },
+ "SMCIUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 101,
+  "funding": 4
+ },
+ "SMHUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 64,
+  "funding": 3
+ },
+ "SNDKUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 177,
+  "funding": 6
+ },
+ "SNOWUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 83,
+  "funding": 3
+ },
+ "SNTUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1064,
+  "funding": 20
+ },
+ "SNXUSDT": {
+  "ilk_ay": "2020-08",
+  "son_ay": "2026-09",
+  "gun": 2239,
+  "funding": 74
+ },
+ "SNXXUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 84,
+  "funding": 3
+ },
+ "SOFIUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 72,
+  "funding": 3
+ },
+ "SOLUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2203,
+  "funding": 73
+ },
+ "SOLVUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 622,
+  "funding": 21
+ },
+ "SOMIUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 402,
+  "funding": 14
+ },
+ "SONICUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 631,
+  "funding": 21
+ },
+ "SONYUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 101,
+  "funding": 4
+ },
+ "SOONUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 496,
+  "funding": 17
+ },
+ "SOPHUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 491,
+  "funding": 17
+ },
+ "SOXLUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 139,
+  "funding": 5
+ },
+ "SOXSUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 77,
+  "funding": 3
+ },
+ "SPACEUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 251,
+  "funding": 9
+ },
+ "SPCXUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 133,
+  "funding": 5
+ },
+ "SPELLUSDT": {
+  "ilk_ay": "2022-09",
+  "son_ay": "2026-09",
+  "gun": 1486,
+  "funding": 49
+ },
+ "SPKUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 471,
+  "funding": 16
+ },
+ "SPORTFUNUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 258,
+  "funding": 9
+ },
+ "SPXUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 660,
+  "funding": 22
+ },
+ "SPYUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 178,
+  "funding": 6
+ },
+ "SQDUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 477,
+  "funding": 16
+ },
+ "SQQQUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 94,
+  "funding": 4
+ },
+ "SRMUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2024-05",
+  "gun": 1362,
+  "funding": 47
+ },
+ "SSVUSDT": {
+  "ilk_ay": "2023-02",
+  "son_ay": "2026-09",
+  "gun": 1315,
+  "funding": 44
+ },
+ "STABLEUSDT": {
+  "ilk_ay": "2025-11",
+  "son_ay": "2026-09",
+  "gun": 329,
+  "funding": 11
+ },
+ "STARUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 140,
+  "funding": 5
+ },
+ "STBLUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 379,
+  "funding": 13
+ },
+ "STEEMUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1058,
+  "funding": 35
+ },
+ "STGUSDT": {
+  "ilk_ay": "2022-08",
+  "son_ay": "2026-09",
+  "gun": 1498,
+  "funding": 50
+ },
+ "STMXUSDT": {
+  "ilk_ay": "2021-03",
+  "son_ay": "2026-09",
+  "gun": 2019,
+  "funding": 52
+ },
+ "STORJUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2201,
+  "funding": 72
+ },
+ "STOUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 537,
+  "funding": 18
+ },
+ "STPTUSDT": {
+  "ilk_ay": "2023-10",
+  "son_ay": "2026-09",
+  "gun": 1079,
+  "funding": 21
+ },
+ "STRAXUSDT": {
+  "ilk_ay": "2023-10",
+  "son_ay": "2026-09",
+  "gun": 1086,
+  "funding": 21
+ },
+ "STRCUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 91,
+  "funding": 3
+ },
+ "STRKUSDT": {
+  "ilk_ay": "2024-02",
+  "son_ay": "2026-09",
+  "gun": 954,
+  "funding": 32
+ },
+ "STXUSDT": {
+  "ilk_ay": "2023-02",
+  "son_ay": "2026-09",
+  "gun": 1318,
+  "funding": 44
+ },
+ "STXXUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 112,
+  "funding": 4
+ },
+ "SUIUSDT": {
+  "ilk_ay": "2023-05",
+  "son_ay": "2026-09",
+  "gun": 1247,
+  "funding": 41
+ },
+ "SUNUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 770,
+  "funding": 26
+ },
+ "SUPERUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1040,
+  "funding": 35
+ },
+ "SUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 623,
+  "funding": 21
+ },
+ "SUSHIUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2213,
+  "funding": 73
+ },
+ "SWARMSUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 632,
+  "funding": 21
+ },
+ "SWELLUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 692,
+  "funding": 13
+ },
+ "SXPUSDT": {
+  "ilk_ay": "2020-07",
+  "son_ay": "2026-05",
+  "gun": 2141,
+  "funding": 66
+ },
+ "SXTUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 517,
+  "funding": 17
+ },
+ "SYNUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 776,
+  "funding": 26
+ },
+ "SYRUPUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 512,
+  "funding": 17
+ },
+ "SYSUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 773,
+  "funding": 22
+ },
+ "TACUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 443,
+  "funding": 15
+ },
+ "TAGUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 433,
+  "funding": 15
+ },
+ "TAIKOUSDT": {
+  "ilk_ay": "2025-06",
+  "son_ay": "2026-09",
+  "gun": 477,
+  "funding": 16
+ },
+ "TAKEUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 393,
+  "funding": 13
+ },
+ "TANSSIUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 449,
+  "funding": 7
+ },
+ "TAOUSDT": {
+  "ilk_ay": "2024-04",
+  "son_ay": "2026-09",
+  "gun": 903,
+  "funding": 30
+ },
+ "TAUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 437,
+  "funding": 15
+ },
+ "TBTUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 66,
+  "funding": 3
+ },
+ "TEAMUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 29,
+  "funding": 1
+ },
+ "TEMUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 34,
+  "funding": 2
+ },
+ "TENCENTUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 71,
+  "funding": 3
+ },
+ "TERUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 91,
+  "funding": 3
+ },
+ "THETAUSDT": {
+  "ilk_ay": "2020-05",
+  "son_ay": "2026-09",
+  "gun": 2318,
+  "funding": 77
+ },
+ "THEUSDT": {
+  "ilk_ay": "2024-11",
+  "son_ay": "2026-09",
+  "gun": 673,
+  "funding": 23
+ },
+ "TIAUSDT": {
+  "ilk_ay": "2023-10",
+  "son_ay": "2026-09",
+  "gun": 1066,
+  "funding": 36
+ },
+ "TLMUSDT": {
+  "ilk_ay": "2021-07",
+  "son_ay": "2026-09",
+  "gun": 1874,
+  "funding": 43
+ },
+ "TMFUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 66,
+  "funding": 3
+ },
+ "TNSRUSDT": {
+  "ilk_ay": "2024-04",
+  "son_ay": "2026-09",
+  "gun": 906,
+  "funding": 30
+ },
+ "TOKENUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1063,
+  "funding": 26
+ },
+ "TOMOUSDT": {
+  "ilk_ay": "2020-10",
+  "son_ay": "2024-05",
+  "gun": 1325,
+  "funding": 47
+ },
+ "TONUSDT": {
+  "ilk_ay": "2024-03",
+  "son_ay": "2026-09",
+  "gun": 944,
+  "funding": 28
+ },
+ "TOSHIUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 379,
+  "funding": 13
+ },
+ "TOWNSUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 422,
+  "funding": 14
+ },
+ "TQQQUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 94,
+  "funding": 4
+ },
+ "TRADOORUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 377,
+  "funding": 13
+ },
+ "TRBUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2214,
+  "funding": 73
+ },
+ "TREEUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 429,
+  "funding": 15
+ },
+ "TRIAUSDT": {
+  "ilk_ay": "2026-02",
+  "son_ay": "2026-09",
+  "gun": 237,
+  "funding": 8
+ },
+ "TROYUSDT": {
+  "ilk_ay": "2024-10",
+  "son_ay": "2026-09",
+  "gun": 700,
+  "funding": 9
+ },
+ "TRUMPUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 621,
+  "funding": 21
+ },
+ "TRUSTUSDT": {
+  "ilk_ay": "2025-11",
+  "son_ay": "2026-09",
+  "gun": 330,
+  "funding": 11
+ },
+ "TRUTHUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 365,
+  "funding": 12
+ },
+ "TRUUSDT": {
+  "ilk_ay": "2023-03",
+  "son_ay": "2026-09",
+  "gun": 1304,
+  "funding": 38
+ },
+ "TRXUSDT": {
+  "ilk_ay": "2020-01",
+  "son_ay": "2026-09",
+  "gun": 2446,
+  "funding": 81
+ },
+ "TSLAUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 246,
+  "funding": 9
+ },
+ "TSLLUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 29,
+  "funding": 1
+ },
+ "TSMUSDT": {
+  "ilk_ay": "2026-04",
+  "son_ay": "2026-09",
+  "gun": 178,
+  "funding": 6
+ },
+ "TSTUSDT": {
+  "ilk_ay": "2025-02",
+  "son_ay": "2026-09",
+  "gun": 599,
+  "funding": 20
+ },
+ "TTWOUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 91,
+  "funding": 3
+ },
+ "TURBOUSDT": {
+  "ilk_ay": "2024-05",
+  "son_ay": "2026-09",
+  "gun": 854,
+  "funding": 29
+ },
+ "TURTLEUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 344,
+  "funding": 12
+ },
+ "TUSDT": {
+  "ilk_ay": "2023-02",
+  "son_ay": "2026-09",
+  "gun": 1338,
+  "funding": 44
+ },
+ "TUTUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 560,
+  "funding": 19
+ },
+ "TWSTUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 3,
+  "funding": 1
+ },
+ "TWTUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1063,
+  "funding": 35
+ },
+ "TXNUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 91,
+  "funding": 3
+ },
+ "TZAUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 77,
+  "funding": 3
+ },
+ "UAIUSDT": {
+  "ilk_ay": "2025-11",
+  "son_ay": "2026-09",
+  "gun": 329,
+  "funding": 11
+ },
+ "UBERUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 139,
+  "funding": 5
+ },
+ "UBUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 384,
+  "funding": 13
+ },
+ "UMAUSDT": {
+  "ilk_ay": "2023-05",
+  "son_ay": "2026-09",
+  "gun": 1240,
+  "funding": 41
+ },
+ "UNFIUSDT": {
+  "ilk_ay": "2021-02",
+  "son_ay": "2026-09",
+  "gun": 2045,
+  "funding": 53
+ },
+ "UNHUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 2,
+  "funding": 1
+ },
+ "UNITREEUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 43,
+  "funding": 2
+ },
+ "UNIUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2026-09",
+  "gun": 2204,
+  "funding": 73
+ },
+ "URNMUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 114,
+  "funding": 4
+ },
+ "USARUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 148,
+  "funding": 5
+ },
+ "USDBRLUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 10,
+  "funding": 1
+ },
+ "USDCUSDT": {
+  "ilk_ay": "2023-03",
+  "son_ay": "2026-09",
+  "gun": 1299,
+  "funding": 43
+ },
+ "USELESSUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 412,
+  "funding": 14
+ },
+ "USTCUSDT": {
+  "ilk_ay": "2023-11",
+  "son_ay": "2026-09",
+  "gun": 1039,
+  "funding": 35
+ },
+ "USUALUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 652,
+  "funding": 22
+ },
+ "USUSDT": {
+  "ilk_ay": "2025-12",
+  "son_ay": "2026-09",
+  "gun": 293,
+  "funding": 10
+ },
+ "UVXYUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 112,
+  "funding": 4
+ },
+ "UXLINKUSDT": {
+  "ilk_ay": "2024-09",
+  "son_ay": "2026-09",
+  "gun": 746,
+  "funding": 13
+ },
+ "VANAUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 654,
+  "funding": 22
+ },
+ "VANRYUSDT": {
+  "ilk_ay": "2024-03",
+  "son_ay": "2026-09",
+  "gun": 932,
+  "funding": 30
+ },
+ "VELODROMEUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 657,
+  "funding": 22
+ },
+ "VELVETUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 443,
+  "funding": 15
+ },
+ "VETUSDT": {
+  "ilk_ay": "2020-02",
+  "son_ay": "2026-09",
+  "gun": 2416,
+  "funding": 80
+ },
+ "VFYUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 366,
+  "funding": 7
+ },
+ "VICUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 568,
+  "funding": 18
+ },
+ "VIDTUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 769,
+  "funding": 11
+ },
+ "VINEUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 615,
+  "funding": 16
+ },
+ "VIRTUALUSDT": {
+  "ilk_ay": "2024-12",
+  "son_ay": "2026-09",
+  "gun": 660,
+  "funding": 22
+ },
+ "VOXELUSDT": {
+  "ilk_ay": "2024-08",
+  "son_ay": "2026-09",
+  "gun": 772,
+  "funding": 17
+ },
+ "VRTUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 83,
+  "funding": 3
+ },
+ "VSTUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 45,
+  "funding": 2
+ },
+ "VTHOUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 617,
+  "funding": 21
+ },
+ "VUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 136,
+  "funding": 5
+ },
+ "VVVUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 610,
+  "funding": 21
+ },
+ "WALUSDT": {
+  "ilk_ay": "2025-03",
+  "son_ay": "2026-09",
+  "gun": 553,
+  "funding": 19
+ },
+ "WAVESUSDT": {
+  "ilk_ay": "2020-08",
+  "son_ay": "2026-09",
+  "gun": 2236,
+  "funding": 59
+ },
+ "WAXPUSDT": {
+  "ilk_ay": "2023-10",
+  "son_ay": "2026-09",
+  "gun": 1079,
+  "funding": 36
+ },
+ "WCTUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 534,
+  "funding": 18
+ },
+ "WDCUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 128,
+  "funding": 5
+ },
+ "WENUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 84,
+  "funding": 3
+ },
+ "WETUSDT": {
+  "ilk_ay": "2025-12",
+  "son_ay": "2026-09",
+  "gun": 295,
+  "funding": 10
+ },
+ "WIFUSDT": {
+  "ilk_ay": "2024-01",
+  "son_ay": "2026-09",
+  "gun": 987,
+  "funding": 33
+ },
+ "WLDUSDT": {
+  "ilk_ay": "2023-07",
+  "son_ay": "2026-09",
+  "gun": 1165,
+  "funding": 39
+ },
+ "WLFIUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 404,
+  "funding": 14
+ },
+ "WMTUSDT": {
+  "ilk_ay": "2026-05",
+  "son_ay": "2026-09",
+  "gun": 136,
+  "funding": 5
+ },
+ "WOOUSDT": {
+  "ilk_ay": "2022-04",
+  "son_ay": "2026-09",
+  "gun": 1637,
+  "funding": 54
+ },
+ "WUSDT": {
+  "ilk_ay": "2024-04",
+  "son_ay": "2026-09",
+  "gun": 911,
+  "funding": 30
+ },
+ "XAGUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 267,
+  "funding": 9
+ },
+ "XAIUSDT": {
+  "ilk_ay": "2024-01",
+  "son_ay": "2026-09",
+  "gun": 996,
+  "funding": 33
+ },
+ "XANUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 367,
+  "funding": 13
+ },
+ "XAUTUSDT": {
+  "ilk_ay": "2026-03",
+  "son_ay": "2026-09",
+  "gun": 189,
+  "funding": 7
+ },
+ "XAUUSDT": {
+  "ilk_ay": "2025-12",
+  "son_ay": "2026-09",
+  "gun": 294,
+  "funding": 10
+ },
+ "XBIUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 84,
+  "funding": 3
+ },
+ "XCNUSDT": {
+  "ilk_ay": "2025-04",
+  "son_ay": "2026-09",
+  "gun": 538,
+  "funding": 8
+ },
+ "XEMUSDT": {
+  "ilk_ay": "2021-03",
+  "son_ay": "2026-09",
+  "gun": 2033,
+  "funding": 52
+ },
+ "XLEUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 113,
+  "funding": 4
+ },
+ "XLMUSDT": {
+  "ilk_ay": "2020-01",
+  "son_ay": "2026-09",
+  "gun": 2441,
+  "funding": 81
+ },
+ "XMRUSDT": {
+  "ilk_ay": "2020-02",
+  "son_ay": "2026-09",
+  "gun": 2432,
+  "funding": 80
+ },
+ "XNYUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 414,
+  "funding": 14
+ },
+ "XOMUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 3,
+  "funding": 1
+ },
+ "XPDUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 244,
+  "funding": 9
+ },
+ "XPINUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 384,
+  "funding": 13
+ },
+ "XPLUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 405,
+  "funding": 14
+ },
+ "XPTUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 244,
+  "funding": 9
+ },
+ "XRPUSDT": {
+  "ilk_ay": "2020-01",
+  "son_ay": "2026-09",
+  "gun": 2455,
+  "funding": 81
+ },
+ "XTZUSDT": {
+  "ilk_ay": "2020-02",
+  "son_ay": "2026-09",
+  "gun": 2429,
+  "funding": 80
+ },
+ "XVGUSDT": {
+  "ilk_ay": "2023-07",
+  "son_ay": "2026-09",
+  "gun": 1184,
+  "funding": 39
+ },
+ "XVSUSDT": {
+  "ilk_ay": "2023-04",
+  "son_ay": "2026-09",
+  "gun": 1267,
+  "funding": 42
+ },
+ "YALAUSDT": {
+  "ilk_ay": "2025-08",
+  "son_ay": "2026-09",
+  "gun": 420,
+  "funding": 7
+ },
+ "YBUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 356,
+  "funding": 12
+ },
+ "YFIIUSDT": {
+  "ilk_ay": "2020-09",
+  "son_ay": "2022-04",
+  "gun": 582,
+  "funding": 20
+ },
+ "YFIUSDT": {
+  "ilk_ay": "2020-08",
+  "son_ay": "2026-09",
+  "gun": 2217,
+  "funding": 74
+ },
+ "YGGUSDT": {
+  "ilk_ay": "2023-08",
+  "son_ay": "2026-09",
+  "gun": 1153,
+  "funding": 38
+ },
+ "ZAMAUSDT": {
+  "ilk_ay": "2026-01",
+  "son_ay": "2026-09",
+  "gun": 265,
+  "funding": 9
+ },
+ "ZBTUSDT": {
+  "ilk_ay": "2025-10",
+  "son_ay": "2026-09",
+  "gun": 349,
+  "funding": 12
+ },
+ "ZECUSDT": {
+  "ilk_ay": "2020-02",
+  "son_ay": "2026-09",
+  "gun": 2425,
+  "funding": 80
+ },
+ "ZENUSDT": {
+  "ilk_ay": "2020-11",
+  "son_ay": "2026-09",
+  "gun": 2132,
+  "funding": 71
+ },
+ "ZEREBROUSDT": {
+  "ilk_ay": "2025-01",
+  "son_ay": "2026-09",
+  "gun": 637,
+  "funding": 21
+ },
+ "ZESTUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 119,
+  "funding": 4
+ },
+ "ZETAUSDT": {
+  "ilk_ay": "2024-02",
+  "son_ay": "2026-09",
+  "gun": 972,
+  "funding": 32
+ },
+ "ZHIPUUSDT": {
+  "ilk_ay": "2026-07",
+  "son_ay": "2026-09",
+  "gun": 76,
+  "funding": 3
+ },
+ "ZHONGJIUSDT": {
+  "ilk_ay": "2026-08",
+  "son_ay": "2026-09",
+  "gun": 48,
+  "funding": 2
+ },
+ "ZILUSDT": {
+  "ilk_ay": "2020-06",
+  "son_ay": "2026-09",
+  "gun": 2291,
+  "funding": 76
+ },
+ "ZKCUSDT": {
+  "ilk_ay": "2025-09",
+  "son_ay": "2026-09",
+  "gun": 381,
+  "funding": 13
+ },
+ "ZKJUSDT": {
+  "ilk_ay": "2025-05",
+  "son_ay": "2026-09",
+  "gun": 506,
+  "funding": 12
+ },
+ "ZKPUSDT": {
+  "ilk_ay": "2025-12",
+  "son_ay": "2026-09",
+  "gun": 284,
+  "funding": 10
+ },
+ "ZKUSDT": {
+  "ilk_ay": "2024-06",
+  "son_ay": "2026-09",
+  "gun": 836,
+  "funding": 28
+ },
+ "ZMUSDT": {
+  "ilk_ay": "2026-06",
+  "son_ay": "2026-09",
+  "gun": 113,
+  "funding": 4
+ },
+ "ZORAUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 433,
+  "funding": 15
+ },
+ "ZRCUSDT": {
+  "ilk_ay": "2025-07",
+  "son_ay": "2026-09",
+  "gun": 429,
+  "funding": 7
+ },
+ "ZROUSDT": {
+  "ilk_ay": "2024-06",
+  "son_ay": "2026-09",
+  "gun": 833,
+  "funding": 28
+ },
+ "ZRXUSDT": {
+  "ilk_ay": "2020-06",
+  "son_ay": "2026-09",
+  "gun": 2290,
+  "funding": 76
+ },
+ "ZSUSDT": {
+  "ilk_ay": "2026-09",
+  "son_ay": "2026-09",
+  "gun": 29,
+  "funding": 1
+ }
+}
