@@ -27,3 +27,23 @@ sözleşme bilgisi olan 24; EOS ve FIL hariç).
    2023-04-07 → 2026-07-18 bot=`ikiz_gercek.db`): aylık CAGR/maxDD oranı ve çarpan mevcut düzenden yüksek, maxDD en fazla
    3 puan kötü.
 Bir strateji **EKLENİR** ⇔ 1 VE 2. Rapor: donchian ve trend ile haftalık korelasyon, eşzamanlı pozisyon, yıl yıl.
+
+---
+## SONUÇ (2026-10-20) — İKİSİ DE EKLENMEZ
+Kenar: iki bağımsız uygulama aynı hükmü verdi (W GEÇTİ, H GEÇMEDİ). Büyüklük farkı yalnız funding kuralından
+(B: her settlement'ta güncel notional; A: giriş notionalı) — B daha gerçekçi, ikisinde de W > 0. Denetçi ajanı oturum
+sınırı nedeniyle tamamlanamadı; hükümler bu farktan etkilenmiyor.
+
+| | yeni 24 ort R (A / B) | %1.25 alt (A / B) | not |
+|---|---|---|---|
+| W haftalık TSMOM | +0.50 / +0.37 | +0.12 / +0.08 | medyan R negatif; 2020 girişleri baskın (DOGE +200R) |
+| H 52 hafta zirvesi | +0.12 / +0.11 | −0.17 / −0.18 | anlamlı değil |
+
+Portföy (bot + trend %1.5, işlem başı %1 risk, 12 bot coini):
+| dönem | BASE | +W | +H |
+|---|---|---|---|
+| bağımsız 2020–23 | x42.2, DD %58.7 | x60.6, DD %59.1 | x44.0, DD %58.7 |
+| keşif 2023–26 | x116.5, DD %28.9 | x114.0, DD %29.3 | x130.3, DD %29.7 |
+W: kenarı var ama keşifte hesabı kötüleştiriyor; bağımsızdaki kazanç tek bir DOGE işleminden (çıkarınca x44.3). 2025–26'da
+W girişleri negatif. H: hesabı iki dönemde de biraz iyileştiriyor ama kendi kenarı istatistik olarak sıfırdan ayırt
+edilemiyor. Kural 1 VE 2 → ikisi de eklenmez. H en yakın aday; istenirse kâğıt üzerinde izlenebilir.
