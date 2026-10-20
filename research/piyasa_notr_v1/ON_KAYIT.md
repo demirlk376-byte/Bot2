@@ -68,3 +68,27 @@ Rapor: aylık tablo, kârlı hafta/ay oranı, yıl yıl, en kötü ay, funding v
 devir, BASE ile aylık korelasyon, uygun sembol sayısı. Sınırlamalar: Binance vekil veri (MEXC'de sembol/funding
 farklı olabilir); ~250 USDT hesapta 20 bacak MEXC minimum emir büyüklüğüne takılabilir — ayrıca belirtilir.
 Sonuç görüldükten sonra hiçbir eşik, sayı, süre, maliyet ya da ölçüt değiştirilmez.
+
+---
+## SONUÇ (2026-10-20) — ÜÇÜ DE ELENDİ (piyasa-nötr aileden düzenli aylık kâr çıkmadı)
+İki kör uygulama (vektörel / olay döngüsü) aynı hükmü verdi. Farklar yalnız spec'te tanımsız noktalardan: F7
+eşitliğinde (çok coin taban oranda, F7 = 0.0021) sıralama, P çıkış maliyetinin hangi güne yazıldığı. Uzlaştırmada B'nin
+hayalet gün (hacim 0) getirilerini beta/z'ye katması düzeltildi. A'nın kurallarıyla iki motor her dönemde birebir
+aynı (fark < 2e-15). Denetçi 47 kesme testi (gelecek veri yok), elle funding/maliyet/işlem yeniden hesabı yaptı.
+Rastgele eşitlik sıralaması (60 tohum), veri delikleri ve delist doldurma duyarlılıklarında da hiçbir hüküm değişmiyor.
+
+| strateji | dönem | toplam NORMAL / STRESS | kârlı ay | aylık ort. | boot. alt (%0.83) |
+|---|---|---|---|---|---|
+| C funding carry L/S | keşif 2021–23 | +%129 / +%72 | %64 | +%2.6 | — |
+| C | doğrulama 2024–26 | −%53 / −%63 | %42 | −%1.4 | −%6.8 |
+| CH kalabalık short + BTC | keşif | +%20 / −%0.1 | %53 | +%0.9 | — |
+| CH | doğrulama | +%13 / −%1.2 | %52 | +%1.2 | −%4.1 |
+| P artık dönüşü | keşif | −%31 / −%44 | %39 | −%1.0 | — |
+| P | doğrulama | −%9 / −%28 | %52 | −%0.2 | −%1.9 |
+
+Yıl yıl NORMAL (kârlı ay): C 2021 +96 (9/12) · 2022 −9 · 2023 +28 · 2024 +9 (5/12) · 2025 **−51** (4/12) · 2026 −12.
+CH 2021 −24 · 2022 −2 · 2023 +62 · 2024 +58 · 2025 −26 · 2026 −4. P her yıl ~negatif (2024 hariç).
+C'nin çöküşü: doğrulamada long bacak (en düşük funding) +%126 funding topladı ama fiyatta −%148 kaybetti; yüksek
+funding'li short'lar sıkıştı (ör. MYX 2025-09, ~3 kat). 2021–23'te çalışan carry 2025'te tersine döndü.
+Portföy (bilgi amaçlı, ölçüt 4): +C 2023–26 x139 → x70.5 (DD %29 → %46); +CH x139 → x164 ama DD %29 → %50; +P zararlı ay
+sayısını azaltmıyor. Hiçbiri 4'ü de geçmiyor. Hüküm: üçü de ELENDİ; bota eklenmez.
