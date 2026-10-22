@@ -1,6 +1,6 @@
 # 📊 Paper Demo V2 — Teknik + Makro Filtre
 
-Son güncelleme: **2026-10-22 13:37 UTC** · Fear & Greed: **68 (Açgözlülük)**
+Son güncelleme: **2026-10-22 18:25 UTC** · Fear & Greed: **68 (Açgözlülük)**
 
 V1 (saf teknik) ile karşılaştırma: makro filtre sinyali ONAYLAMAK için gerekli.
 
@@ -8,7 +8,7 @@ V1 (saf teknik) ile karşılaştırma: makro filtre sinyali ONAYLAMAK için gere
 |------|--------|--------|-------|-----------|---------|-------|
 | BTC | $10,098 | +1.0% | 45 | 49% | 36 | ✅ |
 | ETH | $9,804 | -2.0% | 36 | 53% | 40 | ❌ |
-| SOL | $9,643 | -3.6% | 37 | 43% | 23 | ❌ |
+| SOL | $9,839 | -1.6% | 38 | 45% | 23 | ❌ |
 | BNB | $10,149 | +1.5% | 44 | 52% | 19 | ✅ |
 | XRP | $9,096 | -9.0% | 43 | 47% | 28 | ❌ |
 
