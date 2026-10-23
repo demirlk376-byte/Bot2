@@ -36,3 +36,25 @@ Birden çok kural geçerse iki dönemin bootstrap medyan TS'lerinin geometrik or
 Hiçbiri geçmezse "çekim kuralı önerilmez". Sınırlama: ikiz canlıdan iyimser olabilir (canlı şu an −%10); küçük
 hesapta MEXC minimum emir büyüklüğü çekimle daha erken bağlayıcı olur (modellenmez).
 Sonuç görüldükten sonra oranlar, blok boyu, yol uzunluğu, eşikler ve ölçüt değiştirilmez.
+
+---
+## SONUÇ (2026-10-23) — ÇEKİM KURALI ÖNERİLMEZ (ölçüt b her kuralda, iki dönemde de kaldı)
+İki kör uygulama + denetçinin üçüncü motoru 128 sayının hepsinde aynı (göreli fark ≤ 2.6e-16). Düzeltme gerekmedi.
+Başlangıç 250 USDT, ikiz (gerçek maliyetli) + trend %1.5. TS = cepteki + hesaptaki.
+
+| dönem | kural | son bakiye | çekilen | TS | TS düşüşü | çekim ayı | boot. medyan TS | boot. %10 TS | P(TS<250) |
+|---|---|---|---|---|---|---|---|---|---|
+| keşif 2023–26 | BASE | 29 117 | 0 | 29 117 | %28.9 | 0/40 | 17 926 | 3 001 | %0.06 |
+| | Z30 | 8 763 | 4 375 | 13 138 | %20.4 | 21/40 | 8 931 | 2 165 | %0.06 |
+| | Z50 | 3 578 | 4 021 | 7 599 | %18.8 | 21/40 | 5 588 | 1 745 | %0.05 |
+| | M3 | 8 610 | 5 695 | 14 305 | %22.6 | 40/40 | 8 367 | 1 664 | %0.07 |
+| bağımsız 2020–23 | BASE | 10 540 | 0 | 10 540 | %58.7 | 0/39 | 7 934 | 1 084 | %1.14 |
+| | Z30 | 3 227 | 3 240 | 6 467 | %41.5 | 20/39 | 4 801 | 1 005 | %0.70 |
+| | Z50 | 1 356 | 3 030 | 4 386 | %37.2 | 20/39 | 3 366 | 948 | %0.49 |
+| | M3 | 3 213 | 2 310 | 5 523 | %47.2 | 39/39 | 4 032 | 735 | %0.99 |
+
+Çekim "geri verme"yi gerçekten azaltıyor (TS düşüşü 6–21 puan az; ölçüt d hepsinde geçti) ve bağımsız dönemde
+başlangıcın altında bitme olasılığını yarıya indiriyor. Ama bileşik büyüme kaybı o kadar büyük ki kötü senaryoda
+bile (%10 persentil) toplam servet çekimsizden düşük (ölçüt b kaldı); medyan TS %31–61'e iniyor (Z30 keşif 0.498,
+eşiğin kıl payı altında). Sınırlama: sayılar ikizden; canlı hesap şu an −%10 ve ikizden kötü — mutlak tutarlar iyimser.
+Ay sonu açık risk ortalaması %0.8–1.0 (yaklaşım hatası küçük).
