@@ -43,3 +43,28 @@ DOĞRULAMA n ≥ 30. Rapor: dolma oranı, dolma süresi, yukarı/aşağı boşlu
 Haftanın 168 saati için: ort. getiri, |getiri| ortalaması, pozitif oran; gün ve seans tabloları; koşul hücrelerine
 göre gün getirisi; iki dönem yan yana. Sonuçtan sonra parçalar, koşullar, eşikler, maliyet, seçim sayısı ve ölçüt
 DEĞİŞTİRİLMEZ.
+
+---
+## SONUÇ (2026-10-24) — (B) 0/5 TUTTU · (G) CME boşluğu TUTMADI · (A) yön tahmin edilemiyor, hareket BÜYÜKLÜĞÜ ediliyor
+İki kör uygulama; farklar yalnız A'daki iki kural okumasından (veri sonu funding kapsamı, hafta sonu hücresi uç noktası)
+— açıklamaya göre düzeltildi; sonra 840 adayın hepsi, seçim, doğrulama, CME ve haritalar aynı (fark ≤ 1e-14).
+Denetçi: kesme testi (gelecek veri yok), elle fiyat/funding, DST, CME taraması, bootstrap ve seçim kuralı doğru.
+
+| seçilen (keşif t) | doğrulama n | net NORMAL / STRESS | alt sınır (%0.5) | hüküm |
+|---|---|---|---|---|
+| Çarşamba günü, trend yukarı, long (2.88) | 80 | +%0.59 / +%0.47 | −%0.16 | TUTMADI |
+| Bütün hafta, trend yukarı, long (2.53) | 79 | +%0.29 / +%0.17 | −%1.37 | TUTMADI |
+| Hafta içi, trend yukarı, long (2.35) | 80 | +%0.36 / +%0.24 | −%1.15 | TUTMADI |
+| Çarşamba ABD seansı, geçen hafta artı, long (2.25) | 73 | −%0.14 / −%0.26 | −%0.58 | TUTMADI |
+| Cuma ABD, hafta sonu < −%1, short (2.20) | 25 | −%0.19 / −%0.31 | −%1.26 | TUTMADI (n < 30) |
+Çoklu test bağlamı: keşifte t ≥ 2 olan 8 aday, şansla beklenen ~6.6–7 (P ≈ 0.36) — tarama şanstan fazlasını bulmadı.
+İlk üçü "trend yukarıyken long" = momentum/beta (trend kolunun zaten yaptığı); doğrulamada artı ama anlamsız, 2025–26'da sönük.
+
+CME boşluğu (|g| ≥ %1): keşif 108 işlem ort R −0.21 (STRESS −0.27); doğrulama 64 işlem −0.33 (−0.40), alt −0.55.
+Boşluk haftanın sonuna kadar %67 / %75 oranında DOLUYOR (medyan 17 / 23.5 saat) ama 1:1 stop çoğu kez önce geliyor
+(hedef %40 / %36, stop %57). Yukarı ve aşağı boşluk ikisi de negatif. "CME boşluğu dolar" doğru, "işlemi kazandırır" değil.
+
+Harita: saat-saat ortalama YÖN iki dönem arasında tutmuyor (168 saatlik korelasyon 0.10), hareket BÜYÜKLÜĞÜ tutuyor
+(0.83): en büyük saatlik hareket 13–15 UTC (ABD açılışı, ~%0.55/saat), en küçük 04–06 UTC ve Cumartesi.
+Gün ortalamaları (keşif/doğrulama): Pzt +0.40/+0.55, Çar +0.55/+0.42, Per −0.11/−0.23 — iki dönemde aynı işaret ama
+t ≈ 2, seçim dışında kaldı, şans payı içinde. Tutarlı tek koşul ayrımı TREND (yukarı +0.36/+0.18 vs aşağı −0.03/0.00).
