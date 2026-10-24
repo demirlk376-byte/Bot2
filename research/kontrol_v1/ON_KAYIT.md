@@ -27,3 +27,22 @@ görüyor). POS55 ve INV karar dışı raporlanır (tespit gücü, simetri).
 Doğal pozitif kontrol (karar dışı, rapor): aynı tür ikiz/maliyet altyapısının donchian için verdiği +0.26R'nin
 canlıda +0.25…+0.29R ölçülmesi.
 Sonuç görüldükten sonra olasılıklar, seed, ölçüt ve makine listesi değiştirilmez.
+
+---
+## SONUÇ (2026-10-24) — ÖN KAYITLI HÜKÜM: DÜZENEK SAĞLAM DEĞİL (POS60 hiçbir makinede tam geçmedi) · makinelerde HATA YOK
+| makine | ORIG yeniden üretim | NEG (sahte kenar yok) | POS60 (net > 0 ve alt > 0) | not |
+|---|---|---|---|---|
+| M1 SMC/ICT (22 varyant) | birebir (0 fark) | 22/22 geçti | 0/22 | POS60 brüt +0.04…+0.27R (büyük varyantlarda z≈3.6–4.1) ama maliyet ~0.27R/işlem → net negatif |
+| M2 formasyon (12 test) | birebir | 11/12 (pinbar 1D: seed şansı, 200 başka seed'de 200/200 geçiyor) | 9/12 (12/12 net > 0) | pinbar 4h maliyeti 0.089R; yildiz/marubozu 1D örnek küçük |
+| M3 gün içi (3 hipotez) | birebir | 3/3 | 0/3 | POS60 brüt 11–18 bp, maliyet 10 bp; POS70/80/100 geçiyor |
+
+Denetçi: kopyalar bayt bayt aynı, yön değişimi dışında fark yok, 68/68 işlem elle doğrulandı, ölçüt doğru uygulandı.
+Teşhis: başarısızlık KONTROL TASARIMINDAN — %60 isabetli kâhin tutma ufkunda yalnız ~0.1R / 10–18 bp brüt kenar
+ekliyor, bu da her makinenin maliyet duvarı kadar ya da altında (M1'de kusursuz kâhin POS100 bile 2/10 varyantta net
+negatif). Ön kayıttaki POS60 ölçütü "makine kenarı görüyor mu" ile "kenar maliyeti yener mi"yi karıştırdı — tasarım
+hatası, açıkça belirtilir; hüküm değiştirilmez.
+Anlamı: (1) makineler sahte kenar üretmiyor (37 karar testinin hepsinde NEG alt sınırı ≤ 0); (2) güçlü enjekte kenarı
+görüyorlar, POS60'ın brüt kenarını M2/M3'te ve M1'in büyük varyantlarında açıkça ölçüyorlar; (3) elenen stratejilerin
+ORİJİNAL brüt kenarı zaten ~0 (M1 medyan −0.003R ± 0.025, dönüş formasyonları brüt negatif) — bu, testin gücünden bağımsız
+doğrudan ölçüm; (4) ama %55–60 isabetli mütevazı bir kısa vadeli kenar da bu maliyetlerle elenirdi. Yeniden açmanın
+konusu motor hatası değil, kısa vadede maliyet duvarı: o stratejiler canlıda da aynı maliyeti öder.
