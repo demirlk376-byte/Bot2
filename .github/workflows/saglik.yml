@@ -1,0 +1,69 @@
+name: Saglik kaniti (canli ayarla, DB'siz, salt-okur)
+on:
+  push:
+    branches: [veri/saglik]
+permissions:
+  contents: write
+jobs:
+  kanit:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SYMBOLS: "SOL,ETH,ADA,NEAR,BCH,XRP,DOGE,TRX,XLM,LTC,ICP,BNB"
+      DONCHIAN_SYMBOLS: "SOL,ETH,ADA,NEAR,BCH,ICP,BNB"
+      BB_SYMBOLS: "LTC"
+      SQUEEZE_SYMBOLS: "XRP,DOGE,XLM"
+      BB_WEEKDAY_ENABLED: "false"
+      MAX_POSITIONS: "7"
+      POSITION_CAP_FRACTION: "2.5"
+      MAX_RISK_PCT: "0.02"
+      RISK_SCALE: "1.75"
+      DAILY_MAX_LOSS_PCT: "0.35"
+      LEVERAGE: "10"
+      CONSECUTIVE_LOSS_LIMIT: "2"
+      COOLDOWN_MINUTES: "240"
+      DONCHIAN_MTF: "true"
+      STOP_MOVE_ENABLED: "true"
+      MAKER_ENTRY: "true"
+      DONCHIAN_MAKER_ENTRY: "false"
+      DONCHIAN_RR: "2.5"
+      DONCHIAN_VOL_MULT: "2.5"
+      ATR_SL_MULT: "3.0"
+      RR_RATIO: "1.667"
+      MAX_HOLD_CANDLES: "48"
+      VOL_FILTER_ENABLED: "true"
+      FUNDING_ENABLED: "false"
+      FIXED_MARGIN_USDT: "0"
+      ORB_ENABLED: "false"
+      FVG_ENABLED: "false"
+      SR_BREAKOUT_ENABLED: "false"
+      IFVG_ENABLED: "false"
+      ASIA_BO_ENABLED: "false"
+      WHALE_ENABLED: "false"
+      ONE_PER_SYMBOL: "true"
+      PAPER_MODE: "true"
+      DRY_RUN: "false"
+      TELEGRAM_BOT_TOKEN: ""
+      TELEGRAM_CHAT_ID: ""
+      TREND_RISK_PCT: "0.015"
+      SQUEEZE_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/btc-intraday-trading-engine-U2C8A
+          path: bot
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install --quiet -r bot/requirements.txt
+      - name: saglik_kaniti 7 ve 14 gun
+        run: |
+          mkdir -p veri
+          cd bot
+          python saglik_kaniti.py 7 --db-yok  > ../veri/saglik_7gun.txt 2>&1 || true
+          python saglik_kaniti.py 14 --db-yok > ../veri/saglik_14gun.txt 2>&1 || true
+          tail -40 ../veri/saglik_7gun.txt
+      - run: |
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git add veri && git commit -m "veri: saglik kaniti ciktisi [skip ci]" && git push
