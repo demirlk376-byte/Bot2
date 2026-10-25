@@ -46,3 +46,27 @@ portföy çarpanı ≥ BASE VE en kötü ay BASE'ten kötü değil.
 
 Sonuç görüldükten sonra hiçbir kural, eşik, dönem, seed veya ölçüt değiştirilmez. Çoklu deney: her biri iki dönemde
 birden geçmek zorunda; geçenler canlıya gitmeden önce gölge/kâğıt izlemeye alınır.
+
+---
+## SONUÇ (2026-10-25) — E1 GEÇTİ · E2, E4, E5, E8 ELENDİ
+Not: deneyler sırasında bulut konteyneri sıfırlandı; ikiz DB'leri ve portföy düzeneği yeniden kuruldu ve eski sayıları
+birebir verdi (ikiz_gercek 569/413, ikiz_eski 647/469; BASE x116.467 / %28.94 / MAR 10.937 ve x42.160 / %58.67 / 3.696).
+
+**E1 — GEÇTİ.** 444 sinyal (2020-02 → 2023-04-06), iki kör uygulama sinyal sinyal aynı (fark 0).
+ort dR **+0.0149R** (medyan +0.0152R; +9.4 bp), haftalık blok bootstrap %95 **[+0.0114, +0.0186]**, sinyallerin %70'inde
+artı. Yıl yıl 2020 +0.026 · 2021 +0.013 · 2022 +0.010 · 2023 +0.013; coin coin hepsi artı (ICP ~0). Keşif içi ölçümle
+(+0.0134R) tutarlı. Sonraki adım (ön kayıt gereği): gölge kayıt, sonra kullanıcı onayıyla canlı.
+
+**E2 — ELENDİ (hacim kapısı kalır).** k = 412/1111 = 0.3708. KEŞİF: A0 x116.5 / %28.9 / MAR 10.94 · A1 x136.7 / %45.5 / 7.40
+· A2 x60.5 / %26.0 / 9.30. BAĞIMSIZ: A0 x42.2 / %58.7 / 3.70 · A1 x32.1 / %63.0 / 3.03 · A2 x38.2 / %37.5 / 5.53 (çarpan A0'ın
+altında). Kapı bağımsız dönemde de kaliteyi ayırıyor: A1'de A0 ile ortak işlemler +0.254R, diğerleri +0.066R.
+
+**E4 — ELENDİ.** KEŞİF: çelişen +0.222R vs uyumlu +0.220R (fark +0.002); BAĞIMSIZ: çelişen +0.284R vs uyumlu +0.046R.
+Kapılı portföy MAR 6.01 vs 10.94 ve 2.90 vs 3.70; rastgele silmelerin çoğundan kötü. (Tek uygulama: ikinci uygulama
+oturum sınırına, çıktılar konteyner sıfırlanmasına takıldı; farkın yönü ve büyüklüğü hükmü değiştirecek düzeyde değil.)
+
+**E5 — ELENDİ.** BAĞIMSIZ artan −0.106R farkla daha kötü; KEŞİF +0.239; birleşik %95 [−0.143, +0.359]; kurallı MAR iki
+dönemde BASE'ten düşük. İki uygulama birebir.
+
+**E8 — ELENDİ.** Etkilenen 21/22 işlem; Σ dR −1.84R / −3.22R (p 0.76 / 0.83); çarpan x42.16 → x39.67, x116.47 → x107.12.
+İki uygulama dört kök neden düzeltildikten sonra birebir.
