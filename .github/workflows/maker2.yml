@@ -1,7 +1,7 @@
-name: Maker testi aggTrades verisi (tek seferlik)
+name: Donchian 2020-23 sinyalleri aggTrades verisi (tek seferlik)
 on:
   push:
-    branches: [veri/maker1]
+    branches: [veri/maker2]
 permissions:
   contents: write
 jobs:
@@ -17,4 +17,4 @@ jobs:
       - run: python indir_maker.py
       - run: |
           git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
-          git add veri && git commit -m "veri: donchian sinyalleri cevresi aggTrades [skip ci]" && git push
+          git add veri && git commit -m "veri: donchian 2020-23 sinyalleri cevresi aggTrades [skip ci]" && git push
