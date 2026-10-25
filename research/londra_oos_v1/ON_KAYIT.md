@@ -34,3 +34,19 @@ DIŞ-ÖRNEKLEM (karar): sinyal günü 2020-03-01 → 2022-12-31. İÇ-ÖRNEKLEM 
 Ek (karar dışı): "olağandışı hacimden sonra 6 saatlik aralık %25–33 daha geniş, yön yok" bulgusu dış-örneklemde
 betimsel olarak yeniden ölçülür (aralık oranı ve 6 saat sonra yukarıda olma oranı).
 Sonuç görüldükten sonra kural çözümleri, dönem, maliyet ve ölçüt değiştirilmez.
+
+---
+## SONUÇ (2026-10-25) — ELENDİ
+İki kör uygulama + denetçinin üçüncü motoru 472 işlemde birebir aynı; 6 işlem elle, kesme testi (gelecek veri yok),
+DST, hacim medyanı, spot boşlukları doğru. Düzeltme gerekmedi.
+
+| dönem | n | ort R NORMAL / STRESS | hesap (%0.5 risk) NORMAL / STRESS | alt sınır | hüküm |
+|---|---|---|---|---|---|
+| dış-örneklem 2020-03 → 2022-12 | 204 | +0.065 / −0.028 | +%6.6 / −%2.9 | −0.085 | ELENDİ |
+| iç 2023-01 → 2026-09 | 268 | +0.035 / −0.099 | +%4.6 / −%13.2 | — | — |
+| iç 2025-01 → 2026-09 | 133 | +0.013 / −0.128 | +%0.8 / −%8.5 | — | (ChatGPT: 84 işlem, +%0.075) |
+Yıl yıl NORMAL ort R: 2020 +0.14 · 2021 −0.01 · 2022 +0.10 · 2023 −0.22 · 2024 +0.30 · 2025 +0.09 · 2026 −0.08.
+Her dönemde normal maliyette sıfıra yakın artı, kayma biraz artınca eksi — ChatGPT'nin kendi bulgusuyla aynı tablo.
+ChatGPT'nin işlem sayısı yazdığı kurallardan yeniden üretilemedi (133 vs 84; bilinmeyen ayrıntılar).
+Hacim bulgusu dış-örneklemde DOĞRULANDI (karar dışı): yüksek hacimden sonra 6 saatlik aralık 1.49 kat geniş (iddia
+1.25–1.33), yön yok (6 saat sonra yukarıda %51.7 vs %51.0; hacim mumunun yönünde devam %48.2).
