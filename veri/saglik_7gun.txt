@@ -1,0 +1,81 @@
+saglik_kaniti.py — son 7 gün (2026-10-18 20:10 → 2026-10-25 20:10 UTC) · veri: MEXC vadeli (halka açık)
+
+====================================================================================
+A) CANLI AYAR — main.py'nin bu ortamda GERÇEKTEN kullanacağı değerler
+====================================================================================
+  SYMBOLS=['SOL', 'ETH', 'ADA', 'NEAR', 'BCH', 'XRP', 'DOGE', 'TRX', 'XLM', 'LTC', 'ICP', 'BNB']
+  donchian açık=True coinler=['SOL', 'ETH', 'ADA', 'NEAR', 'BCH', 'ICP', 'BNB']  (4h; giriş 4h bar KAPANIŞINDA)
+    channel=40 ema=200 sl_atr=2.0 RR=2.5 buffer=0.0 VOL_MULT=2.5 vol_lookback=20 MTF=True
+    confirm=0 retest=0 obv=False adx_min=0.0 govde=0.0 kapanis=0.0 fitil=1.0 chase=0.0 atr_gen=0.0 mod=kirilim ters_trend=True
+  squeeze  açık=False coinler=[]  (1h)
+    kc=1.5 min_bar=5 sl_atr=2.0 RR=2.5 4h_MTF=True vol_mult=0.0 mod=orta
+    rejim kapısı: ADX(1h,14) ≤ 20 → squeeze KAPALI (REGIME_FILTER=True)
+  BB       coinler=['LTC']  (1h) BB_WEEKDAY_ENABLED=False (hafta sonu = mum KAPANIŞ saati UTC Cmt/Paz)
+    VOL_FILTER=True (hacim ≥ 20 bar ort.)  sniper_min_grade=2  rejim kapısı: ADX ≥ 28 → BB KAPALI
+    FUNDING_ENABLED=False (mod=monitor)  ORDERFLOW=False (mod=monitor, yalnız log — karar dışı)
+  risk: MAX_POSITIONS=7  CONSEC_LOSS=2  COOLDOWN=240dk  MAX_CORR_DIR=2  MAX_SAME_DIR=0  ONE_PER_SYMBOL=true→uygulanıyor  MAX_HOLD=48h (donchian 120h)
+  ✓ ayarlar ikiz referansıyla (ikiz/kos.py CANLI_ENV) aynı
+
+====================================================================================
+B) VERİ TAZELİĞİ (bayat veri = sessizce kör bot)
+====================================================================================
+  SOL   son KAPANMIŞ 1h mum 2026-10-25 19:00 (kapanış 20:00)  yaş  0.18 saat  ✓
+  ETH   son KAPANMIŞ 1h mum 2026-10-25 19:00 (kapanış 20:00)  yaş  0.18 saat  ✓
+  ADA   son KAPANMIŞ 1h mum 2026-10-25 19:00 (kapanış 20:00)  yaş  0.18 saat  ✓
+  NEAR  son KAPANMIŞ 1h mum 2026-10-25 19:00 (kapanış 20:00)  yaş  0.18 saat  ✓
+  BCH   son KAPANMIŞ 1h mum 2026-10-25 19:00 (kapanış 20:00)  yaş  0.18 saat  ✓
+  LTC   son KAPANMIŞ 1h mum 2026-10-25 19:00 (kapanış 20:00)  yaş  0.18 saat  ✓
+  ICP   son KAPANMIŞ 1h mum 2026-10-25 19:00 (kapanış 20:00)  yaş  0.18 saat  ✓
+  BNB   son KAPANMIŞ 1h mum 2026-10-25 19:00 (kapanış 20:00)  yaş  0.18 saat  ✓
+
+====================================================================================
+C) SİNYAL YENİDEN HESABI (üretim sınıfları + canlı kapılar; loga güvenilmedi)
+   sinyal zamanı = bar KAPANIŞI (UTC) · beklenen giriş [kapanış, kapanış+90dk)
+====================================================================================
+  kapanış UTC  coin  kol      yön   ölçü         hüküm
+  10-20 12:00  LTC   BB       LONG  ADX  24.2    hafta içi (BB kapalı) — BEKLENEN
+  10-20 15:00  LTC   BB       SHORT ADX  26.0    hafta içi (BB kapalı) — BEKLENEN
+  10-21 08:00  BNB   donchian LONG  hacim 0.74×  hacim filtresi (0.74× < 2.5×) — BEKLENEN
+  10-22 08:00  LTC   BB       LONG  ADX  25.1    hafta içi (BB kapalı) — BEKLENEN
+  10-22 09:00  LTC   BB       LONG  ADX  27.0    hafta içi (BB kapalı) — BEKLENEN
+  10-22 16:00  ICP   donchian SHORT hacim 1.52×  hacim filtresi (1.52× < 2.5×) — BEKLENEN
+  10-22 20:00  ICP   donchian SHORT hacim 2.04×  hacim filtresi (2.04× < 2.5×) — BEKLENEN
+  10-23 22:00  LTC   BB       LONG  ADX  32.9    hafta içi (BB kapalı) — BEKLENEN
+  10-23 23:00  LTC   BB       LONG  ADX  35.1    hafta içi (BB kapalı) — BEKLENEN
+  10-24 12:00  NEAR  donchian SHORT hacim 1.12×  hacim filtresi (1.12× < 2.5×) — BEKLENEN
+  10-24 16:00  ADA   donchian SHORT hacim 2.13×  hacim filtresi (2.13× < 2.5×) — BEKLENEN
+  10-24 16:00  ETH   donchian SHORT hacim 1.73×  hacim filtresi (1.73× < 2.5×) — BEKLENEN
+  10-24 16:00  ICP   donchian SHORT hacim 1.93×  hacim filtresi (1.93× < 2.5×) — BEKLENEN
+  10-24 16:00  NEAR  donchian SHORT hacim 2.16×  hacim filtresi (2.16× < 2.5×) — BEKLENEN
+  10-24 16:00  SOL   donchian SHORT hacim 2.26×  hacim filtresi (2.26× < 2.5×) — BEKLENEN
+
+  ÖZET (kol başına, son 7 gün):
+    donchian ['SOL', 'ETH', 'ADA', 'NEAR', 'BCH', 'ICP', 'BNB']  →  hacim filtresi: 9
+    BB       ['LTC']  →  hafta içi: 6
+
+  KANIT — Donchian ham kırılımlar (VOL_MULT=0 ile oluşan) ve hacim filtresi (eşik 2.5×, önceki 20 bar ort.):
+    SOL   elenen 1: 10-24 16h 2.26×
+    ETH   elenen 1: 10-24 16h 1.73×
+    ADA   elenen 1: 10-24 16h 2.13×
+    NEAR  elenen 2: 10-24 12h 1.12× 10-24 16h 2.16×
+    BCH   ham kırılım yok
+    ICP   elenen 3: 10-22 16h 1.52× 10-22 20h 2.04× 10-24 16h 1.93×
+    BNB   elenen 1: 10-21 08h 0.74×
+
+====================================================================================
+D) GERÇEK GİRİŞLER · AÇIK POZİSYONLAR · SESSİZLİK
+====================================================================================
+  DB yok → gerçek girişlerle eşleştirme ve sessizlik ölçümü YAPILAMADI.
+  'filtreleri geçti' yazan her satır canlıda ya AÇILMIŞ ya da koltuk/coin/soğuma
+  kilidine takılmış olmalı. Hangisi olduğunu yalnız trades.db söyler: VPS'te
+  'python3 saglik_kaniti.py <gün>' ile eşleştir. HİÇ satır yoksa sessizlik = sinyal yokluğu.
+
+====================================================================================
+HÜKÜM
+====================================================================================
+  HÜKÜM: ⓘ DB YOK — filtreleri geçen 0 sinyal var; sessizlik tamamen sinyal yokluğu/filtre, arıza DEĞİL
+  MODELLENMEYEN (çevrimdışı çoğaltılamaz, aday '⛔' ise akla gelmeli): günlük zarar halt'ı
+    (execution.py:402/582), bayat besleme koruması (main.py:250), Donchian 4h tampon bayatlığı
+    (main.py:791), yetersiz marj/kurulum/emir hatası ve maker dolumu (execution.py:653-736),
+    restart'ta sıfırlanan soğuma sayacı (burada ÜST SINIR), orderflow (yalnız log),
+    funding filtresi (FUNDING_ENABLED=false iken kapalı), portföy stopu (PORTFOY_STOP=0 iken kapalı).
