@@ -60,7 +60,7 @@ jobs:
       - name: saglik kaniti 10 gun + takilan kirilimlar takibi
         run: |
           mkdir -p veri
-          (cd bot && python saglik_kaniti.py 10 --db-yok > ../veri/saglik_10gun.txt 2>&1 || true)
+          (cd bot && python saglik_kaniti.py 12 --db-yok > ../veri/saglik_12gun.txt 2>&1 || true)
           python takilan.py || true
       - run: |
           git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
