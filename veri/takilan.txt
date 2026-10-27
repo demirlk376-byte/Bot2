@@ -1,12 +1,12 @@
-şimdi = 2026-10-25 21:00:00+00:00
+şimdi = 2026-10-27 11:00:00+00:00
 BNB | LONG | 2026-10-21 08:00 | kırılım=evet | giriş 750.4 | SL 734.8 | TP 785.2 | STOP | çıkış 734.8 | R -1.03 | $-9.25 | 
-ICP | SHORT | 2026-10-22 16:00 | kırılım=evet | giriş 2.743 | SL 2.885 | TP 2.402 | HÂLÂ AÇIK (son fiyat) | çıkış 2.644 | R +0.68 | $+6.17 | 
-ICP | SHORT | 2026-10-22 20:00 | kırılım=evet | giriş 2.713 | SL 2.854 | TP 2.373 | HÂLÂ AÇIK (son fiyat) | çıkış 2.644 | R +0.47 | $+4.28 | AYNI COİNDE AÇIK POZİSYON VAR → canlıda açılmazdı
-NEAR | SHORT | 2026-10-24 12:00 | kırılım=evet | giriş 4.491 | SL 4.839 | TP 3.646 | HÂLÂ AÇIK (son fiyat) | çıkış 4.563 | R -0.21 | $-1.93 | 
-ADA | SHORT | 2026-10-24 16:00 | kırılım=evet | giriş 0.203 | SL 0.2128 | TP 0.1797 | HÂLÂ AÇIK (son fiyat) | çıkış 0.2055 | R -0.27 | $-2.43 | 
-ETH | SHORT | 2026-10-24 16:00 | kırılım=evet | giriş 2301 | SL 2376 | TP 2126 | HÂLÂ AÇIK (son fiyat) | çıkış 2349 | R -0.66 | $-5.92 | 
-ICP | SHORT | 2026-10-24 16:00 | kırılım=evet | giriş 2.612 | SL 2.746 | TP 2.292 | HÂLÂ AÇIK (son fiyat) | çıkış 2.644 | R -0.25 | $-2.26 | AYNI COİNDE AÇIK POZİSYON VAR → canlıda açılmazdı
-NEAR | SHORT | 2026-10-24 16:00 | kırılım=evet | giriş 4.395 | SL 4.757 | TP 3.515 | HÂLÂ AÇIK (son fiyat) | çıkış 4.563 | R -0.47 | $-4.25 | AYNI COİNDE AÇIK POZİSYON VAR → canlıda açılmazdı
-SOL | SHORT | 2026-10-24 16:00 | kırılım=evet | giriş 99.55 | SL 103.1 | TP 91.35 | HÂLÂ AÇIK (son fiyat) | çıkış 101.7 | R -0.62 | $-5.62 | 
+ICP | SHORT | 2026-10-22 16:00 | kırılım=evet | giriş 2.743 | SL 2.885 | TP 2.402 | HÂLÂ AÇIK (son fiyat) | çıkış 2.568 | R +1.22 | $+10.99 | 
+ICP | SHORT | 2026-10-22 20:00 | kırılım=evet | giriş 2.713 | SL 2.854 | TP 2.373 | HÂLÂ AÇIK (son fiyat) | çıkış 2.568 | R +1.01 | $+9.12 | AYNI COİNDE AÇIK POZİSYON VAR → canlıda açılmazdı
+NEAR | SHORT | 2026-10-24 12:00 | kırılım=evet | giriş 4.491 | SL 4.839 | TP 3.646 | HÂLÂ AÇIK (son fiyat) | çıkış 4.422 | R +0.19 | $+1.73 | 
+ADA | SHORT | 2026-10-24 16:00 | kırılım=evet | giriş 0.203 | SL 0.2128 | TP 0.1797 | HÂLÂ AÇIK (son fiyat) | çıkış 0.2023 | R +0.06 | $+0.53 | 
+ETH | SHORT | 2026-10-24 16:00 | kırılım=evet | giriş 2301 | SL 2376 | TP 2126 | HÂLÂ AÇIK (son fiyat) | çıkış 2305 | R -0.07 | $-0.62 | 
+ICP | SHORT | 2026-10-24 16:00 | kırılım=evet | giriş 2.612 | SL 2.746 | TP 2.292 | HÂLÂ AÇIK (son fiyat) | çıkış 2.568 | R +0.32 | $+2.87 | AYNI COİNDE AÇIK POZİSYON VAR → canlıda açılmazdı
+NEAR | SHORT | 2026-10-24 16:00 | kırılım=evet | giriş 4.395 | SL 4.757 | TP 3.515 | HÂLÂ AÇIK (son fiyat) | çıkış 4.422 | R -0.08 | $-0.73 | AYNI COİNDE AÇIK POZİSYON VAR → canlıda açılmazdı
+SOL | SHORT | 2026-10-24 16:00 | kırılım=evet | giriş 99.55 | SL 103.1 | TP 91.35 | HÂLÂ AÇIK (son fiyat) | çıkış 99.63 | R -0.04 | $-0.34 | 
 
-TOPLAM (9 kırılımın hepsi): $-21.21  ·  canlıda açılabilecekler (coin başına tek pozisyon): $-18.98
+TOPLAM (9 kırılımın hepsi): $+14.30  ·  canlıda açılabilecekler (coin başına tek pozisyon): $+3.04
