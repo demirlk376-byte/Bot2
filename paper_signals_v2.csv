@@ -355,3 +355,4 @@ ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
 2026-10-24T16:00:00+00:00,ETH,LONG,2316.89,2261.3165,2409.5124,18.5245,51,-5.2e-05,True,"nötr makro, geç"
 2026-10-26T03:00:00+00:00,SOL,LONG,100.17,0.7724,50,0.0001,False,çelişki: funding=+0.0100% (long ağırlıklı→long riskli)
 2026-10-27T06:00:00+00:00,BNB,LONG,737.0,725.0173,756.9711,3.9942,48,0.0,True,"nötr makro, geç"
+2026-10-28T10:00:00+00:00,BNB,SHORT,761.7,773.3562,742.2731,3.8854,51,9.4e-05,True,"nötr makro, geç"
