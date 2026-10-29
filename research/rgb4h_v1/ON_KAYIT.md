@@ -60,3 +60,26 @@ ters sonuç (ETH'de d − a < 0 iken BTC'de > 0, ya da tersi) · toplam işlem <
 **KABUL** ⇔ tüm kabul kriterleri sağlanır VE hiçbir red kriteri tetiklenmez. Aksi halde RED.
 Ek (karar dışı): bizim canlı donchian'ın BTC'deki sonucu (btc_setup_v1) ve KABUL çıkarsa portföy katkısı ayrı ön kayıtla.
 Sonuç görüldükten sonra hiçbir kural, eşik, ızgara, maliyet, tanım veya ölçüt değiştirilmez.
+
+---
+## SONUÇ (2026-10-29) — RED (raporun kendi kriterleriyle)
+İki kör uygulama + denetçi: tek fark A'nın başlangıç stopunu kaymalı dolum fiyatına bağlamasıydı (spec: ham açılış);
+düzeltildi, 18 işlem kümesi, walk-forward ızgarası, katlar, günlük eğriler, DSR ve MC float hassasiyetinde aynı.
+Kesme testi (gelecek veri yok), IS-yalnız seçim, 7 işlem elle, DD yarılama, FOMC filtresi doğrulandı.
+
+Ablasyon (BTC+ETH, 2020-07-19 → 2026-10-04, %1 risk, taker %0.05 + 3.5 bp kayma, gerçek funding):
+| varyant | işlem | toplam getiri | Sharpe | maxDD | PF | range kaybı |
+|---|---|---|---|---|---|---|
+| a Donchian 20/10 + EMA200 | 686 | +%192 | 0.98 | %16.7 | 1.39 | %31.5 |
+| a′ a + 0.25×ATR tampon (bilgi) | 571 | +%237 | 1.15 | %15.7 | 1.54 | %20.7 |
+| b + günlük EMA200 | 396 | +%75 | 0.73 | %12.9 | 1.32 | %22.8 |
+| c + Gate 2 | 326 | +%61 | 0.65 | %17.1 | 1.31 | %19.5 |
+| d RGB-4H tam | 322 | +%77 | 0.88 | %11.6 | 1.54 | %5.9 |
+| d Chandelier (bilgi) | 316 | +%80 | 1.00 | %10.6 | 1.63 | −%5.9 |
+STRESS: a +%94 / d +%47. Walk-forward (9 kat, OOS 2022-07 → 2026-10, 205 işlem): PF 1.308, OOS Sharpe 0.522 (gereken
+≥ 0.650 = %70 × IS 0.929), DSR 0.735, MC %95 maxDD %16.0 (karıştırma) / %24.1 (blok). Plato var (tek tepe yok).
+Kalan: K2 (OOS Sharpe), K4c/K4d (c %61, d %77 vs gereken %154), K5 (DSR), K6b (son kısa katta 13 işlem). Red tetikleri:
+R1a/R1b — Gate 2 (c − b) iyileştirmiyor, kötüleştiriyor: toplamda −13.7 puan / −0.08 Sharpe, BTC'de ve ETH'de ayrı ayrı
+negatif. Kabul edilenler: K1 (PF 1.31), K3 (range kaybı azalıyor), K6a, K7, R2, R3, plato.
+Hüküm: RED. Kapılar düşüşü ve range kaybını azaltıyor ama kazancın çoğunu kesiyor. Not (karar dışı, sonuç sonrası
+gözlem): en iyi varyant filtresiz a′; bu gözlem ancak ayrı ön kayıtla, bota katkı ölçütüyle sınanabilir.
