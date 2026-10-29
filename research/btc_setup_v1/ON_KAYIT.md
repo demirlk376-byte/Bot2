@@ -27,3 +27,24 @@ iki dönem MAR'larının geometrik ortalaması yüksek olan. Hiçbiri İYİ değ
 Rapor: BTC işlem sayısı / ort R / yıl yıl, kovulan işlemler (koltuk ve BTC/ETH/SOL korelasyon kapısı), aylık tablo.
 İYİ çıkan setup canlıya kendiliğinden geçmez: kullanıcı onayı (ayrı onay cümlesi) gerekir.
 Sonuç görüldükten sonra kurallar, dönemler, maliyet ve ölçüt değiştirilmez.
+
+---
+## SONUÇ (2026-10-29) — HİÇBİRİ İYİ DEĞİL · BTC EKLENMEZ
+Koşucu + denetçi aynı hüküm. İkiz banner'ları canlı env + yalnız BTC eklenmesi; BTC'siz akıl kontrolü koşuları taban DB'leri
+satır satır üretti (569/569, 647/647); BAĞIMSIZ BTC 1h dosyası ve funding kaynakla birebir; portföy düzeneği BASE'i birebir verdi.
+
+| dönem | setup | çarpan | maxDD | MAR | en kötü ay | BTC işlem / ort R |
+|---|---|---|---|---|---|---|
+| keşif 2023–26 | BASE | x116.5 | %28.9 | 10.94 | −%22.2 | — |
+| | B1 donchian+BTC | x45.9 | %38.6 | 5.56 | −%31.4 | 80 / −0.111 |
+| | B2 trend+BTC | x108.1 | %28.9 | 10.62 | −%22.7 | 20 / −0.070 |
+| | B3 ikisi | x42.1 | %38.6 | 5.36 | −%32.7 | 100 / −0.105 |
+| bağımsız 2020–23 | BASE | x42.2 | %58.7 | 3.70 | −%38.1 | — |
+| | B1 | x75.3 | %55.2 | 5.05 | −%40.5 | 79 / +0.326 |
+| | B2 | x52.9 | %59.9 | 4.01 | −%38.2 | 17 / +0.744 |
+| | B3 | x93.0 | %56.7 | 5.37 | −%40.5 | 96 / +0.404 |
+Üçü de bağımsız dönemde geçiyor, keşifte geçmiyor (BTC'nin kendi ort R'si negatif). BTC donchian yıl yıl: 2020 +0.64 ·
+2021 −0.28 · 2022 +0.43 · 2023 +0.58/+0.32 · 2024 −0.06 · 2025 −0.35 · 2026 −0.17 — 2024'ten beri BTC kırılımları zarar.
+Kovma etkisi: BTC/ETH/SOL aynı yön ≤ 2 kapısı nedeniyle keşifte 11 (SOL 8, ETH 3; toplam +4.2R), bağımsızda 16 iyi işlem
+kovuldu. Not (denetçi): ikiz aynı mumda sembol adına göre sıraladığından BTC, ETH/SOL'dan önce koltuk alıyor; canlıda sıra
+farklı olabilir — hükmü değiştirmez (BTC'nin kendi R'si keşifte negatif).
