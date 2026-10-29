@@ -1,7 +1,7 @@
-name: Londra kirilimi verisi (tek seferlik)
+name: BTC 2017- spot 1h verisi (tek seferlik)
 on:
   push:
-    branches: [veri/londra]
+    branches: [veri/btc2017]
 permissions:
   contents: write
 jobs:
@@ -14,7 +14,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.11"}
       - run: pip install --quiet pandas requests numpy
-      - run: python indir_londra.py
+      - run: python indir_btc2017.py
       - run: |
           git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
-          git add veri && git commit -m "veri: Londra kirilimi (BTC spot 1h + vadeli 5m) [skip ci]" && git push
+          git add veri && git commit -m "veri: BTC spot 1h 2017- [skip ci]" && git push

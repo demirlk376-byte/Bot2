@@ -1,4 +1,4 @@
-"""Londra kırılımı dış-örneklem testi verisi — Binance kamu arşivi (data.binance.vision), anahtarsız.
+"""BTC yeni setup testi verisi (2017-08 → bugün, dokunulmamış 2017–2019 dönemi için) — Binance kamu arşivi (data.binance.vision), anahtarsız.
 Çıktı (veri/):
   BTC_spot_1h.csv      spot BTCUSDT saatlik (taker alış hacmi dahil), 2020-01 →
   BTC_fut_5m.csv.gz    USDⓈ-M vadeli BTCUSDT 5 dakikalık, 2020-01 →
@@ -71,6 +71,6 @@ def klines(pazar, sym, tf, bas, dosya):
     print(dosya, ozet[dosya], flush=True)
 
 
-klines("spot", "BTCUSDT", "1h", "2020-01", "BTC_spot_1h.csv")
-klines("futures/um", "BTCUSDT", "5m", "2020-01", "BTC_fut_5m.csv.gz")
+klines("spot", "BTCUSDT", "1h", "2017-08", "BTC_spot_1h_2017.csv")
+klines("spot", "BTCUSDT", "1d", "2017-08", "BTC_spot_1d_2017.csv")
 json.dump(ozet, open(f"{OUT}/ozet.json", "w"), indent=1)
