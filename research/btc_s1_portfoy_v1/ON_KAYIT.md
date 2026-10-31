@@ -17,3 +17,18 @@ Bilgi amaçlı ikinci kol: risk %2. Pencereler: BAĞIMSIZ 2020-02-01 → 2023-04
 fazla 3 puan kötü. Rapor: aylık tablo, zararlı ay sayısı, eşzamanlı pozisyon, teminat atlamaları, yıl yıl katkı.
 EKLENEBİLİR çıkarsa sonraki adım kâğıt (sinyal) modunda izleme + kullanıcı onayı; canlıya kendiliğinden geçmez.
 Sonuç görüldükten sonra risk, pencereler ve ölçüt değiştirilmez.
+
+---
+## SONUÇ (2026-10-31) — EKLENEBİLİR (%1 kolu dört ölçütü iki pencerede de geçti)
+Koşucu + bağımsız denetçi aynı sayılar; BASE birebir; S1 R/teminat ölçeklemesi doğrulandı; teminat atlaması yok.
+| pencere | kol | çarpan | maxDD | MAR | en kötü ay | zararlı ay | S1 işlem |
+|---|---|---|---|---|---|---|---|
+| bağımsız 2020-02 → 2023-04 | BASE | x42.2 | %58.7 | 3.70 | −%38.1 | 16/39 | — |
+| | +S1 %1 | **x65.4** | %56.2 | **4.68** | −%35.4 | 16/39 | 144 |
+| | +S1 %2 (bilgi) | x95.8 | %53.7 | 5.73 | −%32.6 | 17/39 | 144 |
+| keşif 2023-04 → 2026-07 | BASE | x116.5 | %28.9 | 10.94 | −%22.2 | 14/40 | — |
+| | +S1 %1 | **x127.3** | %28.3 | **11.60** | −%24.1 | 15/40 | 163 |
+| | +S1 %2 (bilgi) | x121.9 | %29.1 | 11.08 | −%26.9 | 17/40 | 162 |
+En dar ölçüt: keşif en kötü ay −%24.1 (sınır −%25.2). %2 kolu keşifte en kötü ay testini geçmezdi. S1'in kendi kenarı
+2025–26'da ince (+1.7R, +2.4R); keşifte botla aylık korelasyon 0.47, bağımsızda 0.04. Sınırlama: motor açık pozisyonları
+piyasaya işaretlemiyor (BASE ile aynı). Sonraki adım: kâğıt/sinyal modunda izleme + kullanıcı onayı.
