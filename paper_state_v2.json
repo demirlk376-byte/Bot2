@@ -19,21 +19,11 @@
       "skipped": 36
     },
     "ETH": {
-      "balance": 9655.902440875418,
-      "position": {
-        "direction": 1,
-        "entry": 2258.21,
-        "sl": 2234.1047514446877,
-        "tp": 2298.385414258854,
-        "qty": 2.1379549379542686,
-        "atr": 8.035082851770772,
-        "entry_ts": "2026-11-01T19:00:00+00:00",
-        "fng_at_entry": 34,
-        "funding_at_entry": -4e-06
-      },
-      "n_trades": 39,
-      "n_wins": 19,
-      "total_pnl": -344.09755912457973,
+      "balance": 9721.388872910571,
+      "position": null,
+      "n_trades": 40,
+      "n_wins": 20,
+      "total_pnl": -278.61112708942585,
       "skipped": 40
     },
     "SOL": {
