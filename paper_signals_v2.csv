@@ -392,3 +392,8 @@ ts,coin,direction,entry,atr,fng,funding,macro_ok,macro_reason
 2026-11-11T16:00:00+00:00,BNB,SHORT,686.75,4.0924,29,8.6e-05,False,çelişki: F&G=29 (korku ortamında short riskli)
 2026-11-11T16:00:00+00:00,XRP,SHORT,1.0706,0.0117,29,9.7e-05,False,çelişki: F&G=29 (korku ortamında short riskli)
 2026-11-12T05:00:00+00:00,BNB,LONG,674.55,663.4644,693.026,3.6952,28,0.0,True,F&G=28 (korku→long uygun)
+2026-11-12T14:00:00+00:00,BTC,LONG,71609.9,70148.1508,74046.1486,487.2497,28,8.5e-05,True,F&G=28 (korku→long uygun)
+2026-11-12T14:00:00+00:00,ETH,LONG,2004.41,1950.4265,2094.3824,17.9945,28,4.4e-05,True,F&G=28 (korku→long uygun)
+2026-11-12T14:00:00+00:00,SOL,LONG,81.19,78.6805,85.3725,0.8365,28,9e-06,True,F&G=28 (korku→long uygun)
+2026-11-12T14:00:00+00:00,BNB,LONG,653.27,639.5266,676.1757,4.5811,28,0.0,True,F&G=28 (korku→long uygun)
+2026-11-12T14:00:00+00:00,XRP,LONG,1.0262,0.9939,1.08,0.0108,28,4.5e-05,True,F&G=28 (korku→long uygun)
