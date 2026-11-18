@@ -42,7 +42,7 @@
       "n_trades": 47,
       "n_wins": 21,
       "total_pnl": -119.15171690625135,
-      "skipped": 26
+      "skipped": 27
     },
     "BNB": {
       "balance": 10691.278174132281,
@@ -68,7 +68,7 @@
       "n_trades": 49,
       "n_wins": 24,
       "total_pnl": -456.55562755927156,
-      "skipped": 31
+      "skipped": 32
     }
   }
 }
